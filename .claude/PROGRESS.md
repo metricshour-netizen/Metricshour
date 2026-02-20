@@ -28,19 +28,18 @@
 - Infrastructure provisioned — Aiven PostgreSQL + Upstash Redis (both connected, .env set)
 - Migrations applied (alembic at head)
 - Celery workers — all 4 tasks working (crypto, stocks, commodities, fx); fixed Upstash SSL (ssl_cert_reqs=CERT_NONE); tested end-to-end, prices flowing into DB
+- Trade seeder — 252 rows (126 unique G20 pairs × 2 directions), 2022 WTO/IMF data, top products per pair
+- EDGAR seeder — 371 rows across 24 stocks (742 total including reverse lookups), FY2023/2024 10-K data
 
 ## In Progress 🔨
 - Nothing active right now
 
 ## Next Steps 📋
-1. UN Comtrade seeder — populate trade_pairs table
-2. SEC EDGAR seeder — populate stock_country_revenues (core differentiator)
-3. Deploy — Nginx + systemd on Hetzner, Cloudflare Pages for frontend
-4. DNS — point metricshour.com and api.metricshour.com
+1. Deploy — Nginx + systemd on Hetzner, Cloudflare Pages for frontend
+2. DNS — point metricshour.com and api.metricshour.com
 
 ## Known Issues 🐛
-- trade_pairs: 0 rows — UN Comtrade seeder not built
-- stock_country_revenues: 0 rows — SEC EDGAR seeder not built
+- None at this time. All core data tables populated.
 
 ## Recent Decisions
 - 2026-02-20: Created memory system
@@ -50,6 +49,7 @@
 - 2026-02-20: Asset seeder + API routes built; frontend wired to backend
 - 2026-02-20: Auth router built (JWT + Argon2); DB fully seeded and connected
 - 2026-02-20: Celery workers complete; Upstash SSL fix applied (broker_use_ssl + redis_backend_use_ssl with CERT_NONE)
+- 2026-02-20: Trade seeder run → 252 trade_pairs rows; EDGAR seeder run → 742 stock_country_revenues rows
 
 ## Priority Order (always follow this)
 1. Celery price workers — live prices
