@@ -1,0 +1,58 @@
+# MetricsHour - Build Progress
+
+## Completed ✓
+- Memory system (PROJECT.md, CONTEXT.md, PREFERENCES.md, PROGRESS.md)
+- Database schema — 9 tables (countries, country_indicators, trade_pairs, assets, prices, stock_country_revenues, users, price_alerts, feed_events)
+- Alembic migrations — initial schema + currency symbol fix
+- FastAPI skeleton — main.py, config.py, database.py
+- Country seeder — REST Countries API → 250 countries seeded
+- World Bank seeder — 88,496 indicator rows (2015-2024)
+- Backend routers — health, countries (list + detail with indicators)
+- Bug fix — is_nato added to countries _country_summary (NATO filter now works)
+- Frontend — all 9 pages built and returning 200:
+  - / (homepage with G20 grid)
+  - /countries (listing with G20/G7/EU/NATO/OPEC/BRICS filters)
+  - /countries/[code] (full macro detail: 6 indicator sections, exports, resources)
+  - /stocks (listing skeleton)
+  - /stocks/[ticker] (detail with geo revenue skeleton)
+  - /trade (listing skeleton)
+  - /trade/[pair] (bilateral detail, fetches real country data from API)
+  - /commodities (19 instruments across Energy/Metals/Agriculture)
+  - /pricing (static 4-tier page)
+- Frontend components — AppNav, AppFooter, IndicatorSection
+- Tailwind CSS — switched from @nuxtjs/tailwindcss to direct PostCSS config (fixed Vite 6 incompatibility)
+- Asset seeder — 130 assets seeded (stocks, commodities, crypto, FX pairs)
+- Backend routers — assets (list + detail + geo revenues), trade (list + pair detail)
+- Frontend wired — stocks, commodities, trade pages now call real API endpoints
+- User auth router — POST /api/auth/register, POST /api/auth/login, GET /api/auth/me (JWT via python-jose, Argon2 password hashing)
+- Infrastructure provisioned — Aiven PostgreSQL + Upstash Redis (both connected, .env set)
+- Migrations applied (alembic at head)
+
+## In Progress 🔨
+- Nothing active right now
+
+## Next Steps 📋
+1. Celery workers — Marketstack stock prices, CoinGecko crypto prices
+2. UN Comtrade seeder — populate trade_pairs table
+3. SEC EDGAR seeder — populate stock_country_revenues (core differentiator)
+4. Deploy — Nginx + systemd on Hetzner, Cloudflare Pages for frontend
+5. DNS — point metricshour.com and api.metricshour.com
+
+## Known Issues 🐛
+- prices table has only 37 rows — need Celery workers running for full price history
+- trade_pairs: 0 rows — UN Comtrade seeder not built
+- stock_country_revenues: 0 rows — SEC EDGAR seeder not built
+
+## Recent Decisions
+- 2026-02-20: Created memory system
+- 2026-02-20: Confirmed tech stack: Nuxt 3 + FastAPI + PostgreSQL + Cloudflare
+- 2026-02-20: Infrastructure: Hetzner CX23 + Aiven PostgreSQL + Upstash Redis
+- 2026-02-20: Frontend pages all built; Tailwind fixed for Nuxt 3.17/Vite 6
+- 2026-02-20: Asset seeder + API routes built; frontend wired to backend
+- 2026-02-20: Auth router built (JWT + Argon2); DB fully seeded and connected
+
+## Priority Order (always follow this)
+1. Celery price workers — live prices
+2. UN Comtrade seeder — trade_pairs data
+3. SEC EDGAR seeder — stock geo revenue (core differentiator)
+4. Deploy

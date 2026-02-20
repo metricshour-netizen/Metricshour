@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #0a0e1a;
+  --surface: #111827;
+  --border: #1f2937;
+  --text: #e5e7eb;
+  --muted: #6b7280;
+  --accent: #10b981;   /* green — positive */
+  --red: #ef4444;      /* negative */
+  --yellow: #f59e0b;   /* warning / neutral */
+}
+
+body {
+  @apply bg-[#0a0e1a] text-[#e5e7eb] font-mono antialiased;
+}
+
+/* Bloomberg-style number formatting */
+.positive { @apply text-emerald-400; }
+.negative { @apply text-red-400; }
+.neutral  { @apply text-yellow-400; }

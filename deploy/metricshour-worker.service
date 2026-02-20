@@ -1,0 +1,19 @@
+[Unit]
+Description=MetricsHour Celery Worker + Beat
+After=network.target
+
+[Service]
+User=root
+WorkingDirectory=/root/metricshour/workers
+Environment="PATH=/root/metricshour/workers/venv/bin"
+EnvironmentFile=/root/metricshour/backend/.env
+ExecStart=/root/metricshour/workers/venv/bin/celery \
+    -A celery_app worker \
+    --beat \
+    --loglevel=info \
+    --logfile=/var/log/metricshour/celery.log
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
