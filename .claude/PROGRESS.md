@@ -35,8 +35,8 @@
 - Nothing active right now
 
 ## Next Steps 📋
-1. Deploy — Nginx + systemd on Hetzner, Cloudflare Pages for frontend
-2. DNS — point metricshour.com and api.metricshour.com
+1. Cloudflare Pages — connect repo, build frontend, deploy metricshour.com
+2. Frontend wiring — update API base URL to https://api.metricshour.com
 
 ## Known Issues 🐛
 - None at this time. All core data tables populated.
@@ -50,6 +50,7 @@
 - 2026-02-20: Auth router built (JWT + Argon2); DB fully seeded and connected
 - 2026-02-20: Celery workers complete; Upstash SSL fix applied (broker_use_ssl + redis_backend_use_ssl with CERT_NONE)
 - 2026-02-20: Trade seeder run → 252 trade_pairs rows; EDGAR seeder run → 742 stock_country_revenues rows
+- 2026-02-20: DNS live (api.metricshour.com → 89.167.35.114), SSL issued via Let's Encrypt, https://api.metricshour.com returning 200
 
 ## Priority Order (always follow this)
 1. Celery price workers — live prices
