@@ -33,6 +33,9 @@ cd /root/metricshour/backend
 python seed.py                     # run all seeders in order
 python seed.py --only countries    # REST Countries API → 196 countries
 python seed.py --only world_bank   # World Bank → 60+ indicators (2015-2024)
+python seed.py --only assets       # stocks, commodities, crypto, FX pairs (130 assets)
+python seed.py --only trade        # UN Comtrade bilateral trade flows
+python seed.py --only edgar        # SEC EDGAR 10-K/10-Q geographic revenue data
 ```
 
 **Run FastAPI backend:**
@@ -81,7 +84,7 @@ Free/Paid APIs → Celery workers (background ingestion)
 - `app/database.py` — SQLAlchemy engine (pool size 10, pre-ping), `get_db()` dependency
 - `app/models/` — 9 tables across 4 files (country.py, asset.py, user.py, base.py)
 - `app/routers/` — `health.py` (GET /health), `countries.py` (GET /api/countries, /api/countries/{code}), `assets.py` (GET /api/assets, /api/assets/{ticker}), `trade.py` (GET /api/trade, /api/trade/{pair}), `auth.py` (POST /api/auth/register, POST /api/auth/login, GET /api/auth/me — JWT via python-jose, Argon2 hashing, `get_current_user` dependency for protected routes)
-- `app/seeders/` — `countries.py`, `world_bank.py`, `groupings.py`
+- `app/seeders/` — `countries.py`, `world_bank.py`, `assets.py`, `trade.py`, `edgar.py`
 - `seed.py` — orchestrates seeders with `--only` flag support
 - `migrations/versions/` — Alembic migration files
 
@@ -111,6 +114,14 @@ Free/Paid APIs → Celery workers (background ingestion)
 - `components/` — `AppNav.vue`, `AppFooter.vue`, `IndicatorSection.vue`
 - `composables/useApi.ts` — API client helper
 
+**Workers layout** (`workers/`):
+- `celery_app.py` — Celery config, Redis broker (Upstash), Beat schedule
+- `tasks/crypto.py` — CoinGecko → crypto OHLCV, every 1 min (24/7)
+- `tasks/stocks.py` — yfinance → stock prices, every 15 min (Mon–Fri 14:30–21:00 UTC)
+- `tasks/commodities.py` — commodity prices, every 15 min
+- `tasks/fx.py` — FX rates, every 15 min (weekdays)
+- `test_ai.py` — connectivity test for Gemini/Anthropic APIs
+
 **Background tasks (Celery + Celery Beat, Upstash Redis as broker):**
 - Stock prices: every 15 min during market hours
 - Crypto prices: every 1 min (24/7)
@@ -130,9 +141,15 @@ JWT_EXPIRE_DAYS=30
 JWT_ALGORITHM=HS256
 ```
 
+**Infrastructure:**
+- Compute: Hetzner CX23 VPS (89.167.35.114)
+- Database: Aiven PostgreSQL (production, SSL)
+- Cache/Broker: Upstash Redis (serverless, SSL)
+- Frontend CDN: Cloudflare Pages (SSG)
+
 **Deploy / process management:**
-- FastAPI runs under systemd, proxied by Nginx (SSL via Let's Encrypt)
-- Celery + Celery Beat also managed by systemd
+- FastAPI runs under systemd (`metricshour-api.service`), proxied by Nginx (SSL via Let's Encrypt)
+- Celery + Celery Beat also managed by systemd (`metricshour-worker.service`)
 - Logs: `/var/log/metricshour/`
 - Production path: `/var/www/metricshour/` — never edit directly; use `git pull`
 - Backup: daily `pg_dump` at 3am UTC → Cloudflare R2
