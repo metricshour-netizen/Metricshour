@@ -6,6 +6,7 @@ Run beat:     celery -A celery_app beat --loglevel=info
 Run combined: celery -A celery_app worker --beat --loglevel=info
 """
 
+import ssl
 import sys
 import os
 
@@ -24,9 +25,14 @@ app = Celery('metricshour', include=[
     'tasks.fx',
 ])
 
+# Upstash Redis uses TLS (rediss://); Celery requires ssl_cert_reqs to be explicit.
+_ssl_opts = {'ssl_cert_reqs': ssl.CERT_NONE}
+
 app.conf.update(
     broker_url=os.environ['REDIS_URL'],
     result_backend=os.environ['REDIS_URL'],
+    broker_use_ssl=_ssl_opts,
+    redis_backend_use_ssl=_ssl_opts,
     task_serializer='json',
     result_serializer='json',
     accept_content=['json'],
