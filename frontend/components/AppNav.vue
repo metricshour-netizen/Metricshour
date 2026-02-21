@@ -10,7 +10,7 @@
           <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
           {{ isLoggedIn ? 'For You' : 'Feed' }}
         </NuxtLink>
-        <NuxtLink to="/markets" class="hover:text-white transition-colors hidden sm:block font-medium">Markets</NuxtLink>
+        <NuxtLink to="/markets" class="hover:text-white transition-colors font-medium">Markets</NuxtLink>
         <NuxtLink to="/countries" class="hover:text-white transition-colors hidden md:block">Countries</NuxtLink>
         <NuxtLink to="/trade" class="hover:text-white transition-colors hidden md:block">Trade</NuxtLink>
         <NuxtLink to="/pricing" class="hover:text-white transition-colors text-emerald-400 hidden sm:block">Pro →</NuxtLink>
