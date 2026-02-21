@@ -17,12 +17,14 @@ from dotenv import load_dotenv
 load_dotenv('/root/metricshour/backend/.env')
 
 from celery import Celery
+from celery.schedules import crontab
 
 app = Celery('metricshour', include=[
     'tasks.crypto',
     'tasks.stocks',
     'tasks.commodities',
     'tasks.fx',
+    'tasks.backup',
 ])
 
 # Upstash Redis uses TLS (rediss://); Celery requires ssl_cert_reqs to be explicit.
@@ -55,6 +57,10 @@ app.conf.update(
         'fx-every-15min': {
             'task': 'tasks.fx.fetch_fx_rates',
             'schedule': 900.0,
+        },
+        'db-backup-daily-3am': {
+            'task': 'tasks.backup.run_backup',
+            'schedule': crontab(hour=3, minute=0),
         },
     },
 )

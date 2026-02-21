@@ -4,6 +4,8 @@
 - **Server:** Hetzner CX23 (current machine) — 3 vCPU, 4GB RAM, 80GB NVMe
 - **Database:** Aiven PostgreSQL (pg-ea9f4fb-metricshour-a91a.k.aivencloud.com:16917)
 - **Cache / Queue broker:** Upstash Redis — used for Celery tasks AND live feed pub/sub
+- **File Storage:** Cloudflare R2 — primary object store (user uploads, processed data, static assets, DB backups). Zero egress fees. S3-compatible API.
+- **Edge Cache:** Cloudflare KV Workers — cache API responses and asset metadata at Cloudflare edge (300+ locations). Use for country data, asset lists, price snapshots that can tolerate short TTLs.
 - **Frontend:** Cloudflare Pages (FREE - unlimited bandwidth, 300+ edge locations)
 - **Domain:** metricshour.com (~$12/year)
 - **SSL:** Let's Encrypt (FREE, auto-renews every 90 days)
@@ -50,6 +52,28 @@
 **ORM:** SQLAlchemy 2.0+
 **Migrations:** Alembic
 **Backups:** Daily pg_dump at 3am UTC → Cloudflare R2 (zero egress fees)
+
+## Cloudflare Stack (Edge Layer)
+**R2 (Object Storage):**
+- Primary file store — S3-compatible, boto3 client works directly
+- Bucket: `metricshour-assets` (EEUR region, created 2026-02-21)
+- Use cases: DB backups, user-uploaded files, exported CSVs, processed data dumps, chart images
+- Endpoint: `https://7d86cb75bcb5cc1f6ae50d4dd56ba6a3.r2.cloudflarestorage.com`
+- Env vars: `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, `R2_ENDPOINT`, `R2_PUBLIC_URL`
+- NOTE: R2 S3 keys created at dash.cloudflare.com → R2 → Manage R2 API Tokens (not via API)
+
+**KV Workers (Edge Key-Value Cache):**
+- Namespace: `metricshour-cache` — ID: `f58822613dbd46e6b044b5ae8d5553aa` (created 2026-02-21)
+- Cache API responses at Cloudflare edge — avoid hitting Hetzner for hot/static data
+- Use cases: country list, asset metadata, latest price snapshots, feed events
+- Bound to Cloudflare Pages / Workers via `wrangler.toml`
+- Env vars: `CF_KV_NAMESPACE_ID`, `CF_ACCOUNT_ID`, `CF_API_TOKEN`
+- Write from backend (REST API) → KV invalidated on data update; read from edge Worker
+
+**Upstash Redis (already in place):**
+- Celery broker for background task queue
+- Redis Streams for live market event feed / pub-sub
+- NOT replaced by KV — Redis is for real-time/queue; KV is for edge-cached reads
 
 ## Background Tasks
 **Queue:** Celery with Celery Beat scheduler
