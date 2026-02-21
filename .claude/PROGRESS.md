@@ -56,27 +56,24 @@ These were agreed on 2026-02-21. Do not let the user move on until all are done.
 - World Bank WGI — 6 new governance indicators: rule_of_law, political_stability, government_effectiveness, regulatory_quality, voice_accountability, control_of_corruption (total WB rows: 99,485)
 - Sentry — added to FastAPI (StarletteIntegration + FastApiIntegration) and Celery (CeleryIntegration); activated via SENTRY_DSN env var
 
-## In Progress 🔨
-- **Adaptive Feed + Blog CRM** — implementing 2026-02-21. Files being built:
-  - ✅ BlogPost model added to backend/app/models/feed.py
-  - ✅ Migration 0004 created: backend/migrations/versions/20260221_0004_blog_posts.py
-  - ✅ backend/app/routers/admin.py (blog CRUD + publish + R2 cover upload + public /api/blog/{slug})
-  - ✅ backend/app/main.py updated (admin + blog routers, PUT+DELETE in CORS)
-  - ✅ backend/app/seeders/feed.py (price_moves, indicator_release, trade_update events)
-  - ✅ backend/seed.py updated (--only feed)
-  - ✅ frontend/composables/useAuth.ts (login/register/logout/restore, localStorage)
-  - ✅ frontend/composables/useApi.ts (added post/put/del methods + auto Bearer token)
-  - ✅ frontend/components/AuthModal.vue (login/register tabs)
-  - ✅ frontend/components/AppNav.vue (Feed link + Sign In/Out)
-  - ✅ frontend/components/FeedCard.vue (TikTok full-screen style)
-  - ✅ frontend/pages/feed.vue (snap-y snap-mandatory scroll, loads /api/feed)
-  - ✅ frontend/pages/blog/[slug].vue (public article view)
-  - ✅ frontend/pages/admin/blog.vue (CRM admin panel)
-  - ✅ frontend/pages/stocks/[ticker].vue (follow button added)
-  - 🔨 frontend/pages/countries/[code].vue (follow button — IN PROGRESS)
-  - Pending: alembic upgrade head, seed feed, restart API, deploy frontend
-
-  IMPORTANT: Feed style = TikTok (full-screen snap scroll). User confirmed this. NOT Instagram style.
+## Completed (2026-02-21) ✓
+- **Adaptive Feed + Blog CRM** — FULLY DEPLOYED
+  - BlogPost model + migration 0004 (blog_posts table live)
+  - /api/admin/blogs (CRUD, publish→FeedEvent, R2 cover upload)
+  - /api/blog/{slug} (public, no auth, for SEO)
+  - /api/feed (public, anonymous = recency+importance, authed = personalised)
+  - Feed seeder: 1048 indicator_release + 40 trade_update events in DB
+  - useAuth composable (login/register/logout, localStorage)
+  - useApi updated (post/put/del + auto Bearer token)
+  - AuthModal, AppNav (Feed link + Sign In/Out)
+  - FeedCard: TikTok full-screen snap scroll style
+  - /feed page: snap-y mandatory, follows sidebar on desktop
+  - /blog/[slug]: public article, SEO meta
+  - /admin/blog: internal CRM panel
+  - Follow buttons on stock + country detail pages
+  - Git commit ea16c8b pushed → CF Pages auto-deploying
+  - Feed API confirmed public (no paywall) ✓
+  - Feed style = TikTok snap scroll (PERMANENT PREFERENCE — do not change)
 
 ## Next Steps 📋
 1. Deploy frontend to Cloudflare Pages (see below — needs Pages API token)
