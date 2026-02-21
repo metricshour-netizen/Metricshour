@@ -10,7 +10,7 @@ These were agreed on 2026-02-21. Do not let the user move on until all are done.
 - [ ] **UptimeRobot** — set up free monitor on /health endpoint. Currently blind to outages.
 
 ### Medium Priority (do this sprint)
-- [ ] **Celery failure alerting** — on_failure handler → log to file or post to Discord/Slack webhook.
+- [x] **Celery failure alerting** — task_failure signal in celery_app.py; always logs to /var/log/metricshour/celery-failures.log; Discord embed alert if DISCORD_WEBHOOK_URL set. Covers all 5 tasks automatically. Tested.
 - [ ] **Wire KV cache into hot routes** — /api/countries and /api/assets should read from KV first (storage.py is ready, just needs integration in routers).
 - [ ] **Enable PgBouncer on Aiven** — connection pooler, prevents connection exhaustion under load.
 
