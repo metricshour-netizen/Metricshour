@@ -160,13 +160,19 @@
                 class="border-b border-[#1f2937] hover:bg-[#1f2937] transition-colors"
               >
                 <td class="py-2.5">
-                  <NuxtLink
-                    :to="`/trade/${code.toUpperCase()}-${p.partner.code}`"
-                    class="flex items-center gap-2 hover:text-emerald-400 transition-colors"
-                  >
-                    <span>{{ p.partner.flag }}</span>
-                    <span class="text-white">{{ p.partner.name }}</span>
-                  </NuxtLink>
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <NuxtLink
+                      :to="`/trade/${code.toUpperCase()}-${p.partner.code}`"
+                      class="flex items-center gap-2 hover:text-emerald-400 transition-colors"
+                    >
+                      <span>{{ p.partner.flag }}</span>
+                      <span class="text-white">{{ p.partner.name }}</span>
+                    </NuxtLink>
+                    <NuxtLink
+                      :to="`/countries/${p.partner.code.toLowerCase()}`"
+                      class="text-[10px] text-gray-600 hover:text-emerald-400 transition-colors whitespace-nowrap hidden sm:inline"
+                    >macro →</NuxtLink>
+                  </div>
                 </td>
                 <td class="text-right py-2.5 text-gray-300 tabular-nums">{{ fmtUsd(p.exports_usd) }}</td>
                 <td class="text-right py-2.5 text-gray-300 tabular-nums">{{ fmtUsd(p.imports_usd) }}</td>
@@ -179,31 +185,53 @@
         </div>
       </div>
 
-      <!-- Stocks Exposed -->
-      <div class="bg-[#111827] border border-[#1f2937] rounded-lg p-6 mb-6">
-        <h2 class="text-sm font-bold text-white mb-1">Stocks Exposed to {{ country.name }}</h2>
-        <p class="text-xs text-gray-500 mb-4">Companies with meaningful revenue from this country — SEC EDGAR 10-K data</p>
+      <!-- Global stocks exposed -->
+      <div class="bg-[#111827] border border-[#1f2937] rounded-lg p-6 mb-4">
+        <h2 class="text-sm font-bold text-white mb-1">Global stocks exposed to {{ country.name }}</h2>
+        <p class="text-xs text-gray-500 mb-4">Companies worldwide with significant revenue from this country — SEC EDGAR 10-K</p>
         <div v-if="stocksLoading" class="space-y-2">
           <div v-for="i in 5" :key="i" class="h-6 bg-[#1f2937] rounded animate-pulse"/>
         </div>
         <div v-else-if="!exposedStocks?.length" class="text-gray-600 text-xs">No stock exposure data available</div>
         <div v-else class="space-y-3">
-          <div
+          <NuxtLink
             v-for="s in exposedStocks"
             :key="s.symbol"
-            class="flex items-center gap-3"
+            :to="`/stocks/${s.symbol}`"
+            class="flex items-center gap-3 group hover:bg-[#1f2937] rounded-lg px-2 py-1 -mx-2 transition-colors"
           >
-            <NuxtLink
-              :to="`/stocks/${s.symbol}`"
-              class="w-16 text-xs font-mono font-bold text-emerald-400 hover:text-emerald-300 shrink-0"
-            >{{ s.symbol }}</NuxtLink>
-            <span class="text-xs text-gray-400 flex-1 truncate">{{ s.name }}</span>
+            <span class="w-16 text-xs font-mono font-bold text-emerald-400 group-hover:text-emerald-300 shrink-0">{{ s.symbol }}</span>
+            <span class="text-xs text-gray-400 flex-1 truncate group-hover:text-gray-200 transition-colors">{{ s.name }}</span>
             <div class="w-24 bg-[#1f2937] rounded-full h-1.5 shrink-0">
               <div class="bg-emerald-500 h-full rounded-full" :style="{ width: `${Math.min(s.revenue_pct, 100)}%` }"/>
             </div>
             <span class="text-xs text-white tabular-nums w-10 text-right shrink-0">{{ s.revenue_pct.toFixed(1) }}%</span>
-          </div>
+          </NuxtLink>
           <p class="text-xs text-gray-600 mt-2">Source: SEC EDGAR 10-K · FY{{ exposedStocks[0]?.fiscal_year }}</p>
+        </div>
+      </div>
+
+      <!-- Top local entities by market cap -->
+      <div class="bg-[#111827] border border-[#1f2937] rounded-lg p-6 mb-6">
+        <h2 class="text-sm font-bold text-white mb-1">Top local entities by market cap</h2>
+        <p class="text-xs text-gray-500 mb-4">Publicly traded companies headquartered in {{ country.name }}</p>
+        <div v-if="localStocksLoading" class="space-y-2">
+          <div v-for="i in 4" :key="i" class="h-10 bg-[#1f2937] rounded animate-pulse"/>
+        </div>
+        <div v-else-if="!localStocks?.length" class="text-gray-600 text-xs">No local listed companies on record</div>
+        <div v-else class="space-y-2">
+          <NuxtLink
+            v-for="(s, i) in localStocks"
+            :key="s.symbol"
+            :to="`/stocks/${s.symbol}`"
+            class="flex items-center gap-3 hover:bg-[#1f2937] rounded-lg px-2 py-2 -mx-2 transition-colors group"
+          >
+            <span class="text-xs text-gray-600 w-4 shrink-0">{{ i + 1 }}</span>
+            <span class="text-xs font-mono font-bold text-emerald-400 w-14 shrink-0 group-hover:text-emerald-300">{{ s.symbol }}</span>
+            <span class="text-xs text-gray-300 flex-1 truncate">{{ s.name }}</span>
+            <span class="text-xs text-white tabular-nums font-semibold shrink-0">{{ fmtCap(s.market_cap_usd) }}</span>
+            <span class="text-emerald-600 text-xs shrink-0">→</span>
+          </NuxtLink>
         </div>
       </div>
 
@@ -266,6 +294,11 @@ const { data: tradePartners, pending: tradePartnersLoading } = useAsyncData(
 const { data: exposedStocks, pending: stocksLoading } = useAsyncData(
   `stocks-${code}`,
   () => get<any[]>(`/api/countries/${code}/stocks`),
+)
+
+const { data: localStocks, pending: localStocksLoading } = useAsyncData(
+  `local-stocks-${code}`,
+  () => get<any[]>('/api/assets', { type: 'stock', country_code: code.toUpperCase() }).catch(() => []),
 )
 
 // ── Follow ────────────────────────────────────────────────────────────────────
@@ -336,6 +369,13 @@ function fmt(key: string, val: number | null | undefined): string {
   if (key.endsWith('_index')) return val.toFixed(1)
 
   return val.toFixed(1)
+}
+
+function fmtCap(v: number | null | undefined): string {
+  if (!v) return '—'
+  if (v >= 1e12) return `$${(v / 1e12).toFixed(1)}T`
+  if (v >= 1e9)  return `$${(v / 1e9).toFixed(0)}B`
+  return `$${(v / 1e6).toFixed(0)}M`
 }
 
 function fmtUsd(v: number | null | undefined): string {

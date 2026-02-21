@@ -14,6 +14,7 @@
         <NuxtLink to="/markets" class="hover:text-white transition-colors font-medium">Markets</NuxtLink>
         <NuxtLink to="/countries" class="hover:text-white transition-colors">Countries</NuxtLink>
         <NuxtLink to="/trade" class="hover:text-white transition-colors">Trade</NuxtLink>
+        <NuxtLink to="/commodities" class="hover:text-white transition-colors">Commodities</NuxtLink>
         <NuxtLink to="/pricing" class="hover:text-white transition-colors text-emerald-400">Pro →</NuxtLink>
 
         <template v-if="isLoggedIn && user">
@@ -47,10 +48,11 @@
 
     <!-- Mobile dropdown menu -->
     <div v-if="menuOpen" class="sm:hidden border-t border-[#1f2937] bg-[#0a0e1a] px-4 py-2">
-      <NuxtLink to="/markets"   @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">Markets <span class="text-gray-600 text-xs">→</span></NuxtLink>
-      <NuxtLink to="/countries" @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">Countries <span class="text-gray-600 text-xs">→</span></NuxtLink>
-      <NuxtLink to="/trade"     @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">Trade <span class="text-gray-600 text-xs">→</span></NuxtLink>
-      <NuxtLink to="/pricing"   @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-emerald-400 font-semibold border-b border-[#1f2937]">Pro → <span class="text-[10px] bg-emerald-900/40 text-emerald-400 px-2 py-0.5 rounded">Upgrade</span></NuxtLink>
+      <NuxtLink to="/markets"     @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">Markets <span class="text-gray-600 text-xs">→</span></NuxtLink>
+      <NuxtLink to="/countries"   @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">Countries <span class="text-gray-600 text-xs">→</span></NuxtLink>
+      <NuxtLink to="/trade"       @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">Trade <span class="text-gray-600 text-xs">→</span></NuxtLink>
+      <NuxtLink to="/commodities" @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">Commodities <span class="text-gray-600 text-xs">→</span></NuxtLink>
+      <NuxtLink to="/pricing"     @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-emerald-400 font-semibold border-b border-[#1f2937]">Pro → <span class="text-[10px] bg-emerald-900/40 text-emerald-400 px-2 py-0.5 rounded">Upgrade</span></NuxtLink>
       <div class="py-3">
         <template v-if="isLoggedIn && user">
           <div class="flex items-center justify-between">

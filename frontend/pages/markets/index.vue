@@ -45,7 +45,7 @@
 
       <!-- ── Indices ─────────────────────────────────────────────────────── -->
       <template v-if="showSection('index') && indexFiltered.length">
-        <SectionHeader color="bg-purple-400" label="Indices" />
+        <SectionHeader color="bg-purple-400" label="Global Indices" />
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 mb-8">
           <div
             v-for="a in indexFiltered"
@@ -64,25 +64,76 @@
         </div>
       </template>
 
-      <!-- ── Crypto ─────────────────────────────────────────────────────── -->
-      <template v-if="showSection('crypto') && cryptoFiltered.length">
-        <SectionHeader color="bg-amber-400" label="Crypto" />
+      <!-- ── FX ─────────────────────────────────────────────────────────── -->
+      <template v-if="showSection('fx') && fxFiltered.length">
+        <SectionHeader color="bg-teal-400" label="FX Majors" />
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 mb-8">
-          <NuxtLink
-            v-for="a in cryptoFiltered"
-            :key="a.symbol"
-            :to="`/stocks/${a.symbol}`"
-            class="bg-[#111827] border border-[#1f2937] hover:border-amber-500/50 rounded-xl p-4 transition-colors group"
-          >
+          <div v-for="a in fxFiltered" :key="a.symbol" class="bg-[#111827] border border-[#1f2937] hover:border-teal-500/40 rounded-xl p-4 transition-colors group">
             <div class="flex items-start justify-between mb-2">
-              <span class="text-lg">{{ cryptoIcon(a.symbol) }}</span>
-              <span class="text-[10px] font-bold text-amber-400/70 bg-amber-400/10 px-1.5 py-0.5 rounded">CRYPTO</span>
+              <span class="text-lg">💱</span>
+              <span class="text-[10px] font-bold text-teal-400/70 bg-teal-400/10 px-1.5 py-0.5 rounded">FX</span>
             </div>
-            <div class="text-sm font-bold text-white group-hover:text-amber-300 transition-colors">{{ a.symbol }}</div>
+            <div class="text-sm font-bold text-white group-hover:text-teal-300 transition-colors">{{ a.symbol }}</div>
             <div class="text-xs text-gray-500 truncate">{{ a.name }}</div>
             <PriceBadge :asset="a" />
-            <div v-if="a.market_cap_usd" class="text-[10px] text-gray-600 mt-0.5">{{ fmtCap(a.market_cap_usd) }} cap</div>
-          </NuxtLink>
+          </div>
+        </div>
+      </template>
+
+      <!-- ── Commodities ────────────────────────────────────────────────── -->
+      <template v-if="showSection('commodity') && commodityGroups.some(g => g.items.length)">
+        <SectionHeader color="bg-blue-400" label="Commodities" />
+        <div v-for="group in commodityGroups" :key="group.name" class="mb-6">
+          <p v-if="group.items.length" class="text-[10px] text-gray-600 uppercase tracking-widest font-bold mb-2">{{ group.name }}</p>
+          <div v-if="group.items.length" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+            <div v-for="c in group.items" :key="c.symbol" class="bg-[#111827] border border-[#1f2937] hover:border-blue-500/40 rounded-xl p-4 transition-colors group">
+              <div class="text-xl mb-2">{{ c.icon }}</div>
+              <div class="text-sm font-medium text-white group-hover:text-blue-300 transition-colors truncate mb-0.5">{{ apiMap[c.symbol]?.name ?? c.name }}</div>
+              <div class="text-xs text-gray-600 mb-2">{{ c.symbol }}</div>
+              <PriceBadge :asset="apiMap[c.symbol]" />
+            </div>
+          </div>
+        </div>
+        <div class="mb-8"/>
+      </template>
+
+      <!-- ── ETFs ───────────────────────────────────────────────────────── -->
+      <template v-if="showSection('etf') && etfFiltered.length">
+        <SectionHeader color="bg-sky-400" label="ETFs" />
+        <div class="bg-[#111827] border border-[#1f2937] rounded-xl overflow-hidden mb-8">
+          <div class="hidden sm:grid grid-cols-12 px-4 py-2 border-b border-[#1f2937] text-xs text-gray-500 uppercase tracking-wide">
+            <span class="col-span-4">Fund</span>
+            <span class="col-span-4">Category</span>
+            <span class="col-span-2 text-right">AUM</span>
+            <span class="col-span-2 text-right">Exchange</span>
+          </div>
+          <div class="divide-y divide-[#1f2937]">
+            <div v-for="a in etfFiltered" :key="a.symbol" class="block">
+              <!-- Mobile -->
+              <div class="flex items-center justify-between px-4 py-3 sm:hidden">
+                <div class="min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm font-bold text-sky-400">{{ a.symbol }}</span>
+                    <span class="text-[10px] text-gray-600 bg-[#1f2937] px-1.5 py-0.5 rounded">{{ a.sector }}</span>
+                  </div>
+                  <div class="text-xs text-gray-500 truncate max-w-[200px] mt-0.5">{{ a.name }}</div>
+                </div>
+                <div class="text-right shrink-0 ml-2">
+                  <div class="text-sm font-bold text-white tabular-nums">{{ fmtCap(a.market_cap_usd) }}</div>
+                </div>
+              </div>
+              <!-- Desktop -->
+              <div class="hidden sm:grid grid-cols-12 px-4 py-3 items-center hover:bg-[#1a2235] transition-colors">
+                <div class="col-span-4">
+                  <div class="text-sm font-bold text-sky-400">{{ a.symbol }}</div>
+                  <div class="text-xs text-gray-500 truncate">{{ a.name }}</div>
+                </div>
+                <span class="col-span-4 text-xs text-gray-500">{{ a.sector }}</span>
+                <span class="col-span-2 text-xs text-right text-white tabular-nums">{{ fmtCap(a.market_cap_usd) }}</span>
+                <span class="col-span-2 text-xs text-right text-gray-600">{{ a.exchange }}</span>
+              </div>
+            </div>
+          </div>
         </div>
       </template>
 
@@ -129,43 +180,25 @@
         </div>
       </template>
 
-      <!-- ── ETFs ───────────────────────────────────────────────────────── -->
-      <template v-if="showSection('etf') && etfFiltered.length">
-        <SectionHeader color="bg-sky-400" label="ETFs" />
-        <div class="bg-[#111827] border border-[#1f2937] rounded-xl overflow-hidden mb-8">
-          <div class="hidden sm:grid grid-cols-12 px-4 py-2 border-b border-[#1f2937] text-xs text-gray-500 uppercase tracking-wide">
-            <span class="col-span-4">Fund</span>
-            <span class="col-span-4">Category</span>
-            <span class="col-span-2 text-right">AUM</span>
-            <span class="col-span-2 text-right">Exchange</span>
-          </div>
-          <div class="divide-y divide-[#1f2937]">
-            <div v-for="a in etfFiltered" :key="a.symbol" class="block">
-              <!-- Mobile -->
-              <div class="flex items-center justify-between px-4 py-3 sm:hidden">
-                <div class="min-w-0">
-                  <div class="flex items-center gap-2">
-                    <span class="text-sm font-bold text-sky-400">{{ a.symbol }}</span>
-                    <span class="text-[10px] text-gray-600 bg-[#1f2937] px-1.5 py-0.5 rounded">{{ a.sector }}</span>
-                  </div>
-                  <div class="text-xs text-gray-500 truncate max-w-[200px] mt-0.5">{{ a.name }}</div>
-                </div>
-                <div class="text-right shrink-0 ml-2">
-                  <div class="text-sm font-bold text-white tabular-nums">{{ fmtCap(a.market_cap_usd) }}</div>
-                </div>
-              </div>
-              <!-- Desktop -->
-              <div class="hidden sm:grid grid-cols-12 px-4 py-3 items-center hover:bg-[#1a2235] transition-colors">
-                <div class="col-span-4">
-                  <div class="text-sm font-bold text-sky-400">{{ a.symbol }}</div>
-                  <div class="text-xs text-gray-500 truncate">{{ a.name }}</div>
-                </div>
-                <span class="col-span-4 text-xs text-gray-500">{{ a.sector }}</span>
-                <span class="col-span-2 text-xs text-right text-white tabular-nums">{{ fmtCap(a.market_cap_usd) }}</span>
-                <span class="col-span-2 text-xs text-right text-gray-600">{{ a.exchange }}</span>
-              </div>
+      <!-- ── Crypto ─────────────────────────────────────────────────────── -->
+      <template v-if="showSection('crypto') && cryptoFiltered.length">
+        <SectionHeader color="bg-amber-400" label="Crypto" />
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 mb-8">
+          <NuxtLink
+            v-for="a in cryptoFiltered"
+            :key="a.symbol"
+            :to="`/stocks/${a.symbol}`"
+            class="bg-[#111827] border border-[#1f2937] hover:border-amber-500/50 rounded-xl p-4 transition-colors group"
+          >
+            <div class="flex items-start justify-between mb-2">
+              <span class="text-lg">{{ cryptoIcon(a.symbol) }}</span>
+              <span class="text-[10px] font-bold text-amber-400/70 bg-amber-400/10 px-1.5 py-0.5 rounded">CRYPTO</span>
             </div>
-          </div>
+            <div class="text-sm font-bold text-white group-hover:text-amber-300 transition-colors">{{ a.symbol }}</div>
+            <div class="text-xs text-gray-500 truncate">{{ a.name }}</div>
+            <PriceBadge :asset="a" />
+            <div v-if="a.market_cap_usd" class="text-[10px] text-gray-600 mt-0.5">{{ fmtCap(a.market_cap_usd) }} cap</div>
+          </NuxtLink>
         </div>
       </template>
 
@@ -185,39 +218,6 @@
             <div class="text-sm font-bold text-white group-hover:text-rose-300 transition-colors leading-tight">{{ a.symbol }}</div>
             <div class="text-xs text-gray-500 leading-snug mt-0.5 truncate">{{ a.name }}</div>
             <div class="text-[10px] text-gray-600 mt-1.5">{{ a.industry }} · {{ a.exchange }}</div>
-            <PriceBadge :asset="a" />
-          </div>
-        </div>
-      </template>
-
-      <!-- ── Commodities ────────────────────────────────────────────────── -->
-      <template v-if="showSection('commodity') && commodityGroups.some(g => g.items.length)">
-        <SectionHeader color="bg-blue-400" label="Commodities" />
-        <div v-for="group in commodityGroups" :key="group.name" class="mb-6">
-          <p v-if="group.items.length" class="text-[10px] text-gray-600 uppercase tracking-widest font-bold mb-2">{{ group.name }}</p>
-          <div v-if="group.items.length" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-            <div v-for="c in group.items" :key="c.symbol" class="bg-[#111827] border border-[#1f2937] hover:border-blue-500/40 rounded-xl p-4 transition-colors group">
-              <div class="text-xl mb-2">{{ c.icon }}</div>
-              <div class="text-sm font-medium text-white group-hover:text-blue-300 transition-colors truncate mb-0.5">{{ apiMap[c.symbol]?.name ?? c.name }}</div>
-              <div class="text-xs text-gray-600 mb-2">{{ c.symbol }}</div>
-              <PriceBadge :asset="apiMap[c.symbol]" />
-            </div>
-          </div>
-        </div>
-        <div class="mb-8"/>
-      </template>
-
-      <!-- ── FX ─────────────────────────────────────────────────────────── -->
-      <template v-if="showSection('fx') && fxFiltered.length">
-        <SectionHeader color="bg-teal-400" label="FX / Currencies" />
-        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 mb-8">
-          <div v-for="a in fxFiltered" :key="a.symbol" class="bg-[#111827] border border-[#1f2937] hover:border-teal-500/40 rounded-xl p-4 transition-colors group">
-            <div class="flex items-start justify-between mb-2">
-              <span class="text-lg">💱</span>
-              <span class="text-[10px] font-bold text-teal-400/70 bg-teal-400/10 px-1.5 py-0.5 rounded">FX</span>
-            </div>
-            <div class="text-sm font-bold text-white group-hover:text-teal-300 transition-colors">{{ a.symbol }}</div>
-            <div class="text-xs text-gray-500 truncate">{{ a.name }}</div>
             <PriceBadge :asset="a" />
           </div>
         </div>
@@ -274,12 +274,12 @@ function byType(type: string) {
 const tabs = computed(() => [
   { key: 'all',       label: 'All',        icon: '◈', activeClass: 'bg-emerald-500 border-emerald-500', count: allAssets.value?.length ?? 0 },
   { key: 'index',     label: 'Indices',    icon: '📊', activeClass: 'bg-purple-500 border-purple-500',  count: byType('index').length },
-  { key: 'crypto',    label: 'Crypto',     icon: '₿',  activeClass: 'bg-amber-500 border-amber-500',   count: byType('crypto').length },
-  { key: 'stock',     label: 'Stocks',     icon: '📈', activeClass: 'bg-emerald-500 border-emerald-500', count: byType('stock').length },
-  { key: 'etf',       label: 'ETFs',       icon: '🗂', activeClass: 'bg-sky-500 border-sky-500',       count: byType('etf').length },
-  { key: 'bond',      label: 'Bonds',      icon: '🏛', activeClass: 'bg-rose-500 border-rose-500',     count: byType('bond').length },
-  { key: 'commodity', label: 'Commodities',icon: '🛢', activeClass: 'bg-blue-500 border-blue-500',     count: byType('commodity').length },
   { key: 'fx',        label: 'FX',         icon: '💱', activeClass: 'bg-teal-500 border-teal-500',     count: byType('fx').length },
+  { key: 'commodity', label: 'Commodities',icon: '🛢', activeClass: 'bg-blue-500 border-blue-500',     count: byType('commodity').length },
+  { key: 'etf',       label: 'ETFs',       icon: '🗂', activeClass: 'bg-sky-500 border-sky-500',       count: byType('etf').length },
+  { key: 'stock',     label: 'Stocks',     icon: '📈', activeClass: 'bg-emerald-500 border-emerald-500', count: byType('stock').length },
+  { key: 'crypto',    label: 'Crypto',     icon: '₿',  activeClass: 'bg-amber-500 border-amber-500',   count: byType('crypto').length },
+  { key: 'bond',      label: 'Bonds',      icon: '🏛', activeClass: 'bg-rose-500 border-rose-500',     count: byType('bond').length },
 ])
 
 function showSection(type: string) {

@@ -13,13 +13,15 @@ router = APIRouter(prefix="/assets", tags=["assets"])
 def list_assets(
     type: str | None = None,
     sector: str | None = None,
+    country_code: str | None = None,
     db: Session = Depends(get_db),
 ) -> list[dict]:
-    # v2 key includes prices — bust any old price-free cache
-    cache_key = f"assets:list:v3:{type or 'all'}:{sector or 'all'}"
-    cached = kv_json_get(cache_key)
-    if cached is not None:
-        return cached
+    # country_code-scoped queries are never cached (too many combinations)
+    cache_key = f"assets:list:v3:{type or 'all'}:{sector or 'all'}" if not country_code else None
+    if cache_key:
+        cached = kv_json_get(cache_key)
+        if cached is not None:
+            return cached
 
     query = (
         select(Asset)
@@ -35,6 +37,16 @@ def list_assets(
 
     if sector:
         query = query.where(Asset.sector == sector)
+
+    if country_code:
+        # Join to Country and filter by ISO code (case-insensitive)
+        hq_country = db.execute(
+            select(Country).where(Country.code == country_code.upper())
+        ).scalar_one_or_none()
+        if hq_country:
+            query = query.where(Asset.country_id == hq_country.id)
+        else:
+            return []
 
     assets = db.execute(query).scalars().all()
 
@@ -77,7 +89,8 @@ def list_assets(
         } if p else None
         result.append(row)
 
-    kv_json_set(cache_key, result, ttl_seconds=300)
+    if cache_key:
+        kv_json_set(cache_key, result, ttl_seconds=300)
     return result
 
 

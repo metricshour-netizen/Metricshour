@@ -25,10 +25,27 @@
         Global financial intelligence.<br>
         <span class="text-emerald-400">One place.</span>
       </h1>
-      <p class="text-gray-400 text-base sm:text-xl max-w-2xl mx-auto mb-10">
-        Connect stock revenue, trade flows, and country macro data
-        in seconds — not minutes across 4 websites.
+      <p class="text-gray-300 text-base sm:text-xl max-w-2xl mx-auto mb-2 font-medium">
+        Structured macro &amp; market data, cleanly comparable.
       </p>
+      <p class="text-gray-500 text-sm sm:text-base max-w-xl mx-auto mb-8">
+        30 seconds — not 30 minutes across 4 websites.
+      </p>
+
+      <!-- Intelligence signal strip -->
+      <div class="flex items-center justify-center gap-2 flex-wrap mb-8">
+        <span class="inline-flex items-center gap-1.5 bg-[#111827] border border-[#1f2937] text-xs text-gray-400 px-3 py-1.5 rounded-full">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block"></span>
+          196 countries tracked
+        </span>
+        <span class="inline-flex items-center gap-1.5 bg-[#111827] border border-[#1f2937] text-xs text-gray-400 px-3 py-1.5 rounded-full">
+          <span class="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse inline-block"></span>
+          130+ assets across all classes
+        </span>
+        <span class="inline-flex items-center gap-1.5 bg-[#111827] border border-emerald-900 text-xs text-emerald-400 px-3 py-1.5 rounded-full font-medium">
+          🇺🇸 AAPL earns 19% revenue from 🇨🇳 China
+        </span>
+      </div>
 
       <!-- Search bar -->
       <div class="relative max-w-xl mx-auto mb-10" ref="searchContainer">
@@ -109,24 +126,26 @@
         </div>
       </div>
 
-      <div class="flex justify-center gap-3 flex-wrap">
-        <NuxtLink to="/markets" class="bg-emerald-500 hover:bg-emerald-400 text-black font-bold px-5 py-3.5 rounded-lg transition-colors text-sm sm:text-base">
-          Explore Markets →
-        </NuxtLink>
-        <NuxtLink to="/countries" class="border border-gray-600 hover:border-emerald-500 text-gray-300 hover:text-white px-5 py-3.5 rounded-lg transition-colors text-sm sm:text-base">
-          Explore Countries
+      <div class="flex justify-center">
+        <NuxtLink to="/markets" class="bg-emerald-500 hover:bg-emerald-400 text-black font-bold px-8 py-4 rounded-lg transition-colors text-base sm:text-lg tracking-wide">
+          Explore →
         </NuxtLink>
       </div>
     </div>
 
     <!-- What we connect -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-16">
-      <div v-for="item in pillars" :key="item.title"
-           class="bg-[#111827] border border-[#1f2937] rounded-lg p-6">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-16">
+      <NuxtLink
+        v-for="item in pillars"
+        :key="item.title"
+        :to="item.href"
+        class="bg-[#111827] border border-[#1f2937] hover:border-emerald-800 rounded-lg p-6 transition-colors group"
+      >
         <div class="text-2xl mb-3">{{ item.icon }}</div>
-        <h3 class="font-bold text-white mb-1">{{ item.title }}</h3>
+        <h3 class="font-bold text-white mb-1 group-hover:text-emerald-400 transition-colors">{{ item.title }}</h3>
         <p class="text-gray-500 text-sm">{{ item.desc }}</p>
-      </div>
+        <span class="text-[11px] text-emerald-700 group-hover:text-emerald-500 mt-3 inline-block transition-colors">Explore →</span>
+      </NuxtLink>
     </div>
 
     <!-- Live data: Top Stocks + G20 Countries side by side -->
@@ -237,10 +256,10 @@
 
 <script setup lang="ts">
 const pillars = [
-  { icon: '📈', title: 'Stock Revenue Exposure', desc: 'See which countries each stock earns from — straight from SEC filings.' },
-  { icon: '🌍', title: 'Country Macro', desc: 'GDP, inflation, debt, trade balance, and 80+ indicators per country.' },
-  { icon: '⚖️', title: 'Bilateral Trade', desc: 'US-China, EU-Russia — every major trade relationship with top products.' },
-  { icon: '🛢️', title: 'Commodities', desc: 'Oil, gold, metals — see how commodity moves ripple through economies.' },
+  { icon: '📈', title: 'Stock Revenue Exposure', desc: 'See which countries each stock earns from — straight from SEC filings.', href: '/stocks' },
+  { icon: '🌍', title: 'Country Macro', desc: 'GDP, inflation, debt, trade balance, and 80+ indicators per country.', href: '/countries' },
+  { icon: '⚖️', title: 'Bilateral Trade', desc: 'US-China, EU-Russia — every major trade relationship with top products.', href: '/trade' },
+  { icon: '🛢️', title: 'Commodities', desc: 'Oil, gold, metals — see how commodity moves ripple through economies.', href: '/commodities' },
 ]
 
 const { get } = useApi()

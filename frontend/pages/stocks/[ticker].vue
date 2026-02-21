@@ -107,10 +107,10 @@
           <div v-for="(r, i) in stock.country_revenues" :key="r.country.code" class="flex items-center gap-3">
             <NuxtLink
               :to="`/countries/${r.country.code.toLowerCase()}`"
-              class="w-32 sm:w-40 flex items-center gap-2 shrink-0 hover:text-emerald-400 transition-colors group"
+              class="w-32 sm:w-44 flex items-center gap-2 shrink-0 min-w-0 group"
             >
-              <span class="text-base">{{ r.country.flag }}</span>
-              <span class="text-xs text-gray-300 group-hover:text-emerald-400 truncate transition-colors">{{ r.country.name }}</span>
+              <span class="text-base shrink-0">{{ r.country.flag }}</span>
+              <span class="text-xs text-gray-300 group-hover:text-emerald-400 truncate flex-1 transition-colors">{{ r.country.name }}</span>
             </NuxtLink>
             <div class="flex-1 bg-[#1f2937] rounded-full h-3 overflow-hidden">
               <div
@@ -122,7 +122,15 @@
             <span class="text-sm font-bold text-white tabular-nums w-12 text-right shrink-0">
               {{ r.revenue_pct.toFixed(1) }}%
             </span>
+            <NuxtLink
+              :to="`/countries/${r.country.code.toLowerCase()}`"
+              class="shrink-0 text-[10px] font-semibold text-emerald-600 hover:text-emerald-400 border border-emerald-900 hover:border-emerald-600 px-2 py-1 rounded transition-colors whitespace-nowrap hidden sm:inline-flex items-center gap-0.5"
+            >
+              View country →
+            </NuxtLink>
           </div>
+          <!-- Mobile: tap country name to go to dashboard -->
+          <p class="text-[10px] text-gray-600 sm:hidden mt-1">Tap a country name to view its macro dashboard</p>
           <p class="text-xs text-gray-600 mt-3 pt-3 border-t border-[#1f2937]">
             Source: SEC EDGAR 10-K · FY{{ stock.country_revenues[0]?.fiscal_year }}
           </p>
