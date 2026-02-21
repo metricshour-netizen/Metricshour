@@ -26,6 +26,8 @@ class User(Base):
     last_login_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
 
     alerts: Mapped[list["PriceAlert"]] = relationship(back_populates="user")
+    follows: Mapped[list["UserFollow"]] = relationship(back_populates="user")  # type: ignore[name-defined]
+    interactions: Mapped[list["UserInteraction"]] = relationship(back_populates="user")  # type: ignore[name-defined]
 
 
 class PriceAlert(Base):
@@ -44,19 +46,4 @@ class PriceAlert(Base):
     asset: Mapped["Asset"] = relationship(back_populates="alerts")
 
 
-class FeedEvent(Base):
-    """Market-moving events: rate decisions, earnings, trade announcements, etc."""
-
-    __tablename__ = "feed_events"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    title: Mapped[str] = mapped_column(String(300), nullable=False)
-    body: Mapped[str] = mapped_column(String(5000), nullable=True)
-    event_type: Mapped[str] = mapped_column(String(30), nullable=False)
-    # Examples: rate_decision, earnings, trade_data, gdp_release, commodity_move
-    source_url: Mapped[str] = mapped_column(String(500), nullable=True)
-    published_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-
-    # Comma-separated IDs — keep simple for MVP, normalize later if needed
-    related_asset_ids: Mapped[str] = mapped_column(String(200), nullable=True)
-    related_country_ids: Mapped[str] = mapped_column(String(200), nullable=True)
+# FeedEvent moved to models/feed.py

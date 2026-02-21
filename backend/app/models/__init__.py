@@ -1,7 +1,8 @@
 from .base import Base
 from .country import Country, CountryIndicator, TradePair
 from .asset import Asset, AssetType, Price, StockCountryRevenue
-from .user import User, UserTier, PriceAlert, FeedEvent
+from .user import User, UserTier, PriceAlert
+from .feed import FeedEvent, UserFollow, UserInteraction, FollowEntityType, InteractionType
 
 __all__ = [
     "Base",
@@ -16,4 +17,8 @@ __all__ = [
     "UserTier",
     "PriceAlert",
     "FeedEvent",
+    "UserFollow",
+    "UserInteraction",
+    "FollowEntityType",
+    "InteractionType",
 ]

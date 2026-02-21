@@ -39,12 +39,24 @@
             <span class="text-lg font-bold text-white">{{ fmt('inflation_pct', country.indicators?.inflation_pct) }}</span>
           </div>
         </div>
-        <div class="flex gap-2 flex-wrap mt-3">
-          <span
-            v-for="g in country.groupings"
-            :key="g"
-            class="text-xs bg-[#1f2937] text-gray-300 px-2 py-1 rounded"
-          >{{ g }}</span>
+        <div class="flex items-center gap-3 mt-3 flex-wrap">
+          <div class="flex gap-2 flex-wrap">
+            <span
+              v-for="g in country.groupings"
+              :key="g"
+              class="text-xs bg-[#1f2937] text-gray-300 px-2 py-1 rounded"
+            >{{ g }}</span>
+          </div>
+          <!-- Follow button -->
+          <button
+            class="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors"
+            :class="isFollowing
+              ? 'border-emerald-700 text-emerald-400 bg-emerald-900/20 hover:bg-red-900/20 hover:text-red-400 hover:border-red-700'
+              : 'border-[#1f2937] text-gray-400 hover:border-emerald-700 hover:text-emerald-400'"
+            @click="toggleFollow"
+          >
+            {{ isFollowing ? '★ Following' : '☆ Follow' }}
+          </button>
         </div>
       </div>
 
@@ -225,11 +237,13 @@
       <p class="text-xs text-gray-600">Data: World Bank · REST Countries · IMF · UN Comtrade · SEC EDGAR</p>
     </template>
   </main>
+  <AuthModal v-model="showAuthModal" />
 </template>
 
 <script setup lang="ts">
 const route = useRoute()
-const { get } = useApi()
+const { get, post, del } = useApi()
+const { isLoggedIn } = useAuth()
 
 const code = route.params.code as string
 
@@ -253,6 +267,34 @@ const { data: exposedStocks, pending: stocksLoading } = useAsyncData(
   `stocks-${code}`,
   () => get<any[]>(`/api/countries/${code}/stocks`),
 )
+
+// ── Follow ────────────────────────────────────────────────────────────────────
+const showAuthModal = ref(false)
+const isFollowing = ref(false)
+
+onMounted(async () => {
+  if (!isLoggedIn.value || !country.value?.id) return
+  try {
+    const follows = await get<any[]>('/api/feed/follows')
+    isFollowing.value = follows.some(
+      (f: any) => f.entity_type === 'country' && f.entity_id === country.value!.id,
+    )
+  } catch { /* ignore */ }
+})
+
+async function toggleFollow() {
+  if (!isLoggedIn.value) { showAuthModal.value = true; return }
+  if (!country.value?.id) return
+  try {
+    if (isFollowing.value) {
+      await del(`/api/feed/follows/country/${country.value.id}`)
+      isFollowing.value = false
+    } else {
+      await post('/api/feed/follows', { entity_type: 'country', entity_id: country.value.id })
+      isFollowing.value = true
+    }
+  } catch { /* ignore */ }
+}
 
 useSeoMeta({
   title: computed(() =>

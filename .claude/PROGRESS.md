@@ -5,13 +5,13 @@ These were agreed on 2026-02-21. Do not let the user move on until all are done.
 
 ### High Priority (do before next feature)
 - [x] **Restore script** — deploy/restore.py. Tested end-to-end: downloads from R2, psql restore, row count verification (250 countries, 103k indicators, all tables OK). Stops/starts services automatically.
-- [ ] **Sentry** — add to FastAPI (one line). Zero prod error visibility right now.
+- [x] **Sentry** — FastAPI (StarletteIntegration + FastApiIntegration) + Celery (CeleryIntegration). Live and active after restart 2026-02-21.
 - [x] **Rate limiting** — slowapi + Upstash Redis; 5/min on /register, 10/min on /login. Redis-backed (shared across workers). Tested and confirmed 429.
 - [ ] **UptimeRobot** — set up free monitor on /health endpoint. Currently blind to outages.
 
 ### Medium Priority (do this sprint)
 - [x] **Celery failure alerting** — task_failure signal in celery_app.py; always logs to /var/log/metricshour/celery-failures.log; Discord embed alert if DISCORD_WEBHOOK_URL set. Covers all 5 tasks automatically. Tested.
-- [ ] **Wire KV cache into hot routes** — /api/countries and /api/assets should read from KV first (storage.py is ready, just needs integration in routers).
+- [x] **Wire KV cache into hot routes** — /api/countries (1hr TTL, filter-aware key) + /api/assets (5min TTL). Wired and live 2026-02-21.
 - [ ] **Enable PgBouncer on Aiven** — connection pooler, prevents connection exhaustion under load.
 
 ### Later (before scaling)
@@ -57,7 +57,26 @@ These were agreed on 2026-02-21. Do not let the user move on until all are done.
 - Sentry — added to FastAPI (StarletteIntegration + FastApiIntegration) and Celery (CeleryIntegration); activated via SENTRY_DSN env var
 
 ## In Progress 🔨
-- Agreed TODO list (rate limiting, restore script, UptimeRobot, KV cache, PgBouncer, Celery alerting)
+- **Adaptive Feed + Blog CRM** — implementing 2026-02-21. Files being built:
+  - ✅ BlogPost model added to backend/app/models/feed.py
+  - ✅ Migration 0004 created: backend/migrations/versions/20260221_0004_blog_posts.py
+  - ✅ backend/app/routers/admin.py (blog CRUD + publish + R2 cover upload + public /api/blog/{slug})
+  - ✅ backend/app/main.py updated (admin + blog routers, PUT+DELETE in CORS)
+  - ✅ backend/app/seeders/feed.py (price_moves, indicator_release, trade_update events)
+  - ✅ backend/seed.py updated (--only feed)
+  - ✅ frontend/composables/useAuth.ts (login/register/logout/restore, localStorage)
+  - ✅ frontend/composables/useApi.ts (added post/put/del methods + auto Bearer token)
+  - ✅ frontend/components/AuthModal.vue (login/register tabs)
+  - ✅ frontend/components/AppNav.vue (Feed link + Sign In/Out)
+  - ✅ frontend/components/FeedCard.vue (TikTok full-screen style)
+  - ✅ frontend/pages/feed.vue (snap-y snap-mandatory scroll, loads /api/feed)
+  - ✅ frontend/pages/blog/[slug].vue (public article view)
+  - ✅ frontend/pages/admin/blog.vue (CRM admin panel)
+  - ✅ frontend/pages/stocks/[ticker].vue (follow button added)
+  - 🔨 frontend/pages/countries/[code].vue (follow button — IN PROGRESS)
+  - Pending: alembic upgrade head, seed feed, restart API, deploy frontend
+
+  IMPORTANT: Feed style = TikTok (full-screen snap scroll). User confirmed this. NOT Instagram style.
 
 ## Next Steps 📋
 1. Deploy frontend to Cloudflare Pages (see below — needs Pages API token)
@@ -71,7 +90,7 @@ Frontend is built (dist/ ready). Git pushed to GitHub. CF Pages deploy needs a t
 
 ## Known Issues 🐛
 - Cloudflare Pages deploy token (CF_API_TOKEN in .env) is R2-only — lacks Pages:Edit permission
-- After next CF Pages deploy, add ALLOWED_ORIGINS update to include www.metricshour.com
+- ALLOWED_ORIGINS updated 2026-02-21: includes metricshour.com, www.metricshour.com, 2c93f583.metricshour.pages.dev, localhost:3000
 
 ## Recent Decisions
 - 2026-02-21: Full platform built — all 3 detail pages dynamic, homepage upgraded with live search + top stocks + trade pairs

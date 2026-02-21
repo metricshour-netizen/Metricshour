@@ -35,15 +35,25 @@
           </div>
         </div>
 
-        <!-- Price block -->
-        <div class="text-right">
+        <!-- Price block + follow -->
+        <div class="text-right flex flex-col items-end gap-2">
           <div v-if="stock.price" class="text-2xl font-bold text-white tabular-nums">
             ${{ stock.price.close.toFixed(2) }}
           </div>
           <div v-else class="text-2xl font-bold text-gray-700">—</div>
-          <div class="text-xs text-gray-600 mt-1">
+          <div class="text-xs text-gray-600">
             {{ stock.price ? 'Last close' : 'Price pending market connection' }}
           </div>
+          <!-- Follow button -->
+          <button
+            class="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors"
+            :class="isFollowing
+              ? 'border-emerald-700 text-emerald-400 bg-emerald-900/20 hover:bg-red-900/20 hover:text-red-400 hover:border-red-700'
+              : 'border-[#1f2937] text-gray-400 hover:border-emerald-700 hover:text-emerald-400'"
+            @click="toggleFollow"
+          >
+            {{ isFollowing ? '★ Following' : '☆ Follow' }}
+          </button>
         </div>
       </div>
 
@@ -186,11 +196,13 @@
       </div>
     </template>
   </main>
+  <AuthModal v-model="showAuthModal" />
 </template>
 
 <script setup lang="ts">
 const route = useRoute()
-const { get } = useApi()
+const { get, post, del } = useApi()
+const { isLoggedIn } = useAuth()
 
 const ticker = (route.params.ticker as string).toUpperCase()
 
@@ -235,6 +247,35 @@ function fmtCap(v: number | null): string {
   if (v >= 1e12) return `$${(v / 1e12).toFixed(1)}T`
   if (v >= 1e9)  return `$${(v / 1e9).toFixed(0)}B`
   return `$${(v / 1e6).toFixed(0)}M`
+}
+
+// ── Follow ────────────────────────────────────────────────────────────────────
+const showAuthModal = ref(false)
+const isFollowing = ref(false)
+
+// Check follow status on load
+onMounted(async () => {
+  if (!isLoggedIn.value || !stock.value?.id) return
+  try {
+    const follows = await get<any[]>('/api/feed/follows')
+    isFollowing.value = follows.some(
+      (f: any) => f.entity_type === 'asset' && f.entity_id === stock.value!.id,
+    )
+  } catch { /* ignore */ }
+})
+
+async function toggleFollow() {
+  if (!isLoggedIn.value) { showAuthModal.value = true; return }
+  if (!stock.value?.id) return
+  try {
+    if (isFollowing.value) {
+      await del(`/api/feed/follows/asset/${stock.value.id}`)
+      isFollowing.value = false
+    } else {
+      await post('/api/feed/follows', { entity_type: 'asset', entity_id: stock.value.id })
+      isFollowing.value = true
+    }
+  } catch { /* ignore */ }
 }
 
 useSeoMeta({

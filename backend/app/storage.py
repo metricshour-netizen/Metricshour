@@ -87,3 +87,33 @@ def kv_get(key: str) -> str | None:
 def kv_delete(key: str) -> None:
     with httpx.Client() as client:
         client.delete(_kv_url(key), headers=_kv_headers())
+
+
+# ── KV JSON helpers ───────────────────────────────────────────────────────────
+
+import json
+import logging
+
+_kv_log = logging.getLogger(__name__)
+
+
+def kv_json_get(key: str) -> list | dict | None:
+    """Read a JSON value from KV. Returns None on miss or any error."""
+    if not (settings.cf_api_token and settings.cf_kv_namespace_id):
+        return None
+    try:
+        raw = kv_get(key)
+        return json.loads(raw) if raw is not None else None
+    except Exception as exc:
+        _kv_log.warning("KV get failed for %s: %s", key, exc)
+        return None
+
+
+def kv_json_set(key: str, value: list | dict, ttl_seconds: int = 3600) -> None:
+    """Write a JSON value to KV. Silently swallows errors."""
+    if not (settings.cf_api_token and settings.cf_kv_namespace_id):
+        return
+    try:
+        kv_set(key, json.dumps(value, default=str), ttl_seconds=ttl_seconds)
+    except Exception as exc:
+        _kv_log.warning("KV set failed for %s: %s", key, exc)

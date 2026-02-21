@@ -8,7 +8,8 @@ from slowapi.errors import RateLimitExceeded
 
 from app.config import settings
 from app.limiter import limiter
-from app.routers import health, countries, assets, trade, auth, search
+from app.routers import health, countries, assets, trade, auth, search, feed, admin
+from app.routers.admin import public_router as blog_router
 
 if settings.sentry_dsn:
     sentry_sdk.init(
@@ -30,7 +31,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["*"],
 )
 
@@ -40,6 +41,9 @@ app.include_router(assets.router, prefix="/api")
 app.include_router(trade.router, prefix="/api")
 app.include_router(auth.router, prefix="/api")
 app.include_router(search.router, prefix="/api")
+app.include_router(feed.router, prefix="/api")
+app.include_router(admin.router, prefix="/api")
+app.include_router(blog_router, prefix="/api")
 
 
 @app.get("/")

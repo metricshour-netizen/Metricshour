@@ -4,6 +4,7 @@ from sqlalchemy import select
 
 from app.database import get_db
 from app.models import Asset, AssetType, Country, Price, StockCountryRevenue
+from app.storage import kv_json_get, kv_json_set
 
 router = APIRouter(prefix="/assets", tags=["assets"])
 
@@ -14,6 +15,12 @@ def list_assets(
     sector: str | None = None,
     db: Session = Depends(get_db),
 ) -> list[dict]:
+    # Key encodes filters so different combos are cached separately
+    cache_key = f"assets:list:{type or 'all'}:{sector or 'all'}"
+    cached = kv_json_get(cache_key)
+    if cached is not None:
+        return cached
+
     query = (
         select(Asset)
         .where(Asset.is_active == True)
@@ -38,7 +45,11 @@ def list_assets(
         rows = db.execute(select(Country).where(Country.id.in_(country_ids))).scalars().all()
         countries = {c.id: c for c in rows}
 
-    return [_asset_summary(a, countries.get(a.country_id)) for a in assets]
+    result = [_asset_summary(a, countries.get(a.country_id)) for a in assets]
+
+    # Asset list changes at most every 15 min (price ingestion) — cache for 5 min
+    kv_json_set(cache_key, result, ttl_seconds=300)
+    return result
 
 
 @router.get("/{symbol}")

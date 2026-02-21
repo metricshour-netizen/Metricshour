@@ -55,6 +55,11 @@ def run_all() -> None:
             from app.seeders.governance import seed_governance
             seed_governance(db)
 
+        if not only or only == "feed":
+            log.info("=== Seeding feed events (price moves, indicators, trade) ===")
+            from app.seeders.feed import seed_feed
+            seed_feed(db)
+
     finally:
         db.close()
 

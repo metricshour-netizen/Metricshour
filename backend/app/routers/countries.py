@@ -4,6 +4,7 @@ from sqlalchemy import select, or_
 
 from app.database import get_db
 from app.models import Country, CountryIndicator, TradePair, StockCountryRevenue, Asset
+from app.storage import kv_json_get, kv_json_set
 
 router = APIRouter(prefix="/countries", tags=["countries"])
 
@@ -14,6 +15,12 @@ def list_countries(
     is_g20: bool | None = None,
     db: Session = Depends(get_db),
 ) -> list[dict]:
+    # Key encodes filters so different combos are cached separately
+    cache_key = f"countries:list:{region or 'all'}:{is_g20}"
+    cached = kv_json_get(cache_key)
+    if cached is not None:
+        return cached
+
     query = select(Country).order_by(Country.name)
 
     if region:
@@ -22,7 +29,11 @@ def list_countries(
         query = query.where(Country.is_g20 == is_g20)
 
     countries = db.execute(query).scalars().all()
-    return [_country_summary(c) for c in countries]
+    result = [_country_summary(c) for c in countries]
+
+    # Country list changes very rarely — cache for 1 hour
+    kv_json_set(cache_key, result, ttl_seconds=3600)
+    return result
 
 
 @router.get("/{code}")
