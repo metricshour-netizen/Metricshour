@@ -21,7 +21,7 @@
     <div class="flex gap-2 flex-wrap mb-6">
       <button v-for="f in filters" :key="f.key"
         @click="activeFilter = activeFilter === f.key ? null : f.key"
-        class="px-3 py-1 rounded text-xs font-medium border transition-colors"
+        class="px-3 py-2 rounded-lg text-xs font-medium border transition-colors"
         :class="activeFilter === f.key
           ? 'bg-emerald-500 border-emerald-500 text-black'
           : 'border-[#1f2937] text-gray-400 hover:border-gray-500'">

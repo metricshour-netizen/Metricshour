@@ -22,7 +22,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.feed import BlogPost, BlogStatus, FeedEvent
-from app.routers.auth import get_current_user
+from app.routers.auth import get_admin_user
 from app.models.user import User
 from app.storage import r2_public_url, r2_upload
 
@@ -137,7 +137,7 @@ def _auto_excerpt(body: str, max_len: int = 280) -> str:
 @router.get("/blogs", response_model=list[BlogOut])
 def list_blogs(
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(get_admin_user),
 ):
     return (
         db.query(BlogPost)
@@ -150,7 +150,7 @@ def list_blogs(
 def create_blog(
     body: BlogIn,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(get_admin_user),
 ):
     now = datetime.now(timezone.utc)
     slug = _unique_slug(db, _slugify(body.title))
@@ -180,7 +180,7 @@ def update_blog(
     post_id: int,
     body: BlogUpdate,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(get_admin_user),
 ):
     post = db.get(BlogPost, post_id)
     if post is None:
@@ -203,7 +203,7 @@ def update_blog(
 def publish_blog(
     post_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(get_admin_user),
 ):
     """
     Publish a draft blog post.
@@ -247,7 +247,7 @@ def publish_blog(
 def delete_blog(
     post_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(get_admin_user),
 ):
     post = db.get(BlogPost, post_id)
     if post is None:
@@ -263,7 +263,7 @@ async def upload_cover(
     post_id: int,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(get_admin_user),
 ):
     """Upload cover image to R2, update post.cover_image_url, return URL."""
     post = db.get(BlogPost, post_id)

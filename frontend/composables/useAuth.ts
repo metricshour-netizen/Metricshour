@@ -6,6 +6,7 @@ interface AuthUser {
   id: number
   email: string
   tier: string
+  is_admin: boolean
 }
 
 export function useAuth() {
@@ -19,6 +20,7 @@ export function useAuth() {
   const user = useState<AuthUser | null>('auth.user', () => null)
 
   const isLoggedIn = computed(() => !!token.value)
+  const isAdmin = computed(() => !!user.value?.is_admin)
 
   function _persist(t: string | null) {
     token.value = t
@@ -88,5 +90,5 @@ export function useAuth() {
     user.value = null
   }
 
-  return { token, user, isLoggedIn, login, register, logout, restore }
+  return { token, user, isLoggedIn, isAdmin, login, register, logout, restore }
 }

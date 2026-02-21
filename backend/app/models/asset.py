@@ -12,6 +12,9 @@ class AssetType(str, enum.Enum):
     crypto = "crypto"
     commodity = "commodity"
     fx = "fx"
+    etf = "etf"
+    index = "index"
+    bond = "bond"
 
 
 class Asset(Base):

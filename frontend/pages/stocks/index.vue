@@ -21,14 +21,14 @@
     <div v-if="sectors.length" class="flex gap-2 flex-wrap mb-6">
       <button
         @click="activeSector = null"
-        class="px-3 py-1.5 rounded text-xs font-medium border transition-colors"
+        class="px-3 py-2 rounded-lg text-xs font-medium border transition-colors"
         :class="!activeSector ? 'bg-emerald-500 border-emerald-500 text-black' : 'border-[#1f2937] text-gray-400 hover:border-gray-500'"
       >All</button>
       <button
         v-for="s in sectors"
         :key="s"
         @click="activeSector = activeSector === s ? null : s"
-        class="px-3 py-1.5 rounded text-xs font-medium border transition-colors"
+        class="px-3 py-2 rounded-lg text-xs font-medium border transition-colors"
         :class="activeSector === s ? 'bg-emerald-500 border-emerald-500 text-black' : 'border-[#1f2937] text-gray-400 hover:border-gray-500'"
       >{{ s }}</button>
     </div>

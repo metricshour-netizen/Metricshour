@@ -17,7 +17,7 @@
         </div>
 
         <template v-else>
-          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+          <div class="flex flex-col gap-4">
             <!-- Countries -->
             <div class="flex items-center gap-4 flex-wrap">
               <div class="flex items-center gap-3">
@@ -44,9 +44,9 @@
               </div>
             </div>
             <!-- Balance callout -->
-            <div v-if="td" class="text-right">
-              <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Trade Balance</div>
-              <div class="text-3xl font-extrabold tabular-nums" :class="(td.balance_usd ?? 0) >= 0 ? 'text-emerald-400' : 'text-red-400'">
+            <div v-if="td" class="sm:text-right">
+              <div class="text-xs text-gray-500 uppercase tracking-wider mb-1">Trade Balance</div>
+              <div class="text-2xl sm:text-3xl font-extrabold tabular-nums" :class="(td.balance_usd ?? 0) >= 0 ? 'text-emerald-400' : 'text-red-400'">
                 {{ fmtUsd(td.balance_usd) }}
               </div>
               <div class="text-xs text-gray-600 mt-1">
@@ -64,12 +64,12 @@
       <!-- Trade metrics -->
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
         <div class="bg-[#111827] border border-[#1f2937] rounded-xl p-4">
-          <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-2">Total Trade</div>
+          <div class="text-xs text-gray-500 uppercase tracking-wider mb-2">Total Trade</div>
           <div class="text-xl font-extrabold text-white tabular-nums">{{ td ? fmtUsd(td.trade_value_usd) : '—' }}</div>
           <div class="text-[10px] text-gray-600 mt-1">combined value</div>
         </div>
         <div class="bg-[#111827] border border-[#1f2937] rounded-xl p-4">
-          <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-2">Balance</div>
+          <div class="text-xs text-gray-500 uppercase tracking-wider mb-2">Balance</div>
           <div class="text-xl font-extrabold tabular-nums" :class="td ? ((td.balance_usd ?? 0) >= 0 ? 'text-emerald-400' : 'text-red-400') : 'text-gray-700'">
             {{ td ? fmtUsd(td.balance_usd) : '—' }}
           </div>
@@ -78,14 +78,14 @@
           </div>
         </div>
         <div class="bg-[#111827] border border-[#1f2937] rounded-xl p-4">
-          <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-2">{{ codeA.toUpperCase() }} GDP share</div>
+          <div class="text-xs text-gray-500 uppercase tracking-wider mb-2">{{ codeA.toUpperCase() }} GDP share</div>
           <div class="text-xl font-extrabold text-white tabular-nums">
             {{ td?.exporter_gdp_share_pct != null ? `${td.exporter_gdp_share_pct.toFixed(1)}%` : '—' }}
           </div>
           <div class="text-[10px] text-gray-600 mt-1">of GDP</div>
         </div>
         <div class="bg-[#111827] border border-[#1f2937] rounded-xl p-4">
-          <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-2">{{ codeB.toUpperCase() }} GDP share</div>
+          <div class="text-xs text-gray-500 uppercase tracking-wider mb-2">{{ codeB.toUpperCase() }} GDP share</div>
           <div class="text-xl font-extrabold text-white tabular-nums">
             {{ td?.importer_gdp_share_pct != null ? `${td.importer_gdp_share_pct.toFixed(1)}%` : '—' }}
           </div>
@@ -197,21 +197,21 @@
             </div>
             <div class="grid grid-cols-2 gap-2">
               <div class="bg-[#0d1117] rounded-lg p-3">
-                <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">GDP</div>
+                <div class="text-xs text-gray-500 uppercase tracking-wider mb-1">GDP</div>
                 <div class="text-sm font-bold text-white">{{ fmtGdp(c.country.indicators?.gdp_usd) }}</div>
               </div>
               <div class="bg-[#0d1117] rounded-lg p-3">
-                <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">GDP Growth</div>
+                <div class="text-xs text-gray-500 uppercase tracking-wider mb-1">GDP Growth</div>
                 <div class="text-sm font-bold" :class="(c.country.indicators?.gdp_growth_pct ?? 0) >= 0 ? 'text-emerald-400' : 'text-red-400'">
                   {{ c.country.indicators?.gdp_growth_pct?.toFixed(1) ?? '—' }}%
                 </div>
               </div>
               <div class="bg-[#0d1117] rounded-lg p-3">
-                <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Inflation</div>
+                <div class="text-xs text-gray-500 uppercase tracking-wider mb-1">Inflation</div>
                 <div class="text-sm font-bold text-white">{{ c.country.indicators?.inflation_pct?.toFixed(1) ?? '—' }}%</div>
               </div>
               <div class="bg-[#0d1117] rounded-lg p-3">
-                <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Currency</div>
+                <div class="text-xs text-gray-500 uppercase tracking-wider mb-1">Currency</div>
                 <div class="text-sm font-bold text-white">{{ c.country.currency_code || '—' }}</div>
               </div>
             </div>

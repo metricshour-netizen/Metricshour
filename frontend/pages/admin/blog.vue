@@ -10,6 +10,11 @@
       <AuthModal v-model="showAuth" />
     </div>
 
+    <div v-else-if="!isAdmin" class="text-center py-20">
+      <p class="text-2xl mb-3">🔒</p>
+      <p class="text-gray-400 text-sm">Admin access only.</p>
+    </div>
+
     <template v-else>
       <div class="flex items-center justify-between mb-6">
         <h1 class="text-xl font-bold text-white">Blog CRM</h1>
@@ -186,7 +191,7 @@ interface BlogPost {
 }
 
 const { get, post: apiPost, put, del } = useApi()
-const { isLoggedIn } = useAuth()
+const { isLoggedIn, isAdmin } = useAuth()
 
 const showAuth = ref(false)
 const posts = ref<BlogPost[]>([])

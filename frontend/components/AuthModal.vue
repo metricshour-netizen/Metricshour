@@ -26,12 +26,12 @@
         <!-- Tabs -->
         <div class="flex gap-1 bg-[#111827] rounded-lg p-1 mb-5">
           <button
-            class="flex-1 text-sm py-1.5 rounded-md transition-colors font-medium"
+            class="flex-1 text-sm py-2.5 rounded-md transition-colors font-medium"
             :class="tab === 'login' ? 'bg-emerald-600 text-white' : 'text-gray-500 hover:text-gray-300'"
             @click="tab = 'login'; error = ''"
           >Sign In</button>
           <button
-            class="flex-1 text-sm py-1.5 rounded-md transition-colors font-medium"
+            class="flex-1 text-sm py-2.5 rounded-md transition-colors font-medium"
             :class="tab === 'register' ? 'bg-emerald-600 text-white' : 'text-gray-500 hover:text-gray-300'"
             @click="tab = 'register'; error = ''"
           >Register</button>
@@ -47,7 +47,7 @@
               required
               autocomplete="email"
               placeholder="you@example.com"
-              class="w-full bg-[#111827] border border-[#1f2937] rounded-lg px-3 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-emerald-500 transition-colors"
+              class="w-full bg-[#111827] border border-[#1f2937] rounded-lg px-3 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-emerald-500 transition-colors"
             />
           </div>
           <div>
@@ -58,7 +58,7 @@
               required
               autocomplete="current-password"
               placeholder="Min. 8 characters"
-              class="w-full bg-[#111827] border border-[#1f2937] rounded-lg px-3 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-emerald-500 transition-colors"
+              class="w-full bg-[#111827] border border-[#1f2937] rounded-lg px-3 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-emerald-500 transition-colors"
             />
           </div>
 
@@ -69,7 +69,7 @@
           <button
             type="submit"
             :disabled="loading"
-            class="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium text-sm rounded-lg py-2.5 transition-colors"
+            class="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium text-sm rounded-lg py-3 transition-colors"
           >
             {{ loading ? 'Please wait…' : (tab === 'login' ? 'Sign In' : 'Create Account') }}
           </button>

@@ -43,15 +43,16 @@ class UserOut(BaseModel):
     id: int
     email: str
     tier: str
+    is_admin: bool
     created_at: datetime
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def _make_token(user_id: int, tier: str) -> str:
+def _make_token(user_id: int, tier: str, is_admin: bool = False) -> str:
     expire = datetime.now(timezone.utc) + timedelta(days=settings.jwt_expire_days)
     return jwt.encode(
-        {"sub": str(user_id), "tier": tier, "exp": expire},
+        {"sub": str(user_id), "tier": tier, "is_admin": is_admin, "exp": expire},
         settings.jwt_secret,
         algorithm=settings.jwt_algorithm,
     )
@@ -102,7 +103,7 @@ def register(request: Request, body: RegisterIn, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(user)
 
-    return TokenOut(access_token=_make_token(user.id, user.tier), tier=user.tier)
+    return TokenOut(access_token=_make_token(user.id, user.tier, user.is_admin), tier=user.tier)
 
 
 @router.post("/login", response_model=TokenOut)
@@ -120,7 +121,13 @@ def login(request: Request, form: OAuth2PasswordRequestForm = Depends(), db: Ses
     user.last_login_at = datetime.now(timezone.utc)
     db.commit()
 
-    return TokenOut(access_token=_make_token(user.id, user.tier), tier=user.tier)
+    return TokenOut(access_token=_make_token(user.id, user.tier, user.is_admin), tier=user.tier)
+
+
+def get_admin_user(current_user: User = Depends(get_current_user)) -> User:
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return current_user
 
 
 @router.get("/me", response_model=UserOut)
@@ -129,5 +136,6 @@ def me(current_user: User = Depends(get_current_user)):
         id=current_user.id,
         email=current_user.email,
         tier=current_user.tier,
+        is_admin=current_user.is_admin,
         created_at=current_user.created_at,
     )

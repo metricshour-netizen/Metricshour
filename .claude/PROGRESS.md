@@ -13,6 +13,9 @@ These were agreed on 2026-02-21. Do not let the user move on until all are done.
 - [x] **Celery failure alerting** — task_failure signal in celery_app.py; always logs to /var/log/metricshour/celery-failures.log; Discord embed alert if DISCORD_WEBHOOK_URL set. Covers all 5 tasks automatically. Tested.
 - [x] **Wire KV cache into hot routes** — /api/countries (1hr TTL, filter-aware key) + /api/assets (5min TTL). Wired and live 2026-02-21.
 - [ ] **Enable PgBouncer on Aiven** — connection pooler, prevents connection exhaustion under load.
+  - Steps: Aiven console → Connection pooling → Add pool (name=pgbouncer, db=defaultdb, mode=Transaction, size=25) → paste URI
+  - Code: database.py pool_size=2, max_overflow=3 (PgBouncer handles real pooling)
+  - Both services need restart after .env update
 
 ### Later (before scaling)
 - [ ] **Cloudflare Turnstile** — free CAPTCHA on /register.

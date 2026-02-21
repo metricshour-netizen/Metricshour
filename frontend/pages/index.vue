@@ -110,10 +110,10 @@
       </div>
 
       <div class="flex justify-center gap-3 flex-wrap">
-        <NuxtLink to="/markets" class="bg-emerald-500 hover:bg-emerald-400 text-black font-bold px-5 py-3 rounded transition-colors text-sm sm:text-base">
+        <NuxtLink to="/markets" class="bg-emerald-500 hover:bg-emerald-400 text-black font-bold px-5 py-3.5 rounded-lg transition-colors text-sm sm:text-base">
           Explore Markets →
         </NuxtLink>
-        <NuxtLink to="/countries" class="border border-gray-600 hover:border-emerald-500 text-gray-300 hover:text-white px-5 py-3 rounded transition-colors text-sm sm:text-base">
+        <NuxtLink to="/countries" class="border border-gray-600 hover:border-emerald-500 text-gray-300 hover:text-white px-5 py-3.5 rounded-lg transition-colors text-sm sm:text-base">
           Explore Countries
         </NuxtLink>
       </div>
@@ -173,7 +173,7 @@
         </div>
         <div v-if="countriesPending" class="text-gray-500 text-sm">Loading...</div>
         <div v-else-if="countriesError" class="text-red-400 text-sm">Failed to load countries</div>
-        <div v-else class="grid grid-cols-3 sm:grid-cols-4 gap-2">
+        <div v-else class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
           <NuxtLink
             v-for="c in countries"
             :key="c.code"

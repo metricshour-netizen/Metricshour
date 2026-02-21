@@ -171,6 +171,81 @@ CRYPTO: list[tuple] = [
     ("LINK", "Chainlink",          20_000_000_000),
 ]
 
+# (symbol, name, exchange, region, market_cap_usd)
+INDICES: list[tuple] = [
+    # US
+    ("SPX",    "S&P 500",                      "NYSE",    "US",          None),
+    ("NDX",    "Nasdaq 100",                   "NASDAQ",  "US",          None),
+    ("DJI",    "Dow Jones Industrial Average", "NYSE",    "US",          None),
+    ("RUT",    "Russell 2000",                 "NYSE",    "US",          None),
+    ("VIX",    "CBOE Volatility Index",        "CBOE",    "US",          None),
+    # Europe
+    ("UKX",    "FTSE 100",                     "LSE",     "Europe",      None),
+    ("DAX",    "DAX 40",                       "XETRA",   "Europe",      None),
+    ("CAC",    "CAC 40",                       "EURONEXT","Europe",      None),
+    ("IBEX",   "IBEX 35",                      "BME",     "Europe",      None),
+    ("SMI",    "Swiss Market Index",           "SIX",     "Europe",      None),
+    # Asia-Pacific
+    ("NKY",    "Nikkei 225",                   "TSE",     "Asia",        None),
+    ("HSI",    "Hang Seng Index",              "HKEX",    "Asia",        None),
+    ("SHCOMP", "Shanghai Composite",           "SSE",     "Asia",        None),
+    ("KOSPI",  "KOSPI",                        "KRX",     "Asia",        None),
+    ("SENSEX", "BSE Sensex",                   "BSE",     "Asia",        None),
+    ("ASX200", "ASX 200",                      "ASX",     "Asia",        None),
+    # Other
+    ("MSCIW",  "MSCI World",                   "MSCI",    "Global",      None),
+    ("MSCIEM", "MSCI Emerging Markets",        "MSCI",    "Global",      None),
+]
+
+# (symbol, name, exchange, sector, market_cap_usd)
+ETFS: list[tuple] = [
+    # US Broad Market
+    ("SPY",   "SPDR S&P 500 ETF Trust",          "NYSE",   "Broad Market",   500_000_000_000),
+    ("QQQ",   "Invesco QQQ Trust",               "NASDAQ", "Technology",     250_000_000_000),
+    ("IWM",   "iShares Russell 2000 ETF",        "NYSE",   "Broad Market",    60_000_000_000),
+    ("VTI",   "Vanguard Total Stock Market ETF", "NYSE",   "Broad Market",   350_000_000_000),
+    ("VOO",   "Vanguard S&P 500 ETF",            "NYSE",   "Broad Market",   450_000_000_000),
+    # Sector
+    ("XLF",   "Financial Select Sector SPDR",    "NYSE",   "Financials",      40_000_000_000),
+    ("XLK",   "Technology Select Sector SPDR",   "NYSE",   "Technology",      65_000_000_000),
+    ("XLE",   "Energy Select Sector SPDR",       "NYSE",   "Energy",          30_000_000_000),
+    ("XLV",   "Health Care Select Sector SPDR",  "NYSE",   "Healthcare",      40_000_000_000),
+    ("XLI",   "Industrial Select Sector SPDR",   "NYSE",   "Industrials",     20_000_000_000),
+    # International
+    ("EEM",   "iShares MSCI Emerging Markets ETF","NYSE",  "Emerging Markets",25_000_000_000),
+    ("EFA",   "iShares MSCI EAFE ETF",           "NYSE",   "International",   45_000_000_000),
+    ("VEA",   "Vanguard FTSE Developed Markets", "NYSE",   "International",   95_000_000_000),
+    ("EWJ",   "iShares MSCI Japan ETF",          "NYSE",   "Japan",            8_000_000_000),
+    ("FXI",   "iShares China Large-Cap ETF",     "NYSE",   "China",            6_000_000_000),
+    # Fixed Income
+    ("AGG",   "iShares Core US Aggregate Bond",  "NYSE",   "Bonds",          100_000_000_000),
+    ("BND",   "Vanguard Total Bond Market ETF",  "NYSE",   "Bonds",           95_000_000_000),
+    ("TLT",   "iShares 20+ Year Treasury Bond",  "NYSE",   "Bonds",           40_000_000_000),
+    # Commodities
+    ("GLD",   "SPDR Gold Shares",                "NYSE",   "Gold",            55_000_000_000),
+    ("SLV",   "iShares Silver Trust",            "NYSE",   "Silver",           9_000_000_000),
+    ("USO",   "United States Oil Fund",          "NYSE",   "Energy",           1_500_000_000),
+]
+
+# (symbol, name, exchange, maturity, yield_pct)
+BONDS: list[tuple] = [
+    # US Treasuries
+    ("US02Y",  "US Treasury 2-Year Note",       "CBOT",   "2Y",   None),
+    ("US05Y",  "US Treasury 5-Year Note",       "CBOT",   "5Y",   None),
+    ("US10Y",  "US Treasury 10-Year Note",      "CBOT",   "10Y",  None),
+    ("US30Y",  "US Treasury 30-Year Bond",      "CBOT",   "30Y",  None),
+    # European Sovereigns
+    ("DE10Y",  "Germany Bund 10-Year",          "EUREX",  "10Y",  None),
+    ("GB10Y",  "UK Gilt 10-Year",               "LSE",    "10Y",  None),
+    ("FR10Y",  "France OAT 10-Year",            "EURONEXT","10Y", None),
+    ("IT10Y",  "Italy BTP 10-Year",             "EURONEXT","10Y", None),
+    ("JP10Y",  "Japan JGB 10-Year",             "TSE",    "10Y",  None),
+    # Corporate / EM
+    ("HYG",   "US High Yield Corporate Bond",   "NYSE",   "ETF",  None),
+    ("LQD",   "Investment Grade Corp Bond",     "NYSE",   "ETF",  None),
+    ("EMB",   "Emerging Markets Bond",          "NYSE",   "ETF",  None),
+]
+
 # (symbol, name, base_currency, quote_currency)
 FX: list[tuple] = [
     ("EURUSD", "Euro / US Dollar",         "EUR", "USD"),
@@ -254,6 +329,48 @@ def seed_assets(db: Session) -> int:
             "is_active": True,
         })
 
+    for symbol, name, exchange, region, market_cap in INDICES:
+        rows.append({
+            "symbol": symbol,
+            "name": name,
+            "asset_type": AssetType.index,
+            "exchange": exchange,
+            "currency": "USD",
+            "sector": region,
+            "industry": "Market Index",
+            "country_id": None,
+            "market_cap_usd": market_cap,
+            "is_active": True,
+        })
+
+    for symbol, name, exchange, sector, market_cap in ETFS:
+        rows.append({
+            "symbol": symbol,
+            "name": name,
+            "asset_type": AssetType.etf,
+            "exchange": exchange,
+            "currency": "USD",
+            "sector": sector,
+            "industry": "ETF",
+            "country_id": None,
+            "market_cap_usd": market_cap,
+            "is_active": True,
+        })
+
+    for symbol, name, exchange, maturity, _yield in BONDS:
+        rows.append({
+            "symbol": symbol,
+            "name": name,
+            "asset_type": AssetType.bond,
+            "exchange": exchange,
+            "currency": "USD",
+            "sector": maturity,
+            "industry": "Government Bond" if any(x in symbol for x in ["US","DE","GB","FR","IT","JP"]) else "Corporate Bond",
+            "country_id": None,
+            "market_cap_usd": None,
+            "is_active": True,
+        })
+
     stmt = insert(Asset).values(rows)
     stmt = stmt.on_conflict_do_update(
         constraint="uq_asset_symbol_exchange",
@@ -262,7 +379,7 @@ def seed_assets(db: Session) -> int:
     db.execute(stmt)
     db.commit()
 
-    log.info(f"Upserted {len(rows)} assets ({len(STOCKS)} stocks, {len(COMMODITIES)} commodities, {len(CRYPTO)} crypto, {len(FX)} FX)")
+    log.info(f"Upserted {len(rows)} assets ({len(STOCKS)} stocks, {len(COMMODITIES)} commodities, {len(CRYPTO)} crypto, {len(FX)} FX, {len(INDICES)} indices, {len(ETFS)} ETFs, {len(BONDS)} bonds)")
     return len(rows)
 
 

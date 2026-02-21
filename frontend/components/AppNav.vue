@@ -24,7 +24,7 @@
           </div>
         </template>
         <template v-else>
-          <button class="text-xs bg-emerald-700 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg transition-colors font-semibold" @click="showAuth = true">Sign In</button>
+          <button class="text-xs bg-emerald-700 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg transition-colors font-semibold" @click="showAuth = true">Sign In</button>
         </template>
       </div>
 
@@ -34,11 +34,11 @@
           <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
           {{ isLoggedIn ? 'For You' : 'Feed' }}
         </NuxtLink>
-        <button @click="menuOpen = !menuOpen" class="text-gray-400 hover:text-white transition-colors p-1.5 -mr-1.5" aria-label="Menu">
-          <svg v-if="!menuOpen" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <button @click="menuOpen = !menuOpen" class="text-gray-400 hover:text-white transition-colors p-2 -mr-2" aria-label="Menu">
+          <svg v-if="!menuOpen" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
           </svg>
-          <svg v-else class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <svg v-else class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
           </svg>
         </button>
@@ -47,10 +47,10 @@
 
     <!-- Mobile dropdown menu -->
     <div v-if="menuOpen" class="sm:hidden border-t border-[#1f2937] bg-[#0a0e1a] px-4 py-2">
-      <NuxtLink to="/markets"   @click="menuOpen = false" class="flex items-center justify-between py-3 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">Markets <span class="text-gray-600 text-xs">→</span></NuxtLink>
-      <NuxtLink to="/countries" @click="menuOpen = false" class="flex items-center justify-between py-3 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">Countries <span class="text-gray-600 text-xs">→</span></NuxtLink>
-      <NuxtLink to="/trade"     @click="menuOpen = false" class="flex items-center justify-between py-3 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">Trade <span class="text-gray-600 text-xs">→</span></NuxtLink>
-      <NuxtLink to="/pricing"   @click="menuOpen = false" class="flex items-center justify-between py-3 text-sm text-emerald-400 font-semibold border-b border-[#1f2937]">Pro → <span class="text-[10px] bg-emerald-900/40 text-emerald-400 px-2 py-0.5 rounded">Upgrade</span></NuxtLink>
+      <NuxtLink to="/markets"   @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">Markets <span class="text-gray-600 text-xs">→</span></NuxtLink>
+      <NuxtLink to="/countries" @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">Countries <span class="text-gray-600 text-xs">→</span></NuxtLink>
+      <NuxtLink to="/trade"     @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">Trade <span class="text-gray-600 text-xs">→</span></NuxtLink>
+      <NuxtLink to="/pricing"   @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-emerald-400 font-semibold border-b border-[#1f2937]">Pro → <span class="text-[10px] bg-emerald-900/40 text-emerald-400 px-2 py-0.5 rounded">Upgrade</span></NuxtLink>
       <div class="py-3">
         <template v-if="isLoggedIn && user">
           <div class="flex items-center justify-between">

@@ -22,6 +22,7 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)     # Argon2
     tier: Mapped[UserTier] = mapped_column(Enum(UserTier), default=UserTier.free)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     last_login_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
 

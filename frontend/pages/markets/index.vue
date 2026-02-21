@@ -24,7 +24,7 @@
         v-for="tab in tabs"
         :key="tab.key"
         @click="activeTab = tab.key"
-        class="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors whitespace-nowrap shrink-0"
+        class="px-3 py-2 rounded-lg text-xs font-semibold border transition-colors whitespace-nowrap shrink-0"
         :class="activeTab === tab.key
           ? `${tab.activeClass} text-black`
           : 'border-[#1f2937] text-gray-400 hover:border-gray-500'"
