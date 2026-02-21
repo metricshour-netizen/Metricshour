@@ -13,7 +13,7 @@ Authenticated endpoints (Bearer token required):
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from pydantic import BaseModel
@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import get_db
+from app.models.country import Country
 from app.models.feed import (
     FeedEvent,
     FollowEntityType,
@@ -129,6 +130,7 @@ class FollowOut(BaseModel):
 
 @router.get("", response_model=FeedPageOut)
 def get_feed(
+    request: Request,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=50),
     db: Session = Depends(get_db),
@@ -137,11 +139,27 @@ def get_feed(
     """
     Return the ranked adaptive feed.
 
-    Anonymous users get recency + importance ranking.
-    Authenticated users get personalised ranking based on follows + past interactions.
+    Anonymous users get recency + importance + geo ranking.
+    Authenticated users get personalised ranking based on follows + past interactions + geo.
+    Geo signal comes from the Cloudflare CF-IPCountry header (2-letter ISO code).
     """
     user_id = current_user.id if current_user else None
-    events = rank_feed(db, user_id=user_id, page=page, page_size=page_size)
+
+    # Detect visitor's country from Cloudflare header (no extra API call needed)
+    geo_country_id: int | None = None
+    cf_country = request.headers.get("cf-ipcountry", "").strip().upper()
+    if cf_country and cf_country not in ("", "T1", "XX"):  # T1=Tor, XX=unknown
+        row = db.query(Country.id).filter(Country.code == cf_country).first()
+        if row:
+            geo_country_id = row[0]
+
+    events = rank_feed(
+        db,
+        user_id=user_id,
+        page=page,
+        page_size=page_size,
+        geo_country_id=geo_country_id,
+    )
     return FeedPageOut(page=page, page_size=page_size, events=events)
 
 

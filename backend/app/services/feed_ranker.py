@@ -6,10 +6,11 @@ Scoring model (additive):
   recency_score    → exponential decay, half-life = 6 hours, max 10 pts
   importance_score → 0–10, set by the feed generator based on market impact
   follow_boost     → +8 per matched followed asset, +6 per matched followed country
+  geo_boost        → +4 if event relates to the visitor's detected country (CF-IPCountry)
   interaction_adj  → save +5 | share +4 | click +3 | view +1 | skip −5
 
-Cold-start (no follows, no history): score = recency + importance
-  → best financial content surfaces first without personalisation.
+Cold-start (no follows, no history): score = recency + importance + geo_boost
+  → best financial content for the user's region surfaces first without sign-in.
 
 Pagination happens AFTER scoring so the algorithm always sees the full
 candidate pool for a user's context window (last 48 hours, max 200 events).
@@ -30,6 +31,7 @@ RECENCY_HALF_LIFE_HOURS = 6   # score halves every 6 hours
 RECENCY_MAX_SCORE = 10.0
 FOLLOW_ASSET_BOOST = 8.0
 FOLLOW_COUNTRY_BOOST = 6.0
+GEO_BOOST = 4.0               # boost for events matching visitor's detected country
 INTERACTION_WEIGHTS: dict[str, float] = {
     InteractionType.save:  5.0,
     InteractionType.share: 4.0,
@@ -53,15 +55,18 @@ def rank_feed(
     user_id: int | None,
     page: int = 1,
     page_size: int = 20,
+    geo_country_id: int | None = None,
 ) -> list[FeedEvent]:
     """
     Return a ranked, paginated list of feed events for a user.
 
     Args:
-        db:        SQLAlchemy session
-        user_id:   None for anonymous visitors → fallback to recency + importance
-        page:      1-indexed page number
-        page_size: events per page (max 50)
+        db:             SQLAlchemy session
+        user_id:        None for anonymous visitors → fallback to recency + importance + geo
+        page:           1-indexed page number
+        page_size:      events per page (max 50)
+        geo_country_id: DB country.id detected from CF-IPCountry header; adds GEO_BOOST
+                        to events related to that country (works for anon + authed users)
 
     Returns:
         Ordered list of FeedEvent ORM objects.
@@ -80,9 +85,9 @@ def rank_feed(
     if not events:
         return []
 
-    # For anonymous visitors skip personalisation
+    # For anonymous visitors skip personalisation (geo still applies)
     if user_id is None:
-        scored = [ScoredEvent(_base_score(e), e) for e in events]
+        scored = [ScoredEvent(_base_score(e, geo_country_id), e) for e in events]
     else:
         follows = (
             db.query(UserFollow)
@@ -94,7 +99,7 @@ def rank_feed(
             .filter(UserInteraction.user_id == user_id)
             .all()
         )
-        scored = _score_for_user(events, follows, interactions)
+        scored = _score_for_user(events, follows, interactions, geo_country_id)
 
     scored.sort(key=lambda s: s.score, reverse=True)
 
@@ -105,9 +110,12 @@ def rank_feed(
 
 # ── Internal ──────────────────────────────────────────────────────────────────
 
-def _base_score(event: FeedEvent) -> float:
-    """Recency + importance — used for anonymous users and as the baseline."""
-    return _recency(event.published_at) + float(event.importance_score or 0)
+def _base_score(event: FeedEvent, geo_country_id: int | None = None) -> float:
+    """Recency + importance + optional geo boost — baseline for all users."""
+    score = _recency(event.published_at) + float(event.importance_score or 0)
+    if geo_country_id and geo_country_id in set(event.related_country_ids or []):
+        score += GEO_BOOST
+    return score
 
 
 def _recency(published_at: datetime) -> float:
@@ -124,6 +132,7 @@ def _score_for_user(
     events: list[FeedEvent],
     follows: list[UserFollow],
     interactions: list[UserInteraction],
+    geo_country_id: int | None = None,
 ) -> list[ScoredEvent]:
     """Apply full personalisation scoring."""
     followed_assets: set[int] = {
@@ -138,7 +147,7 @@ def _score_for_user(
 
     scored = []
     for event in events:
-        score = _base_score(event)
+        score = _base_score(event, geo_country_id)
 
         # Follow boost — sum boosts for all matched entities
         event_assets: set[int] = set(event.related_asset_ids or [])

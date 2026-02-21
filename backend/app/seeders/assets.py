@@ -154,6 +154,7 @@ COMMODITIES: list[tuple] = [
     ("CT",       "Cotton",             "ICE",   "Agriculture"),
     ("CC",       "Cocoa",              "ICE",   "Agriculture"),
     ("LE",       "Live Cattle",        "CME",   "Agriculture"),
+    ("PALM",     "Palm Oil",           "MDEX",  "Agriculture"),
 ]
 
 # (symbol, name, market_cap_usd)
