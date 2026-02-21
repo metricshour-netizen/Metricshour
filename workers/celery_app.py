@@ -17,7 +17,7 @@ from dotenv import load_dotenv
 load_dotenv('/root/metricshour/backend/.env')
 
 import sentry_sdk
-from celery import Celery
+from celery import Celery, signals
 from celery.schedules import crontab
 from sentry_sdk.integrations.celery import CeleryIntegration
 
@@ -30,6 +30,17 @@ if _sentry_dsn:
         send_default_pii=False,
         environment="production",
     )
+
+@signals.task_failure.connect
+def handle_task_failure(sender=None, task_id=None, exception=None, args=None,
+                        kwargs=None, traceback=None, einfo=None, **kw):
+    """Fire on every final task failure (after all retries exhausted)."""
+    from tasks.alerts import on_task_failure
+    task_name = sender.name if sender else "unknown"
+    retries = getattr(sender, "request", None)
+    retry_count = retries.retries if retries else 0
+    on_task_failure(task_name, exception, retry_count)
+
 
 app = Celery('metricshour', include=[
     'tasks.crypto',
