@@ -51,9 +51,13 @@ These were agreed on 2026-02-21. Do not let the user move on until all are done.
 - Celery workers — all 4 tasks working (crypto, stocks, commodities, fx); fixed Upstash SSL (ssl_cert_reqs=CERT_NONE); tested end-to-end, prices flowing into DB
 - Trade seeder — 252 rows (126 unique G20 pairs × 2 directions), 2022 WTO/IMF data, top products per pair
 - EDGAR seeder — 371 rows across 24 stocks (742 total including reverse lookups), FY2023/2024 10-K data
+- IMF seeder — 10,801 rows: govt debt, budget balance, current account, GDP growth, inflation, unemployment (IMF DataMapper WEO 2015-2024)
+- Governance seeder — 1,836 rows: control_of_corruption_index (World Bank WGI CC.EST)
+- World Bank WGI — 6 new governance indicators: rule_of_law, political_stability, government_effectiveness, regulatory_quality, voice_accountability, control_of_corruption (total WB rows: 99,485)
+- Sentry — added to FastAPI (StarletteIntegration + FastApiIntegration) and Celery (CeleryIntegration); activated via SENTRY_DSN env var
 
 ## In Progress 🔨
-- Nothing active right now
+- Agreed TODO list (rate limiting, restore script, UptimeRobot, KV cache, PgBouncer, Celery alerting)
 
 ## Next Steps 📋
 1. Deploy frontend to Cloudflare Pages (see below — needs Pages API token)
@@ -83,6 +87,7 @@ Frontend is built (dist/ ready). Git pushed to GitHub. CF Pages deploy needs a t
 - 2026-02-20: Trade seeder run → 252 trade_pairs rows; EDGAR seeder run → 742 stock_country_revenues rows
 - 2026-02-20: DNS live (api.metricshour.com → 89.167.35.114), SSL issued via Let's Encrypt, https://api.metricshour.com returning 200
 - 2026-02-21: Frontend deployed to Cloudflare Pages (https://2c93f583.metricshour.pages.dev); Node upgraded to v20; wrangler deployed with CLOUDFLARE_ACCOUNT_ID env var
+- 2026-02-21: IMF + governance seeders complete; WGI indicators added; Sentry wired into FastAPI + Celery; DB now has 57 indicators per country live via API
 
 ## Priority Order (always follow this)
 1. Celery price workers — live prices
