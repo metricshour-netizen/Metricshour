@@ -1,8 +1,8 @@
 <template>
   <main class="max-w-7xl mx-auto px-4 py-10">
     <div class="mb-6">
-      <h1 class="text-2xl font-bold text-white">Commodities</h1>
-      <p class="text-gray-500 text-sm mt-1">Energy, metals & agriculture · 21 instruments</p>
+      <h1 class="text-xl sm:text-2xl font-bold text-white">Commodities</h1>
+      <p class="text-gray-500 text-sm mt-1">Energy · Metals · Agriculture — 21 instruments tracked globally</p>
     </div>
 
     <!-- Search -->
@@ -11,33 +11,50 @@
       <input
         v-model="search"
         type="text"
-        placeholder="Search commodities — Gold, Oil, Palm Oil, Wheat..."
+        placeholder="Search — Gold, Oil, Palm Oil, Wheat, Copper..."
         class="w-full bg-[#111827] border border-[#1f2937] rounded-lg pl-9 pr-4 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500 transition-colors"
       />
       <button v-if="search" @click="search = ''" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-400 text-xs">✕</button>
     </div>
 
-    <div v-if="pending" class="text-gray-500 text-sm">Loading...</div>
+    <div v-if="pending" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+      <div v-for="i in 10" :key="i" class="h-28 bg-[#111827] border border-[#1f2937] rounded-xl animate-pulse"/>
+    </div>
 
     <template v-else>
       <p v-if="search" class="text-xs text-gray-600 mb-4">{{ matchCount }} result{{ matchCount !== 1 ? 's' : '' }} for "{{ search }}"</p>
 
       <template v-for="group in filteredGroups" :key="group.name">
         <div v-if="group.items.length" class="mb-10">
-          <h2 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">{{ group.name }}</h2>
+          <!-- Group header -->
+          <div class="flex items-center gap-3 mb-4">
+            <span class="text-lg">{{ group.icon }}</span>
+            <h2 class="text-sm font-extrabold text-white uppercase tracking-widest">{{ group.name }}</h2>
+            <span class="text-[10px] text-gray-600 bg-[#1f2937] px-2 py-0.5 rounded-full">{{ group.items.length }}</span>
+            <div class="flex-1 h-px bg-[#1f2937]"/>
+          </div>
+
           <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
             <div
               v-for="c in group.items"
               :key="c.symbol"
-              class="bg-[#111827] border border-[#1f2937] hover:border-emerald-500 rounded-lg p-4 transition-colors"
+              class="bg-[#111827] border border-[#1f2937] hover:border-emerald-500/60 rounded-xl p-4 transition-all hover:bg-[#131d2e] group cursor-default"
             >
-              <div class="text-xl mb-2">{{ c.icon }}</div>
-              <div class="text-sm font-medium text-white mb-0.5">{{ apiMap[c.symbol]?.name ?? c.name }}</div>
-              <div class="text-xs text-gray-600 mb-2">{{ c.symbol }}</div>
-              <div v-if="apiMap[c.symbol]?.price" class="text-sm font-bold text-white tabular-nums">
-                ${{ fmtPrice(apiMap[c.symbol].price.close) }}
+              <div class="flex items-start justify-between mb-3">
+                <span class="text-2xl">{{ c.icon }}</span>
+                <span class="text-[10px] text-gray-600 bg-[#1f2937] px-1.5 py-0.5 rounded font-mono">{{ c.symbol }}</span>
               </div>
-              <div v-else class="text-xs text-gray-700">——</div>
+              <div class="text-sm font-bold text-white mb-0.5 group-hover:text-emerald-300 transition-colors leading-tight">
+                {{ apiMap[c.symbol]?.name ?? c.name }}
+              </div>
+              <div class="text-[10px] text-gray-600 mb-2">{{ group.name }}</div>
+              <div v-if="apiMap[c.symbol]?.price" class="mt-auto">
+                <div class="text-base font-extrabold text-white tabular-nums">${{ fmtPrice(apiMap[c.symbol].price.close) }}</div>
+                <div class="text-[10px] text-gray-600 mt-0.5">last close</div>
+              </div>
+              <div v-else class="text-xs text-gray-700 mt-2 flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-yellow-700 inline-block"></span> Pending feed
+              </div>
             </div>
           </div>
         </div>
@@ -47,7 +64,7 @@
         No commodities match "{{ search }}"
       </div>
 
-      <p class="text-xs text-gray-600 mt-2">Data: Marketstack · CoinGecko · exchangerate.host</p>
+      <p class="text-xs text-gray-700 mt-4">Data: Marketstack · CoinGecko · exchangerate.host</p>
     </template>
   </main>
 </template>
@@ -68,7 +85,7 @@ const apiMap = computed(() => {
 
 const ALL_GROUPS = [
   {
-    name: 'Energy',
+    name: 'Energy', icon: '⚡',
     items: [
       { symbol: 'WTI',      name: 'Crude Oil (WTI)',   icon: '🛢️' },
       { symbol: 'BRENT',    name: 'Crude Oil (Brent)', icon: '🛢️' },
@@ -78,7 +95,7 @@ const ALL_GROUPS = [
     ],
   },
   {
-    name: 'Metals',
+    name: 'Metals', icon: '⚙️',
     items: [
       { symbol: 'XAUUSD', name: 'Gold',      icon: '🥇' },
       { symbol: 'XAGUSD', name: 'Silver',    icon: '🥈' },
@@ -90,7 +107,7 @@ const ALL_GROUPS = [
     ],
   },
   {
-    name: 'Agriculture',
+    name: 'Agriculture', icon: '🌾',
     items: [
       { symbol: 'ZW',   name: 'Wheat',      icon: '🌾' },
       { symbol: 'ZC',   name: 'Corn',       icon: '🌽' },
@@ -109,7 +126,7 @@ const filteredGroups = computed(() => {
   if (!search.value.trim()) return ALL_GROUPS
   const q = search.value.toLowerCase().trim()
   return ALL_GROUPS.map(group => ({
-    name: group.name,
+    ...group,
     items: group.items.filter(item =>
       item.name.toLowerCase().includes(q) ||
       item.symbol.toLowerCase().includes(q) ||
