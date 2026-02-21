@@ -4,7 +4,7 @@
 These were agreed on 2026-02-21. Do not let the user move on until all are done.
 
 ### High Priority (do before next feature)
-- [ ] **Restore script** — write + test a pg_dump restore from R2. Backup is useless until tested.
+- [x] **Restore script** — deploy/restore.py. Tested end-to-end: downloads from R2, psql restore, row count verification (250 countries, 103k indicators, all tables OK). Stops/starts services automatically.
 - [ ] **Sentry** — add to FastAPI (one line). Zero prod error visibility right now.
 - [x] **Rate limiting** — slowapi + Upstash Redis; 5/min on /register, 10/min on /login. Redis-backed (shared across workers). Tested and confirmed 429.
 - [ ] **UptimeRobot** — set up free monitor on /health endpoint. Currently blind to outages.
