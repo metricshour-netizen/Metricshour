@@ -1,7 +1,7 @@
 <template>
   <nav class="border-b border-[#1f2937] bg-[#0a0e1a]/95 backdrop-blur-sm sticky top-0 z-50">
     <div class="max-w-7xl mx-auto px-4 h-12 flex items-center justify-between">
-      <NuxtLink to="/" class="text-emerald-400 font-bold tracking-tight text-base sm:text-lg">
+      <NuxtLink to="/" class="text-emerald-400 font-bold tracking-tight text-base sm:text-lg py-3 -my-3 pr-4">
         METRICSHOUR
       </NuxtLink>
 

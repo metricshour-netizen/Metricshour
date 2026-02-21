@@ -1,6 +1,15 @@
 <template>
   <div class="feed-viewport fixed inset-0 bg-black" style="top: 48px;">
 
+    <!-- METRICSHOUR home tap zone — always accessible on feed -->
+    <NuxtLink
+      to="/"
+      class="fixed top-0 left-0 z-[60] h-12 flex items-center px-4"
+      aria-label="Back to home"
+    >
+      <span class="text-emerald-400 font-bold tracking-tight text-base leading-none">METRICSHOUR</span>
+    </NuxtLink>
+
     <!-- "For You" label (top left, logged in only) -->
     <Transition name="fade">
       <div
