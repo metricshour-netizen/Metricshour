@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 from app.database import get_db
 from app.models import Asset, AssetType, Country, Price, StockCountryRevenue
@@ -15,8 +15,8 @@ def list_assets(
     sector: str | None = None,
     db: Session = Depends(get_db),
 ) -> list[dict]:
-    # Key encodes filters so different combos are cached separately
-    cache_key = f"assets:list:{type or 'all'}:{sector or 'all'}"
+    # v2 key includes prices — bust any old price-free cache
+    cache_key = f"assets:list:v3:{type or 'all'}:{sector or 'all'}"
     cached = kv_json_get(cache_key)
     if cached is not None:
         return cached
@@ -31,7 +31,7 @@ def list_assets(
         try:
             query = query.where(Asset.asset_type == AssetType(type))
         except ValueError:
-            raise HTTPException(status_code=400, detail=f"Invalid type '{type}'. Use: stock, crypto, commodity, fx")
+            raise HTTPException(status_code=400, detail=f"Invalid type '{type}'. Use: stock, crypto, commodity, fx, etf, index, bond")
 
     if sector:
         query = query.where(Asset.sector == sector)
@@ -45,9 +45,38 @@ def list_assets(
         rows = db.execute(select(Country).where(Country.id.in_(country_ids))).scalars().all()
         countries = {c.id: c for c in rows}
 
-    result = [_asset_summary(a, countries.get(a.country_id)) for a in assets]
+    # Batch-load latest price per asset (any interval) to avoid N+1
+    asset_ids = [a.id for a in assets]
+    prices: dict[int, Price] = {}
+    if asset_ids:
+        latest_ts_sq = (
+            select(Price.asset_id, func.max(Price.timestamp).label("max_ts"))
+            .where(Price.asset_id.in_(asset_ids))
+            .group_by(Price.asset_id)
+            .subquery()
+        )
+        price_rows = db.execute(
+            select(Price).join(
+                latest_ts_sq,
+                (Price.asset_id == latest_ts_sq.c.asset_id) &
+                (Price.timestamp == latest_ts_sq.c.max_ts)
+            )
+        ).scalars().all()
+        prices = {p.asset_id: p for p in price_rows}
 
-    # Asset list changes at most every 15 min (price ingestion) — cache for 5 min
+    result = []
+    for a in assets:
+        row = _asset_summary(a, countries.get(a.country_id))
+        p = prices.get(a.id)
+        row["price"] = {
+            "close": p.close,
+            "open": p.open,
+            "high": p.high,
+            "low": p.low,
+            "timestamp": p.timestamp.isoformat(),
+        } if p else None
+        result.append(row)
+
     kv_json_set(cache_key, result, ttl_seconds=300)
     return result
 
