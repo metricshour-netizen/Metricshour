@@ -1,4 +1,23 @@
 <template>
+  <!-- ── Market Ticker Strip ──────────────────────────────────────────────── -->
+  <div v-if="tickerItems.length" class="w-full bg-[#060d14] border-b border-[#1a2332] overflow-hidden select-none" @mouseenter="tickerPaused = true" @mouseleave="tickerPaused = false">
+    <div class="ticker-wrap">
+      <div class="ticker-track" :class="{ paused: tickerPaused }">
+        <span
+          v-for="(item, i) in [...tickerItems, ...tickerItems]"
+          :key="`tk-${i}`"
+          class="inline-flex items-center gap-1.5 px-5 py-2 border-r border-[#1a2332] shrink-0"
+        >
+          <span class="text-[11px] font-mono font-bold" :class="item.typeColor">{{ item.symbol }}</span>
+          <span class="text-[11px] text-white tabular-nums font-semibold">{{ item.priceStr }}</span>
+          <span class="text-[10px] tabular-nums font-semibold" :class="item.dir >= 0 ? 'text-emerald-400' : 'text-red-400'">
+            {{ item.dir >= 0 ? '▲' : '▼' }}{{ item.changePct }}
+          </span>
+        </span>
+      </div>
+    </div>
+  </div>
+
   <main class="max-w-7xl mx-auto px-4 py-16">
     <!-- Hero -->
     <div class="text-center mb-16">
@@ -339,8 +358,66 @@ function fmtUsd(v: number | null | undefined): string {
   return `${sign}$${abs.toLocaleString()}`
 }
 
+// ─── Market Ticker ────────────────────────────────────────────────────────────
+
+const TICKER_SYMBOLS = ['BTC', 'ETH', 'SOL', 'AAPL', 'NVDA', 'TSLA', 'MSFT', 'SPY', 'QQQ', 'XAUUSD', 'WTI', 'EURUSD', 'USDJPY', 'BNB', 'XAGUSD']
+const tickerPaused = ref(false)
+
+const { data: tickerRaw } = await useAsyncData('ticker',
+  () => get<any[]>('/api/assets').catch(() => []),
+  { server: false },
+)
+
+function tickerTypeColor(type: string): string {
+  const map: Record<string, string> = {
+    crypto: 'text-amber-400', stock: 'text-emerald-400', etf: 'text-sky-400',
+    index: 'text-purple-400', commodity: 'text-blue-400', fx: 'text-teal-400', bond: 'text-rose-400',
+  }
+  return map[type] ?? 'text-gray-400'
+}
+
+function fmtTickerPrice(v: number): string {
+  if (v >= 10000) return `$${v.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+  if (v >= 1)     return `$${v.toFixed(2)}`
+  return `$${v.toFixed(4)}`
+}
+
+const tickerItems = computed(() => {
+  const assets = tickerRaw.value ?? []
+  return TICKER_SYMBOLS
+    .map(sym => (assets as any[]).find(a => a.symbol === sym))
+    .filter(Boolean)
+    .map((a: any) => {
+      const p = a.price
+      if (!p?.close) return null
+      const open = p.open || p.close
+      const dir = p.close >= open ? 1 : -1
+      const pct = open > 0 ? Math.abs((p.close - open) / open * 100) : 0
+      return { symbol: a.symbol, priceStr: fmtTickerPrice(p.close), changePct: pct.toFixed(2) + '%', dir, typeColor: tickerTypeColor(a.asset_type) }
+    })
+    .filter(Boolean) as { symbol: string; priceStr: string; changePct: string; dir: number; typeColor: string }[]
+})
+
 useSeoMeta({
   title: 'MetricsHour — Global Financial Intelligence',
   description: 'Connect stock geographic revenue, bilateral trade flows, and country macro data. 196 countries, 5,000+ stocks, 38,000+ trade pairs. Free forever.',
 })
 </script>
+
+<style scoped>
+.ticker-wrap {
+  overflow: hidden;
+  width: 100%;
+}
+.ticker-track {
+  display: inline-flex;
+  animation: ticker-scroll 45s linear infinite;
+}
+.ticker-track.paused {
+  animation-play-state: paused;
+}
+@keyframes ticker-scroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+</style>
