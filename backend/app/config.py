@@ -27,6 +27,8 @@ class Settings:
     r2_access_key_id: str = os.environ.get("R2_ACCESS_KEY_ID", "")
     r2_secret_access_key: str = os.environ.get("R2_SECRET_ACCESS_KEY", "")
     r2_public_url: str = os.environ.get("R2_PUBLIC_URL", "")
+    # Sentry
+    sentry_dsn: str = os.environ.get("SENTRY_DSN", "")
 
 
 settings = Settings()

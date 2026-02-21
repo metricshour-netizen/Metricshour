@@ -45,6 +45,16 @@ def run_all() -> None:
             from app.seeders.edgar import seed_edgar
             seed_edgar(db)
 
+        if not only or only == "imf":
+            log.info("=== Seeding IMF indicators (debt, fiscal, interest rates) ===")
+            from app.seeders.imf import seed_imf
+            seed_imf(db)
+
+        if not only or only == "governance":
+            log.info("=== Seeding governance indicators (TI CPI) ===")
+            from app.seeders.governance import seed_governance
+            seed_governance(db)
+
     finally:
         db.close()
 

@@ -1,5 +1,26 @@
 # MetricsHour - Build Progress
 
+## TODO — Must Not Skip (check these every session) ⚠️
+These were agreed on 2026-02-21. Do not let the user move on until all are done.
+
+### High Priority (do before next feature)
+- [ ] **Restore script** — write + test a pg_dump restore from R2. Backup is useless until tested.
+- [ ] **Sentry** — add to FastAPI (one line). Zero prod error visibility right now.
+- [ ] **Rate limiting** — add slowapi to /api/auth/register + /api/auth/login. Currently wide open.
+- [ ] **UptimeRobot** — set up free monitor on /health endpoint. Currently blind to outages.
+
+### Medium Priority (do this sprint)
+- [ ] **Celery failure alerting** — on_failure handler → log to file or post to Discord/Slack webhook.
+- [ ] **Wire KV cache into hot routes** — /api/countries and /api/assets should read from KV first (storage.py is ready, just needs integration in routers).
+- [ ] **Enable PgBouncer on Aiven** — connection pooler, prevents connection exhaustion under load.
+
+### Later (before scaling)
+- [ ] **Cloudflare Turnstile** — free CAPTCHA on /register.
+- [ ] **R2 public domain** — attach custom domain to bucket if ever serving public URLs.
+- [ ] **Axiom** — replace /var/log/metricshour/ with searchable log explorer (free 50GB/month, CF native).
+
+---
+
 ## Completed ✓
 - Memory system (PROJECT.md, CONTEXT.md, PREFERENCES.md, PROGRESS.md)
 - Database schema — 9 tables (countries, country_indicators, trade_pairs, assets, prices, stock_country_revenues, users, price_alerts, feed_events)
@@ -35,13 +56,23 @@
 - Nothing active right now
 
 ## Next Steps 📋
-1. Cloudflare Pages — connect repo, build frontend, deploy metricshour.com
-2. Frontend wiring — update API base URL to https://api.metricshour.com
+1. Deploy frontend to Cloudflare Pages (see below — needs Pages API token)
+2. Add custom domain in Cloudflare Pages dashboard (metricshour.com + www)
+
+## Pending Deploy ⚡
+Frontend is built (dist/ ready). Git pushed to GitHub. CF Pages deploy needs a token with Pages:Edit permission:
+- dash.cloudflare.com → Profile → API Tokens → Create Token → "Edit Cloudflare Pages" template
+- Then: `CLOUDFLARE_API_TOKEN=<token> npx wrangler pages deploy dist --project-name=metricshour`
+- Run from: /root/metricshour/frontend/
 
 ## Known Issues 🐛
-- None at this time. All core data tables populated.
+- Cloudflare Pages deploy token (CF_API_TOKEN in .env) is R2-only — lacks Pages:Edit permission
+- After next CF Pages deploy, add ALLOWED_ORIGINS update to include www.metricshour.com
 
 ## Recent Decisions
+- 2026-02-21: Full platform built — all 3 detail pages dynamic, homepage upgraded with live search + top stocks + trade pairs
+- 2026-02-21: Backend restarted — search endpoint (/api/search) now live
+- 2026-02-21: Frontend build ready (dist/), git pushed to GitHub
 - 2026-02-20: Created memory system
 - 2026-02-20: Confirmed tech stack: Nuxt 3 + FastAPI + PostgreSQL + Cloudflare
 - 2026-02-20: Infrastructure: Hetzner CX23 + Aiven PostgreSQL + Upstash Redis
@@ -51,6 +82,7 @@
 - 2026-02-20: Celery workers complete; Upstash SSL fix applied (broker_use_ssl + redis_backend_use_ssl with CERT_NONE)
 - 2026-02-20: Trade seeder run → 252 trade_pairs rows; EDGAR seeder run → 742 stock_country_revenues rows
 - 2026-02-20: DNS live (api.metricshour.com → 89.167.35.114), SSL issued via Let's Encrypt, https://api.metricshour.com returning 200
+- 2026-02-21: Frontend deployed to Cloudflare Pages (https://2c93f583.metricshour.pages.dev); Node upgraded to v20; wrangler deployed with CLOUDFLARE_ACCOUNT_ID env var
 
 ## Priority Order (always follow this)
 1. Celery price workers — live prices

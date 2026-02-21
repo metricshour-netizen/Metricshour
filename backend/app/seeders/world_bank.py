@@ -106,6 +106,15 @@ INDICATORS: dict[str, tuple[str, str]] = {
     # --- TOURISM ---
     "ST.INT.ARVL":          ("tourist_arrivals",            "annual"),
     "ST.INT.RCPT.CD":       ("tourism_revenue_usd",         "annual"),
+
+    # --- GOVERNANCE (World Bank WGI — scale: -2.5 to +2.5) ---
+    # Source: World Bank Worldwide Governance Indicators (data.worldbank.org/WGI)
+    "RL.EST":   ("rule_of_law_index",              "annual"),
+    "PV.EST":   ("political_stability_index",      "annual"),
+    "GE.EST":   ("government_effectiveness_index", "annual"),
+    "RQ.EST":   ("regulatory_quality_index",       "annual"),
+    "VA.EST":   ("voice_accountability_index",     "annual"),
+    "CC.EST":   ("control_of_corruption_index",   "annual"),  # Control of Corruption
 }
 
 
