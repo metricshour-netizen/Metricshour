@@ -13,7 +13,7 @@
         <NuxtLink to="/markets" class="hover:text-white transition-colors font-medium">Markets</NuxtLink>
         <NuxtLink to="/countries" class="hover:text-white transition-colors">Countries</NuxtLink>
         <NuxtLink to="/trade" class="hover:text-white transition-colors">Trade</NuxtLink>
-        <NuxtLink to="/pricing" class="hover:text-white transition-colors text-emerald-400 hidden sm:block">Pro →</NuxtLink>
+        <NuxtLink to="/pricing" class="hover:text-white transition-colors text-emerald-400">Pro →</NuxtLink>
 
         <!-- Auth area -->
         <template v-if="isLoggedIn && user">
