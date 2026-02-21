@@ -2,13 +2,13 @@
   <main class="max-w-7xl mx-auto px-4 py-16">
     <!-- Hero -->
     <div class="text-center mb-16">
-      <h1 class="text-4xl md:text-6xl font-bold text-white mb-4 leading-tight">
+      <h1 class="text-3xl sm:text-4xl md:text-6xl font-bold text-white mb-4 leading-tight">
         Global financial intelligence.<br>
         <span class="text-emerald-400">One place.</span>
       </h1>
-      <p class="text-gray-400 text-xl max-w-2xl mx-auto mb-10">
-        Connect stock geographic revenue, bilateral trade flows, and country macro data
-        in 30 seconds — not 30 minutes across 4 websites.
+      <p class="text-gray-400 text-base sm:text-xl max-w-2xl mx-auto mb-10">
+        Connect stock revenue, trade flows, and country macro data
+        in seconds — not minutes across 4 websites.
       </p>
 
       <!-- Search bar -->
@@ -90,12 +90,12 @@
         </div>
       </div>
 
-      <div class="flex justify-center gap-4 flex-wrap">
-        <NuxtLink to="/countries" class="bg-emerald-500 hover:bg-emerald-400 text-black font-bold px-6 py-3 rounded transition-colors">
-          Explore Countries →
+      <div class="flex justify-center gap-3 flex-wrap">
+        <NuxtLink to="/markets" class="bg-emerald-500 hover:bg-emerald-400 text-black font-bold px-5 py-3 rounded transition-colors text-sm sm:text-base">
+          Explore Markets →
         </NuxtLink>
-        <NuxtLink to="/stocks" class="border border-gray-600 hover:border-gray-400 text-gray-300 px-6 py-3 rounded transition-colors">
-          Browse Stocks
+        <NuxtLink to="/countries" class="border border-gray-600 hover:border-emerald-500 text-gray-300 hover:text-white px-5 py-3 rounded transition-colors text-sm sm:text-base">
+          Explore Countries
         </NuxtLink>
       </div>
     </div>
