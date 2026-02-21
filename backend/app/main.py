@@ -1,8 +1,20 @@
+import sentry_sdk
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+from sentry_sdk.integrations.starlette import StarletteIntegration
 
 from app.config import settings
-from app.routers import health, countries, assets, trade, auth
+from app.routers import health, countries, assets, trade, auth, search
+
+if settings.sentry_dsn:
+    sentry_sdk.init(
+        dsn=settings.sentry_dsn,
+        integrations=[StarletteIntegration(), FastApiIntegration()],
+        traces_sample_rate=0.2,   # 20% of requests traced (adjust up if needed)
+        send_default_pii=False,
+        environment="production" if not settings.debug else "development",
+    )
 
 app = FastAPI(
     title="MetricsHour API",
@@ -22,6 +34,7 @@ app.include_router(countries.router, prefix="/api")
 app.include_router(assets.router, prefix="/api")
 app.include_router(trade.router, prefix="/api")
 app.include_router(auth.router, prefix="/api")
+app.include_router(search.router, prefix="/api")
 
 
 @app.get("/")

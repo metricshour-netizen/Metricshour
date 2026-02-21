@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy import select, or_
 
 from app.database import get_db
-from app.models import Country, CountryIndicator
+from app.models import Country, CountryIndicator, TradePair, StockCountryRevenue, Asset
 
 router = APIRouter(prefix="/countries", tags=["countries"])
 
@@ -78,6 +78,97 @@ def _country_summary(c: Country) -> dict:
         "natural_resources": c.natural_resources,
         "groupings": _groupings(c),
     }
+
+
+@router.get("/{code}/gdp-history")
+def get_gdp_history(code: str, db: Session = Depends(get_db)) -> list[dict]:
+    country = db.execute(
+        select(Country).where(Country.code == code.upper())
+    ).scalar_one_or_none()
+    if not country:
+        raise HTTPException(status_code=404, detail="Country not found")
+
+    rows = db.execute(
+        select(CountryIndicator)
+        .where(CountryIndicator.country_id == country.id, CountryIndicator.indicator == "gdp_usd")
+        .order_by(CountryIndicator.period_date)
+    ).scalars().all()
+
+    return [{"year": r.period_date.year, "gdp": r.value} for r in rows]
+
+
+@router.get("/{code}/stocks")
+def get_country_stocks(code: str, db: Session = Depends(get_db)) -> list[dict]:
+    country = db.execute(
+        select(Country).where(Country.code == code.upper())
+    ).scalar_one_or_none()
+    if not country:
+        raise HTTPException(status_code=404, detail="Country not found")
+
+    rows = db.execute(
+        select(StockCountryRevenue, Asset)
+        .join(Asset, StockCountryRevenue.asset_id == Asset.id)
+        .where(StockCountryRevenue.country_id == country.id)
+        .order_by(StockCountryRevenue.fiscal_year.desc(), StockCountryRevenue.revenue_pct.desc())
+    ).all()
+
+    seen: set[int] = set()
+    result = []
+    for rev, asset in rows:
+        if asset.id not in seen:
+            seen.add(asset.id)
+            result.append({
+                "symbol": asset.symbol,
+                "name": asset.name,
+                "sector": asset.sector,
+                "market_cap_usd": asset.market_cap_usd,
+                "revenue_pct": rev.revenue_pct,
+                "fiscal_year": rev.fiscal_year,
+            })
+    return result
+
+
+@router.get("/{code}/trade-partners")
+def get_trade_partners(code: str, db: Session = Depends(get_db)) -> list[dict]:
+    country = db.execute(
+        select(Country).where(Country.code == code.upper())
+    ).scalar_one_or_none()
+    if not country:
+        raise HTTPException(status_code=404, detail="Country not found")
+
+    pairs = db.execute(
+        select(TradePair)
+        .where(or_(TradePair.exporter_id == country.id, TradePair.importer_id == country.id))
+        .order_by(TradePair.trade_value_usd.desc())
+        .limit(20)
+    ).scalars().all()
+
+    partner_ids = {
+        (p.importer_id if p.exporter_id == country.id else p.exporter_id)
+        for p in pairs
+    }
+    partners: dict[int, Country] = {}
+    if partner_ids:
+        rows = db.execute(select(Country).where(Country.id.in_(partner_ids))).scalars().all()
+        partners = {c.id: c for c in rows}
+
+    result = []
+    for p in pairs:
+        is_exporter = p.exporter_id == country.id
+        partner_id = p.importer_id if is_exporter else p.exporter_id
+        partner = partners.get(partner_id)
+        if not partner:
+            continue
+        exports = p.exports_usd if is_exporter else p.imports_usd
+        imports = p.imports_usd if is_exporter else p.exports_usd
+        result.append({
+            "partner": {"code": partner.code, "name": partner.name, "flag": partner.flag_emoji},
+            "exports_usd": exports,
+            "imports_usd": imports,
+            "balance_usd": (exports or 0) - (imports or 0),
+            "trade_value_usd": p.trade_value_usd,
+        })
+    return result
 
 
 def _groupings(c: Country) -> list[str]:
