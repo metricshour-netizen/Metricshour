@@ -228,7 +228,7 @@
         No assets match "{{ search }}"
       </div>
 
-      <p class="text-xs text-gray-700 mt-2">Data: Marketstack · CoinGecko · exchangerate.host · Bloomberg · FRED</p>
+      <p class="text-xs text-gray-700 mt-2">Data: Marketstack · CoinGecko · exchangerate.host · FRED · SEC EDGAR</p>
     </template>
   </main>
 </template>
@@ -375,5 +375,11 @@ function fmtPrice(v: number): string {
 useSeoMeta({
   title: 'Markets — MetricsHour',
   description: 'Search crypto, stocks, ETFs, indices, bonds, commodities and FX. Real-time prices and global market data.',
+  ogTitle: 'Markets — MetricsHour',
+  ogDescription: 'Search crypto, stocks, ETFs, indices, bonds, commodities and FX. Real-time prices and global market data.',
+  ogUrl: 'https://metricshour.com/markets',
+  ogType: 'website',
+  twitterTitle: 'Markets — MetricsHour',
+  twitterDescription: 'Search crypto, stocks, ETFs, indices, bonds, commodities and FX. Real-time prices and global market data.',
 })
 </script>

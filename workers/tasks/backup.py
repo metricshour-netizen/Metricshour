@@ -49,7 +49,7 @@ def _dump_and_compress() -> bytes:
     env, _ = _pg_env()
 
     cmd = [
-        "pg_dump",
+        "/usr/bin/pg_dump",
         "--no-password",
         "--format=plain",
         "--no-owner",

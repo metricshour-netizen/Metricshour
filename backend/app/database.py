@@ -11,8 +11,8 @@ def _make_engine():
     return create_engine(
         settings.database_url,
         pool_pre_ping=True,   # reconnect if connection dropped
-        pool_size=10,
-        max_overflow=20,
+        pool_size=2,          # PgBouncer handles real pooling; keep SQLAlchemy pool tiny
+        max_overflow=3,       # max 5 total connections from this process
     )
 
 
