@@ -10,6 +10,7 @@ from app.config import settings
 from app.limiter import limiter
 from app.routers import health, countries, assets, trade, auth, search, feed, admin
 from app.routers.admin import public_router as blog_router
+from app.routers import intelligence
 
 if settings.sentry_dsn:
     sentry_sdk.init(
@@ -44,6 +45,7 @@ app.include_router(search.router, prefix="/api")
 app.include_router(feed.router, prefix="/api")
 app.include_router(admin.router, prefix="/api")
 app.include_router(blog_router, prefix="/api")
+app.include_router(intelligence.router, prefix="/api")
 
 
 @app.get("/")

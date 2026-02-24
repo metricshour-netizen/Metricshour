@@ -49,6 +49,7 @@ app = Celery('metricshour', include=[
     'tasks.fx',
     'tasks.backup',
     'tasks.feed_generator',
+    'tasks.summaries',
 ])
 
 # Upstash Redis uses TLS (rediss://); Celery requires ssl_cert_reqs to be explicit.
@@ -89,6 +90,18 @@ app.conf.update(
         'feed-generator-every-15min': {
             'task': 'tasks.feed_generator.generate_feed_events',
             'schedule': 900.0,
+        },
+        'sitemap-redeploy-daily-4am': {
+            'task': 'tasks.sitemap_deploy.trigger_pages_deploy',
+            'schedule': crontab(hour=4, minute=0),
+        },
+        'page-summaries-daily-2am': {
+            'task': 'tasks.summaries.generate_page_summaries',
+            'schedule': crontab(hour=2, minute=0),
+        },
+        'spotlight-refresh-every-3hr': {
+            'task': 'tasks.summaries.refresh_spotlight',
+            'schedule': crontab(minute=0, hour='*/3'),
         },
     },
 )
