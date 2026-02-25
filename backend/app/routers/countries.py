@@ -108,6 +108,40 @@ def get_gdp_history(code: str, db: Session = Depends(get_db)) -> list[dict]:
     return [{"year": r.period_date.year, "gdp": r.value} for r in rows]
 
 
+@router.get("/{code}/timeseries")
+def get_country_timeseries(
+    code: str,
+    keys: str = "gdp_growth_pct,inflation_pct,interest_rate_pct,unemployment_pct",
+    db: Session = Depends(get_db),
+) -> dict:
+    """Return year-over-year time series for requested indicator keys.
+    Response shape: { key: [{year: int, value: float}] }
+    """
+    country = db.execute(
+        select(Country).where(Country.code == code.upper())
+    ).scalar_one_or_none()
+    if not country:
+        raise HTTPException(status_code=404, detail="Country not found")
+
+    key_list = [k.strip() for k in keys.split(",") if k.strip()][:6]  # cap at 6 series
+
+    result: dict[str, list[dict]] = {}
+    for key in key_list:
+        rows = db.execute(
+            select(CountryIndicator)
+            .where(
+                CountryIndicator.country_id == country.id,
+                CountryIndicator.indicator == key,
+                CountryIndicator.value.isnot(None),
+            )
+            .order_by(CountryIndicator.period_date)
+        ).scalars().all()
+        if rows:
+            result[key] = [{"year": r.period_date.year, "value": round(r.value, 4)} for r in rows]
+
+    return result
+
+
 @router.get("/{code}/stocks")
 def get_country_stocks(code: str, db: Session = Depends(get_db)) -> list[dict]:
     country = db.execute(
@@ -164,12 +198,17 @@ def get_trade_partners(code: str, db: Session = Depends(get_db)) -> list[dict]:
         partners = {c.id: c for c in rows}
 
     result = []
+    seen_partners: set[str] = set()
     for p in pairs:
         is_exporter = p.exporter_id == country.id
         partner_id = p.importer_id if is_exporter else p.exporter_id
         partner = partners.get(partner_id)
         if not partner:
             continue
+        # Skip duplicate partners — pairs are sorted desc by trade_value_usd so first hit is best year
+        if partner.code in seen_partners:
+            continue
+        seen_partners.add(partner.code)
         exports = p.exports_usd if is_exporter else p.imports_usd
         imports = p.imports_usd if is_exporter else p.exports_usd
         result.append({

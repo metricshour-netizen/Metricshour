@@ -70,12 +70,44 @@ def get_trade_pair(
         .limit(1)
     ).scalar_one_or_none()
 
-    countries = {exp.id: exp, imp.id: imp}
+    reversed_pair = False
+    if not pair:
+        # UN Comtrade stores flows by reporter — try the reverse direction
+        pair = db.execute(
+            select(TradePair)
+            .where(TradePair.exporter_id == imp.id, TradePair.importer_id == exp.id)
+            .order_by(TradePair.year.desc())
+            .limit(1)
+        ).scalar_one_or_none()
+        if pair:
+            reversed_pair = True
+
+    trade_data = None
+    if pair:
+        if reversed_pair:
+            # Re-orient values from exp's perspective (swap exports ↔ imports, negate balance)
+            trade_data = {
+                "id": pair.id,
+                "year": pair.year,
+                "exporter": _country_ref(exp),
+                "importer": _country_ref(imp),
+                "trade_value_usd": pair.trade_value_usd,
+                "exports_usd": pair.imports_usd,
+                "imports_usd": pair.exports_usd,
+                "balance_usd": -(pair.balance_usd or 0),
+                "exporter_gdp_share_pct": pair.importer_gdp_share_pct,
+                "importer_gdp_share_pct": pair.exporter_gdp_share_pct,
+                "top_export_products": pair.top_import_products or [],
+                "top_import_products": pair.top_export_products or [],
+            }
+        else:
+            countries = {exp.id: exp, imp.id: imp}
+            trade_data = _pair_summary(pair, countries)
 
     return {
         "exporter": _country_ref(exp),
         "importer": _country_ref(imp),
-        "trade_data": _pair_summary(pair, countries) if pair else None,
+        "trade_data": trade_data,
     }
 
 
