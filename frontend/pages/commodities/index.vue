@@ -148,5 +148,11 @@ function fmtPrice(v: number): string {
 useSeoMeta({
   title: 'Commodities — MetricsHour',
   description: 'Real-time commodity prices: crude oil, gold, silver, copper, palm oil, wheat and 20+ instruments.',
+  ogTitle: 'Commodities — MetricsHour',
+  ogDescription: 'Real-time commodity prices: crude oil, gold, silver, copper, palm oil, wheat and 20+ instruments.',
+  ogUrl: 'https://metricshour.com/commodities',
+  ogType: 'website',
+  twitterTitle: 'Commodities — MetricsHour',
+  twitterDescription: 'Real-time commodity prices: crude oil, gold, silver, copper, palm oil, wheat and 20+ instruments.',
 })
 </script>

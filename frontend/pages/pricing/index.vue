@@ -112,5 +112,31 @@ const tiers = [
 useSeoMeta({
   title: 'Pricing — MetricsHour',
   description: 'Free global financial data. Pro from $9.99/month for real-time prices and AI insights. No Bloomberg Terminal required.',
+  ogTitle: 'Pricing — MetricsHour',
+  ogDescription: 'Free global financial data. Pro from $9.99/month for real-time prices and AI insights. No Bloomberg Terminal required.',
+  ogUrl: 'https://metricshour.com/pricing',
+  ogType: 'website',
+  twitterTitle: 'Pricing — MetricsHour',
+  twitterDescription: 'Free global financial data. Pro from $9.99/month for real-time prices and AI insights. No Bloomberg Terminal required.',
+})
+
+useHead({
+  script: [{
+    type: 'application/ld+json',
+    innerHTML: JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'Product',
+      name: 'MetricsHour Pro',
+      description: 'Real-time global financial data with AI-powered market insights.',
+      url: 'https://metricshour.com/pricing',
+      brand: { '@type': 'Brand', name: 'MetricsHour' },
+      offers: [
+        { '@type': 'Offer', name: 'Free', price: '0', priceCurrency: 'USD', availability: 'https://schema.org/InStock' },
+        { '@type': 'Offer', name: 'Pro', price: '9.99', priceCurrency: 'USD', availability: 'https://schema.org/InStock' },
+        { '@type': 'Offer', name: 'Analyst', price: '29.99', priceCurrency: 'USD', availability: 'https://schema.org/InStock' },
+        { '@type': 'Offer', name: 'Enterprise', price: '199', priceCurrency: 'USD', availability: 'https://schema.org/InStock' },
+      ],
+    }),
+  }],
 })
 </script>

@@ -8,11 +8,13 @@ compatibility_date = "2024-11-01"
 binding = "API_CACHE"
 id = "f58822613dbd46e6b044b5ae8d5553aa"
 
-# Route: intercept all requests to api.metricshour.com
-# Must add DNS record: api.metricshour.com → Worker (orange cloud)
-[[routes]]
-pattern = "api.metricshour.com/*"
-zone_name = "metricshour.com"
+
+
+
 
 [vars]
 ORIGIN = "https://89.167.35.114"
+
+[[routes]]
+pattern = "api.metricshour.com/*"
+zone_name = "metricshour.com"

@@ -21,17 +21,6 @@
   <main class="max-w-7xl mx-auto px-4 py-16">
     <!-- Hero -->
     <div class="text-center mb-16">
-      <h1 class="text-3xl sm:text-4xl md:text-6xl font-bold text-white mb-4 leading-tight">
-        Global financial intelligence.<br>
-        <span class="text-emerald-400">One place.</span>
-      </h1>
-      <p class="text-gray-300 text-base sm:text-xl max-w-2xl mx-auto mb-2 font-medium">
-        Structured macro &amp; market data, cleanly comparable.
-      </p>
-      <p class="text-gray-500 text-sm sm:text-base max-w-xl mx-auto mb-8">
-        30 seconds — not 30 minutes across 4 websites.
-      </p>
-
       <!-- Intelligence signal strip -->
       <div class="flex items-center justify-center gap-2 flex-wrap mb-8">
         <span class="inline-flex items-center gap-1.5 bg-[#111827] border border-[#1f2937] text-xs text-gray-400 px-3 py-1.5 rounded-full">
@@ -42,8 +31,19 @@
           <span class="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse inline-block"></span>
           130+ assets across all classes
         </span>
-        <span class="inline-flex items-center gap-1.5 bg-[#111827] border border-emerald-900 text-xs text-emerald-400 px-3 py-1.5 rounded-full font-medium">
-          🇺🇸 AAPL earns 19% revenue from 🇨🇳 China
+        <!-- Adaptive intelligence card — rotates every 5s, sourced from /api/intelligence/spotlight -->
+        <NuxtLink
+          v-if="activeSpotlight"
+          :to="activeSpotlight.link"
+          class="inline-flex items-center gap-1.5 bg-[#111827] border border-emerald-900 text-xs text-emerald-400 px-3 py-1.5 rounded-full font-medium hover:border-emerald-600 transition-colors"
+          :title="activeSpotlight.subtext"
+        >
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block"></span>
+          {{ activeSpotlight.text }}
+        </NuxtLink>
+        <span v-else class="inline-flex items-center gap-1.5 bg-[#111827] border border-emerald-900 text-xs text-emerald-400 px-3 py-1.5 rounded-full font-medium">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block"></span>
+          Loading market intelligence...
         </span>
       </div>
 
@@ -377,6 +377,26 @@ function fmtUsd(v: number | null | undefined): string {
   return `${sign}$${abs.toLocaleString()}`
 }
 
+// ─── Adaptive Spotlight (geo-revenue intelligence, rotates every 5s) ──────────
+
+const { data: spotlightData } = await useAsyncData('spotlight',
+  () => get<any[]>('/api/intelligence/spotlight').catch(() => []),
+  { server: false },
+)
+
+const spotlightIndex = ref(0)
+const activeSpotlight = computed(() => (spotlightData.value ?? [])[spotlightIndex.value] ?? null)
+
+// Rotate through cards every 5 seconds
+let spotlightTimer: ReturnType<typeof setInterval> | null = null
+onMounted(() => {
+  spotlightTimer = setInterval(() => {
+    const len = (spotlightData.value ?? []).length
+    if (len > 1) spotlightIndex.value = (spotlightIndex.value + 1) % len
+  }, 5000)
+})
+onUnmounted(() => { if (spotlightTimer) clearInterval(spotlightTimer) })
+
 // ─── Market Ticker ────────────────────────────────────────────────────────────
 
 const TICKER_SYMBOLS = ['BTC', 'ETH', 'SOL', 'AAPL', 'NVDA', 'TSLA', 'MSFT', 'SPY', 'QQQ', 'XAUUSD', 'WTI', 'EURUSD', 'USDJPY', 'BNB', 'XAGUSD']
@@ -420,6 +440,41 @@ const tickerItems = computed(() => {
 useSeoMeta({
   title: 'MetricsHour — Global Financial Intelligence',
   description: 'Connect stock geographic revenue, bilateral trade flows, and country macro data. 196 countries, 5,000+ stocks, 38,000+ trade pairs. Free forever.',
+  ogTitle: 'MetricsHour — Global Financial Intelligence',
+  ogDescription: 'Connect stock geographic revenue, bilateral trade flows, and country macro data. 196 countries, 5,000+ stocks, 38,000+ trade pairs. Free forever.',
+  ogUrl: 'https://metricshour.com/',
+  ogType: 'website',
+  twitterTitle: 'MetricsHour — Global Financial Intelligence',
+  twitterDescription: 'Connect stock geographic revenue, bilateral trade flows, and country macro data. 196 countries, 5,000+ stocks, 38,000+ trade pairs. Free forever.',
+})
+
+useHead({
+  script: [{
+    type: 'application/ld+json',
+    innerHTML: JSON.stringify({
+      '@context': 'https://schema.org',
+      '@graph': [
+        {
+          '@type': 'Organization',
+          name: 'MetricsHour',
+          url: 'https://metricshour.com',
+          logo: 'https://metricshour.com/favicon.svg',
+          sameAs: ['https://twitter.com/metricshour'],
+          description: 'Global financial intelligence platform — stocks, macro data, bilateral trade flows, and commodities.',
+        },
+        {
+          '@type': 'WebSite',
+          name: 'MetricsHour',
+          url: 'https://metricshour.com',
+          potentialAction: {
+            '@type': 'SearchAction',
+            target: { '@type': 'EntryPoint', urlTemplate: 'https://metricshour.com/?q={search_term_string}' },
+            'query-input': 'required name=search_term_string',
+          },
+        },
+      ],
+    }),
+  }],
 })
 </script>
 

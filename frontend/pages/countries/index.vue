@@ -110,5 +110,11 @@ const filtered = computed(() => {
 useSeoMeta({
   title: 'Countries — MetricsHour',
   description: 'Macro data for 196 countries: GDP, inflation, trade, debt, and 80+ indicators.',
+  ogTitle: 'Countries — MetricsHour',
+  ogDescription: 'Macro data for 196 countries: GDP, inflation, trade, debt, and 80+ indicators.',
+  ogUrl: 'https://metricshour.com/countries',
+  ogType: 'website',
+  twitterTitle: 'Countries — MetricsHour',
+  twitterDescription: 'Macro data for 196 countries: GDP, inflation, trade, debt, and 80+ indicators.',
 })
 </script>

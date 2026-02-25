@@ -139,5 +139,11 @@ function fmtCap(v: number | null): string {
 useSeoMeta({
   title: 'Stocks — MetricsHour',
   description: 'Top global stocks with geographic revenue exposure from SEC EDGAR. See which countries each stock earns from and how trade flows affect your portfolio.',
+  ogTitle: 'Stocks — MetricsHour',
+  ogDescription: 'Top global stocks with geographic revenue exposure from SEC EDGAR. See which countries each stock earns from and how trade flows affect your portfolio.',
+  ogUrl: 'https://metricshour.com/stocks',
+  ogType: 'website',
+  twitterTitle: 'Stocks — MetricsHour',
+  twitterDescription: 'Top global stocks with geographic revenue exposure from SEC EDGAR. See which countries each stock earns from and how trade flows affect your portfolio.',
 })
 </script>

@@ -84,6 +84,31 @@ function fmtDate(iso?: string): string {
 useSeoMeta({
   title: computed(() => post.value ? `${post.value.title} — MetricsHour` : 'Article — MetricsHour'),
   description: computed(() => post.value?.excerpt || ''),
-  ogImage: computed(() => post.value?.cover_image_url || ''),
+  ogTitle: computed(() => post.value ? `${post.value.title} — MetricsHour` : 'Article — MetricsHour'),
+  ogDescription: computed(() => post.value?.excerpt || ''),
+  ogUrl: computed(() => `https://metricshour.com/blog/${slug}`),
+  ogType: 'article',
+  ogImage: computed(() => post.value?.cover_image_url || 'https://metricshour.com/og-image.png'),
+  twitterTitle: computed(() => post.value ? `${post.value.title} — MetricsHour` : 'Article — MetricsHour'),
+  twitterDescription: computed(() => post.value?.excerpt || ''),
+  twitterImage: computed(() => post.value?.cover_image_url || 'https://metricshour.com/og-image.png'),
+})
+
+useHead({
+  link: [{ rel: 'canonical', href: `https://metricshour.com/blog/${slug}` }],
+  script: [{
+    type: 'application/ld+json',
+    innerHTML: computed(() => post.value ? JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'Article',
+      headline: post.value.title,
+      description: post.value.excerpt || '',
+      image: post.value.cover_image_url || 'https://metricshour.com/og-image.png',
+      author: { '@type': 'Person', name: post.value.author_name },
+      publisher: { '@type': 'Organization', name: 'MetricsHour', url: 'https://metricshour.com' },
+      datePublished: post.value.published_at || '',
+      url: `https://metricshour.com/blog/${slug}`,
+    }) : '{}'),
+  }],
 })
 </script>
