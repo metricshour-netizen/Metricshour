@@ -4,6 +4,7 @@ from sqlalchemy import select
 
 from app.database import get_db
 from app.models import TradePair, Country
+from app.models.country import CountryIndicator
 from app.storage import cache_get, cache_set
 
 router = APIRouter(prefix="/trade", tags=["trade"])
@@ -64,7 +65,7 @@ def get_trade_pair(
     if not exp or not imp:
         raise HTTPException(status_code=404, detail="Country not found")
 
-    cache_key = f"api:trade:{exporter_code.upper()}:{importer_code.upper()}"
+    cache_key = f"api:trade:v2:{exporter_code.upper()}:{importer_code.upper()}"
     cached = cache_get(cache_key)
     if cached is not None:
         return cached
@@ -110,9 +111,30 @@ def get_trade_pair(
             countries = {exp.id: exp, imp.id: imp}
             trade_data = _pair_summary(pair, countries)
 
+    # Fetch latest macro indicators for both countries
+    indicator_names = ["gdp_usd", "gdp_growth_pct", "inflation_pct"]
+    country_ids = [exp.id, imp.id]
+    raw_indicators = db.execute(
+        select(CountryIndicator)
+        .where(
+            CountryIndicator.country_id.in_(country_ids),
+            CountryIndicator.indicator.in_(indicator_names),
+        )
+        .order_by(CountryIndicator.country_id, CountryIndicator.indicator, CountryIndicator.period_date.desc())
+    ).scalars().all()
+
+    # Keep only the most recent value per (country, indicator)
+    latest: dict[int, dict[str, float]] = {exp.id: {}, imp.id: {}}
+    seen: set[tuple[int, str]] = set()
+    for row in raw_indicators:
+        key = (row.country_id, row.indicator)
+        if key not in seen:
+            seen.add(key)
+            latest[row.country_id][row.indicator] = row.value
+
     result = {
-        "exporter": _country_ref(exp),
-        "importer": _country_ref(imp),
+        "exporter": _country_ref(exp, latest.get(exp.id, {})),
+        "importer": _country_ref(imp, latest.get(imp.id, {})),
         "trade_data": trade_data,
     }
     # Trade data is annual — cache for 6 hours
@@ -139,5 +161,11 @@ def _pair_summary(pair: TradePair, countries: dict[int, Country]) -> dict:
     }
 
 
-def _country_ref(c: Country) -> dict:
-    return {"code": c.code, "name": c.name, "flag": c.flag_emoji}
+def _country_ref(c: Country, indicators: dict | None = None) -> dict:
+    return {
+        "code": c.code,
+        "name": c.name,
+        "flag": c.flag_emoji,
+        "currency_code": c.currency_code,
+        "indicators": indicators or {},
+    }
