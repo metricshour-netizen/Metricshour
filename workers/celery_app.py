@@ -51,6 +51,14 @@ app = Celery('metricshour', include=[
     'tasks.feed_generator',
     'tasks.summaries',
     'tasks.og_images',
+    # Data collection workers
+    'tasks.world_bank_update',
+    'tasks.ecb_fx_rates',
+    'tasks.central_bank_rss',
+    'tasks.imf_update',
+    'tasks.oecd_update',
+    'tasks.trade_update',
+    'tasks.sitemap_deploy',
 ])
 
 # Upstash Redis uses TLS (rediss://); Celery requires ssl_cert_reqs to be explicit.
@@ -107,6 +115,50 @@ app.conf.update(
         'og-images-daily-330am': {
             'task': 'tasks.og_images.generate_og_images',
             'schedule': crontab(hour=3, minute=30),
+        },
+
+        # --- Data collection: public domain sources ---
+
+        # World Bank: 50+ indicators, all 196 countries — daily at 6am
+        'world-bank-update-daily-6am': {
+            'task': 'tasks.world_bank_update.update_world_bank',
+            'schedule': crontab(hour=6, minute=0),
+        },
+
+        # ECB: EUR FX reference rates — daily at 6:30am (published ~16:00 CET prior day)
+        'ecb-fx-daily-630am': {
+            'task': 'tasks.ecb_fx_rates.update_ecb_fx',
+            'schedule': crontab(hour=6, minute=30),
+        },
+
+        # Central bank RSS: Fed, ECB, BoE, BoJ rate decisions → FeedEvents — daily 8am
+        'central-bank-rss-daily-8am': {
+            'task': 'tasks.central_bank_rss.fetch_central_bank_news',
+            'schedule': crontab(hour=8, minute=0),
+        },
+
+        # IMF DataMapper: GDP forecasts, inflation, debt — monthly on 1st at 5am
+        'imf-update-monthly': {
+            'task': 'tasks.imf_update.update_imf_data',
+            'schedule': crontab(hour=5, minute=0, day_of_month=1),
+        },
+
+        # OECD MEI: interest rates, CPI, industrial production, CLI — weekly Sunday 1am
+        'oecd-update-weekly-sunday': {
+            'task': 'tasks.oecd_update.update_oecd_data',
+            'schedule': crontab(hour=1, minute=0, day_of_week=0),
+        },
+
+        # WITS trade matrix: full annual refresh — Jan 15 at 2am
+        'trade-update-annual-jan15': {
+            'task': 'tasks.trade_update.update_trade_data_annual',
+            'schedule': crontab(hour=2, minute=0, day_of_month=15, month_of_year=1),
+        },
+
+        # Comtrade quarterly update: Apr/Jul/Oct 1st at 3am
+        'trade-update-quarterly': {
+            'task': 'tasks.trade_update.update_trade_data_quarterly',
+            'schedule': crontab(hour=3, minute=0, day_of_month=1, month_of_year='4,7,10'),
         },
     },
 )

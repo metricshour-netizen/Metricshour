@@ -105,6 +105,7 @@ class Country(Base):
         foreign_keys="TradePair.importer_id", back_populates="importer"
     )
     stock_exposures: Mapped[list["StockCountryRevenue"]] = relationship(back_populates="country")
+    institutions: Mapped[list["CountryInstitution"]] = relationship(back_populates="country")
 
 
 class CountryIndicator(Base):
@@ -279,3 +280,53 @@ class TradePair(Base):
 
     exporter: Mapped["Country"] = relationship(foreign_keys=[exporter_id], back_populates="exports_to")
     importer: Mapped["Country"] = relationship(foreign_keys=[importer_id], back_populates="imports_from")
+
+
+class CountryInstitution(Base):
+    """
+    Official institutional URLs for each country — government portal, central bank,
+    stats office, ministry of finance, stock exchange, tax/customs/trade authorities.
+    One row per country.
+    """
+
+    __tablename__ = "country_institutions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    country_id: Mapped[int] = mapped_column(ForeignKey("countries.id", ondelete="CASCADE"),
+                                             nullable=False, unique=True)
+
+    # Government
+    gov_portal_url: Mapped[str] = mapped_column(String(500), nullable=True)
+
+    # Central Bank
+    central_bank_url: Mapped[str] = mapped_column(String(500), nullable=True)
+    central_bank_name: Mapped[str] = mapped_column(String(200), nullable=True)
+
+    # Statistics Office
+    stats_office_url: Mapped[str] = mapped_column(String(500), nullable=True)
+    stats_office_name: Mapped[str] = mapped_column(String(200), nullable=True)
+
+    # Ministry of Finance
+    min_finance_url: Mapped[str] = mapped_column(String(500), nullable=True)
+
+    # Stock Exchange
+    stock_exchange_url: Mapped[str] = mapped_column(String(500), nullable=True)
+    stock_exchange_name: Mapped[str] = mapped_column(String(200), nullable=True)
+
+    # Revenue / Tax Authority
+    revenue_authority_url: Mapped[str] = mapped_column(String(500), nullable=True)
+    revenue_authority_name: Mapped[str] = mapped_column(String(200), nullable=True)
+
+    # Customs
+    customs_authority_url: Mapped[str] = mapped_column(String(500), nullable=True)
+
+    # Trade Ministry / Export Promotion
+    trade_ministry_url: Mapped[str] = mapped_column(String(500), nullable=True)
+    export_promotion_url: Mapped[str] = mapped_column(String(500), nullable=True)
+
+    # Chamber of Commerce
+    chamber_of_commerce_url: Mapped[str] = mapped_column(String(500), nullable=True)
+
+    updated_at: Mapped[date] = mapped_column(Date, nullable=True)
+
+    country: Mapped["Country"] = relationship(back_populates="institutions")

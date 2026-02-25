@@ -60,6 +60,11 @@ def run_all() -> None:
             from app.seeders.feed import seed_feed
             seed_feed(db)
 
+        if not only or only == "institutions":
+            log.info("=== Seeding country institutions (gov portals, central banks, stats offices) ===")
+            from app.seeders.institutions import seed_institutions
+            seed_institutions(db)
+
     finally:
         db.close()
 
