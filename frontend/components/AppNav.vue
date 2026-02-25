@@ -27,6 +27,8 @@
         <template v-else>
           <button class="text-xs bg-emerald-700 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg transition-colors font-semibold" @click="showAuth = true">Sign In</button>
         </template>
+        <!-- Dark/light toggle -->
+        <button class="text-lg leading-none" :title="isDark ? 'Switch to light mode' : 'Switch to dark mode'" @click="toggleTheme">{{ isDark ? '☀️' : '🌙' }}</button>
       </div>
 
       <!-- Mobile right: Feed + hamburger -->
@@ -74,4 +76,15 @@
 const { isLoggedIn, user, logout } = useAuth()
 const showAuth = ref(false)
 const menuOpen = ref(false)
+
+const isDark = ref(true)
+onMounted(() => {
+  isDark.value = localStorage.getItem('theme') !== 'light'
+  document.documentElement.classList.toggle('light-mode', !isDark.value)
+})
+function toggleTheme() {
+  isDark.value = !isDark.value
+  localStorage.setItem('theme', isDark.value ? 'dark' : 'light')
+  document.documentElement.classList.toggle('light-mode', !isDark.value)
+}
 </script>
