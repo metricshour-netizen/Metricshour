@@ -108,7 +108,7 @@ def _country_summary(code: str, db: Session) -> str | None:
     rows = (
         db.query(CountryIndicator)
         .filter(CountryIndicator.country_id == country.id)
-        .filter(CountryIndicator.indicator_name.in_([
+        .filter(CountryIndicator.indicator.in_([
             "gdp_usd", "gdp_growth_pct", "inflation_pct",
             "interest_rate_pct", "unemployment_pct", "population",
         ]))
@@ -118,9 +118,9 @@ def _country_summary(code: str, db: Session) -> str | None:
     )
     seen_ind: set[str] = set()
     for r in rows:
-        if r.indicator_name not in seen_ind:
-            indicators[r.indicator_name] = r.value
-            seen_ind.add(r.indicator_name)
+        if r.indicator not in seen_ind:
+            indicators[r.indicator] = r.value
+            seen_ind.add(r.indicator)
 
     gdp = indicators.get("gdp_usd")
     growth = indicators.get("gdp_growth_pct")
