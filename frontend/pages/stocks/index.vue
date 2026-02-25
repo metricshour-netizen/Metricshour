@@ -1,8 +1,21 @@
 <template>
   <main class="max-w-7xl mx-auto px-4 py-10">
-    <div class="mb-6">
-      <h1 class="text-xl sm:text-2xl font-bold text-white">Stocks</h1>
-      <p class="text-gray-500 text-sm mt-1">Top global stocks · Geographic revenue exposure · SEC EDGAR filings</p>
+    <div class="mb-6 flex items-center justify-between gap-4">
+      <div>
+        <h1 class="text-xl sm:text-2xl font-bold text-white">Stocks</h1>
+        <p class="text-gray-500 text-sm mt-1">Top global stocks · Geographic revenue exposure · SEC EDGAR filings</p>
+      </div>
+      <!-- Terminal View toggle -->
+      <button
+        @click="terminalView = !terminalView"
+        class="shrink-0 flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border transition-all"
+        :class="terminalView
+          ? 'bg-emerald-950 border-emerald-700 text-emerald-400'
+          : 'border-[#1f2937] text-gray-500 hover:border-gray-500 hover:text-gray-300'"
+        title="Toggle Terminal View"
+      >
+        <span class="font-mono">⌨</span> Terminal
+      </button>
     </div>
 
     <!-- Search -->
@@ -17,8 +30,8 @@
       <button v-if="search" @click="search = ''" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-400 text-xs">✕</button>
     </div>
 
-    <!-- Sector filter -->
-    <div v-if="sectors.length" class="flex gap-2 flex-wrap mb-6">
+    <!-- Sector filter (hidden in terminal view) -->
+    <div v-if="sectors.length && !terminalView" class="flex gap-2 flex-wrap mb-6">
       <button
         @click="activeSector = null"
         class="px-3 py-2 rounded-lg text-xs font-medium border transition-colors"
@@ -38,7 +51,46 @@
     <template v-else>
       <p v-if="search" class="text-xs text-gray-600 mb-4">{{ filtered.length }} result{{ filtered.length !== 1 ? 's' : '' }} for "{{ search }}"</p>
 
-      <div v-if="filtered.length" class="bg-[#111827] border border-[#1f2937] rounded-lg overflow-hidden">
+      <!-- ── Terminal View ──────────────────────────────────────────────────── -->
+      <div v-if="terminalView" class="terminal-view rounded-lg overflow-hidden border border-emerald-900/60">
+        <div class="bg-[#0a0a0a] px-3 py-1.5 border-b border-emerald-900/40 flex items-center justify-between">
+          <span class="text-[10px] text-emerald-700 font-mono uppercase tracking-widest">METRICSHOUR TERMINAL · STOCKS · {{ filtered.length }} LISTED</span>
+          <span class="text-[10px] text-emerald-800 font-mono">{{ nowStr }}</span>
+        </div>
+        <div class="bg-[#0a0a0a] overflow-x-auto">
+          <!-- Header -->
+          <div class="grid font-mono text-[11px] text-emerald-700 uppercase tracking-wider px-3 py-1.5 border-b border-emerald-900/30"
+               style="grid-template-columns: 2rem 5rem 1fr 6rem 5rem 4rem">
+            <span>#</span>
+            <span>TICKER</span>
+            <span>COMPANY</span>
+            <span class="text-right">MKT CAP</span>
+            <span class="text-right">COUNTRY</span>
+            <span class="text-right">SECTOR</span>
+          </div>
+          <!-- Rows (max 50) -->
+          <NuxtLink
+            v-for="(s, i) in terminalRows"
+            :key="s.symbol"
+            :to="`/stocks/${s.symbol}`"
+            class="grid font-mono text-[11px] px-3 py-[5px] border-b border-emerald-900/10 hover:bg-emerald-950/40 transition-colors"
+            style="grid-template-columns: 2rem 5rem 1fr 6rem 5rem 4rem"
+          >
+            <span class="text-emerald-800">{{ i + 1 }}</span>
+            <span class="text-emerald-400 font-bold">{{ s.symbol }}</span>
+            <span class="text-emerald-300 truncate pr-2">{{ s.name }}</span>
+            <span class="text-right text-emerald-500 tabular-nums">{{ fmtCap(s.market_cap_usd) }}</span>
+            <span class="text-right text-emerald-700">{{ s.country?.code || '—' }}</span>
+            <span class="text-right text-emerald-800 truncate">{{ s.sector ? s.sector.slice(0, 4).toUpperCase() : '—' }}</span>
+          </NuxtLink>
+        </div>
+        <div v-if="filtered.length > 50" class="bg-[#0a0a0a] px-3 py-1.5 text-[10px] text-emerald-800 font-mono">
+          ... {{ filtered.length - 50 }} more — use search to filter
+        </div>
+      </div>
+
+      <!-- ── Card View (default) ───────────────────────────────────────────── -->
+      <div v-else-if="filtered.length" class="bg-[#111827] border border-[#1f2937] rounded-lg overflow-hidden">
         <!-- Desktop header -->
         <div class="hidden sm:grid grid-cols-12 px-4 py-2 border-b border-[#1f2937] text-xs text-gray-500 uppercase tracking-wide">
           <span class="col-span-1">#</span>
@@ -98,6 +150,7 @@
 const { get } = useApi()
 const activeSector = ref<string | null>(null)
 const search = ref('')
+const terminalView = ref(false)
 
 const { data: stocks, pending } = await useAsyncData('stocks',
   () => get<any[]>('/api/assets?type=stock').catch(() => []),
@@ -127,6 +180,25 @@ const filtered = computed(() => {
   }
 
   return list
+})
+
+// Terminal View: max 50 rows, densely packed
+const terminalRows = computed(() => filtered.value.slice(0, 50))
+
+// Live clock for terminal header
+const nowStr = ref('')
+onMounted(() => {
+  const update = () => {
+    nowStr.value = new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC'
+  }
+  update()
+  setInterval(update, 1000)
+
+  // Restore terminal view preference
+  terminalView.value = localStorage.getItem('stocks-terminal') === '1'
+})
+watch(terminalView, v => {
+  localStorage.setItem('stocks-terminal', v ? '1' : '0')
 })
 
 function fmtCap(v: number | null): string {

@@ -47,10 +47,11 @@
       <template v-if="showSection('index') && indexFiltered.length">
         <SectionHeader color="bg-purple-400" label="Global Indices" />
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 mb-8">
-          <div
+          <NuxtLink
             v-for="a in indexFiltered"
             :key="a.symbol"
-            class="bg-[#111827] border border-[#1f2937] hover:border-purple-500/50 rounded-xl p-4 transition-colors group"
+            :to="`/stocks/${a.symbol}`"
+            class="bg-[#111827] border border-[#1f2937] hover:border-purple-500/50 rounded-xl p-4 transition-colors group cursor-pointer"
           >
             <div class="flex items-start justify-between mb-2">
               <span class="text-lg">{{ regionIcon(a.sector) }}</span>
@@ -60,7 +61,7 @@
             <div class="text-xs text-gray-500 truncate leading-snug">{{ a.name }}</div>
             <div class="text-[10px] text-gray-600 mt-1">{{ a.sector }} · {{ a.exchange }}</div>
             <PriceBadge :asset="a" />
-          </div>
+          </NuxtLink>
         </div>
       </template>
 

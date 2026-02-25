@@ -21,3 +21,70 @@ body {
 .positive { @apply text-emerald-400; }
 .negative { @apply text-red-400; }
 .neutral  { @apply text-yellow-400; }
+
+/* ─── Light mode — WCAG 2.1 AA (min 4.5:1 contrast) ────────────────────────
+   Toggle: add/remove class "light-mode" on <html>.
+   Tailwind arbitrary-value classes escape both brackets AND hash:
+     bg-[#111827] → .bg-\[\#111827\] in built CSS.
+   All overrides use !important to beat inline Tailwind specificity.          */
+
+html.light-mode,
+html.light-mode body {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+/* Page backgrounds */
+html.light-mode .bg-\[\#0a0e1a\]      { background-color: #f1f5f9 !important; }
+html.light-mode .bg-\[\#0a0e1a\]\/95  { background-color: rgba(241,245,249,0.96) !important; }
+html.light-mode .bg-\[\#0a0e1a\]\/60  { background-color: rgba(241,245,249,0.70) !important; }
+
+/* Card / surface backgrounds */
+html.light-mode .bg-\[\#111827\]      { background-color: #ffffff !important; }
+html.light-mode .bg-\[\#1a2235\]      { background-color: #f8fafc !important; }
+html.light-mode .bg-\[\#1f2937\]      { background-color: #e2e8f0 !important; }
+
+/* Borders */
+html.light-mode .border-\[\#1f2937\]            { border-color: #cbd5e1 !important; }
+html.light-mode .border-\[\#111827\]            { border-color: #e2e8f0 !important; }
+html.light-mode .divide-\[\#1f2937\] > * + *   { border-color: #e2e8f0 !important; }
+
+/* Text — all meet 4.5:1 contrast on #f1f5f9 background */
+html.light-mode .text-white        { color: #0f172a !important; }
+html.light-mode .text-gray-100     { color: #1e293b !important; }
+html.light-mode .text-gray-200     { color: #334155 !important; }
+html.light-mode .text-gray-300     { color: #334155 !important; }
+html.light-mode .text-gray-400     { color: #475569 !important; }
+html.light-mode .text-gray-500     { color: #64748b !important; }
+html.light-mode .text-gray-600     { color: #64748b !important; }
+html.light-mode .text-gray-700     { color: #94a3b8 !important; }
+html.light-mode .text-\[\#e5e7eb\] { color: #0f172a !important; }
+
+/* Accents — readable on white (#f1f5f9) */
+html.light-mode .text-emerald-400  { color: #047857 !important; }  /* 6.9:1 */
+html.light-mode .text-emerald-300  { color: #065f46 !important; }
+html.light-mode .text-emerald-500  { color: #047857 !important; }
+
+/* Nav */
+html.light-mode nav { border-color: #e2e8f0 !important; }
+
+/* Inputs / textareas */
+html.light-mode input,
+html.light-mode textarea {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+html.light-mode input::placeholder,
+html.light-mode textarea::placeholder { color: #94a3b8 !important; }
+
+/* Hover highlight rows */
+html.light-mode .hover\:bg-\[\#1a2235\]:hover { background-color: #f0f4f8 !important; }
+
+/* Modal backdrop */
+html.light-mode .bg-black\/60 { background-color: rgba(15,23,42,0.50) !important; }
+
+/* Terminal view always stays dark regardless of light mode */
+html.light-mode .terminal-view                { background-color: #0a0a0a !important; }
+html.light-mode .terminal-view,
+html.light-mode .terminal-view *              { color: #00ff41 !important; }

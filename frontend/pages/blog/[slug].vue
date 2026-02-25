@@ -38,6 +38,26 @@
         {{ post.body }}
       </div>
 
+      <!-- Share buttons -->
+      <div class="flex items-center gap-3 mb-8">
+        <span class="text-xs text-gray-600 font-semibold uppercase tracking-wide">Share:</span>
+        <a
+          :href="`https://twitter.com/intent/tweet?url=${encodeURIComponent(articleUrl)}&text=${encodeURIComponent(post.title)}`"
+          target="_blank" rel="noopener"
+          class="flex items-center gap-1.5 text-xs text-sky-400 hover:text-sky-300 bg-[#111827] px-3 py-1.5 rounded-lg border border-[#1f2937] hover:border-sky-500/40 transition-colors"
+        >𝕏 Tweet</a>
+        <a
+          :href="`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(articleUrl)}`"
+          target="_blank" rel="noopener"
+          class="flex items-center gap-1.5 text-xs text-sky-300 hover:text-sky-200 bg-[#111827] px-3 py-1.5 rounded-lg border border-[#1f2937] hover:border-sky-500/40 transition-colors"
+        >in LinkedIn</a>
+        <a
+          :href="`https://wa.me/?text=${encodeURIComponent(post.title + ' ' + articleUrl)}`"
+          target="_blank" rel="noopener"
+          class="flex items-center gap-1.5 text-xs text-emerald-400 hover:text-emerald-300 bg-[#111827] px-3 py-1.5 rounded-lg border border-[#1f2937] hover:border-emerald-500/40 transition-colors"
+        >💬 WhatsApp</a>
+      </div>
+
       <!-- Footer -->
       <div class="border-t border-[#1f2937] pt-6">
         <p class="text-xs text-gray-600">Published on MetricsHour · {{ fmtDate(post.published_at) }}</p>
@@ -62,6 +82,7 @@ const route = useRoute()
 const { get } = useApi()
 
 const slug = route.params.slug as string
+const articleUrl = `https://metricshour.com/blog/${slug}`
 
 const { data: post, pending, error } = await useAsyncData(
   `blog-${slug}`,

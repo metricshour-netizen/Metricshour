@@ -213,7 +213,19 @@
             @click.stop
           >
             <div class="w-11 h-11 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center text-lg transition-all">💬</div>
-            <span class="text-[10px] text-white/40">Share</span>
+            <span class="text-[10px] text-white/40">WhatsApp</span>
+          </a>
+
+          <!-- Share: LinkedIn -->
+          <a
+            :href="`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`"
+            target="_blank"
+            rel="noopener"
+            class="action-btn flex flex-col items-center gap-1"
+            @click.stop
+          >
+            <div class="w-11 h-11 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center text-sm font-bold transition-all text-sky-300">in</div>
+            <span class="text-[10px] text-white/40">LinkedIn</span>
           </a>
 
         </div>
@@ -391,12 +403,26 @@ const shareUrl = computed(() => {
 
 function handleCardClick() {
   const url = props.event.source_url
-  if (!url) return
-  if (url.startsWith('http')) {
-    window.open(url, '_blank', 'noopener')
-  } else {
-    navigateTo(url)
+  if (url) {
+    url.startsWith('http') ? window.open(url, '_blank', 'noopener') : navigateTo(url)
+    return
   }
+
+  // No source_url — navigate to the most relevant page based on event type
+  const type = props.event.event_type
+  const data = props.event.event_data || {}
+
+  if (type === 'price_move' && data.symbol) {
+    navigateTo(`/stocks/${data.symbol}`)
+  } else if ((type === 'macro_release' || type === 'indicator_release') && data.country_code) {
+    navigateTo(`/countries/${data.country_code}`)
+  } else if (type === 'trade_update' && data.exporter && data.importer) {
+    navigateTo(`/trade/${data.exporter}-${data.importer}`)
+  } else if (type === 'central_bank' && data.bank) {
+    // Central bank events → markets page (no dedicated CB page yet)
+    navigateTo('/markets')
+  }
+  // blog/article events always have source_url so handled above
 }
 
 // ── Actions ───────────────────────────────────────────────────────────────────
