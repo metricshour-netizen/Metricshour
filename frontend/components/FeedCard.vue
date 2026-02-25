@@ -1,8 +1,9 @@
 <template>
   <article
     ref="cardEl"
-    class="feed-card relative w-full h-full overflow-hidden select-none"
+    class="feed-card relative w-full h-full overflow-hidden select-none cursor-pointer"
     :class="{ 'is-high-importance': isHighImportance }"
+    @click="handleCardClick"
   >
 
     <!-- ── Background ──────────────────────────────────────────────── -->
@@ -191,6 +192,30 @@
             <span class="text-[10px] text-white/40">Open</span>
           </a>
 
+          <!-- Share: Twitter -->
+          <a
+            :href="`https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(cleanTitle)}`"
+            target="_blank"
+            rel="noopener"
+            class="action-btn flex flex-col items-center gap-1"
+            @click.stop
+          >
+            <div class="w-11 h-11 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center text-sm font-bold transition-all text-sky-400">𝕏</div>
+            <span class="text-[10px] text-white/40">Tweet</span>
+          </a>
+
+          <!-- Share: WhatsApp -->
+          <a
+            :href="`https://wa.me/?text=${encodeURIComponent(cleanTitle + ' ' + shareUrl)}`"
+            target="_blank"
+            rel="noopener"
+            class="action-btn flex flex-col items-center gap-1"
+            @click.stop
+          >
+            <div class="w-11 h-11 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center text-lg transition-all">💬</div>
+            <span class="text-[10px] text-white/40">Share</span>
+          </a>
+
         </div>
       </div>
     </div>
@@ -357,6 +382,22 @@ const absoluteTime = computed(() => {
 // ── External URL ──────────────────────────────────────────────────────────────
 const isExternal = computed(() => (props.event.source_url || '').startsWith('http'))
 const externalUrl = computed(() => props.event.source_url || '#')
+const shareUrl = computed(() => {
+  const url = props.event.source_url
+  if (!url) return `https://metricshour.com/feed`
+  if (url.startsWith('http')) return url
+  return `https://metricshour.com${url}`
+})
+
+function handleCardClick() {
+  const url = props.event.source_url
+  if (!url) return
+  if (url.startsWith('http')) {
+    window.open(url, '_blank', 'noopener')
+  } else {
+    navigateTo(url)
+  }
+}
 
 // ── Actions ───────────────────────────────────────────────────────────────────
 async function _interact(type: string) {
