@@ -93,6 +93,11 @@
         </div>
       </div>
 
+      <!-- Page Summary -->
+      <div v-if="pageSummary?.summary" class="bg-[#111827] border border-[#1f2937] rounded-lg p-4 mb-6 text-sm text-gray-300 leading-relaxed">
+        {{ pageSummary.summary }}
+      </div>
+
       <!-- Trade flow visualiser -->
       <div v-if="td" class="bg-[#111827] border border-[#1f2937] rounded-xl p-5 mb-6">
         <h2 class="text-sm font-bold text-white mb-4">Trade Flow</h2>
@@ -238,6 +243,12 @@ const { data, pending, error } = await useAsyncData(
   () => get<any>(`/api/trade/${codeA}/${codeB}`),
 )
 
+const { data: pageSummary } = useAsyncData(
+  `summary-trade-${codeA}-${codeB}`,
+  () => get<any>(`/api/summaries/trade/${codeA.toUpperCase()}-${codeB.toUpperCase()}`).catch(() => null),
+  { server: false },
+)
+
 const td = computed(() => data.value?.trade_data ?? null)
 
 const totalFlow = computed(() => {
@@ -271,8 +282,45 @@ function fmtGdp(v: number | null | undefined): string {
   return `$${(v / 1e6).toFixed(0)}M`
 }
 
+const { public: { r2PublicUrl } } = useRuntimeConfig()
+const ogImageUrl = computed(() =>
+  r2PublicUrl
+    ? `${r2PublicUrl}/og/trade/${pair.toLowerCase()}.png`
+    : 'https://metricshour.com/og-image.png',
+)
+
 useSeoMeta({
   title: computed(() => data.value ? `${data.value.exporter.name}–${data.value.importer.name} Trade — MetricsHour` : 'Bilateral Trade — MetricsHour'),
   description: computed(() => data.value ? `${data.value.exporter.name} and ${data.value.importer.name} bilateral trade flows, top products, and GDP dependency.` : ''),
+  ogTitle: computed(() => data.value ? `${data.value.exporter.name}–${data.value.importer.name} Trade — MetricsHour` : 'Bilateral Trade — MetricsHour'),
+  ogDescription: computed(() => data.value ? `${data.value.exporter.name} and ${data.value.importer.name} bilateral trade flows, top products, and GDP dependency.` : ''),
+  ogUrl: `https://metricshour.com/trade/${pair}`,
+  ogType: 'website',
+  ogImage: ogImageUrl,
+  twitterTitle: computed(() => data.value ? `${data.value.exporter.name}–${data.value.importer.name} Trade — MetricsHour` : 'Bilateral Trade — MetricsHour'),
+  twitterDescription: computed(() => data.value ? `${data.value.exporter.name} and ${data.value.importer.name} bilateral trade flows, top products, and GDP dependency.` : ''),
+  twitterImage: ogImageUrl,
 })
+
+useHead(computed(() => ({
+  link: [{ rel: 'canonical', href: `https://metricshour.com/trade/${pair}` }],
+  script: data.value ? [{
+    type: 'application/ld+json',
+    innerHTML: JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'WebPage',
+      name: `${data.value.exporter.name}–${data.value.importer.name} Trade — MetricsHour`,
+      url: `https://metricshour.com/trade/${pair}`,
+      description: `${data.value.exporter.name} and ${data.value.importer.name} bilateral trade flows, top products, and GDP dependency. Source: UN Comtrade.`,
+      breadcrumb: {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://metricshour.com' },
+          { '@type': 'ListItem', position: 2, name: 'Trade', item: 'https://metricshour.com/trade' },
+          { '@type': 'ListItem', position: 3, name: `${data.value.exporter.name}–${data.value.importer.name}`, item: `https://metricshour.com/trade/${pair}` },
+        ],
+      },
+    }),
+  }] : [],
+})))
 </script>

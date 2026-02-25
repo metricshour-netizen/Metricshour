@@ -60,6 +60,11 @@
         </div>
       </div>
 
+      <!-- Page Summary -->
+      <div v-if="pageSummary?.summary" class="bg-[#111827] border border-[#1f2937] rounded-lg p-4 mb-6 text-sm text-gray-300 leading-relaxed">
+        {{ pageSummary.summary }}
+      </div>
+
       <!-- Quick facts -->
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
         <div class="bg-[#111827] border border-[#1f2937] rounded-lg p-4">
@@ -91,39 +96,30 @@
       </div>
 
       <!-- GDP Chart -->
-      <div class="bg-[#111827] border border-[#1f2937] rounded-lg p-6 mb-6">
-        <h2 class="text-sm font-bold text-white mb-4">GDP History</h2>
-        <div v-if="!gdpHistory?.length" class="h-32 flex items-center justify-center text-gray-600 text-xs">
+      <div class="bg-[#111827] border border-[#1f2937] rounded-lg p-5 mb-4">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-sm font-bold text-white">GDP History</h2>
+          <span v-if="gdpHistory?.length" class="text-xs text-emerald-400 font-medium tabular-nums">
+            {{ fmt('gdp_usd', gdpHistory[gdpHistory.length - 1]?.gdp) }}
+          </span>
+        </div>
+        <div v-if="!gdpHistory?.length" class="h-36 flex items-center justify-center text-gray-600 text-xs">
           No GDP history data available
         </div>
-        <div v-else class="relative">
-          <svg :viewBox="`0 0 400 120`" class="w-full h-36" preserveAspectRatio="none">
-            <defs>
-              <linearGradient id="gdpGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="#10b981" stop-opacity="0.35"/>
-                <stop offset="100%" stop-color="#10b981" stop-opacity="0"/>
-              </linearGradient>
-            </defs>
-            <!-- Horizontal grid -->
-            <line v-for="i in 4" :key="i" x1="0" :y1="i * 24" x2="400" :y2="i * 24" stroke="#1f2937" stroke-width="0.5"/>
-            <!-- Area fill -->
-            <polygon :points="gdpAreaPoints" fill="url(#gdpGrad)"/>
-            <!-- Line -->
-            <polyline :points="gdpLinePoints" fill="none" stroke="#10b981" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
-          </svg>
-          <!-- X-axis labels -->
-          <div class="flex justify-between mt-1 px-0.5">
-            <span
-              v-for="(d, i) in gdpLabelYears"
-              :key="i"
-              class="text-xs text-gray-600"
-            >{{ d }}</span>
-          </div>
-          <!-- Y-axis (last value) -->
-          <div class="absolute top-0 right-0 text-xs text-emerald-400 font-medium">
-            {{ gdpHistory ? fmt('gdp_usd', gdpHistory[gdpHistory.length - 1]?.gdp) : '' }}
-          </div>
+        <EChartLine v-else :option="gdpChartOption" height="160px" />
+      </div>
+
+      <!-- Macro indicators chart -->
+      <div class="bg-[#111827] border border-[#1f2937] rounded-lg p-5 mb-6">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-sm font-bold text-white">Key Indicators Over Time</h2>
+          <span class="text-[10px] text-gray-600">World Bank · 2015–2024</span>
         </div>
+        <div v-if="timeseriesLoading" class="h-44 bg-[#0d1117] rounded-lg animate-pulse" />
+        <div v-else-if="!hasTimeseries" class="h-44 flex items-center justify-center text-gray-600 text-xs">
+          Indicator history not available
+        </div>
+        <EChartLine v-else :option="macroChartOption" height="176px" />
       </div>
 
       <!-- Macro indicators -->
@@ -301,6 +297,19 @@ const { data: localStocks, pending: localStocksLoading } = useAsyncData(
   () => get<any[]>('/api/assets', { type: 'stock', country_code: code.toUpperCase() }).catch(() => []),
 )
 
+const { data: timeseries, pending: timeseriesLoading } = useAsyncData(
+  `timeseries-${code}`,
+  () => get<Record<string, any[]>>(`/api/countries/${code}/timeseries`, {
+    keys: 'gdp_growth_pct,inflation_pct,interest_rate_pct,unemployment_pct',
+  }).catch(() => ({})),
+)
+
+const { data: pageSummary } = useAsyncData(
+  `summary-country-${code}`,
+  () => get<any>(`/api/summaries/country/${code.toUpperCase()}`).catch(() => null),
+  { server: false },
+)
+
 // ── Follow ────────────────────────────────────────────────────────────────────
 const showAuthModal = ref(false)
 const isFollowing = ref(false)
@@ -329,6 +338,13 @@ async function toggleFollow() {
   } catch { /* ignore */ }
 }
 
+const { public: { r2PublicUrl } } = useRuntimeConfig()
+const ogImageUrl = computed(() =>
+  r2PublicUrl
+    ? `${r2PublicUrl}/og/countries/${code.toLowerCase()}.png`
+    : 'https://metricshour.com/og-image.png',
+)
+
 useSeoMeta({
   title: computed(() =>
     country.value
@@ -340,7 +356,49 @@ useSeoMeta({
       ? `GDP, inflation, trade flows, and 80+ macro indicators for ${country.value.name}. Data from World Bank, IMF, and UN Comtrade.`
       : '',
   ),
+  ogTitle: computed(() =>
+    country.value ? `${country.value.name} Economy & Macro Data — MetricsHour` : 'Country — MetricsHour'
+  ),
+  ogDescription: computed(() =>
+    country.value
+      ? `GDP, inflation, trade flows, and 80+ macro indicators for ${country.value.name}. Data from World Bank, IMF, and UN Comtrade.`
+      : ''
+  ),
+  ogUrl: `https://metricshour.com/countries/${code}`,
+  ogType: 'website',
+  ogImage: ogImageUrl,
+  twitterImage: ogImageUrl,
+  twitterTitle: computed(() =>
+    country.value ? `${country.value.name} Economy & Macro Data — MetricsHour` : 'Country — MetricsHour'
+  ),
+  twitterDescription: computed(() =>
+    country.value
+      ? `GDP, inflation, trade flows, and 80+ macro indicators for ${country.value.name}. Data from World Bank, IMF, and UN Comtrade.`
+      : ''
+  ),
 })
+
+useHead(computed(() => ({
+  link: [{ rel: 'canonical', href: `https://metricshour.com/countries/${code}` }],
+  script: country.value ? [{
+    type: 'application/ld+json',
+    innerHTML: JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'WebPage',
+      name: `${country.value.name} Economy & Macro Data — MetricsHour`,
+      url: `https://metricshour.com/countries/${code}`,
+      description: `GDP, inflation, trade flows, and 80+ macro indicators for ${country.value.name}. Data from World Bank, IMF, and UN Comtrade.`,
+      breadcrumb: {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://metricshour.com' },
+          { '@type': 'ListItem', position: 2, name: 'Countries', item: 'https://metricshour.com/countries' },
+          { '@type': 'ListItem', position: 3, name: country.value.name, item: `https://metricshour.com/countries/${code}` },
+        ],
+      },
+    }),
+  }] : [],
+})))
 
 // ─── Formatting helpers ──────────────────────────────────────────────────────
 
@@ -459,52 +517,130 @@ const governanceRows = computed(() => [
   row('Economic freedom', 'economic_freedom_index'),
 ])
 
-// ─── GDP chart (SVG) ──────────────────────────────────────────────────────────
+// ─── GDP chart (ECharts) ──────────────────────────────────────────────────────
 
-const W = 400
-const H = 110
-const PAD = 10
+const gdpChartOption = computed(() => {
+  const data = gdpHistory.value ?? []
+  if (!data.length) return {}
+  const years = data.map((d: any) => String(d.year))
+  const values = data.map((d: any) => d.gdp)
 
-const gdpLinePoints = computed(() => {
-  const data = gdpHistory.value
-  if (!data?.length) return ''
-  const vals = data.map(d => d.gdp)
-  const minV = Math.min(...vals)
-  const maxV = Math.max(...vals)
-  const range = maxV - minV || 1
-  return data.map((d, i) => {
-    const x = PAD + (i / (data.length - 1)) * (W - PAD * 2)
-    const y = (H - PAD) - ((d.gdp - minV) / range) * (H - PAD * 2)
-    return `${x},${y}`
-  }).join(' ')
+  function fmtGdpAxis(v: number) {
+    if (v >= 1e12) return `$${(v / 1e12).toFixed(1)}T`
+    if (v >= 1e9)  return `$${(v / 1e9).toFixed(0)}B`
+    return `$${(v / 1e6).toFixed(0)}M`
+  }
+
+  return {
+    backgroundColor: 'transparent',
+    grid: { top: 8, right: 12, bottom: 28, left: 60, containLabel: false },
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: '#0d1117',
+      borderColor: '#1f2937',
+      borderWidth: 1,
+      textStyle: { color: '#e5e7eb', fontSize: 11 },
+      formatter: (params: any[]) => {
+        const p = params[0]
+        return `<b>${p.name}</b><br/>GDP: <b style="color:#10b981">${fmtGdpAxis(p.value)}</b>`
+      },
+    },
+    xAxis: {
+      type: 'category',
+      data: years,
+      axisLine: { lineStyle: { color: '#1f2937' } },
+      axisTick: { show: false },
+      axisLabel: { color: '#4b5563', fontSize: 10, interval: Math.max(0, Math.floor(years.length / 5) - 1) },
+    },
+    yAxis: {
+      type: 'value',
+      scale: true,
+      splitLine: { lineStyle: { color: '#1a2235', type: 'dashed' } },
+      axisLabel: { color: '#4b5563', fontSize: 10, formatter: fmtGdpAxis },
+    },
+    series: [{
+      type: 'line',
+      data: values,
+      smooth: true,
+      symbol: 'none',
+      lineStyle: { color: '#10b981', width: 2 },
+      areaStyle: { color: 'rgba(16,185,129,0.08)' },
+    }],
+  }
 })
 
-const gdpAreaPoints = computed(() => {
-  const data = gdpHistory.value
-  if (!data?.length) return ''
-  const vals = data.map(d => d.gdp)
-  const minV = Math.min(...vals)
-  const maxV = Math.max(...vals)
-  const range = maxV - minV || 1
-  const pts = data.map((d, i) => {
-    const x = PAD + (i / (data.length - 1)) * (W - PAD * 2)
-    const y = (H - PAD) - ((d.gdp - minV) / range) * (H - PAD * 2)
-    return `${x},${y}`
-  })
-  const firstX = PAD
-  const lastX = PAD + (W - PAD * 2)
-  return `${firstX},${H - PAD} ${pts.join(' ')} ${lastX},${H - PAD}`
+// ─── Macro timeseries chart (ECharts multi-line) ──────────────────────────────
+
+const INDICATOR_META: Record<string, { label: string; color: string }> = {
+  gdp_growth_pct:   { label: 'GDP Growth %',  color: '#10b981' },
+  inflation_pct:    { label: 'Inflation %',    color: '#f59e0b' },
+  interest_rate_pct:{ label: 'Interest Rate %',color: '#60a5fa' },
+  unemployment_pct: { label: 'Unemployment %', color: '#a78bfa' },
+}
+
+const hasTimeseries = computed(() => {
+  const ts = timeseries.value ?? {}
+  return Object.values(ts).some((v: any) => v?.length > 0)
 })
 
-const gdpLabelYears = computed(() => {
-  const data = gdpHistory.value
-  if (!data?.length) return []
-  const n = data.length
-  // Show ~5 evenly-spaced labels
-  const step = Math.max(1, Math.floor(n / 4))
-  const indices = [0]
-  for (let i = step; i < n - 1; i += step) indices.push(i)
-  indices.push(n - 1)
-  return [...new Set(indices)].map(i => data[i].year)
+const macroChartOption = computed(() => {
+  const ts = timeseries.value ?? {}
+  const allYears = [...new Set(
+    Object.values(ts).flatMap((arr: any) => arr.map((d: any) => d.year))
+  )].sort() as number[]
+
+  const series = Object.entries(ts)
+    .filter(([, arr]) => (arr as any[]).length > 0)
+    .map(([key, arr]) => {
+      const meta = INDICATOR_META[key] ?? { label: key, color: '#6b7280' }
+      const yearMap = Object.fromEntries((arr as any[]).map((d: any) => [d.year, d.value]))
+      return {
+        name: meta.label,
+        type: 'line',
+        data: allYears.map(y => yearMap[y] ?? null),
+        connectNulls: false,
+        smooth: true,
+        symbol: 'none',
+        lineStyle: { color: meta.color, width: 1.5 },
+        itemStyle: { color: meta.color },
+      }
+    })
+
+  return {
+    backgroundColor: 'transparent',
+    legend: {
+      top: 0,
+      right: 0,
+      textStyle: { color: '#9ca3af', fontSize: 10 },
+      itemWidth: 12,
+      itemHeight: 3,
+    },
+    grid: { top: 28, right: 12, bottom: 28, left: 48, containLabel: false },
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: '#0d1117',
+      borderColor: '#1f2937',
+      borderWidth: 1,
+      textStyle: { color: '#e5e7eb', fontSize: 11 },
+    },
+    xAxis: {
+      type: 'category',
+      data: allYears.map(String),
+      axisLine: { lineStyle: { color: '#1f2937' } },
+      axisTick: { show: false },
+      axisLabel: { color: '#4b5563', fontSize: 10 },
+    },
+    yAxis: {
+      type: 'value',
+      scale: true,
+      splitLine: { lineStyle: { color: '#1a2235', type: 'dashed' } },
+      axisLabel: {
+        color: '#4b5563',
+        fontSize: 10,
+        formatter: (v: number) => `${v.toFixed(1)}%`,
+      },
+    },
+    series,
+  }
 })
 </script>

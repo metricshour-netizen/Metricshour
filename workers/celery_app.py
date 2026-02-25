@@ -50,6 +50,7 @@ app = Celery('metricshour', include=[
     'tasks.backup',
     'tasks.feed_generator',
     'tasks.summaries',
+    'tasks.og_images',
 ])
 
 # Upstash Redis uses TLS (rediss://); Celery requires ssl_cert_reqs to be explicit.
@@ -102,6 +103,10 @@ app.conf.update(
         'spotlight-refresh-every-3hr': {
             'task': 'tasks.summaries.refresh_spotlight',
             'schedule': crontab(minute=0, hour='*/3'),
+        },
+        'og-images-daily-330am': {
+            'task': 'tasks.og_images.generate_og_images',
+            'schedule': crontab(hour=3, minute=30),
         },
     },
 )

@@ -89,13 +89,57 @@ def kv_delete(key: str) -> None:
         client.delete(_kv_url(key), headers=_kv_headers())
 
 
-# ── KV JSON helpers ───────────────────────────────────────────────────────────
+# ── KV + Redis JSON helpers ────────────────────────────────────────────────────
 
 import json
 import logging
+from functools import lru_cache
+
+import redis as redis_lib
 
 _kv_log = logging.getLogger(__name__)
 
+
+# ── Redis (L1 — app-level, ~10ms) ─────────────────────────────────────────────
+
+@lru_cache(maxsize=1)
+def _get_redis() -> redis_lib.Redis:
+    return redis_lib.from_url(settings.redis_url, decode_responses=True, socket_connect_timeout=2)
+
+
+def redis_json_get(key: str) -> list | dict | None:
+    """Read JSON from Redis. Returns None on miss or any error."""
+    if not settings.redis_url:
+        return None
+    try:
+        raw = _get_redis().get(key)
+        return json.loads(raw) if raw is not None else None
+    except Exception as exc:
+        _kv_log.warning("Redis get failed for %s: %s", key, exc)
+        return None
+
+
+def redis_json_set(key: str, value: list | dict, ttl_seconds: int = 3600) -> None:
+    """Write JSON to Redis with TTL. Silently swallows errors."""
+    if not settings.redis_url:
+        return
+    try:
+        _get_redis().setex(key, ttl_seconds, json.dumps(value, default=str))
+    except Exception as exc:
+        _kv_log.warning("Redis set failed for %s: %s", key, exc)
+
+
+def redis_json_del(key: str) -> None:
+    """Delete a key from Redis."""
+    if not settings.redis_url:
+        return
+    try:
+        _get_redis().delete(key)
+    except Exception as exc:
+        _kv_log.warning("Redis del failed for %s: %s", key, exc)
+
+
+# ── KV (L2 — Cloudflare edge, pushed for CF Worker to serve) ──────────────────
 
 def kv_json_get(key: str) -> list | dict | None:
     """Read a JSON value from KV. Returns None on miss or any error."""
@@ -117,3 +161,16 @@ def kv_json_set(key: str, value: list | dict, ttl_seconds: int = 3600) -> None:
         kv_set(key, json.dumps(value, default=str), ttl_seconds=ttl_seconds)
     except Exception as exc:
         _kv_log.warning("KV set failed for %s: %s", key, exc)
+
+
+# ── Two-layer cache helper ─────────────────────────────────────────────────────
+
+def cache_get(key: str) -> list | dict | None:
+    """L1 Redis → L2 KV. Returns first hit or None."""
+    return redis_json_get(key) or kv_json_get(key)
+
+
+def cache_set(key: str, value: list | dict, ttl_seconds: int = 3600) -> None:
+    """Write to both Redis (L1) and KV (L2) simultaneously."""
+    redis_json_set(key, value, ttl_seconds=ttl_seconds)
+    kv_json_set(key, value, ttl_seconds=ttl_seconds)

@@ -4,6 +4,7 @@ from sqlalchemy import select
 
 from app.database import get_db
 from app.models import TradePair, Country
+from app.storage import cache_get, cache_set
 
 router = APIRouter(prefix="/trade", tags=["trade"])
 
@@ -63,6 +64,11 @@ def get_trade_pair(
     if not exp or not imp:
         raise HTTPException(status_code=404, detail="Country not found")
 
+    cache_key = f"api:trade:{exporter_code.upper()}:{importer_code.upper()}"
+    cached = cache_get(cache_key)
+    if cached is not None:
+        return cached
+
     pair = db.execute(
         select(TradePair)
         .where(TradePair.exporter_id == exp.id, TradePair.importer_id == imp.id)
@@ -104,11 +110,14 @@ def get_trade_pair(
             countries = {exp.id: exp, imp.id: imp}
             trade_data = _pair_summary(pair, countries)
 
-    return {
+    result = {
         "exporter": _country_ref(exp),
         "importer": _country_ref(imp),
         "trade_data": trade_data,
     }
+    # Trade data is annual — cache for 6 hours
+    cache_set(cache_key, result, ttl_seconds=21600)
+    return result
 
 
 def _pair_summary(pair: TradePair, countries: dict[int, Country]) -> dict:

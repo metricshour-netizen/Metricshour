@@ -4,7 +4,7 @@ from sqlalchemy import select, func
 
 from app.database import get_db
 from app.models import Asset, AssetType, Country, Price, StockCountryRevenue
-from app.storage import kv_json_get, kv_json_set
+from app.storage import kv_json_get, kv_json_set, cache_get, cache_set
 
 router = APIRouter(prefix="/assets", tags=["assets"])
 
@@ -94,8 +94,55 @@ def list_assets(
     return result
 
 
+@router.get("/{symbol}/prices")
+def get_asset_prices(
+    symbol: str,
+    interval: str = "15m",
+    limit: int = 200,
+    db: Session = Depends(get_db),
+) -> list[dict]:
+    asset = db.execute(
+        select(Asset).where(Asset.symbol == symbol.upper(), Asset.is_active == True)
+    ).scalar_one_or_none()
+    if not asset:
+        raise HTTPException(status_code=404, detail="Asset not found")
+
+    rows = db.execute(
+        select(Price)
+        .where(Price.asset_id == asset.id, Price.interval == interval)
+        .order_by(Price.timestamp.asc())
+        .limit(limit)
+    ).scalars().all()
+
+    # Fall back to any interval if none found for the requested one
+    if not rows:
+        rows = db.execute(
+            select(Price)
+            .where(Price.asset_id == asset.id)
+            .order_by(Price.timestamp.asc())
+            .limit(limit)
+        ).scalars().all()
+
+    return [
+        {
+            "t": p.timestamp.isoformat(),
+            "o": p.open,
+            "h": p.high,
+            "l": p.low,
+            "c": p.close,
+            "v": p.volume,
+        }
+        for p in rows
+    ]
+
+
 @router.get("/{symbol}")
 def get_asset(symbol: str, db: Session = Depends(get_db)) -> dict:
+    cache_key = f"api:asset:{symbol.upper()}"
+    cached = cache_get(cache_key)
+    if cached is not None:
+        return cached
+
     asset = db.execute(
         select(Asset).where(Asset.symbol == symbol.upper(), Asset.is_active == True)
     ).scalar_one_or_none()
@@ -157,6 +204,8 @@ def get_asset(symbol: str, db: Session = Depends(get_db)) -> dict:
     } if latest_price else None
     result["country_revenues"] = revenues
 
+    # Prices are updated every 15min — cache for 15min so data is never stale
+    cache_set(cache_key, result, ttl_seconds=900)
     return result
 
 

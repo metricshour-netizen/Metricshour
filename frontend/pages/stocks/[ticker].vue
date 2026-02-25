@@ -84,6 +84,11 @@
         </div>
       </div>
 
+      <!-- Page Summary -->
+      <div v-if="pageSummary?.summary" class="bg-[#111827] border border-[#1f2937] rounded-lg p-4 mb-6 text-sm text-gray-300 leading-relaxed">
+        {{ pageSummary.summary }}
+      </div>
+
       <!-- Geographic Revenue — core differentiator -->
       <div class="bg-[#111827] border border-[#1f2937] rounded-xl p-6 mb-6">
         <div class="flex items-start justify-between mb-5 flex-wrap gap-3">
@@ -148,19 +153,37 @@
         </div>
       </div>
 
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <!-- Price History -->
-        <div class="bg-[#111827] border border-[#1f2937] rounded-xl p-6">
-          <div class="flex items-center justify-between mb-4">
-            <h2 class="text-base font-bold text-white">Price History</h2>
-            <span class="text-[10px] text-yellow-400 bg-yellow-900/20 border border-yellow-900 px-2 py-1 rounded">Live feed coming</span>
-          </div>
-          <div class="h-36 rounded-lg bg-[#0d1117] border border-[#1f2937] flex flex-col items-center justify-center gap-2">
-            <div class="text-gray-700 text-3xl">📈</div>
-            <span class="text-gray-600 text-xs">Price chart available once market feed is connected</span>
+      <!-- Price Chart — full width above the 2-col grid -->
+      <div class="bg-[#111827] border border-[#1f2937] rounded-xl p-5 mb-6">
+        <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+          <h2 class="text-base font-bold text-white">Price Chart</h2>
+          <div class="flex items-center gap-1.5">
+            <button
+              v-for="p in pricePeriods"
+              :key="p.key"
+              @click="activePeriod = p.key"
+              class="text-xs px-2.5 py-1 rounded transition-colors font-medium"
+              :class="activePeriod === p.key
+                ? 'bg-emerald-600 text-white'
+                : 'text-gray-500 hover:text-gray-300'"
+            >{{ p.label }}</button>
           </div>
         </div>
 
+        <div v-if="pricesPending" class="h-48 bg-[#0d1117] rounded-lg animate-pulse" />
+        <div v-else-if="!visiblePrices.length" class="h-48 rounded-lg bg-[#0d1117] flex flex-col items-center justify-center gap-2">
+          <span class="text-gray-700 text-2xl">📈</span>
+          <span class="text-gray-600 text-xs">Price feed warming up — check back shortly</span>
+        </div>
+        <EChartLine v-else :option="priceChartOption" height="200px" />
+
+        <div v-if="visiblePrices.length" class="flex items-center justify-between mt-2">
+          <span class="text-[10px] text-gray-600">{{ priceRangeLabel }}</span>
+          <span class="text-[10px] text-gray-600">{{ visiblePrices.length }} candles · 15m interval</span>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <!-- Country Context -->
         <div v-if="stock.country" class="bg-[#111827] border border-[#1f2937] rounded-xl p-6">
           <h2 class="text-base font-bold text-white mb-4">HQ Country Context</h2>
@@ -245,6 +268,109 @@ const { data: stock, pending, error } = await useAsyncData(
   () => get<any>(`/api/assets/${ticker}`),
 )
 
+const { data: pageSummary } = useAsyncData(
+  `summary-stock-${ticker}`,
+  () => get<any>(`/api/summaries/stock/${ticker}`).catch(() => null),
+  { server: false },
+)
+
+// ─── Price chart ──────────────────────────────────────────────────────────────
+
+const pricePeriods = [
+  { key: '1D', label: '1D', hours: 8 },
+  { key: '3D', label: '3D', hours: 72 },
+  { key: 'ALL', label: 'All', hours: 0 },
+]
+const activePeriod = ref('ALL')
+
+const { data: pricesRaw, pending: pricesPending } = useAsyncData(
+  `prices-${ticker}`,
+  () => get<any[]>(`/api/assets/${ticker}/prices`, { interval: '15m', limit: 500 }).catch(() => []),
+  { server: false },
+)
+
+const visiblePrices = computed(() => {
+  const all = pricesRaw.value ?? []
+  const period = pricePeriods.find(p => p.key === activePeriod.value)
+  if (!period || period.hours === 0) return all
+  const cutoff = Date.now() - period.hours * 3600 * 1000
+  return all.filter((p: any) => new Date(p.t).getTime() >= cutoff)
+})
+
+const priceChartOption = computed(() => {
+  const data = visiblePrices.value
+  if (!data.length) return {}
+
+  const times = data.map((p: any) => {
+    const d = new Date(p.t)
+    return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  })
+  const closes = data.map((p: any) => p.c)
+  const first = closes[0]
+  const last = closes[closes.length - 1]
+  const isUp = last >= first
+  const lineColor = isUp ? '#10b981' : '#f87171'
+  const areaColor = isUp ? 'rgba(16,185,129,0.08)' : 'rgba(248,113,113,0.08)'
+
+  return {
+    backgroundColor: 'transparent',
+    grid: { top: 8, right: 12, bottom: 28, left: 52, containLabel: false },
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: '#0d1117',
+      borderColor: '#1f2937',
+      borderWidth: 1,
+      textStyle: { color: '#e5e7eb', fontSize: 11 },
+      formatter: (params: any[]) => {
+        const p = params[0]
+        const raw = data[p.dataIndex]
+        const lines = [`<b>${p.name}</b>`]
+        lines.push(`Close: <b style="color:${lineColor}">$${raw.c?.toFixed(2)}</b>`)
+        if (raw.o != null) lines.push(`Open: $${raw.o?.toFixed(2)}`)
+        if (raw.h != null) lines.push(`High: $${raw.h?.toFixed(2)} · Low: $${raw.l?.toFixed(2)}`)
+        return lines.join('<br/>')
+      },
+    },
+    xAxis: {
+      type: 'category',
+      data: times,
+      axisLine: { lineStyle: { color: '#1f2937' } },
+      axisTick: { show: false },
+      axisLabel: {
+        color: '#4b5563',
+        fontSize: 10,
+        interval: Math.max(0, Math.floor(times.length / 6) - 1),
+      },
+    },
+    yAxis: {
+      type: 'value',
+      scale: true,
+      splitLine: { lineStyle: { color: '#1a2235', type: 'dashed' } },
+      axisLabel: {
+        color: '#4b5563',
+        fontSize: 10,
+        formatter: (v: number) => `$${v.toFixed(0)}`,
+      },
+    },
+    series: [{
+      type: 'line',
+      data: closes,
+      smooth: true,
+      symbol: 'none',
+      lineStyle: { color: lineColor, width: 2 },
+      areaStyle: { color: areaColor },
+    }],
+  }
+})
+
+const priceRangeLabel = computed(() => {
+  const data = visiblePrices.value
+  if (!data.length) return ''
+  const from = new Date(data[0].t)
+  const to = new Date(data[data.length - 1].t)
+  return `${from.toLocaleDateString()} → ${to.toLocaleDateString()}`
+})
+
 const { data: sectorStocks, pending: relatedLoading } = useAsyncData(
   `related-${ticker}`,
   async () => {
@@ -311,8 +437,45 @@ async function toggleFollow() {
   } catch { /* ignore */ }
 }
 
+const { public: { r2PublicUrl } } = useRuntimeConfig()
+const ogImageUrl = computed(() =>
+  r2PublicUrl
+    ? `${r2PublicUrl}/og/stocks/${ticker.toLowerCase()}.png`
+    : 'https://metricshour.com/og-image.png',
+)
+
 useSeoMeta({
   title: computed(() => stock.value ? `${stock.value.symbol} — ${stock.value.name} — MetricsHour` : `${ticker} Stock — MetricsHour`),
   description: computed(() => stock.value ? `${stock.value.name} (${stock.value.symbol}) geographic revenue breakdown from SEC EDGAR. See which countries drive ${stock.value.symbol} earnings.` : ''),
+  ogTitle: computed(() => stock.value ? `${stock.value.symbol} — ${stock.value.name} — MetricsHour` : `${ticker} Stock — MetricsHour`),
+  ogDescription: computed(() => stock.value ? `${stock.value.name} (${stock.value.symbol}) geographic revenue breakdown from SEC EDGAR. See which countries drive ${stock.value.symbol} earnings.` : ''),
+  ogUrl: `https://metricshour.com/stocks/${ticker}`,
+  ogType: 'website',
+  ogImage: ogImageUrl,
+  twitterTitle: computed(() => stock.value ? `${stock.value.symbol} — ${stock.value.name} — MetricsHour` : `${ticker} Stock — MetricsHour`),
+  twitterDescription: computed(() => stock.value ? `${stock.value.name} (${stock.value.symbol}) geographic revenue breakdown from SEC EDGAR. See which countries drive ${stock.value.symbol} earnings.` : ''),
+  twitterImage: ogImageUrl,
 })
+
+useHead(computed(() => ({
+  link: [{ rel: 'canonical', href: `https://metricshour.com/stocks/${ticker}` }],
+  script: stock.value ? [{
+    type: 'application/ld+json',
+    innerHTML: JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'WebPage',
+      name: `${stock.value.symbol} — ${stock.value.name} — MetricsHour`,
+      url: `https://metricshour.com/stocks/${ticker}`,
+      description: `${stock.value.name} (${stock.value.symbol}) geographic revenue breakdown from SEC EDGAR.`,
+      breadcrumb: {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://metricshour.com' },
+          { '@type': 'ListItem', position: 2, name: 'Stocks', item: 'https://metricshour.com/stocks' },
+          { '@type': 'ListItem', position: 3, name: stock.value.symbol, item: `https://metricshour.com/stocks/${ticker}` },
+        ],
+      },
+    }),
+  }] : [],
+})))
 </script>

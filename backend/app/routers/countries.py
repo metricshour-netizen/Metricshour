@@ -4,7 +4,7 @@ from sqlalchemy import select, or_
 
 from app.database import get_db
 from app.models import Country, CountryIndicator, TradePair, StockCountryRevenue, Asset
-from app.storage import kv_json_get, kv_json_set
+from app.storage import kv_json_get, kv_json_set, cache_get, cache_set
 
 router = APIRouter(prefix="/countries", tags=["countries"])
 
@@ -38,6 +38,11 @@ def list_countries(
 
 @router.get("/{code}")
 def get_country(code: str, db: Session = Depends(get_db)) -> dict:
+    cache_key = f"api:country:{code.upper()}"
+    cached = cache_get(cache_key)
+    if cached is not None:
+        return cached
+
     country = db.execute(
         select(Country).where(Country.code == code.upper())
     ).scalar_one_or_none()
@@ -58,7 +63,9 @@ def get_country(code: str, db: Session = Depends(get_db)) -> dict:
         if row.indicator not in latest:
             latest[row.indicator] = row.value
 
-    return {**_country_summary(country), "indicators": latest}
+    result = {**_country_summary(country), "indicators": latest}
+    cache_set(cache_key, result, ttl_seconds=3600)
+    return result
 
 
 def _country_summary(c: Country) -> dict:
@@ -175,6 +182,11 @@ def get_country_stocks(code: str, db: Session = Depends(get_db)) -> list[dict]:
 
 @router.get("/{code}/trade-partners")
 def get_trade_partners(code: str, db: Session = Depends(get_db)) -> list[dict]:
+    cache_key = f"api:country:{code.upper()}:trade-partners"
+    cached = cache_get(cache_key)
+    if cached is not None:
+        return cached
+
     country = db.execute(
         select(Country).where(Country.code == code.upper())
     ).scalar_one_or_none()
@@ -218,6 +230,7 @@ def get_trade_partners(code: str, db: Session = Depends(get_db)) -> list[dict]:
             "balance_usd": (exports or 0) - (imports or 0),
             "trade_value_usd": p.trade_value_usd,
         })
+    cache_set(cache_key, result, ttl_seconds=3600)
     return result
 
 
