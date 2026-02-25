@@ -112,7 +112,7 @@ def _country_summary(code: str, db: Session) -> str | None:
             "gdp_usd", "gdp_growth_pct", "inflation_pct",
             "interest_rate_pct", "unemployment_pct", "population",
         ]))
-        .order_by(CountryIndicator.year.desc())
+        .order_by(CountryIndicator.period_date.desc())
         .limit(30)
         .all()
     )
