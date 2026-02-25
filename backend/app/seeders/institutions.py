@@ -230,8 +230,11 @@ NAME_ALIASES: dict[str, str] = {
     "Tanzania": "United Republic of Tanzania",
     "Eswatini": "Eswatini",
     "Taiwan": "Taiwan, Province of China",
-    "Brunei Darussalam": "Brunei Darussalam",
-    "Cabo Verde": "Cabo Verde",
+    "Brunei Darussalam": "Brunei",
+    "Cabo Verde": "Cape Verde",
+    "Congo": "Republic of the Congo",
+    "Côte d'Ivoire": "Ivory Coast",
+    "Sao Tome and Principe": "São Tomé and Príncipe",
 }
 
 

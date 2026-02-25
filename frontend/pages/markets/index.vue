@@ -1,8 +1,21 @@
 <template>
   <main class="max-w-7xl mx-auto px-4 py-10">
-    <div class="mb-6">
-      <h1 class="text-xl sm:text-2xl font-bold text-white">Markets</h1>
-      <p class="text-gray-500 text-sm mt-1">Stocks · Crypto · ETFs · Indices · Bonds · Commodities · FX</p>
+    <div class="mb-6 flex items-center justify-between gap-4">
+      <div>
+        <h1 class="text-xl sm:text-2xl font-bold text-white">Markets</h1>
+        <p class="text-gray-500 text-sm mt-1">Stocks · Crypto · ETFs · Indices · Bonds · Commodities · FX</p>
+      </div>
+      <!-- Terminal View toggle -->
+      <button
+        @click="terminalView = !terminalView"
+        class="shrink-0 flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border transition-all"
+        :class="terminalView
+          ? 'bg-amber-950 border-amber-700 text-amber-400'
+          : 'border-[#1f2937] text-gray-500 hover:border-gray-500 hover:text-gray-300'"
+        title="Toggle Terminal View"
+      >
+        <span class="font-mono">⌨</span> Terminal
+      </button>
     </div>
 
     <!-- Search -->
@@ -18,8 +31,8 @@
       <button v-if="search" @click="search = ''" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-400 text-xs">✕</button>
     </div>
 
-    <!-- Tab filter -->
-    <div class="flex gap-2 flex-wrap mb-6 overflow-x-auto pb-1">
+    <!-- Tab filter (hidden in terminal view) -->
+    <div v-if="!terminalView" class="flex gap-2 flex-wrap mb-6 overflow-x-auto pb-1">
       <button
         v-for="tab in tabs"
         :key="tab.key"
@@ -39,9 +52,66 @@
     </div>
 
     <template v-else>
-      <p v-if="search" class="text-xs text-gray-600 mb-4">
+      <p v-if="search && !terminalView" class="text-xs text-gray-600 mb-4">
         {{ filtered.length }} result{{ filtered.length !== 1 ? 's' : '' }} for "{{ search }}"
       </p>
+
+      <!-- ── Terminal View ──────────────────────────────────────────────────── -->
+      <div v-if="terminalView" class="rounded-lg overflow-hidden border border-amber-900/50">
+        <!-- Header bar -->
+        <div class="bg-[#0a0500] px-3 py-1.5 border-b border-amber-900/40 flex items-center justify-between">
+          <span class="text-[10px] text-amber-600 font-mono uppercase tracking-widest">
+            METRICSHOUR MARKETS · {{ terminalFiltered.length }} INSTRUMENTS
+            <span v-if="search" class="text-amber-800"> · FILTER: {{ search.toUpperCase() }}</span>
+          </span>
+          <span class="text-[10px] text-amber-800 font-mono tabular-nums">{{ nowStr }}</span>
+        </div>
+
+        <!-- Column headers -->
+        <div class="bg-[#080400] px-3 py-1 border-b border-amber-900/30 overflow-x-auto">
+          <div class="grid font-mono text-[10px] text-amber-700 uppercase tracking-wider min-w-[520px]"
+               style="grid-template-columns: 3rem 6rem 1fr 2.5rem 7rem 6rem">
+            <span>#</span>
+            <span>TICKER</span>
+            <span>NAME</span>
+            <span>TYPE</span>
+            <span class="text-right">PRICE</span>
+            <span class="text-right">MKT CAP</span>
+          </div>
+        </div>
+
+        <!-- Rows (max 50) -->
+        <div class="bg-[#080400] divide-y divide-amber-950/60 overflow-x-auto">
+          <component
+            :is="terminalRowLink(a) ? 'NuxtLink' : 'div'"
+            v-for="(a, i) in terminalRows"
+            :key="a.symbol"
+            :to="terminalRowLink(a)"
+            class="grid font-mono text-[11px] px-3 py-[5px] hover:bg-amber-950/30 transition-colors cursor-pointer min-w-[520px]"
+            style="grid-template-columns: 3rem 6rem 1fr 2.5rem 7rem 6rem"
+          >
+            <span class="text-amber-900 tabular-nums">{{ i + 1 }}</span>
+            <span class="text-amber-400 font-bold truncate">{{ a.symbol }}</span>
+            <span class="text-amber-300/80 truncate pr-2">{{ a.name }}</span>
+            <span class="text-amber-700 uppercase text-[9px]">{{ typeTag(a.asset_type) }}</span>
+            <span class="text-right tabular-nums" :class="priceColor(a)">
+              {{ a.price ? fmtPrice(a.price.close) : '—' }}
+            </span>
+            <span class="text-right text-amber-600/70 tabular-nums">{{ fmtCap(a.market_cap_usd) }}</span>
+          </component>
+        </div>
+
+        <!-- Footer -->
+        <div class="bg-[#080400] px-3 py-1.5 border-t border-amber-900/30 flex items-center justify-between">
+          <span class="text-[10px] text-amber-900 font-mono">
+            {{ terminalFiltered.length > 50 ? `SHOWING 50 OF ${terminalFiltered.length} · USE SEARCH TO FILTER` : `${terminalFiltered.length} INSTRUMENTS` }}
+          </span>
+          <span class="text-[10px] text-amber-900 font-mono">METRICSHOUR.COM</span>
+        </div>
+      </div>
+
+      <!-- ── Card view sections (hidden in terminal mode) ──────────────── -->
+      <template v-if="!terminalView">
 
       <!-- ── Indices ─────────────────────────────────────────────────────── -->
       <template v-if="showSection('index') && indexFiltered.length">
@@ -50,7 +120,7 @@
           <NuxtLink
             v-for="a in indexFiltered"
             :key="a.symbol"
-            :to="`/stocks/${a.symbol}`"
+            :to="`/indices/${a.symbol}`"
             class="bg-[#111827] border border-[#1f2937] hover:border-purple-500/50 rounded-xl p-4 transition-colors group cursor-pointer"
           >
             <div class="flex items-start justify-between mb-2">
@@ -230,11 +300,32 @@
       </div>
 
       <p class="text-xs text-gray-700 mt-2">Data: Marketstack · CoinGecko · exchangerate.host · FRED · SEC EDGAR</p>
+
+      </template><!-- end card view -->
     </template>
   </main>
 </template>
 
 <script setup lang="ts">
+// ── Terminal View ──────────────────────────────────────────────────────────────
+const terminalView = ref(false)
+
+// Persist terminal preference
+onMounted(() => {
+  terminalView.value = localStorage.getItem('markets-terminal') === '1'
+})
+watch(terminalView, (v) => localStorage.setItem('markets-terminal', v ? '1' : '0'))
+
+// Live clock
+const nowStr = ref('')
+let clockInterval: ReturnType<typeof setInterval> | null = null
+onMounted(() => {
+  const tick = () => { nowStr.value = new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC' }
+  tick()
+  clockInterval = setInterval(tick, 1000)
+})
+onUnmounted(() => { if (clockInterval) clearInterval(clockInterval) })
+
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 const SectionHeader = defineComponent({
@@ -371,6 +462,53 @@ function fmtPrice(v: number): string {
   if (v >= 1000) return `$${v.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
   if (v >= 1)    return `$${v.toFixed(2)}`
   return `$${v.toFixed(4)}`
+}
+
+// ── Terminal helpers ───────────────────────────────────────────────────────────
+
+// Terminal shows all filtered assets in one unified list, max 50 rows
+const TYPE_ORDER: Record<string, number> = {
+  index: 0, fx: 1, commodity: 2, etf: 3, stock: 4, crypto: 5, bond: 6,
+}
+
+const terminalFiltered = computed(() => {
+  let list = allAssets.value as any[] ?? []
+  if (search.value.trim()) {
+    const q = search.value.toLowerCase().trim()
+    list = list.filter((a: any) =>
+      a.symbol?.toLowerCase().includes(q) ||
+      a.name?.toLowerCase().includes(q) ||
+      a.sector?.toLowerCase().includes(q)
+    )
+  }
+  return [...list].sort((a, b) => {
+    const ta = TYPE_ORDER[a.asset_type] ?? 9
+    const tb = TYPE_ORDER[b.asset_type] ?? 9
+    if (ta !== tb) return ta - tb
+    // Within same type: sort by market cap desc
+    return (b.market_cap_usd ?? 0) - (a.market_cap_usd ?? 0)
+  })
+})
+
+const terminalRows = computed(() => terminalFiltered.value.slice(0, 50))
+
+function typeTag(t: string): string {
+  const map: Record<string, string> = {
+    index: 'IDX', fx: 'FX', commodity: 'CMD', etf: 'ETF',
+    stock: 'STK', crypto: 'CRY', bond: 'BND',
+  }
+  return map[t] ?? t.slice(0, 3).toUpperCase()
+}
+
+function terminalRowLink(a: any): string | undefined {
+  if (a.asset_type === 'stock' || a.asset_type === 'crypto') return `/stocks/${a.symbol}`
+  if (a.asset_type === 'index') return `/indices/${a.symbol}`
+  return undefined
+}
+
+function priceColor(a: any): string {
+  // All prices shown in amber in terminal view
+  return a.price ? 'text-amber-400' : 'text-amber-900'
 }
 
 useSeoMeta({
