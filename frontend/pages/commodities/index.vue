@@ -35,10 +35,11 @@
           </div>
 
           <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-            <div
+            <NuxtLink
               v-for="c in group.items"
               :key="c.symbol"
-              class="bg-[#111827] border border-[#1f2937] hover:border-emerald-500/60 rounded-xl p-4 transition-all hover:bg-[#131d2e] group cursor-default"
+              to="/markets"
+              class="bg-[#111827] border border-[#1f2937] hover:border-emerald-500/60 rounded-xl p-4 transition-all hover:bg-[#131d2e] group"
             >
               <div class="flex items-start justify-between mb-3">
                 <span class="text-2xl">{{ c.icon }}</span>
@@ -55,7 +56,7 @@
               <div v-else class="text-xs text-gray-700 mt-2 flex items-center gap-1">
                 <span class="w-1.5 h-1.5 rounded-full bg-yellow-700 inline-block"></span> Pending feed
               </div>
-            </div>
+            </NuxtLink>
           </div>
         </div>
       </template>

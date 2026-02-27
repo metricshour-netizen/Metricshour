@@ -224,6 +224,26 @@
         </div>
       </div>
 
+      <!-- Stocks exposed to this trade corridor -->
+      <div v-if="corridorStocks.length" class="bg-[#111827] border border-[#1f2937] rounded-xl p-6 mb-6">
+        <h2 class="text-base font-bold text-white mb-1">Stocks exposed to this trade corridor</h2>
+        <p class="text-xs text-gray-500 mb-4">
+          Companies with revenue tied to {{ data.exporter.name }} or {{ data.importer.name }} — SEC EDGAR 10-K
+        </p>
+        <div class="flex flex-wrap gap-2">
+          <NuxtLink
+            v-for="s in corridorStocks"
+            :key="s.symbol"
+            :to="`/stocks/${s.symbol}`"
+            class="flex items-center gap-2 bg-[#0d1117] border border-[#1f2937] hover:border-emerald-700 rounded-lg px-3 py-2 transition-colors group"
+          >
+            <span class="text-xs font-mono font-bold text-emerald-400 group-hover:text-emerald-300">{{ s.symbol }}</span>
+            <span class="text-[10px] text-gray-500 group-hover:text-gray-400 truncate max-w-[100px]">{{ s.name }}</span>
+            <span class="text-[10px] text-emerald-700 tabular-nums shrink-0">{{ s.revenue_pct.toFixed(0) }}%</span>
+          </NuxtLink>
+        </div>
+      </div>
+
       <p class="text-xs text-gray-700 text-center">Data: UN Comtrade · World Bank · IMF</p>
     </main>
   </div>
@@ -248,6 +268,29 @@ const { data: pageSummary } = useAsyncData(
   () => get<any>(`/api/summaries/trade/${codeA.toUpperCase()}-${codeB.toUpperCase()}`).catch(() => null),
   { server: false },
 )
+
+// Stocks exposed to this trade corridor (lazy, non-blocking)
+const { data: stocksA } = useAsyncData(
+  `corridor-stocks-a-${codeA}`,
+  () => get<any[]>(`/api/countries/${codeA}/stocks`).catch(() => []),
+  { server: false },
+)
+const { data: stocksB } = useAsyncData(
+  `corridor-stocks-b-${codeB}`,
+  () => get<any[]>(`/api/countries/${codeB}/stocks`).catch(() => []),
+  { server: false },
+)
+
+const corridorStocks = computed(() => {
+  const all = [...(stocksA.value || []), ...(stocksB.value || [])]
+  const map = new Map<string, any>()
+  for (const s of all) {
+    if (!map.has(s.symbol) || s.revenue_pct > map.get(s.symbol).revenue_pct) {
+      map.set(s.symbol, s)
+    }
+  }
+  return [...map.values()].sort((a, b) => b.revenue_pct - a.revenue_pct).slice(0, 16)
+})
 
 const td = computed(() => data.value?.trade_data ?? null)
 

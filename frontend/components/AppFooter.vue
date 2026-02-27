@@ -8,6 +8,7 @@
     <!-- Nav links -->
     <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap gap-x-6 gap-y-2 justify-center text-xs text-gray-600">
       <NuxtLink to="/markets"     class="hover:text-gray-400 transition-colors">Markets</NuxtLink>
+      <NuxtLink to="/stocks"      class="hover:text-gray-400 transition-colors">Stocks</NuxtLink>
       <NuxtLink to="/countries"   class="hover:text-gray-400 transition-colors">Countries</NuxtLink>
       <NuxtLink to="/trade"       class="hover:text-gray-400 transition-colors">Trade</NuxtLink>
       <NuxtLink to="/commodities" class="hover:text-gray-400 transition-colors">Commodities</NuxtLink>
@@ -17,9 +18,9 @@
 
     <!-- Legal links -->
     <div class="flex flex-wrap gap-x-5 gap-y-1 justify-center text-[11px] text-gray-700 pb-1">
-      <a href="/privacy" class="hover:text-gray-500 transition-colors">Privacy Policy</a>
+      <NuxtLink to="/privacy" class="hover:text-gray-500 transition-colors">Privacy Policy</NuxtLink>
       <span class="text-gray-800">·</span>
-      <a href="/terms"   class="hover:text-gray-500 transition-colors">Terms of Service</a>
+      <NuxtLink to="/terms"   class="hover:text-gray-500 transition-colors">Terms of Service</NuxtLink>
       <span class="text-gray-800">·</span>
       <a href="mailto:hello@metricshour.com" class="hover:text-gray-500 transition-colors">Contact</a>
     </div>
