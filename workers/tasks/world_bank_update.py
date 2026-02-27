@@ -44,63 +44,58 @@ INDICATORS: dict[str, tuple[str, str]] = {
     "NE.GDI.TOTL.ZS":      ("gross_investment_pct_gdp",     "annual"),
 
     # Monetary
-    "FP.CPI.TOTL.ZG":      ("inflation_cpi_pct",            "annual"),
-    "FR.INR.LEND":         ("lending_interest_rate",        "annual"),
-    "FR.INR.RINR":         ("real_interest_rate",           "annual"),
-    "FM.LBL.BMNY.GD.ZS":  ("broad_money_pct_gdp",          "annual"),
+    "FP.CPI.TOTL.ZG":      ("inflation_pct",                "annual"),
+    "FR.INR.LEND":         ("interest_rate_pct",            "annual"),  # Lending interest rate
+    "FR.INR.RINR":         ("real_interest_rate_pct",       "annual"),
+    "FM.LBL.BMNY.GD.ZS":  ("money_supply_m2_gdp_pct",      "annual"),
 
     # External / BoP
-    "BN.CAB.XOKA.CD":      ("current_account_usd",          "annual"),
-    "BN.CAB.XOKA.GD.ZS":  ("current_account_pct_gdp",      "annual"),
-    "FI.RES.TOTL.CD":      ("fx_reserves_usd",              "annual"),
+    "BN.CAB.XOKA.GD.ZS":  ("current_account_gdp_pct",      "annual"),
+    "FI.RES.TOTL.CD":      ("foreign_reserves_usd",         "annual"),
     "BX.KLT.DINV.CD.WD":  ("fdi_inflows_usd",              "annual"),
-    "BM.KLT.DINV.CD.WD":  ("fdi_outflows_usd",             "annual"),
+    "BX.KLT.DINV.WD.GD.ZS":("fdi_inflows_gdp_pct",         "annual"),
     "DT.DOD.DECT.CD":      ("external_debt_usd",            "annual"),
-    "DT.DOD.DECT.GN.ZS":  ("external_debt_pct_gni",        "annual"),
-    "BX.TRF.PWKR.CD.DT":  ("remittances_inflow_usd",       "annual"),
+    "BX.TRF.PWKR.CD.DT":  ("remittances_received_usd",     "annual"),
+    "BX.TRF.PWKR.DT.GD.ZS":("remittances_gdp_pct",         "annual"),
 
     # Trade
     "NE.EXP.GNFS.CD":      ("exports_usd",                  "annual"),
     "NE.IMP.GNFS.CD":      ("imports_usd",                  "annual"),
-    "NE.EXP.GNFS.ZS":      ("exports_pct_gdp",              "annual"),
-    "NE.IMP.GNFS.ZS":      ("imports_pct_gdp",              "annual"),
-    "TG.VAL.TOTL.GD.ZS":  ("merchandise_trade_pct_gdp",    "annual"),
-    "BX.GSR.TOTL.CD":      ("services_exports_usd",         "annual"),
-    "BM.GSR.TOTL.CD":      ("services_imports_usd",         "annual"),
 
     # Fiscal
-    "GC.DOD.TOTL.GD.ZS":  ("govt_debt_pct_gdp",            "annual"),
-    "GC.BAL.CASH.GD.ZS":  ("fiscal_balance_pct_gdp",       "annual"),
-    "GC.REV.XGRT.GD.ZS":  ("tax_revenue_pct_gdp",          "annual"),
-    "GC.XPN.TOTL.GD.ZS":  ("govt_expenditure_pct_gdp",     "annual"),
+    "GC.DOD.TOTL.GD.ZS":  ("government_debt_gdp_pct",      "annual"),
+    "GC.BAL.CASH.GD.ZS":  ("budget_balance_gdp_pct",       "annual"),
+    "GC.TAX.TOTL.GD.ZS":  ("tax_revenue_gdp_pct",          "annual"),
+    "MS.MIL.XPND.GD.ZS":  ("military_spending_gdp_pct",    "annual"),
+    "SE.XPD.TOTL.GD.ZS":  ("education_spending_gdp_pct",   "annual"),
+    "SH.XPD.CHEX.GD.ZS":  ("healthcare_spending_gdp_pct",  "annual"),
 
     # Labour
     "SL.UEM.TOTL.ZS":      ("unemployment_pct",             "annual"),
-    "SL.TLF.CACT.ZS":      ("labour_participation_pct",     "annual"),
-    "SL.GDP.PCAP.EM.KD":  ("gdp_per_worker_usd",           "annual"),
+    "SL.UEM.1524.ZS":      ("youth_unemployment_pct",       "annual"),
+    "SL.TLF.CACT.ZS":      ("labor_participation_pct",      "annual"),
+    "SL.TLF.CACT.FE.ZS":  ("female_labor_participation_pct", "annual"),
 
     # Social
-    "SI.POV.GINI":         ("gini_index",                   "annual"),
+    "SI.POV.GINI":         ("gini_coefficient",             "annual"),
     "SI.POV.DDAY":         ("poverty_rate_pct",             "annual"),
     "SE.ADT.LITR.ZS":      ("literacy_rate_pct",            "annual"),
-    "IT.NET.USER.ZS":      ("internet_users_pct",           "annual"),
-    "SH.XPD.CHEX.GD.ZS":  ("health_expenditure_pct_gdp",   "annual"),
-    "SE.XPD.TOTL.GD.ZS":  ("education_expenditure_pct_gdp", "annual"),
+    "IT.NET.USER.ZS":      ("internet_penetration_pct",     "annual"),
+    "SP.DYN.IMRT.IN":      ("infant_mortality_per_1000",    "annual"),
+    "SH.MED.BEDS.ZS":      ("hospital_beds_per_1000",       "annual"),
+    "SH.MED.PHYS.ZS":      ("doctors_per_1000",             "annual"),
 
     # Environment
-    "EN.ATM.CO2E.PC":      ("co2_per_capita_tonnes",        "annual"),
     "EG.ELC.RNEW.ZS":      ("renewable_energy_pct",         "annual"),
-    "AG.LND.FRST.ZS":      ("forest_area_pct",              "annual"),
-    "ER.H2O.FWTL.ZS":      ("freshwater_withdrawal_pct",    "annual"),
+    "AG.LND.FRST.ZS":      ("forest_cover_pct",             "annual"),
 
-    # Business / Innovation
-    "IC.BUS.EASE.XQ":      ("ease_of_doing_business",       "annual"),
-    "GB.XPD.RSDV.GD.ZS":  ("rd_expenditure_pct_gdp",       "annual"),
+    # Innovation
+    "GB.XPD.RSDV.GD.ZS":  ("rd_spending_gdp_pct",          "annual"),
     "IP.PAT.RESD":         ("patent_applications",          "annual"),
 
     # Tourism
     "ST.INT.ARVL":         ("tourist_arrivals",             "annual"),
-    "ST.INT.RCPT.CD":      ("tourism_receipts_usd",         "annual"),
+    "ST.INT.RCPT.CD":      ("tourism_revenue_usd",          "annual"),
 }
 
 

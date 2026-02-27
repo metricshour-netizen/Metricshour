@@ -58,11 +58,11 @@ QUERIES: list[dict] = [
         "period_type": "monthly",
         "description": "Industrial Production Index",
     },
-    # Short-term interest rate (3-month)
+    # Short-term interest rate (3-month) — maps to interest_rate_pct for OECD countries
     {
         "dataset": "MEI",
         "key": "{country}.IR3TIB01.ST.M",
-        "indicator": "oecd_short_term_rate",
+        "indicator": "interest_rate_pct",
         "period_type": "monthly",
         "description": "3-month interest rate",
     },
@@ -70,7 +70,7 @@ QUERIES: list[dict] = [
     {
         "dataset": "MEI",
         "key": "{country}.IRLTLT01.ST.M",
-        "indicator": "oecd_long_term_rate",
+        "indicator": "long_term_rate_pct",
         "period_type": "monthly",
         "description": "10-year government bond yield",
     },
@@ -226,14 +226,21 @@ def update_oecd_data(self):
         total_upserted = 0
 
         for query in QUERIES:
-            rows = _fetch_oecd_json(query["dataset"], query["key"])
-            if not rows:
+            # Fetch all OECD countries for this indicator
+            all_rows: list[dict] = []
+            for country3 in OECD_TO_ISO2:
+                country_rows = _fetch_oecd_one_country(
+                    query["dataset"], query["key"], country3
+                )
+                all_rows.extend(country_rows)
+                time.sleep(0.2)  # polite rate limiting
+
+            if not all_rows:
                 log.warning(f"OECD: no data for {query['indicator']}")
-                time.sleep(2)
                 continue
 
             batch = []
-            for row in rows:
+            for row in all_rows:
                 iso2 = OECD_TO_ISO2.get(row["country_code3"])
                 if not iso2:
                     continue

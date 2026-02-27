@@ -53,6 +53,7 @@ INDICATORS: dict[str, tuple[str, str]] = {
 
     # --- MONETARY / INFLATION ---
     "FP.CPI.TOTL.ZG":       ("inflation_pct",               "annual"),
+    "FR.INR.LEND":          ("interest_rate_pct",           "annual"),  # Lending interest rate
     "FR.INR.RINR":          ("real_interest_rate_pct",      "annual"),
     "FM.LBL.BMNY.GD.ZS":   ("money_supply_m2_gdp_pct",     "annual"),
 
