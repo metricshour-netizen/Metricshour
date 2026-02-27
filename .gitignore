@@ -10,3 +10,7 @@ dist/
 *.egg-info/
 .pytest_cache/
 workers/celerybeat-schedule*
+
+# Internal planning and memory files — never commit these
+CLAUDE.md
+.claude/
