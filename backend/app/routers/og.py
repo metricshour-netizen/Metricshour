@@ -5,18 +5,21 @@ GET /og/feed/{event_id}.png   → 1200x630 PNG for a feed event
 GET /og/countries/{code}.png  → 1200x630 PNG for a country page
 GET /og/stocks/{symbol}.png   → 1200x630 PNG for a stock page
 
-Social crawlers hit /s/{event_id} (share.py) which embeds these URLs as
-og:image. Real browsers get redirected to the canonical feed page.
+Flow:
+  1. CF Worker checks R2 for the key → serves from edge (global CDN, ~1ms) if found.
+  2. On R2 miss, CF Worker forwards to this FastAPI endpoint.
+  3. FastAPI generates the image, returns it, then uploads to R2 in the background.
+  4. Next request is served from R2 edge — no origin hit.
 
-Cloudflare / nginx caches the images at the edge via Cache-Control headers.
-If R2 pre-generation runs (og_images.py), event.image_url is used instead
-(served from R2 CDN, faster). This endpoint acts as the fallback.
+R2_PUBLIC_URL must equal https://api.metricshour.com so the Cloudflare Worker
+intercepts og:image URLs and routes them to R2.
 """
 import io
 import logging
 import os
+import threading
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.responses import Response
 from PIL import Image, ImageDraw, ImageFont
 from sqlalchemy.orm import Session
@@ -257,6 +260,44 @@ def _render_stock(symbol: str, name: str, price: float | None, market_cap: float
     return _to_png_bytes(img)
 
 
+# ── R2 upload helper (runs in background thread — never blocks the response) ───
+
+def _upload_to_r2_bg(key: str, data: bytes) -> None:
+    """Upload PNG to R2 so the CF Worker can serve it from the edge on next request."""
+    endpoint = os.environ.get("R2_ENDPOINT", "")
+    access_key = os.environ.get("R2_ACCESS_KEY_ID", "")
+    secret_key = os.environ.get("R2_SECRET_ACCESS_KEY", "")
+    bucket = os.environ.get("R2_BUCKET_NAME", "metricshour-assets")
+    if not (endpoint and access_key and secret_key):
+        return
+    try:
+        import boto3
+        from botocore.config import Config as BotoConfig
+        r2 = boto3.client(
+            "s3",
+            endpoint_url=endpoint,
+            aws_access_key_id=access_key,
+            aws_secret_access_key=secret_key,
+            config=BotoConfig(signature_version="s3v4"),
+            region_name="auto",
+        )
+        r2.put_object(
+            Bucket=bucket,
+            Key=key,
+            Body=data,
+            ContentType="image/png",
+            CacheControl="public, max-age=86400",
+        )
+    except Exception as exc:
+        log.warning("R2 background upload failed for %s: %s", key, exc)
+
+
+def _fire_r2_upload(key: str, data: bytes) -> None:
+    """Spawn a daemon thread so R2 upload never adds latency to the HTTP response."""
+    t = threading.Thread(target=_upload_to_r2_bg, args=(key, data), daemon=True)
+    t.start()
+
+
 # ── PNG response helper ────────────────────────────────────────────────────────
 
 _PNG_HEADERS = {
@@ -279,6 +320,8 @@ def og_feed(event_id: int, db: Session = Depends(get_db)):
             event.event_data,
             event.importance_score,
         )
+        # Upload to R2 in background — next request served from CF edge
+        _fire_r2_upload(f"og/feed/{event_id}.png", png)
         return Response(content=png, media_type="image/png", headers=_PNG_HEADERS)
     except Exception as exc:
         log.error("OG feed render failed for event %s: %s", event_id, exc)
@@ -310,6 +353,7 @@ def og_country(code: str, db: Session = Depends(get_db)):
             gdp_row.value if gdp_row else None,
             growth_row.value if growth_row else None,
         )
+        _fire_r2_upload(f"og/countries/{code.lower()}.png", png)
         return Response(content=png, media_type="image/png", headers=_PNG_HEADERS)
     except Exception as exc:
         log.error("OG country render failed for %s: %s", code, exc)
@@ -337,6 +381,7 @@ def og_stock(symbol: str, db: Session = Depends(get_db)):
             price_row.close if price_row else None,
             asset.market_cap_usd,
         )
+        _fire_r2_upload(f"og/stocks/{symbol.lower()}.png", png)
         return Response(content=png, media_type="image/png", headers=_PNG_HEADERS)
     except Exception as exc:
         log.error("OG stock render failed for %s: %s", symbol, exc)

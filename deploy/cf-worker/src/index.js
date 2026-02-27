@@ -25,6 +25,23 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url)
 
+    // ── /og/* — serve PNG images directly from R2 (edge CDN, zero origin hit) ──
+    if (request.method === 'GET' && url.pathname.startsWith('/og/')) {
+      const key = url.pathname.slice(1)  // strip leading /  →  og/feed/1.png
+      const obj = await env.R2.get(key)
+      if (obj) {
+        return new Response(obj.body, {
+          headers: {
+            'Content-Type': 'image/png',
+            'Cache-Control': 'public, max-age=86400, s-maxage=86400',
+            'X-Served-From': 'R2',
+          },
+        })
+      }
+      // Not in R2 yet — fall through to origin (FastAPI generates it + uploads to R2)
+      return forwardToOrigin(request, env)
+    }
+
     // Only cache safe, idempotent GET requests
     if (request.method !== 'GET') {
       return forwardToOrigin(request, env)
