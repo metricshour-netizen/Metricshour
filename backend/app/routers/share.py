@@ -84,6 +84,7 @@ def share_preview(event_id: int, db: Session = Depends(get_db)):
   <!-- Twitter Card ───────────────────────────────────── -->
   <meta name="twitter:card"        content="summary_large_image">
   <meta name="twitter:site"        content="{_SITE_TWITTER}">
+  <meta name="twitter:url"         content="{canonical}">
   <meta name="twitter:title"       content="{title}">
   <meta name="twitter:description" content="{desc}">
   <meta name="twitter:image"       content="{image}">
