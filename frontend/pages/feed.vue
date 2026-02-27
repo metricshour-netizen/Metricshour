@@ -20,6 +20,18 @@
       </div>
     </Transition>
 
+    <!-- New events pill (top centre) -->
+    <Transition name="fade-up">
+      <button
+        v-if="newCount > 0"
+        class="fixed top-14 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold shadow-2xl new-events-pill"
+        @click="loadNewEvents"
+      >
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+        {{ newCount }} new {{ newCount === 1 ? 'event' : 'events' }} — tap to refresh
+      </button>
+    </Transition>
+
     <!-- Scroll dot progress (right edge, desktop) -->
     <div
       v-if="visibleEvents.length > 1"
@@ -227,11 +239,46 @@ function scrollToCard(idx: number) {
 function onSave(_id: number) {}
 function onSkip(id: number) { skippedIds.value.add(id) }
 
+// ── Auto-refresh (poll for new events every 60s) ──────────────────────────────
+const newCount = ref(0)
+const newEvents = ref<FeedEvent[]>([])
+let pollTimer: ReturnType<typeof setInterval> | null = null
+
+async function pollForNew() {
+  if (!allEvents.value.length) return
+  const latest = allEvents.value[0]?.published_at
+  if (!latest) return
+  try {
+    const data = await get<{ events: FeedEvent[] }>('/api/feed', { page: 1, page_size: 20 })
+    const fresh = data.events.filter(
+      (e: FeedEvent) => new Date(e.published_at) > new Date(latest) && !allEvents.value.find(x => x.id === e.id)
+    )
+    if (fresh.length > 0) {
+      newEvents.value = fresh
+      newCount.value = fresh.length
+    }
+  } catch { /* silent */ }
+}
+
+function loadNewEvents() {
+  if (!newEvents.value.length) return
+  allEvents.value.unshift(...newEvents.value)
+  newCount.value = 0
+  newEvents.value = []
+  scrollToCard(0)
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 onMounted(async () => {
   pending.value = true
   await fetchPage(1)
   pending.value = false
+  // Start polling every 60 seconds for new events
+  pollTimer = setInterval(pollForNew, 60_000)
+})
+
+onUnmounted(() => {
+  if (pollTimer) clearInterval(pollTimer)
 })
 
 watch(isLoggedIn, async (v) => {
@@ -267,6 +314,14 @@ useSeoMeta({
 .auth-pill {
   background: linear-gradient(135deg, rgba(16,185,129,0.2) 0%, rgba(59,130,246,0.2) 100%);
   border: 1px solid rgba(255,255,255,0.12);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.new-events-pill {
+  background: linear-gradient(135deg, rgba(16,185,129,0.35) 0%, rgba(6,182,212,0.35) 100%);
+  border: 1px solid rgba(16,185,129,0.5);
+  color: white;
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
 }

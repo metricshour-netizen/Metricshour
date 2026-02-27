@@ -96,9 +96,9 @@ app.conf.update(
             'task': 'tasks.backup.run_backup',
             'schedule': crontab(hour=3, minute=0),
         },
-        'feed-generator-every-15min': {
+        'feed-generator-every-3min': {
             'task': 'tasks.feed_generator.generate_feed_events',
-            'schedule': 900.0,
+            'schedule': 180.0,
         },
         'sitemap-redeploy-daily-4am': {
             'task': 'tasks.sitemap_deploy.trigger_pages_deploy',

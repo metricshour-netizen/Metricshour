@@ -27,26 +27,40 @@ from app.models.feed import FeedEvent
 
 log = logging.getLogger(__name__)
 
-# ── Indicator importance weights (0–10) ───────────────────────────────────────
-# Higher = more important; drives feed card ranking for non-personalised users.
+# ── Indicator importance weights (0–10) — matched to actual DB column names ───
 INDICATOR_IMPORTANCE: dict[str, float] = {
-    "interest_rate":             10.0,
-    "gdp_growth_rate":           9.0,
-    "inflation_rate":            9.0,
-    "unemployment_rate":         8.0,
-    "current_account_balance":   7.0,
-    "government_debt_gdp":       7.0,
-    "budget_balance_gdp":        6.0,
-    "trade_balance":             6.0,
-    "gdp_per_capita":            5.0,
-    "industrial_production":     5.0,
-    "retail_sales":              5.0,
-    "consumer_confidence":       4.0,
+    # World Bank / custom names
+    "gdp_growth_pct":               9.0,
+    "inflation_pct":                9.0,
+    "unemployment_pct":             8.0,
+    "current_account_gdp_pct":      7.0,
+    "government_debt_gdp_pct":      7.0,
+    "budget_balance_gdp_pct":       6.0,
+    "trade_balance_gdp_pct":        6.0,
+    "foreign_reserves_usd":         5.0,
+    "fdi_inflows_usd":              5.0,
+    "consumer_confidence":          4.0,
+    "eur_fx_rate":                  6.0,
+    # IMF names (only non-forecast rows, period_date <= today enforced in query)
+    "imf_gdp_growth_pct":           9.0,
+    "imf_inflation_pct":            9.0,
+    "imf_unemployment_pct":         8.0,
+    "imf_fiscal_balance_pct_gdp":   7.0,
+    "imf_current_account_pct_gdp":  7.0,
+    "imf_govt_gross_debt_pct_gdp":  6.0,
 }
 DEFAULT_INDICATOR_IMPORTANCE = 3.0
 
-# Only generate price-move events if the absolute change meets this threshold
-PRICE_MOVE_THRESHOLD_PCT = 2.0
+# Price-move thresholds by asset type (crypto moves more, stocks less)
+PRICE_MOVE_THRESHOLD: dict[str, float] = {
+    "crypto":    1.5,   # crypto moves fast — 1.5% is meaningful
+    "stock":     1.5,   # stocks: notable intraday move
+    "commodity": 1.2,   # commodities: 1.2% signals direction
+    "fx":        0.4,   # FX: 0.4% is a big move for major pairs
+    "index":     1.0,   # indices: 1% is significant
+    "etf":       1.5,
+    "bond":      0.3,   # bond prices rarely move much
+}
 
 
 @app.task(name='tasks.feed_generator.generate_feed_events', bind=True, max_retries=2)
@@ -60,7 +74,7 @@ def generate_feed_events(self):
     except Exception as exc:
         db.rollback()
         log.error("feed_generator: failed — %s", exc, exc_info=True)
-        raise self.retry(exc=exc, countdown=120)
+        raise self.retry(exc=exc, countdown=60)
     finally:
         db.close()
 
@@ -105,7 +119,8 @@ def _generate_price_moves(db) -> None:
             continue
 
         change_pct = ((latest.close - prev.close) / prev.close) * 100
-        if abs(change_pct) < PRICE_MOVE_THRESHOLD_PCT:
+        threshold = PRICE_MOVE_THRESHOLD.get(asset.asset_type.value, 1.5)
+        if abs(change_pct) < threshold:
             continue
 
         direction = "up" if change_pct > 0 else "down"
@@ -144,38 +159,44 @@ def _generate_price_moves(db) -> None:
 
 def _generate_macro_releases(db) -> None:
     """
-    Look for new economic indicator rows inserted in the last 24 hours.
-    Create a feed event per unique (country, indicator) pair found.
+    Surface high-importance economic indicator data as feed events.
+    Uses NOW as published_at (when we surface it) not period_date.
+    Skips future-dated forecasts (period_date > today).
+    Only emits high-importance indicators to avoid flooding the feed.
     """
-    now = datetime.now(timezone.utc)
-    since = now - timedelta(hours=24)
-
-    # CountryIndicator doesn't have created_at, so we use period_date as a proxy
-    # (new rows added by seeders will have recent period_dates for real releases).
-    # In production, add a created_at column to country_indicators via migration.
-    # For now, surface rows where period_date is within the last 30 days.
     from app.models.country import Country
+    import datetime as dt
+
+    now = datetime.now(timezone.utc)
+    today = now.date()
+
+    # Only surface top-tier indicators (importance >= 5)
+    high_importance = {k for k, v in INDICATOR_IMPORTANCE.items() if v >= 5.0}
+
+    # G20/major economies only to keep the feed relevant
+    G20_CODES = {
+        'US', 'CN', 'DE', 'JP', 'GB', 'FR', 'IN', 'BR', 'CA', 'AU',
+        'KR', 'IT', 'RU', 'MX', 'SA', 'AR', 'ZA', 'ID', 'TR',
+    }
 
     recent = (
         db.query(CountryIndicator, Country)
         .join(Country, Country.id == CountryIndicator.country_id)
         .filter(
-            CountryIndicator.period_date >= (now - timedelta(days=30)).date()
+            CountryIndicator.indicator.in_(high_importance),
+            CountryIndicator.period_date <= today,          # no forecasts
+            CountryIndicator.period_date >= (now - timedelta(days=730)).date(),  # 2 years back
+            Country.code.in_(G20_CODES),
         )
         .order_by(CountryIndicator.period_date.desc())
-        .limit(50)  # cap to avoid flooding the feed
+        .limit(30)
         .all()
     )
 
     for indicator_row, country in recent:
-        importance = INDICATOR_IMPORTANCE.get(
-            indicator_row.indicator, DEFAULT_INDICATOR_IMPORTANCE
-        )
+        importance = INDICATOR_IMPORTANCE.get(indicator_row.indicator, DEFAULT_INDICATOR_IMPORTANCE)
         label = indicator_row.indicator.replace("_", " ").title()
         value_str = f"{indicator_row.value:,.2f}"
-        published_at = datetime.combine(
-            indicator_row.period_date, datetime.min.time()
-        ).replace(tzinfo=timezone.utc)
 
         title = f"{country.flag_emoji or ''} {country.name}: {label} {value_str}"
         body = (
@@ -190,7 +211,7 @@ def _generate_macro_releases(db) -> None:
             event_subtype=indicator_row.indicator,
             title=title,
             body=body,
-            published_at=published_at,
+            published_at=now,   # always NOW — not the data period date
             related_asset_ids=[],
             related_country_ids=[country.id],
             importance_score=importance,
@@ -219,25 +240,36 @@ def _upsert_feed_event(
     event_data: dict,
 ) -> None:
     """
-    Insert a feed event; skip silently if an equivalent event already exists
-    within the last 15 minutes (prevents flooding on repeated task runs).
+    Insert a feed event. Deduplicates per (type, subtype, asset/country) within
+    a rolling window to prevent identical cards on repeated task runs.
+    Window: 15 min for price_move, 6 hours for macro/indicator.
     """
-    dedup_cutoff = published_at - timedelta(minutes=15)
-    exists = (
-        db.query(FeedEvent.id)
-        .filter(
-            FeedEvent.event_type == event_type,
-            FeedEvent.event_subtype == event_subtype,
-            FeedEvent.published_at >= dedup_cutoff,
-            # Check if same asset set to avoid duplicate price_move cards
-            FeedEvent.related_asset_ids == related_asset_ids,
-        )
-        .first()
+    if event_type == 'price_move':
+        dedup_minutes = 15
+    else:
+        # macro/indicator: one card per (country, indicator) per 6 hours
+        dedup_minutes = 360
+
+    dedup_cutoff = published_at - timedelta(minutes=dedup_minutes)
+
+    q = db.query(FeedEvent.id).filter(
+        FeedEvent.event_type == event_type,
+        FeedEvent.event_subtype == event_subtype,
+        FeedEvent.published_at >= dedup_cutoff,
     )
-    if exists:
+
+    # For price moves: dedup per asset
+    if related_asset_ids:
+        q = q.filter(FeedEvent.related_asset_ids == related_asset_ids)
+
+    # For macro/indicator: dedup per country
+    if related_country_ids:
+        q = q.filter(FeedEvent.related_country_ids == related_country_ids)
+
+    if q.first():
         return
 
-    event = FeedEvent(
+    db.add(FeedEvent(
         title=title,
         body=body,
         event_type=event_type,
@@ -247,5 +279,4 @@ def _upsert_feed_event(
         related_country_ids=related_country_ids or None,
         importance_score=importance_score,
         event_data=event_data,
-    )
-    db.add(event)
+    ))
