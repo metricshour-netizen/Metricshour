@@ -79,7 +79,7 @@
 <script setup lang="ts">
 const { get } = useApi()
 
-const { data: pairs, pending } = await useAsyncData('trade-pairs',
+const { data: pairs, pending } = useAsyncData('trade-pairs',
   () => get<any[]>('/api/trade').catch(() => []),
 )
 

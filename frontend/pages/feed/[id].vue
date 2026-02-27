@@ -84,7 +84,7 @@ const eventId = route.params.id as string
 const cardUrl = `https://metricshour.com/feed/${eventId}`
 
 // Fetch single event by ID — runs server-side for OG meta tags
-const { data: feedData, pending, error } = await useAsyncData(
+const { data: feedData, pending, error } = useAsyncData(
   `feed-event-${eventId}`,
   () => get<any>(`/api/feed/events/${eventId}`).catch(() => null),
 )

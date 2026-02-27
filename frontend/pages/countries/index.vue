@@ -80,8 +80,8 @@ const activeFilter = ref<string | null>(null)
 const search = ref('')
 
 const { get } = useApi()
-const { data: countries, pending, error } = await useAsyncData('countries-all',
-  () => get('/api/countries')
+const { data: countries, pending, error } = useAsyncData('countries-all',
+  () => get('/api/countries').catch(() => []),
 )
 
 const filtered = computed(() => {

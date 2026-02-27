@@ -116,7 +116,7 @@ const route = useRoute()
 const { get } = useApi()
 const symbol = (route.params.symbol as string).toUpperCase()
 
-const { data: index, pending, error } = await useAsyncData(
+const { data: index, pending, error } = useAsyncData(
   `index-${symbol}`,
   () => get<any>(`/api/assets/${symbol}`).catch(() => null),
 )

@@ -290,9 +290,9 @@ const { isLoggedIn } = useAuth()
 
 const ticker = (route.params.ticker as string).toUpperCase()
 
-const { data: stock, pending, error } = await useAsyncData(
+const { data: stock, pending, error } = useAsyncData(
   `stock-${ticker}`,
-  () => get<any>(`/api/assets/${ticker}`),
+  () => get<any>(`/api/assets/${ticker}`).catch(() => null),
 )
 
 const { data: pageSummary } = useAsyncData(

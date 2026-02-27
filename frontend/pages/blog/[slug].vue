@@ -84,9 +84,9 @@ const { get } = useApi()
 const slug = route.params.slug as string
 const articleUrl = `https://metricshour.com/blog/${slug}`
 
-const { data: post, pending, error } = await useAsyncData(
+const { data: post, pending, error } = useAsyncData(
   `blog-${slug}`,
-  () => get<BlogPost>(`/api/blog/${slug}`),
+  () => get<BlogPost>(`/api/blog/${slug}`).catch(() => null),
 )
 
 const readingTime = computed(() => {

@@ -51,7 +51,10 @@
               <div class="text-[10px] text-gray-600 mb-2">{{ group.name }}</div>
               <div v-if="apiMap[c.symbol]?.price" class="mt-auto">
                 <div class="text-base font-extrabold text-white tabular-nums">${{ fmtPrice(apiMap[c.symbol].price.close) }}</div>
-                <div class="text-[10px] text-gray-600 mt-0.5">last close</div>
+                <div class="text-[10px] text-gray-600 mt-0.5 flex items-center gap-1">
+                  <span class="w-1 h-1 rounded-full bg-emerald-600 inline-block"></span>
+                  {{ fmtTs(apiMap[c.symbol].price.timestamp) }}
+                </div>
               </div>
               <div v-else class="text-xs text-gray-700 mt-2 flex items-center gap-1">
                 <span class="w-1.5 h-1.5 rounded-full bg-yellow-700 inline-block"></span> Pending feed
@@ -74,8 +77,9 @@
 const { get } = useApi()
 const search = ref('')
 
-const { data: commodities, pending } = await useAsyncData('commodities',
+const { data: commodities, pending } = useAsyncData('commodities',
   () => get<any[]>('/api/assets?type=commodity').catch(() => []),
+  { server: false },
 )
 
 const apiMap = computed(() => {
@@ -144,6 +148,16 @@ function fmtPrice(v: number): string {
   if (v >= 1000) return v.toLocaleString(undefined, { maximumFractionDigits: 0 })
   if (v >= 1)    return v.toFixed(2)
   return v.toFixed(4)
+}
+
+function fmtTs(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  const diff = Math.floor((Date.now() - d.getTime()) / 1000)
+  if (diff < 60)   return `${diff}s ago`
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
 useSeoMeta({

@@ -364,7 +364,7 @@ onMounted(() => {
   if (route.query.q) search.value = String(route.query.q)
 })
 
-const { data: allAssets, pending } = await useAsyncData('markets-all',
+const { data: allAssets, pending } = useAsyncData('markets-all',
   () => get<any[]>('/api/assets').catch(() => []),
 )
 

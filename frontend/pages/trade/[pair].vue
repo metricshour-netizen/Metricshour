@@ -258,9 +258,9 @@ const parts = pair.split('-')
 const codeA = parts[0] ?? ''
 const codeB = parts[1] ?? ''
 
-const { data, pending, error } = await useAsyncData(
+const { data, pending, error } = useAsyncData(
   `trade-${pair}`,
-  () => get<any>(`/api/trade/${codeA}/${codeB}`),
+  () => get<any>(`/api/trade/${codeA}/${codeB}`).catch(() => null),
 )
 
 const { data: pageSummary } = useAsyncData(

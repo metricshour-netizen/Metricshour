@@ -160,7 +160,7 @@ const activeSector = ref<string | null>(null)
 const search = ref('')
 const terminalView = ref(false)
 
-const { data: stocks, pending } = await useAsyncData('stocks',
+const { data: stocks, pending } = useAsyncData('stocks',
   () => get<any[]>('/api/assets?type=stock').catch(() => []),
 )
 
