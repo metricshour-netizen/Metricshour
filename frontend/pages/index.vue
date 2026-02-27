@@ -424,15 +424,17 @@ const G20_FALLBACK = [
 ]
 
 // ── Top Stocks ────────────────────────────────────────────────────────────────
-const { data: allStocks, pending: stocksPending, error: stocksError } = await useAsyncData(
+const { data: allStocks, pending: stocksPending, error: stocksError } = useAsyncData(
   'top-stocks',
-  () => get<any[]>('/api/assets', { type: 'stock' }),
+  () => get<any[]>('/api/assets', { type: 'stock' }).catch(() => []),
+  { server: false },
 )
 
 // ── Trade pairs ───────────────────────────────────────────────────────────────
-const { data: trades, pending: tradesPending } = await useAsyncData(
+const { data: trades, pending: tradesPending } = useAsyncData(
   'top-trades',
-  () => get<any[]>('/api/trade'),
+  () => get<any[]>('/api/trade').catch(() => []),
+  { server: false },
 )
 
 const topStocks = computed(() => (allStocks.value ?? []).slice(0, 5))
@@ -571,7 +573,7 @@ function fmtUsd(v: number | null | undefined): string {
 }
 
 // ── Adaptive Spotlight ────────────────────────────────────────────────────────
-const { data: spotlightData } = await useAsyncData('spotlight',
+const { data: spotlightData } = useAsyncData('spotlight',
   () => get<any[]>('/api/intelligence/spotlight').catch(() => []),
   { server: false },
 )
@@ -591,7 +593,7 @@ onUnmounted(() => { if (spotlightTimer) clearInterval(spotlightTimer) })
 const TICKER_SYMBOLS = ['BTC', 'ETH', 'SOL', 'AAPL', 'NVDA', 'TSLA', 'MSFT', 'SPY', 'QQQ', 'XAUUSD', 'WTI', 'EURUSD', 'USDJPY', 'BNB', 'XAGUSD']
 const tickerPaused = ref(false)
 
-const { data: tickerRaw } = await useAsyncData('ticker',
+const { data: tickerRaw } = useAsyncData('ticker',
   () => get<any[]>('/api/assets').catch(() => []),
   { server: false },
 )
