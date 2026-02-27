@@ -302,8 +302,13 @@ useSeoMeta({
   ogDescription: 'Personalised market intelligence feed. Price moves, macro releases, and trade updates ranked for you.',
   ogUrl: 'https://metricshour.com/feed',
   ogType: 'website',
+  ogImage: 'https://api.metricshour.com/og/section/feed.png',
+  ogImageWidth: '1200',
+  ogImageHeight: '630',
   twitterTitle: 'Feed — MetricsHour',
   twitterDescription: 'Personalised market intelligence feed. Price moves, macro releases, and trade updates ranked for you.',
+  twitterImage: 'https://api.metricshour.com/og/section/feed.png',
+  twitterCard: 'summary_large_image',
 })
 </script>
 

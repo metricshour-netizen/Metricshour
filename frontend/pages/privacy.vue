@@ -34,11 +34,11 @@
       <section>
         <h2 class="text-base font-semibold text-white mb-3">4. Data Sharing</h2>
         <p class="mb-2">We do <span class="text-white font-medium">not</span> sell, rent, or trade your personal data to third parties.</p>
-        <p>We use the following service providers who may process data on our behalf:</p>
+        <p>We use trusted infrastructure and service providers who may process data on our behalf:</p>
         <ul class="list-disc list-inside space-y-1.5 mt-2">
-          <li><span class="text-gray-300">Cloudflare</span> — CDN, DNS, and DDoS protection (data may transit Cloudflare servers)</li>
-          <li><span class="text-gray-300">Aiven / PostgreSQL hosting</span> — encrypted database storage</li>
-          <li><span class="text-gray-300">Upstash</span> — serverless Redis for caching and job queues</li>
+          <li><span class="text-gray-300">CDN &amp; network security</span> — content delivery and DDoS protection</li>
+          <li><span class="text-gray-300">Cloud database hosting</span> — encrypted storage in data centres with SOC 2 compliance</li>
+          <li><span class="text-gray-300">Caching infrastructure</span> — serverless cache for performance and job queues</li>
         </ul>
         <p class="mt-2">Each provider is contractually bound to protect your data and may not use it for their own purposes.</p>
       </section>
@@ -106,6 +106,9 @@ useSeoMeta({
   description: 'How MetricsHour collects, uses, and protects your personal data.',
   ogTitle: 'Privacy Policy — MetricsHour',
   ogUrl: 'https://metricshour.com/privacy',
+  ogImage: 'https://api.metricshour.com/og/section/home.png',
+  twitterImage: 'https://api.metricshour.com/og/section/home.png',
+  twitterCard: 'summary_large_image',
 })
 useHead({
   link: [{ rel: 'canonical', href: 'https://metricshour.com/privacy' }],

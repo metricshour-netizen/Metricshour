@@ -111,13 +111,18 @@ const tiers = [
 
 useSeoMeta({
   title: 'Pricing — MetricsHour',
-  description: 'Free global financial data. Pro from $9.99/month for real-time prices and AI insights. No Bloomberg Terminal required.',
+  description: 'Free global financial data. Pro from $9.99/month for real-time prices and AI insights. Institutional-grade intelligence without the Bloomberg Terminal price tag.',
   ogTitle: 'Pricing — MetricsHour',
-  ogDescription: 'Free global financial data. Pro from $9.99/month for real-time prices and AI insights. No Bloomberg Terminal required.',
+  ogDescription: 'Institutional-grade financial intelligence from $9.99/month. Real-time prices, AI insights, 196 countries and 130+ assets. Free tier always available.',
   ogUrl: 'https://metricshour.com/pricing',
   ogType: 'website',
+  ogImage: 'https://api.metricshour.com/og/section/pricing.png',
+  ogImageWidth: '1200',
+  ogImageHeight: '630',
   twitterTitle: 'Pricing — MetricsHour',
-  twitterDescription: 'Free global financial data. Pro from $9.99/month for real-time prices and AI insights. No Bloomberg Terminal required.',
+  twitterDescription: 'Institutional-grade financial intelligence from $9.99/month. Real-time prices, AI insights, 196 countries and 130+ assets. Free tier always available.',
+  twitterImage: 'https://api.metricshour.com/og/section/pricing.png',
+  twitterCard: 'summary_large_image',
 })
 
 useHead({

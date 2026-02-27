@@ -67,10 +67,14 @@ PRICE_MOVE_THRESHOLD: dict[str, float] = {
 def generate_feed_events(self):
     db = SessionLocal()
     try:
-        _generate_price_moves(db)
-        _generate_macro_releases(db)
+        triggered = _generate_price_moves(db)
+        triggered += _generate_macro_releases(db)
         db.commit()
-        log.info("feed_generator: completed successfully")
+        log.info("feed_generator: completed — %d events triggered summary refreshes", len(triggered))
+        # Async summary refresh for significant events (importance >= 7)
+        for entity_type, entity_code in triggered:
+            from tasks.summaries import refresh_entity_summary
+            refresh_entity_summary.delay(entity_type, entity_code)
     except Exception as exc:
         db.rollback()
         log.error("feed_generator: failed — %s", exc, exc_info=True)
@@ -81,17 +85,19 @@ def generate_feed_events(self):
 
 # ── Price move events ─────────────────────────────────────────────────────────
 
-def _generate_price_moves(db) -> None:
+def _generate_price_moves(db) -> list[tuple[str, str]]:
     """
     Compare the latest price to the price 15 minutes earlier.
     If abs(change_pct) >= threshold, create/update a feed event.
     De-duplicate: one price_move event per asset per 15-minute window.
+    Returns list of (entity_type, entity_code) tuples for significant events.
     """
     now = datetime.now(timezone.utc)
     window_start = now - timedelta(minutes=15)
     dedup_window = now - timedelta(minutes=16)  # slightly wider for query safety
 
     assets = db.query(Asset).filter(Asset.is_active == True).all()
+    triggered: list[tuple[str, str]] = []
 
     for asset in assets:
         # Latest price
@@ -153,11 +159,16 @@ def _generate_price_moves(db) -> None:
                 "direction": direction,
             },
         )
+        # Trigger summary refresh for large moves (≥7% = high importance)
+        if importance >= 7 and asset.asset_type.value == "stock":
+            triggered.append(("stock", asset.symbol))
+
+    return triggered
 
 
 # ── Macro release events ───────────────────────────────────────────────────────
 
-def _generate_macro_releases(db) -> None:
+def _generate_macro_releases(db) -> list[tuple[str, str]]:
     """
     Surface high-importance economic indicator data as feed events.
     Uses NOW as published_at (when we surface it) not period_date.
@@ -165,10 +176,10 @@ def _generate_macro_releases(db) -> None:
     Only emits high-importance indicators to avoid flooding the feed.
     """
     from app.models.country import Country
-    import datetime as dt
 
     now = datetime.now(timezone.utc)
     today = now.date()
+    triggered: list[tuple[str, str]] = []
 
     # Only surface top-tier indicators (importance >= 5)
     high_importance = {k for k, v in INDICATOR_IMPORTANCE.items() if v >= 5.0}
@@ -223,6 +234,11 @@ def _generate_macro_releases(db) -> None:
                 "source": indicator_row.source,
             },
         )
+        # Trigger summary refresh for high-importance macro events
+        if importance >= 7:
+            triggered.append(("country", country.code))
+
+    return triggered
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

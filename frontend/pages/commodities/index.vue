@@ -162,12 +162,17 @@ function fmtTs(iso: string | null | undefined): string {
 
 useSeoMeta({
   title: 'Commodities — MetricsHour',
-  description: 'Real-time commodity prices: crude oil, gold, silver, copper, palm oil, wheat and 20+ instruments.',
+  description: 'Real-time commodity prices: crude oil, gold, silver, copper, palm oil, wheat and 20+ instruments tracked globally.',
   ogTitle: 'Commodities — MetricsHour',
-  ogDescription: 'Real-time commodity prices: crude oil, gold, silver, copper, palm oil, wheat and 20+ instruments.',
+  ogDescription: 'Real-time commodity prices: crude oil, gold, silver, copper, palm oil, wheat and 20+ instruments tracked globally.',
   ogUrl: 'https://metricshour.com/commodities',
   ogType: 'website',
+  ogImage: 'https://api.metricshour.com/og/section/commodities.png',
+  ogImageWidth: '1200',
+  ogImageHeight: '630',
   twitterTitle: 'Commodities — MetricsHour',
-  twitterDescription: 'Real-time commodity prices: crude oil, gold, silver, copper, palm oil, wheat and 20+ instruments.',
+  twitterDescription: 'Real-time commodity prices: crude oil, gold, silver, copper, palm oil, wheat and 20+ instruments tracked globally.',
+  twitterImage: 'https://api.metricshour.com/og/section/commodities.png',
+  twitterCard: 'summary_large_image',
 })
 </script>

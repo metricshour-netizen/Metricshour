@@ -97,7 +97,7 @@
           <span>#</span>
           <span>Company</span>
           <span>Sector</span>
-          <span class="text-right">Price</span>
+          <span class="text-right">Last Close</span>
           <span class="text-right">Mkt Cap</span>
           <span></span>
         </div>
@@ -119,9 +119,9 @@
                 </div>
               </div>
               <div class="text-right shrink-0 ml-2">
-                <div class="text-sm font-bold text-white tabular-nums font-mono">{{ s.price ? fmtPrice(s.price.close) : '—' }}</div>
+                <div class="text-sm font-bold tabular-nums font-mono" :class="isStale(s.price?.timestamp) ? 'text-gray-400' : 'text-white'">{{ s.price ? fmtPrice(s.price.close) : '—' }}</div>
                 <div class="text-[10px] text-gray-600 tabular-nums">{{ fmtCap(s.market_cap_usd) }}</div>
-                <div v-if="s.price?.timestamp" class="text-[9px] text-gray-700 mt-0.5">{{ fmtAge(s.price.timestamp) }}</div>
+                <div v-if="s.price?.timestamp" class="text-[9px] text-gray-700 mt-0.5">{{ fmtCloseDate(s.price.timestamp) }}</div>
               </div>
             </div>
             <!-- Desktop row -->
@@ -137,8 +137,9 @@
               </div>
               <span class="text-xs text-gray-500 truncate pr-2">{{ s.sector || '—' }}</span>
               <div class="text-right">
-                <div class="text-sm font-bold text-white tabular-nums font-mono">{{ s.price ? fmtPrice(s.price.close) : '—' }}</div>
-                <div v-if="s.price?.timestamp" class="text-[10px] text-gray-700 tabular-nums">{{ fmtAge(s.price.timestamp) }}</div>
+                <div class="text-sm font-bold tabular-nums font-mono" :class="isStale(s.price?.timestamp) ? 'text-gray-400' : 'text-white'">{{ s.price ? fmtPrice(s.price.close) : '—' }}</div>
+                <div v-if="s.price?.timestamp" class="text-[10px] text-gray-700 tabular-nums">{{ fmtCloseDate(s.price.timestamp) }}</div>
+                <div v-if="s.price?.timestamp && isStale(s.price.timestamp)" class="text-[9px] text-amber-700 tabular-nums">close</div>
               </div>
               <span class="text-xs text-right text-gray-400 tabular-nums">{{ fmtCap(s.market_cap_usd) }}</span>
               <span class="text-right text-emerald-600 text-xs">→</span>
@@ -232,6 +233,18 @@ function fmtAge(ts: string): string {
   return `${Math.floor(hrs / 24)}d ago`
 }
 
+function isStale(ts: string | undefined): boolean {
+  if (!ts) return false
+  return Date.now() - new Date(ts).getTime() > 86_400_000 // >24h
+}
+
+function fmtCloseDate(ts: string): string {
+  const d = new Date(ts)
+  const diff = Date.now() - d.getTime()
+  if (diff < 86_400_000) return fmtAge(ts) // same day: show relative
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) // older: "Feb 24"
+}
+
 useSeoMeta({
   title: 'Stocks — MetricsHour',
   description: 'Top global stocks with geographic revenue exposure from SEC EDGAR. See which countries each stock earns from and how trade flows affect your portfolio.',
@@ -239,7 +252,12 @@ useSeoMeta({
   ogDescription: 'Top global stocks with geographic revenue exposure from SEC EDGAR. See which countries each stock earns from and how trade flows affect your portfolio.',
   ogUrl: 'https://metricshour.com/stocks',
   ogType: 'website',
+  ogImage: 'https://api.metricshour.com/og/section/stocks.png',
+  ogImageWidth: '1200',
+  ogImageHeight: '630',
   twitterTitle: 'Stocks — MetricsHour',
   twitterDescription: 'Top global stocks with geographic revenue exposure from SEC EDGAR. See which countries each stock earns from and how trade flows affect your portfolio.',
+  twitterImage: 'https://api.metricshour.com/og/section/stocks.png',
+  twitterCard: 'summary_large_image',
 })
 </script>

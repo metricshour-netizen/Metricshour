@@ -114,6 +114,9 @@ useSeoMeta({
   description: 'Terms of Service for MetricsHour — financial data intelligence platform.',
   ogTitle: 'Terms of Service — MetricsHour',
   ogUrl: 'https://metricshour.com/terms',
+  ogImage: 'https://api.metricshour.com/og/section/home.png',
+  twitterImage: 'https://api.metricshour.com/og/section/home.png',
+  twitterCard: 'summary_large_image',
 })
 useHead({
   link: [{ rel: 'canonical', href: 'https://metricshour.com/terms' }],

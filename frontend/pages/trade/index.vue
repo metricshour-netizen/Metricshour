@@ -106,7 +106,12 @@ useSeoMeta({
   ogDescription: 'Trade flows between 380 country pairs. Exports, imports, top products, and GDP dependency ratios sourced from UN Comtrade.',
   ogUrl: 'https://metricshour.com/trade',
   ogType: 'website',
+  ogImage: 'https://api.metricshour.com/og/section/trade.png',
+  ogImageWidth: '1200',
+  ogImageHeight: '630',
   twitterTitle: 'Bilateral Trade — MetricsHour',
   twitterDescription: 'Trade flows between 380 country pairs. Exports, imports, top products, and GDP dependency ratios sourced from UN Comtrade.',
+  twitterImage: 'https://api.metricshour.com/og/section/trade.png',
+  twitterCard: 'summary_large_image',
 })
 </script>

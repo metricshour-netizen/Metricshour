@@ -306,6 +306,101 @@ _PNG_HEADERS = {
 }
 
 
+# ── Section / generic image renderer ──────────────────────────────────────────
+
+_SECTION_CONFIG: dict[str, dict] = {
+    "home": {
+        "label": "GLOBAL FINANCIAL INTELLIGENCE",
+        "tagline": "Stocks · Macro · Trade · Commodities · FX · Crypto",
+        "accent": GREEN,
+    },
+    "stocks": {
+        "label": "STOCKS",
+        "tagline": "Geographic revenue exposure · SEC EDGAR · 130+ assets",
+        "accent": GREEN,
+    },
+    "countries": {
+        "label": "COUNTRIES",
+        "tagline": "196 countries · 80+ macro indicators · G7 G20 EU NATO BRICS",
+        "accent": (59, 130, 246),  # blue-500
+    },
+    "trade": {
+        "label": "BILATERAL TRADE",
+        "tagline": "380 country pairs · Exports · Imports · GDP dependency",
+        "accent": (245, 158, 11),  # amber-500
+    },
+    "commodities": {
+        "label": "COMMODITIES",
+        "tagline": "Energy · Metals · Agriculture · 20+ instruments tracked",
+        "accent": (245, 158, 11),
+    },
+    "markets": {
+        "label": "MARKETS",
+        "tagline": "Crypto · Stocks · Indices · FX · Bonds · Real-time prices",
+        "accent": (168, 85, 247),  # purple-500
+    },
+    "feed": {
+        "label": "INTELLIGENCE FEED",
+        "tagline": "Price moves · Macro releases · Trade updates · Personalised",
+        "accent": GREEN,
+    },
+    "pricing": {
+        "label": "PRICING",
+        "tagline": "Free tier forever · Pro from $9.99/mo · No Bloomberg bill",
+        "accent": GREEN,
+    },
+}
+
+
+def _render_section(section: str) -> bytes:
+    cfg = _SECTION_CONFIG.get(section, _SECTION_CONFIG["home"])
+    accent = cfg["accent"]
+
+    img = Image.new("RGB", (W, H), BG)
+    draw = ImageDraw.Draw(img)
+
+    # Subtle grid lines
+    for x in range(0, W, 80):
+        draw.line([(x, 0), (x, H)], fill=(255, 255, 255, 5), width=1)
+    for y in range(0, H, 80):
+        draw.line([(0, y), (W, y)], fill=(255, 255, 255, 5), width=1)
+
+    # Diagonal accent stripe (visual texture)
+    ar, ag, ab = accent
+    for offset in range(0, W + H, 60):
+        x1, y1 = offset, 0
+        x2, y2 = 0, offset
+        draw.line([(x1, y1), (x2, y2)], fill=(ar, ag, ab, 12), width=1)
+
+    # Top bar
+    draw.rectangle([(0, 0), (W, 6)], fill=accent)
+
+    # MetricsHour logotype — large, centred, vertical-centre offset upward
+    draw.text((W // 2, H // 2 - 90), "METRICSHOUR", font=_font(72, bold=True), fill=WHITE, anchor="mm")
+
+    # Section label
+    draw.text((W // 2, H // 2 - 10), cfg["label"], font=_font(28, bold=True), fill=accent, anchor="mm")
+
+    # Tagline
+    draw.text((W // 2, H // 2 + 50), cfg["tagline"], font=_font(22), fill=GRAY_LT, anchor="mm")
+
+    # Bottom domain
+    draw.text((W // 2, H - 44), "metricshour.com", font=_font(20, bold=True), fill=GRAY, anchor="mm")
+
+    # Bottom bar
+    draw.rectangle([(0, H - 6), (W, H)], fill=accent)
+
+    return _to_png_bytes(img)
+
+
+@router.get("/og/section/{section}.png", include_in_schema=False)
+def og_section(section: str):
+    """Branded 1200x630 OG image for static/listing pages."""
+    png = _render_section(section)
+    _fire_r2_upload(f"og/section/{section}.png", png)
+    return Response(content=png, media_type="image/png", headers=_PNG_HEADERS)
+
+
 # ── Routes ─────────────────────────────────────────────────────────────────────
 
 @router.get("/og/feed/{event_id}.png", include_in_schema=False)

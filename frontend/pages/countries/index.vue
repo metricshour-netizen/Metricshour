@@ -109,12 +109,17 @@ const filtered = computed(() => {
 
 useSeoMeta({
   title: 'Countries — MetricsHour',
-  description: 'Macro data for 196 countries: GDP, inflation, trade, debt, and 80+ indicators.',
+  description: 'Macro data for 196 countries: GDP, inflation, interest rates, trade balances, debt, and 80+ economic indicators. Filter by G7, G20, EU, NATO, BRICS, OPEC.',
   ogTitle: 'Countries — MetricsHour',
-  ogDescription: 'Macro data for 196 countries: GDP, inflation, trade, debt, and 80+ indicators.',
+  ogDescription: 'Macro data for 196 countries: GDP, inflation, interest rates, trade balances, debt, and 80+ economic indicators. Filter by G7, G20, EU, NATO, BRICS, OPEC.',
   ogUrl: 'https://metricshour.com/countries',
   ogType: 'website',
+  ogImage: 'https://api.metricshour.com/og/section/countries.png',
+  ogImageWidth: '1200',
+  ogImageHeight: '630',
   twitterTitle: 'Countries — MetricsHour',
-  twitterDescription: 'Macro data for 196 countries: GDP, inflation, trade, debt, and 80+ indicators.',
+  twitterDescription: 'Macro data for 196 countries: GDP, inflation, interest rates, trade balances, debt, and 80+ economic indicators. Filter by G7, G20, EU, NATO, BRICS, OPEC.',
+  twitterImage: 'https://api.metricshour.com/og/section/countries.png',
+  twitterCard: 'summary_large_image',
 })
 </script>
