@@ -428,14 +428,15 @@ function handleCardClick() {
   if (type === 'price_move' && data.symbol) {
     navigateTo(`/stocks/${data.symbol}`)
   } else if ((type === 'macro_release' || type === 'indicator_release') && data.country_code) {
-    navigateTo(`/countries/${data.country_code}`)
+    navigateTo(`/countries/${(data.country_code as string).toLowerCase()}`)
   } else if (type === 'trade_update' && data.exporter && data.importer) {
     navigateTo(`/trade/${data.exporter}-${data.importer}`)
-  } else if (type === 'central_bank' && data.bank) {
-    // Central bank events → markets page (no dedicated CB page yet)
+  } else if (type === 'central_bank') {
     navigateTo('/markets')
+  } else {
+    // Fallback — open the feed detail page for this event
+    navigateTo(`/feed/${props.event.id}`)
   }
-  // blog/article events always have source_url so handled above
 }
 
 // ── Actions ───────────────────────────────────────────────────────────────────

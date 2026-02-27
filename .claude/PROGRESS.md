@@ -104,15 +104,17 @@ These were agreed on 2026-02-21. Do not let the user move on until all are done.
 - [ ] **Heading hierarchy audit** — deferred (low priority vs launch)
 - [ ] **Alt text for SVGs/flags** — deferred
 
-### PHASE 4 — UI/UX & Navigation
-- [ ] **Light/dark mode toggle** — add toggle button in AppNav. Use CSS class on <html> + localStorage. Ensure WCAG 2.1 AA contrast on both modes.
-- [ ] **Feed cards fully clickable** — wrap entire FeedCard in NuxtLink/router-push to /feed/{id} or source_url. Currently only action buttons are clickable.
-- [ ] **Terminal View toggle** — Markets + Stocks pages. Toggle switches to monospaced table (JetBrains Mono), 50 rows, no whitespace, sparkline mini-chart per row.
-- [ ] **Share buttons** — on FeedCard + blog articles: Twitter, WhatsApp, LinkedIn share URLs. Share the specific card/article URL with og:image.
-- [ ] **Feedback button** — floating button on every page. Opens modal with textarea → POST /api/feedback. Simple table in DB.
-- [ ] **Internal linking audit** — every country page links to its trade pairs and relevant stocks. Every stock page links to its revenue countries. Every trade page links to both country pages. Markets grid cards link to detail pages.
-- [ ] **Indices clickable** — markets page indices (DJI, SPX etc) link to /indices/[symbol] detail page with price chart.
-- [ ] **Logo always links to /** — audit all pages, ensure every METRICSHOUR text/logo is a NuxtLink to /.
+### PHASE 4 — UI/UX & Navigation ✅ COMPLETE (2026-02-27, commit a30fdcf)
+- [x] **Light/dark mode toggle** — AppNav has toggle + main.css has full WCAG 2.1 AA light-mode CSS
+- [x] **Feed cards fully clickable** — handleCardClick on article element, type-aware routing
+- [x] **Terminal View toggle** — Markets + Stocks pages with localStorage persistence, amber/green themes
+- [x] **Share buttons** — Twitter, WhatsApp, LinkedIn in FeedCard action rail
+- [x] **Feedback button** — floating button in app.vue, modal, POST /api/feedback
+- [x] **Internal linking audit** — country→trade+stocks, stock→countries+tradeflows, trade→countries, markets→indices+stocks. NEW: stock detail shows "Related Trade Flows" chips
+- [x] **Indices clickable** — NuxtLink to /indices/[symbol] in markets grid
+- [x] **Logo always links to /** — AppNav + AppFooter both confirmed
+- [x] **G20 homepage fix** — fallback now has names, .catch() added, single v-else branch
+- [x] **Stock prices on listing** — price column + "last updated" age label added to stocks/index.vue
 
 ### PHASE 5 — CRM & Admin
 - [ ] **login_events migration** — new table: uuid PK, user_id FK, ip_address, user_agent, success bool, created_at. Index on user_id + created_at.

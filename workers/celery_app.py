@@ -116,6 +116,10 @@ app.conf.update(
             'task': 'tasks.og_images.generate_og_images',
             'schedule': crontab(hour=3, minute=30),
         },
+        'feed-og-images-daily-4am': {
+            'task': 'tasks.og_images.generate_feed_og_images',
+            'schedule': crontab(hour=4, minute=15),
+        },
 
         # --- Data collection: public domain sources ---
 

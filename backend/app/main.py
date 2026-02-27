@@ -8,7 +8,7 @@ from slowapi.errors import RateLimitExceeded
 
 from app.config import settings
 from app.limiter import limiter
-from app.routers import health, countries, assets, trade, auth, search, feed, admin, share
+from app.routers import health, countries, assets, trade, auth, search, feed, admin, share, og
 from app.routers.admin import public_router as blog_router
 from app.routers import intelligence
 from app.routers import feedback
@@ -48,7 +48,8 @@ app.include_router(admin.router, prefix="/api")
 app.include_router(blog_router, prefix="/api")
 app.include_router(intelligence.router, prefix="/api")
 app.include_router(feedback.router)
-app.include_router(share.router)  # /s/{id} — social share OG preview (no prefix)
+app.include_router(share.router)   # /s/{id} — social share OG preview (no prefix)
+app.include_router(og.router)      # /og/feed/{id}.png, /og/countries/{code}.png, /og/stocks/{symbol}.png
 
 
 @app.get("/")

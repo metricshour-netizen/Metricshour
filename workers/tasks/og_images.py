@@ -273,3 +273,206 @@ def generate_og_images() -> dict:
 
     log.info("OG images generated: %s", counts)
     return counts
+
+
+# ── Feed event OG image ────────────────────────────────────────────────────────
+
+# Accent colours per event type
+_ACCENTS: dict[str, tuple[int, int, int]] = {
+    "price_move":        (16, 185, 129),   # emerald-500
+    "indicator_release": (59, 130, 246),   # blue-500
+    "macro_release":     (59, 130, 246),
+    "trade_update":      (245, 158, 11),   # amber-500
+    "central_bank":      (168, 85, 247),   # purple-500
+    "blog":              (168, 85, 247),
+}
+_BG_COLORS: dict[str, tuple[int, int, int]] = {
+    "price_move":        (2, 16, 9),
+    "indicator_release": (2, 8, 24),
+    "macro_release":     (2, 8, 24),
+    "trade_update":      (13, 8, 0),
+    "central_bank":      (8, 2, 18),
+    "blog":              (8, 2, 18),
+}
+
+
+def _feed_event_image(
+    event_type: str,
+    title: str,
+    event_data: dict | None,
+    importance: float | None,
+) -> bytes:
+    """Render a 1200x630 OG image styled like the MetricsHour feed card."""
+    data = event_data or {}
+    accent = _ACCENTS.get(event_type, GREEN)
+    bg_color = _BG_COLORS.get(event_type, BG)
+
+    img = Image.new("RGB", (W, H), bg_color)
+    draw = ImageDraw.Draw(img)
+
+    # Subtle radial glow (fake with a large blurred circle)
+    # Draw concentric rects with decreasing opacity for glow effect
+    glow_r, glow_g, glow_b = accent
+    for i in range(12, 0, -1):
+        alpha = int(20 * (i / 12))
+        rect_w, rect_h = W * (1 - i * 0.03), H * (1 - i * 0.05)
+        x0 = (W - rect_w) / 2
+        y0 = (H - rect_h) / 2 - H * 0.1  # offset upward
+        glow_color = (
+            max(0, bg_color[0] + int((glow_r - bg_color[0]) * alpha / 255)),
+            max(0, bg_color[1] + int((glow_g - bg_color[1]) * alpha / 255)),
+            max(0, bg_color[2] + int((glow_b - bg_color[2]) * alpha / 255)),
+        )
+        draw.ellipse([x0, y0, x0 + rect_w, y0 + rect_h], fill=glow_color)
+
+    # Top importance bar
+    if importance:
+        bar_width = int(W * min(1.0, importance / 10))
+        draw.rectangle([(0, 0), (bar_width, 5)], fill=accent)
+
+    # Brand watermark top-right
+    draw.text((W - 32, 32), "METRICSHOUR", font=_font(20, bold=True), fill=accent, anchor="rm")
+
+    # Event type badge
+    TYPE_LABELS = {
+        "price_move": "PRICE MOVE",
+        "indicator_release": "MACRO DATA",
+        "macro_release": "MACRO DATA",
+        "trade_update": "TRADE",
+        "central_bank": "CENTRAL BANK",
+        "blog": "ARTICLE",
+    }
+    badge_text = TYPE_LABELS.get(event_type, event_type.upper().replace("_", " "))
+    draw.text((60, 44), badge_text, font=_font(18, bold=True), fill=accent, anchor="lm")
+
+    # ── Type-specific hero content ─────────────────────────────────────────
+    cy = H // 2 - 20  # vertical centre anchor
+
+    if event_type == "price_move":
+        change_pct = float(data.get("change_pct", 0) or 0)
+        symbol = str(data.get("symbol", ""))
+        price = data.get("price")
+        sign = "+" if change_pct >= 0 else ""
+        pct_color = (16, 185, 129) if change_pct >= 0 else (239, 68, 68)
+        arrow = "↑" if change_pct >= 0 else "↓"
+
+        draw.text((W // 2, cy - 20), f"{sign}{change_pct:.2f}%", font=_font(110, bold=True), fill=pct_color, anchor="mm")
+        draw.text((W // 2, cy + 90), f"{arrow}  {symbol}", font=_font(48, bold=True), fill=WHITE, anchor="mm")
+        if price:
+            draw.text((W // 2, cy + 150), f"${float(price):,.2f}", font=_font(32), fill=GRAY_LT, anchor="mm")
+
+    elif event_type in ("indicator_release", "macro_release"):
+        country_code = str(data.get("country_code", "")).upper()
+        value = data.get("value")
+        indicator = str(data.get("indicator") or data.get("indicator_slug", "")).replace("_", " ").upper()
+
+        # Big country code
+        if country_code:
+            draw.text((W // 2, cy - 60), country_code, font=_font(80, bold=True), fill=accent, anchor="mm")
+
+        # Big value
+        if value is not None:
+            n = float(value)
+            if abs(n) >= 1e12:
+                val_str = f"${n / 1e12:.1f}T"
+            elif abs(n) >= 1e9:
+                val_str = f"${n / 1e9:.1f}B"
+            else:
+                val_str = f"{n:.2f}" if abs(n) < 1000 else f"{n:,.0f}"
+            draw.text((W // 2, cy + 30), val_str, font=_font(96, bold=True), fill=WHITE, anchor="mm")
+
+        if indicator:
+            # Truncate
+            ind_display = indicator[:50] + "…" if len(indicator) > 50 else indicator
+            draw.text((W // 2, cy + 120), ind_display, font=_font(28), fill=GRAY_LT, anchor="mm")
+
+    elif event_type == "trade_update":
+        exp = str(data.get("exporter", "")).upper()
+        imp = str(data.get("importer", "")).upper()
+        value = data.get("value_usd")
+
+        draw.text((200, cy), exp, font=_font(96, bold=True), fill=WHITE, anchor="mm")
+        draw.text((W // 2, cy), "↔", font=_font(72, bold=True), fill=accent, anchor="mm")
+        draw.text((W - 200, cy), imp, font=_font(96, bold=True), fill=WHITE, anchor="mm")
+        if value:
+            n = float(value)
+            val_str = f"${n / 1e9:.0f}B" if n >= 1e9 else f"${n / 1e6:.0f}M"
+            draw.text((W // 2, cy + 100), val_str, font=_font(48, bold=True), fill=accent, anchor="mm")
+
+    else:
+        # Blog / generic — just show title large
+        pass
+
+    # ── Title (bottom area) ──────────────────────────────────────────────
+    # Strip leading emoji sequences (rough approach: skip non-ASCII prefix)
+    clean_title = title.encode("ascii", "ignore").decode("ascii").strip(" →↑↓·–—") or title
+    # Word-wrap at ~55 chars per line
+    words = clean_title.split()
+    lines: list[str] = []
+    current = ""
+    for w in words:
+        if len(current) + len(w) + 1 <= 55:
+            current = (current + " " + w).strip()
+        else:
+            if current:
+                lines.append(current)
+            current = w
+    if current:
+        lines.append(current)
+    lines = lines[:3]  # max 3 lines
+
+    title_y = H - 120
+    for i, line in enumerate(lines):
+        draw.text((60, title_y + i * 44), line, font=_font(34, bold=True), fill=WHITE, anchor="lm")
+
+    # Subtle bottom border
+    draw.rectangle([(0, H - 6), (W, H)], fill=accent)
+
+    return _to_png_bytes(img)
+
+
+@shared_task(name="tasks.og_images.generate_feed_og_images", max_retries=1)
+def generate_feed_og_images() -> dict:
+    """
+    Generate + upload OG images for all feed events that don't yet have one.
+    Runs after the main OG task (same daily schedule, or triggered on-demand).
+    """
+    import sys
+    sys.path.insert(0, "/var/www/metricshour/backend")
+
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import Session
+    from sqlalchemy import select
+
+    db_url = os.environ["DATABASE_URL"]
+    engine = create_engine(db_url, pool_pre_ping=True)
+
+    r2_public_url = os.environ.get("R2_PUBLIC_URL", "").rstrip("/")
+    counts = {"generated": 0, "skipped": 0, "errors": 0}
+
+    with Session(engine) as db:
+        from app.models.feed import FeedEvent
+
+        events = db.execute(select(FeedEvent).order_by(FeedEvent.id)).scalars().all()
+        for ev in events:
+            try:
+                r2_key = f"og/feed/{ev.id}.png"
+                img_bytes = _feed_event_image(
+                    ev.event_type,
+                    ev.title,
+                    ev.event_data,
+                    ev.importance_score,
+                )
+                _upload(r2_key, img_bytes)
+                # Backfill image_url on the event row if not already set
+                if not ev.image_url and r2_public_url:
+                    ev.image_url = f"{r2_public_url}/{r2_key}"
+                counts["generated"] += 1
+            except Exception as e:
+                log.warning("Feed OG event %s failed: %s", ev.id, e)
+                counts["errors"] += 1
+
+        db.commit()
+
+    log.info("Feed OG images: %s", counts)
+    return counts

@@ -21,7 +21,7 @@ from app.models.feed import FeedEvent
 
 router = APIRouter(tags=["share"])
 
-_DEFAULT_OG_IMAGE = "https://metricshour.com/og-cover.png"
+_API_BASE = "https://api.metricshour.com"
 _SITE_NAME = "MetricsHour"
 _SITE_TWITTER = "@metricshour"
 _CANONICAL_BASE = "https://metricshour.com"
@@ -59,7 +59,9 @@ def share_preview(event_id: int, db: Session = Depends(get_db)):
     canonical = f"{_CANONICAL_BASE}/feed/{event_id}"
     title = _esc(event.title.strip())
     desc = _esc(_description(event.body))
-    image = _esc(event.image_url or _DEFAULT_OG_IMAGE)
+    # Use pre-generated R2 image if available, otherwise generate on-demand from API
+    og_image = event.image_url or f"{_API_BASE}/og/feed/{event_id}.png"
+    image = _esc(og_image)
 
     # canonical_url contains no HTML-special chars so safe to inline in <script>
     html_page = f"""<!DOCTYPE html>
