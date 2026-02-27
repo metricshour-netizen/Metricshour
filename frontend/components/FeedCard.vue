@@ -409,12 +409,8 @@ const absoluteTime = computed(() => {
 // ── External URL ──────────────────────────────────────────────────────────────
 const isExternal = computed(() => (props.event.source_url || '').startsWith('http'))
 const externalUrl = computed(() => props.event.source_url || '#')
-const shareUrl = computed(() => {
-  const url = props.event.source_url
-  if (!url) return `https://metricshour.com/feed/${props.event.id}`
-  if (url.startsWith('http')) return url
-  return `https://metricshour.com${url}`
-})
+// Always share the MetricsHour feed page so the CF worker controls the OG card
+const shareUrl = computed(() => `https://metricshour.com/feed/${props.event.id}`)
 
 function handleCardClick() {
   const url = props.event.source_url
