@@ -118,9 +118,14 @@ def rank_feed(
 
     scored.sort(key=lambda s: s.score, reverse=True)
 
+    # Diversity pass: prevent same-country or same-type flooding consecutive cards.
+    # Uses greedy re-ranking: at each position pick the highest-scored event that
+    # doesn't repeat the last country or type seen within the last 2 cards.
+    diverse = _diversify(scored)
+
     start = (page - 1) * page_size
     end = start + page_size
-    return [s.event for s in scored[start:end]]
+    return [s.event for s in diverse[start:end]]
 
 
 # ── Internal ──────────────────────────────────────────────────────────────────
@@ -141,6 +146,47 @@ def _recency(published_at: datetime) -> float:
         published_at = published_at.replace(tzinfo=timezone.utc)
     age_hours = max(0.0, (now - published_at).total_seconds() / 3600)
     return RECENCY_MAX_SCORE * math.exp(-age_hours * math.log(2) / RECENCY_HALF_LIFE_HOURS)
+
+
+def _diversify(scored: list[ScoredEvent], diversity_window: int = 2) -> list[ScoredEvent]:
+    """
+    Re-rank to avoid same-country or same-type runs.
+
+    Greedy pass: pick the best event at each position that hasn't appeared
+    in the last `diversity_window` positions for the same country or type.
+    Falls back to the best remaining event if all are duplicates.
+    """
+    remaining = list(scored)  # already sorted by score desc
+    result: list[ScoredEvent] = []
+    recent_countries: list[frozenset] = []
+    recent_types: list[str] = []
+
+    while remaining:
+        chosen = None
+        for candidate in remaining:
+            c_countries = frozenset(candidate.event.related_country_ids or [])
+            c_type = candidate.event.event_type
+
+            # Allow if no overlap with recent countries and different type
+            country_repeat = any(c_countries & rc for rc in recent_countries[-diversity_window:] if c_countries)
+            type_repeat = recent_types[-1:] == [c_type] if recent_types else False
+
+            if not country_repeat and not type_repeat:
+                chosen = candidate
+                break
+
+        # Fallback: just use highest-scored remaining item to avoid infinite loop
+        if chosen is None:
+            chosen = remaining[0]
+
+        result.append(chosen)
+        remaining.remove(chosen)
+
+        # Track recent context
+        recent_countries.append(frozenset(chosen.event.related_country_ids or []))
+        recent_types.append(chosen.event.event_type)
+
+    return result
 
 
 def _score_for_user(
