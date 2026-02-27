@@ -1,6 +1,11 @@
 <template>
   <!-- ── Market Ticker Strip ──────────────────────────────────────────────── -->
-  <div v-if="tickerItems.length" class="w-full bg-[#060d14] border-b border-[#1a2332] overflow-hidden select-none" @mouseenter="tickerPaused = true" @mouseleave="tickerPaused = false">
+  <div
+    v-if="tickerItems.length"
+    class="w-full bg-[#060d14] border-b border-[#1a2332] overflow-hidden select-none"
+    @mouseenter="tickerPaused = true"
+    @mouseleave="tickerPaused = false"
+  >
     <div class="ticker-wrap">
       <div class="ticker-track" :class="{ paused: tickerPaused }">
         <span
@@ -9,8 +14,8 @@
           class="inline-flex items-center gap-1.5 px-5 py-2 border-r border-[#1a2332] shrink-0"
         >
           <span class="text-[11px] font-mono font-bold" :class="item.typeColor">{{ item.symbol }}</span>
-          <span class="text-[11px] text-white tabular-nums font-semibold">{{ item.priceStr }}</span>
-          <span class="text-[10px] tabular-nums font-semibold" :class="item.dir >= 0 ? 'text-emerald-400' : 'text-red-400'">
+          <span class="text-[11px] text-white tabular-nums font-semibold font-mono">{{ item.priceStr }}</span>
+          <span class="text-[10px] tabular-nums font-semibold font-mono" :class="item.dir >= 0 ? 'text-emerald-400' : 'text-red-400'">
             {{ item.dir >= 0 ? '▲' : '▼' }}{{ item.changePct }}
           </span>
         </span>
@@ -18,20 +23,21 @@
     </div>
   </div>
 
-  <main class="max-w-7xl mx-auto px-4 py-16">
-    <!-- Hero -->
-    <div class="text-center mb-16">
-      <!-- Intelligence signal strip -->
-      <div class="flex items-center justify-center gap-2 flex-wrap mb-8">
+  <main class="max-w-7xl mx-auto px-4">
+
+    <!-- ── Hero ──────────────────────────────────────────────────────────── -->
+    <section class="pt-12 pb-8 text-center">
+
+      <!-- Live signal badges -->
+      <div class="flex items-center justify-center gap-2 flex-wrap mb-6">
         <span class="inline-flex items-center gap-1.5 bg-[#111827] border border-[#1f2937] text-xs text-gray-400 px-3 py-1.5 rounded-full">
           <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block"></span>
           196 countries tracked
         </span>
         <span class="inline-flex items-center gap-1.5 bg-[#111827] border border-[#1f2937] text-xs text-gray-400 px-3 py-1.5 rounded-full">
           <span class="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse inline-block"></span>
-          130+ assets across all classes
+          130+ assets live
         </span>
-        <!-- Adaptive intelligence card — rotates every 5s, sourced from /api/intelligence/spotlight -->
         <NuxtLink
           v-if="activeSpotlight"
           :to="activeSpotlight.link"
@@ -47,8 +53,17 @@
         </span>
       </div>
 
+      <!-- H1 — primary SEO heading -->
+      <h1 class="text-3xl sm:text-4xl lg:text-5xl font-black text-white mb-4 leading-tight tracking-tight">
+        Global Financial
+        <span class="text-emerald-400"> Intelligence</span>
+      </h1>
+      <p class="text-gray-500 text-base sm:text-lg max-w-xl mx-auto mb-8 leading-relaxed">
+        Connect stock revenue exposure, bilateral trade flows, and macro data — all in one place.
+      </p>
+
       <!-- Search bar -->
-      <div class="relative max-w-xl mx-auto mb-10" ref="searchContainer">
+      <div class="relative max-w-xl mx-auto mb-4" ref="searchContainer">
         <div class="relative">
           <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">🔍</span>
           <input
@@ -60,7 +75,7 @@
             @keydown.enter.prevent="selectFocused"
             @focus="searchQuery.length >= 2 && (searchOpen = true)"
             placeholder="Search countries, stocks, trade pairs..."
-            class="w-full bg-[#111827] border border-[#1f2937] focus:border-emerald-500 text-white rounded-lg px-4 py-3.5 pl-9 text-sm focus:outline-none transition-colors"
+            class="w-full bg-[#111827] border border-[#1f2937] focus:border-emerald-500 text-white rounded-lg px-4 py-3.5 pl-9 text-sm focus:outline-none transition-colors font-mono"
             autocomplete="off"
             spellcheck="false"
           />
@@ -76,11 +91,8 @@
           v-if="searchOpen && (searchResults.countries.length || searchResults.assets.length)"
           class="absolute top-full left-0 right-0 mt-1 bg-[#0d1117] border border-[#1f2937] rounded-lg overflow-hidden z-50 text-left shadow-2xl"
         >
-          <!-- Countries -->
           <template v-if="searchResults.countries.length">
-            <div class="px-3 py-1.5 text-[10px] text-gray-600 uppercase tracking-widest font-bold border-b border-[#1f2937] bg-[#111827]">
-              Countries
-            </div>
+            <div class="px-3 py-1.5 text-[10px] text-gray-600 uppercase tracking-widest font-bold border-b border-[#1f2937] bg-[#111827]">Countries</div>
             <NuxtLink
               v-for="(c, i) in searchResults.countries"
               :key="c.code"
@@ -94,12 +106,8 @@
               <span class="text-xs text-gray-600 font-mono">{{ c.code }}</span>
             </NuxtLink>
           </template>
-
-          <!-- Assets -->
           <template v-if="searchResults.assets.length">
-            <div class="px-3 py-1.5 text-[10px] text-gray-600 uppercase tracking-widest font-bold border-b border-[#1f2937] bg-[#111827]" :class="searchResults.countries.length ? 'border-t' : ''">
-              Stocks & Assets
-            </div>
+            <div class="px-3 py-1.5 text-[10px] text-gray-600 uppercase tracking-widest font-bold border-b border-[#1f2937] bg-[#111827]" :class="searchResults.countries.length ? 'border-t' : ''">Stocks & Assets</div>
             <NuxtLink
               v-for="(a, i) in searchResults.assets"
               :key="a.symbol"
@@ -110,9 +118,7 @@
             >
               <span class="text-xs font-mono font-bold text-emerald-400 w-14 shrink-0">{{ a.symbol }}</span>
               <span class="text-sm text-gray-300 flex-1 truncate">{{ a.name }}</span>
-              <span class="text-[10px] text-gray-600 capitalize shrink-0 bg-[#1f2937] px-1.5 py-0.5 rounded">
-                {{ a.asset_type }}
-              </span>
+              <span class="text-[10px] text-gray-600 capitalize shrink-0 bg-[#1f2937] px-1.5 py-0.5 rounded">{{ a.asset_type }}</span>
             </NuxtLink>
           </template>
         </div>
@@ -126,39 +132,165 @@
         </div>
       </div>
 
-      <div class="flex justify-center">
-        <NuxtLink to="/markets" class="bg-emerald-500 hover:bg-emerald-400 text-black font-bold px-8 py-4 rounded-lg transition-colors text-base sm:text-lg tracking-wide">
-          Explore →
+      <!-- Keyboard hint row — replaces the "Explore →" button -->
+      <div class="flex items-center justify-center gap-3 sm:gap-5 flex-wrap text-xs text-gray-600">
+        <span class="flex items-center gap-1.5">
+          <kbd class="inline-flex items-center px-1.5 py-0.5 rounded border border-[#374151] bg-[#111827] text-gray-400 font-mono text-[10px]">/</kbd>
+          to search
+        </span>
+        <span class="text-gray-700">·</span>
+        <NuxtLink to="/markets" class="hover:text-gray-400 transition-colors font-medium">Browse Markets →</NuxtLink>
+        <span class="text-gray-700">·</span>
+        <NuxtLink to="/feed" class="text-emerald-700 hover:text-emerald-500 transition-colors flex items-center gap-1 font-medium">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse inline-block"></span>
+          Live Feed
         </NuxtLink>
       </div>
-    </div>
 
-    <!-- What we connect -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-16">
+    </section>
+
+    <!-- ── Economic Calendar Strip ────────────────────────────────────────── -->
+    <section class="mb-10" v-if="calendarEvents.length">
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-2">
+          <span class="text-[10px] font-mono font-bold text-gray-600 uppercase tracking-widest">Economic Calendar</span>
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block"></span>
+        </div>
+        <NuxtLink to="/feed" class="text-xs text-emerald-600 hover:text-emerald-400 transition-colors">View feed →</NuxtLink>
+      </div>
+      <div class="overflow-x-auto -mx-4 px-4">
+        <div class="flex gap-3 min-w-max pb-1">
+          <div
+            v-for="ev in calendarEvents"
+            :key="ev.id"
+            class="bg-[#111827] border border-[#1f2937] rounded-lg p-3 min-w-[160px] shrink-0 hover:border-emerald-800 transition-colors cursor-pointer"
+            @click="navigateTo(calendarLink(ev))"
+          >
+            <div class="text-[10px] font-mono text-gray-600 mb-1.5">{{ calEventTime(ev) }}</div>
+            <div class="text-xs font-bold text-white leading-snug mb-2 line-clamp-2">{{ calEventTitle(ev) }}</div>
+            <div class="flex items-end justify-between gap-2">
+              <div>
+                <div class="text-[9px] text-gray-600 uppercase tracking-wider">Actual</div>
+                <div class="text-sm font-black font-mono" :class="calValueColor(ev)">{{ calValue(ev) }}</div>
+              </div>
+              <div class="text-right">
+                <div class="text-[9px] text-gray-600 uppercase tracking-wider">Prior</div>
+                <div class="text-xs font-mono text-gray-500">{{ calPrior(ev) }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Outcome Cards ──────────────────────────────────────────────────── -->
+    <section class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-12">
+
+      <!-- Card 1: Country Risk -->
       <NuxtLink
-        v-for="item in pillars"
-        :key="item.title"
-        :to="item.href"
-        class="bg-[#111827] border border-[#1f2937] hover:border-emerald-800 rounded-lg p-6 transition-colors group"
+        to="/countries"
+        class="bg-[#111827] border border-[#1f2937] hover:border-emerald-700 rounded-xl p-5 transition-all group"
       >
-        <div class="text-2xl mb-3">{{ item.icon }}</div>
-        <h3 class="font-bold text-white mb-1 group-hover:text-emerald-400 transition-colors">{{ item.title }}</h3>
-        <p class="text-gray-500 text-sm">{{ item.desc }}</p>
-        <span class="text-[11px] text-emerald-700 group-hover:text-emerald-500 mt-3 inline-block transition-colors">Explore →</span>
+        <div class="flex items-start gap-3 mb-3">
+          <span class="text-xl">📊</span>
+          <div>
+            <div class="text-[10px] font-mono font-bold tracking-widest text-emerald-600 uppercase mb-0.5">Stock Revenue Exposure</div>
+            <h2 class="text-sm font-black text-white group-hover:text-emerald-400 transition-colors leading-snug">
+              Find Stocks by Country Risk
+            </h2>
+          </div>
+        </div>
+        <p class="text-xs text-gray-500 leading-relaxed mb-3">
+          Which stocks benefit from Germany's recovery? Which are exposed to China tensions?
+          Filter by geographic revenue from SEC EDGAR filings.
+        </p>
+        <div class="inline-flex items-center gap-1.5 text-xs text-emerald-600 group-hover:text-emerald-400 transition-colors font-semibold">
+          Show me China-exposed stocks →
+        </div>
       </NuxtLink>
-    </div>
 
-    <!-- Live data: Top Stocks + G20 Countries side by side -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-10 mb-16">
+      <!-- Card 2: Trade Wars -->
+      <NuxtLink
+        to="/trade"
+        class="bg-[#111827] border border-[#1f2937] hover:border-amber-700 rounded-xl p-5 transition-all group"
+      >
+        <div class="flex items-start gap-3 mb-3">
+          <span class="text-xl">🌐</span>
+          <div>
+            <div class="text-[10px] font-mono font-bold tracking-widest text-amber-600 uppercase mb-0.5">Bilateral Trade</div>
+            <h2 class="text-sm font-black text-white group-hover:text-amber-400 transition-colors leading-snug">
+              Track Trade Wars in Real-Time
+            </h2>
+          </div>
+        </div>
+        <p class="text-xs text-gray-500 leading-relaxed mb-3">
+          US-China deficit widening? EUR-USD trade shifting?
+          See which stocks are impacted immediately. Every bilateral relationship with top products.
+        </p>
+        <div class="inline-flex items-center gap-1.5 text-xs text-amber-600 group-hover:text-amber-400 transition-colors font-semibold">
+          View Trade Relationships →
+        </div>
+      </NuxtLink>
+
+      <!-- Card 3: Country Macro -->
+      <NuxtLink
+        to="/countries"
+        class="bg-[#111827] border border-[#1f2937] hover:border-blue-700 rounded-xl p-5 transition-all group"
+      >
+        <div class="flex items-start gap-3 mb-3">
+          <span class="text-xl">🌍</span>
+          <div>
+            <div class="text-[10px] font-mono font-bold tracking-widest text-blue-500 uppercase mb-0.5">Country Macro</div>
+            <h2 class="text-sm font-black text-white group-hover:text-blue-400 transition-colors leading-snug">
+              196 Countries. 80+ Indicators. Connected.
+            </h2>
+          </div>
+        </div>
+        <p class="text-xs text-gray-500 leading-relaxed mb-3">
+          GDP, inflation, trade balance, debt — every country linked to every stock and trade pair.
+          World Bank · IMF · UN Comtrade data.
+        </p>
+        <div class="inline-flex items-center gap-1.5 text-xs text-blue-500 group-hover:text-blue-400 transition-colors font-semibold">
+          Browse Countries →
+        </div>
+      </NuxtLink>
+
+      <!-- Card 4: Commodities chain -->
+      <NuxtLink
+        to="/commodities"
+        class="bg-[#111827] border border-[#1f2937] hover:border-orange-700 rounded-xl p-5 transition-all group"
+      >
+        <div class="flex items-start gap-3 mb-3">
+          <span class="text-xl">🛢️</span>
+          <div>
+            <div class="text-[10px] font-mono font-bold tracking-widest text-orange-500 uppercase mb-0.5">Commodities Chain</div>
+            <h2 class="text-sm font-black text-white group-hover:text-orange-400 transition-colors leading-snug">
+              Commodity → Economy → Portfolio
+            </h2>
+          </div>
+        </div>
+        <p class="text-xs text-gray-500 leading-relaxed mb-3">
+          Oil spikes. Germany's exports fall. Auto stocks drop.
+          See the full chain — before it hits your portfolio. 80+ instruments tracked.
+        </p>
+        <div class="inline-flex items-center gap-1.5 text-xs text-orange-500 group-hover:text-orange-400 transition-colors font-semibold">
+          View Commodities →
+        </div>
+      </NuxtLink>
+
+    </section>
+
+    <!-- ── Live data: Top Stocks + G20 Countries ──────────────────────────── -->
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
 
       <!-- Top Stocks by Market Cap -->
       <div>
-        <div class="flex items-center justify-between mb-5">
-          <h2 class="text-lg font-bold text-white">Top Stocks</h2>
-          <NuxtLink to="/stocks" class="text-xs text-emerald-500 hover:text-emerald-400 transition-colors">View all →</NuxtLink>
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-sm font-bold text-white font-mono uppercase tracking-widest">Top Stocks</h2>
+          <NuxtLink to="/stocks" class="text-xs text-emerald-600 hover:text-emerald-400 transition-colors">View all →</NuxtLink>
         </div>
         <div v-if="stocksPending" class="space-y-2">
-          <div v-for="i in 5" :key="i" class="h-[60px] bg-[#111827] rounded-lg animate-pulse"/>
+          <div v-for="i in 5" :key="i" class="h-14 bg-[#111827] rounded-lg animate-pulse"/>
         </div>
         <div v-else-if="stocksError" class="text-red-400 text-sm">Failed to load stocks</div>
         <div v-else class="space-y-2">
@@ -166,19 +298,18 @@
             v-for="s in topStocks"
             :key="s.symbol"
             :to="`/stocks/${s.symbol}`"
-            class="flex items-center gap-3 bg-[#111827] border border-[#1f2937] hover:border-emerald-500 rounded-lg px-4 py-3 transition-colors"
+            class="flex items-center gap-3 bg-[#111827] border border-[#1f2937] hover:border-emerald-500 rounded-lg px-3 py-2.5 transition-colors group"
           >
-            <span class="text-xl leading-none">{{ s.country?.flag || '🏢' }}</span>
+            <span class="text-lg leading-none shrink-0">{{ s.country?.flag || '🏢' }}</span>
             <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-1.5 mb-0.5">
-                <span class="text-sm font-mono font-bold text-emerald-400">{{ s.symbol }}</span>
+              <div class="flex items-center gap-1.5">
+                <span class="text-xs font-mono font-bold text-emerald-400 group-hover:text-emerald-300">{{ s.symbol }}</span>
                 <span class="text-xs text-gray-500 truncate">{{ s.name }}</span>
               </div>
-              <span class="text-[11px] text-gray-600">{{ s.sector }}</span>
+              <span class="text-[10px] text-gray-700">{{ s.sector }}</span>
             </div>
             <div class="text-right shrink-0">
-              <div class="text-sm font-semibold text-white tabular-nums">{{ fmtCap(s.market_cap_usd) }}</div>
-              <div class="text-[11px] text-gray-600">market cap</div>
+              <div class="text-sm font-semibold text-white tabular-nums font-mono">{{ fmtCap(s.market_cap_usd) }}</div>
             </div>
           </NuxtLink>
         </div>
@@ -186,32 +317,45 @@
 
       <!-- G20 Countries -->
       <div>
-        <div class="flex items-center justify-between mb-5">
-          <h2 class="text-lg font-bold text-white">G20 Countries</h2>
-          <NuxtLink to="/countries" class="text-xs text-emerald-500 hover:text-emerald-400 transition-colors">View all 196 →</NuxtLink>
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-sm font-bold text-white font-mono uppercase tracking-widest">G20 Countries</h2>
+          <NuxtLink to="/countries" class="text-xs text-emerald-600 hover:text-emerald-400 transition-colors">View all 196 →</NuxtLink>
         </div>
-        <div v-if="countriesPending" class="text-gray-500 text-sm">Loading...</div>
-        <div v-else-if="countriesError" class="text-red-400 text-sm">Failed to load countries</div>
-        <div v-else class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+        <div v-if="countriesPending" class="grid grid-cols-4 sm:grid-cols-5 gap-2">
+          <div v-for="i in 20" :key="i" class="h-16 bg-[#111827] rounded-lg animate-pulse"/>
+        </div>
+        <div v-else-if="countriesError || !countries?.length" class="grid grid-cols-4 sm:grid-cols-5 gap-2">
+          <!-- Fallback: static G20 flags when API fails -->
+          <NuxtLink
+            v-for="c in G20_FALLBACK"
+            :key="c.code"
+            :to="`/countries/${c.code.toLowerCase()}`"
+            class="bg-[#111827] border border-[#1f2937] hover:border-emerald-500 rounded-lg p-2 transition-colors flex flex-col items-center"
+          >
+            <div class="text-xl mb-0.5">{{ c.flag }}</div>
+            <div class="text-[9px] font-mono text-gray-600 text-center">{{ c.code }}</div>
+          </NuxtLink>
+        </div>
+        <div v-else class="grid grid-cols-4 sm:grid-cols-5 gap-2">
           <NuxtLink
             v-for="c in countries"
             :key="c.code"
             :to="`/countries/${c.code.toLowerCase()}`"
-            class="bg-[#111827] border border-[#1f2937] hover:border-emerald-500 rounded-lg p-3 transition-colors"
+            class="bg-[#111827] border border-[#1f2937] hover:border-emerald-500 rounded-lg p-2 transition-colors flex flex-col items-center"
           >
-            <div class="text-xl mb-1">{{ c.flag }}</div>
-            <div class="text-xs font-medium text-white leading-tight">{{ c.name }}</div>
-            <div class="text-[10px] text-gray-600 mt-0.5">{{ c.code }}</div>
+            <div class="text-xl mb-0.5">{{ c.flag }}</div>
+            <div class="text-[9px] font-mono text-gray-600 text-center leading-tight">{{ c.name.split(' ')[0] }}</div>
           </NuxtLink>
         </div>
       </div>
-    </div>
 
-    <!-- Sample trade pairs -->
-    <div class="mb-16">
-      <div class="flex items-center justify-between mb-5">
-        <h2 class="text-lg font-bold text-white">Major Trade Relationships</h2>
-        <NuxtLink to="/trade" class="text-xs text-emerald-500 hover:text-emerald-400 transition-colors">View all →</NuxtLink>
+    </section>
+
+    <!-- ── Major Trade Relationships ─────────────────────────────────────── -->
+    <section class="mb-12">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-sm font-bold text-white font-mono uppercase tracking-widest">Major Trade Relationships</h2>
+        <NuxtLink to="/trade" class="text-xs text-emerald-600 hover:text-emerald-400 transition-colors">View all →</NuxtLink>
       </div>
       <div v-if="tradesPending" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <div v-for="i in 6" :key="i" class="h-20 bg-[#111827] rounded-lg animate-pulse"/>
@@ -221,62 +365,69 @@
           v-for="t in topTrades"
           :key="`${t.exporter?.code}-${t.importer?.code}`"
           :to="`/trade/${t.exporter?.code}-${t.importer?.code}`"
-          class="bg-[#111827] border border-[#1f2937] hover:border-emerald-500 rounded-lg p-4 transition-colors"
+          class="bg-[#111827] border border-[#1f2937] hover:border-emerald-500 rounded-lg p-4 transition-colors group"
         >
           <div class="flex items-center gap-2 mb-2">
-            <span class="text-lg">{{ t.exporter?.flag }}</span>
-            <span class="text-xs text-gray-500">↔</span>
-            <span class="text-lg">{{ t.importer?.flag }}</span>
-            <span class="text-xs font-medium text-white ml-1 truncate">
+            <span class="text-xl">{{ t.exporter?.flag }}</span>
+            <span class="text-xs text-gray-600">↔</span>
+            <span class="text-xl">{{ t.importer?.flag }}</span>
+            <span class="text-xs font-semibold text-white ml-1 truncate group-hover:text-emerald-400 transition-colors">
               {{ t.exporter?.name }} – {{ t.importer?.name }}
             </span>
           </div>
           <div class="flex gap-4">
             <div>
-              <div class="text-[10px] text-gray-600">Total Trade</div>
-              <div class="text-sm font-semibold text-white">{{ fmtUsd(t.trade_value_usd) }}</div>
+              <div class="text-[10px] text-gray-600 uppercase tracking-wider">Total Trade</div>
+              <div class="text-sm font-semibold text-white font-mono tabular-nums">{{ fmtUsd(t.trade_value_usd) }}</div>
             </div>
             <div>
-              <div class="text-[10px] text-gray-600">Balance</div>
-              <div class="text-sm font-semibold" :class="(t.balance_usd ?? 0) >= 0 ? 'text-emerald-400' : 'text-red-400'">
+              <div class="text-[10px] text-gray-600 uppercase tracking-wider">Balance</div>
+              <div class="text-sm font-semibold font-mono tabular-nums" :class="(t.balance_usd ?? 0) >= 0 ? 'text-emerald-400' : 'text-red-400'">
                 {{ fmtUsd(t.balance_usd) }}
               </div>
             </div>
           </div>
         </NuxtLink>
       </div>
-    </div>
+    </section>
 
-    <!-- Data sources footer note -->
-    <p class="text-center text-xs text-gray-700">
+    <!-- ── Data sources ───────────────────────────────────────────────────── -->
+    <p class="text-center text-[11px] text-gray-700 pb-6">
       Data: World Bank · SEC EDGAR · UN Comtrade · REST Countries · IMF · CoinGecko
     </p>
+
   </main>
 </template>
 
 <script setup lang="ts">
-const pillars = [
-  { icon: '📈', title: 'Stock Revenue Exposure', desc: 'See which countries each stock earns from — straight from SEC filings.', href: '/stocks' },
-  { icon: '🌍', title: 'Country Macro', desc: 'GDP, inflation, debt, trade balance, and 80+ indicators per country.', href: '/countries' },
-  { icon: '⚖️', title: 'Bilateral Trade', desc: 'US-China, EU-Russia — every major trade relationship with top products.', href: '/trade' },
-  { icon: '🛢️', title: 'Commodities', desc: 'Oil, gold, metals — see how commodity moves ripple through economies.', href: '/commodities' },
-]
-
 const { get } = useApi()
+const router = useRouter()
 
-// G20 countries
-const { data: countries, pending: countriesPending, error: countriesError } = await useAsyncData(
+// ── G20 Countries (client-side to avoid SSG build failures) ──────────────────
+const { data: countries, pending: countriesPending, error: countriesError } = useAsyncData(
   'g20',
   () => get<any[]>('/api/countries', { is_g20: 'true' }),
+  { server: false },
 )
 
-// Top stocks by market cap
+// Fallback G20 grid if API is unreachable
+const G20_FALLBACK = [
+  { code: 'US', flag: '🇺🇸' }, { code: 'CN', flag: '🇨🇳' }, { code: 'DE', flag: '🇩🇪' },
+  { code: 'JP', flag: '🇯🇵' }, { code: 'GB', flag: '🇬🇧' }, { code: 'FR', flag: '🇫🇷' },
+  { code: 'IN', flag: '🇮🇳' }, { code: 'BR', flag: '🇧🇷' }, { code: 'CA', flag: '🇨🇦' },
+  { code: 'AU', flag: '🇦🇺' }, { code: 'KR', flag: '🇰🇷' }, { code: 'IT', flag: '🇮🇹' },
+  { code: 'RU', flag: '🇷🇺' }, { code: 'MX', flag: '🇲🇽' }, { code: 'SA', flag: '🇸🇦' },
+  { code: 'AR', flag: '🇦🇷' }, { code: 'ZA', flag: '🇿🇦' }, { code: 'ID', flag: '🇮🇩' },
+  { code: 'TR', flag: '🇹🇷' }, { code: 'EU', flag: '🇪🇺' },
+]
+
+// ── Top Stocks ────────────────────────────────────────────────────────────────
 const { data: allStocks, pending: stocksPending, error: stocksError } = await useAsyncData(
   'top-stocks',
   () => get<any[]>('/api/assets', { type: 'stock' }),
 )
 
-// Top trade pairs
+// ── Trade pairs ───────────────────────────────────────────────────────────────
 const { data: trades, pending: tradesPending } = await useAsyncData(
   'top-trades',
   () => get<any[]>('/api/trade'),
@@ -285,43 +436,87 @@ const { data: trades, pending: tradesPending } = await useAsyncData(
 const topStocks = computed(() => (allStocks.value ?? []).slice(0, 5))
 const topTrades = computed(() => (trades.value ?? []).slice(0, 6))
 
-// ─── Search ───────────────────────────────────────────────────────────────────
+// ── Economic Calendar (from recent feed events) ────────────────────────────
+const { data: feedData } = useAsyncData(
+  'home-calendar',
+  () => get<any[]>('/api/feed').catch(() => []),
+  { server: false },
+)
 
+const calendarEvents = computed(() => {
+  const events = feedData.value ?? []
+  return events
+    .filter((e: any) => e.event_type === 'indicator_release' || e.event_type === 'macro_release')
+    .slice(0, 8)
+})
+
+function calEventTime(ev: any): string {
+  const d = new Date(ev.published_at)
+  const now = new Date()
+  const isToday = d.toDateString() === now.toDateString()
+  const timeStr = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+  return isToday ? `Today · ${timeStr}` : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ` · ${timeStr}`
+}
+
+function calEventTitle(ev: any): string {
+  const ind = (ev.event_data?.indicator || ev.event_subtype || ev.title || '')
+  return ind.replace(/_/g, ' ').replace(/pct$/, ' %').replace(/usd$/, ' USD').trim()
+    || ev.title || 'Market Event'
+}
+
+function calValue(ev: any): string {
+  const v = ev.event_data?.value
+  if (v == null) return '—'
+  const n = Number(v)
+  if (isNaN(n)) return String(v)
+  if (Math.abs(n) >= 1e12) return `$${(n / 1e12).toFixed(1)}T`
+  if (Math.abs(n) >= 1e9) return `$${(n / 1e9).toFixed(1)}B`
+  return n.toFixed(Math.abs(n) < 100 ? 2 : 0)
+}
+
+function calPrior(_ev: any): string {
+  // prior data not yet in DB — show dash
+  return '—'
+}
+
+function calValueColor(ev: any): string {
+  const v = Number(ev.event_data?.value)
+  if (isNaN(v)) return 'text-white'
+  if (ev.event_data?.indicator?.includes('unemployment') || ev.event_data?.indicator?.includes('inflation'))
+    return v > 5 ? 'text-red-400' : 'text-emerald-400'
+  return v >= 0 ? 'text-emerald-400' : 'text-red-400'
+}
+
+function calendarLink(ev: any): string {
+  const data = ev.event_data || {}
+  if (data.country_code) return `/countries/${data.country_code.toLowerCase()}`
+  return '/feed'
+}
+
+// ── Search ────────────────────────────────────────────────────────────────────
 const searchQuery = ref('')
 const searchOpen = ref(false)
 const searchLoading = ref(false)
 const focusedIndex = ref(-1)
-const searchResults = ref<{ countries: any[], assets: any[] }>({ countries: [], assets: [] })
+const searchResults = ref<{ countries: any[]; assets: any[] }>({ countries: [], assets: [] })
 let searchTimeout: ReturnType<typeof setTimeout> | null = null
 
 function onSearchInput() {
   if (searchTimeout) clearTimeout(searchTimeout)
   const q = searchQuery.value.trim()
   focusedIndex.value = -1
-  if (q.length < 2) {
-    searchResults.value = { countries: [], assets: [] }
-    searchOpen.value = false
-    return
-  }
+  if (q.length < 2) { searchResults.value = { countries: [], assets: [] }; searchOpen.value = false; return }
   searchTimeout = setTimeout(async () => {
     searchLoading.value = true
-    try {
-      const res = await get<any>('/api/search', { q })
-      searchResults.value = res
-      searchOpen.value = true
-    } catch {
-      // silent fail
-    } finally {
-      searchLoading.value = false
-    }
+    try { const res = await get<any>('/api/search', { q }); searchResults.value = res; searchOpen.value = true }
+    catch { /* silent */ }
+    finally { searchLoading.value = false }
   }, 280)
 }
 
 function closeSearch() {
-  searchOpen.value = false
-  searchQuery.value = ''
-  searchResults.value = { countries: [], assets: [] }
-  focusedIndex.value = -1
+  searchOpen.value = false; searchQuery.value = ''
+  searchResults.value = { countries: [], assets: [] }; focusedIndex.value = -1
 }
 
 const allResults = computed(() => [
@@ -335,31 +530,27 @@ function moveFocus(dir: 1 | -1) {
   focusedIndex.value = Math.max(-1, Math.min(max, focusedIndex.value + dir))
 }
 
-const router = useRouter()
 function selectFocused() {
   if (focusedIndex.value < 0) return
   const item = allResults.value[focusedIndex.value]
   if (!item) return
-  if (item.type === 'country') {
-    router.push(`/countries/${item.code.toLowerCase()}`)
-  } else {
-    router.push(`/stocks/${item.symbol}`)
-  }
+  item.type === 'country' ? router.push(`/countries/${item.code.toLowerCase()}`) : router.push(`/stocks/${item.symbol}`)
   closeSearch()
 }
 
-// Close search on click outside
+// Keyboard shortcut: press "/" focuses search
 if (import.meta.client) {
-  document.addEventListener('click', (e: MouseEvent) => {
-    const container = document.querySelector('[data-search-container]')
-    if (container && !container.contains(e.target as Node)) {
-      searchOpen.value = false
+  document.addEventListener('keydown', (e: KeyboardEvent) => {
+    if (e.key === '/' && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) {
+      e.preventDefault()
+      const input = document.querySelector('input[placeholder*="Search"]') as HTMLInputElement
+      input?.focus()
     }
   })
+  document.addEventListener('click', () => { searchOpen.value = false })
 }
 
-// ─── Formatting ───────────────────────────────────────────────────────────────
-
+// ── Formatting ────────────────────────────────────────────────────────────────
 function fmtCap(v: number | null): string {
   if (!v) return '—'
   if (v >= 1e12) return `$${(v / 1e12).toFixed(1)}T`
@@ -377,17 +568,14 @@ function fmtUsd(v: number | null | undefined): string {
   return `${sign}$${abs.toLocaleString()}`
 }
 
-// ─── Adaptive Spotlight (geo-revenue intelligence, rotates every 5s) ──────────
-
+// ── Adaptive Spotlight ────────────────────────────────────────────────────────
 const { data: spotlightData } = await useAsyncData('spotlight',
   () => get<any[]>('/api/intelligence/spotlight').catch(() => []),
   { server: false },
 )
-
 const spotlightIndex = ref(0)
 const activeSpotlight = computed(() => (spotlightData.value ?? [])[spotlightIndex.value] ?? null)
 
-// Rotate through cards every 5 seconds
 let spotlightTimer: ReturnType<typeof setInterval> | null = null
 onMounted(() => {
   spotlightTimer = setInterval(() => {
@@ -397,8 +585,7 @@ onMounted(() => {
 })
 onUnmounted(() => { if (spotlightTimer) clearInterval(spotlightTimer) })
 
-// ─── Market Ticker ────────────────────────────────────────────────────────────
-
+// ── Market Ticker ─────────────────────────────────────────────────────────────
 const TICKER_SYMBOLS = ['BTC', 'ETH', 'SOL', 'AAPL', 'NVDA', 'TSLA', 'MSFT', 'SPY', 'QQQ', 'XAUUSD', 'WTI', 'EURUSD', 'USDJPY', 'BNB', 'XAGUSD']
 const tickerPaused = ref(false)
 
@@ -417,7 +604,7 @@ function tickerTypeColor(type: string): string {
 
 function fmtTickerPrice(v: number): string {
   if (v >= 10000) return `$${v.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
-  if (v >= 1)     return `$${v.toFixed(2)}`
+  if (v >= 1) return `$${v.toFixed(2)}`
   return `$${v.toFixed(4)}`
 }
 
@@ -437,15 +624,16 @@ const tickerItems = computed(() => {
     .filter(Boolean) as { symbol: string; priceStr: string; changePct: string; dir: number; typeColor: string }[]
 })
 
+// ── SEO ───────────────────────────────────────────────────────────────────────
 useSeoMeta({
   title: 'MetricsHour — Global Financial Intelligence',
-  description: 'Connect stock geographic revenue, bilateral trade flows, and country macro data. 196 countries, 5,000+ stocks, 38,000+ trade pairs. Free forever.',
+  description: 'Connect stock geographic revenue, bilateral trade flows, and country macro data. 196 countries, 130+ assets, 38,000+ trade pairs. Free forever.',
   ogTitle: 'MetricsHour — Global Financial Intelligence',
-  ogDescription: 'Connect stock geographic revenue, bilateral trade flows, and country macro data. 196 countries, 5,000+ stocks, 38,000+ trade pairs. Free forever.',
+  ogDescription: 'Connect stock geographic revenue, bilateral trade flows, and country macro data. 196 countries, 130+ assets, 38,000+ trade pairs. Free forever.',
   ogUrl: 'https://metricshour.com/',
   ogType: 'website',
   twitterTitle: 'MetricsHour — Global Financial Intelligence',
-  twitterDescription: 'Connect stock geographic revenue, bilateral trade flows, and country macro data. 196 countries, 5,000+ stocks, 38,000+ trade pairs. Free forever.',
+  twitterDescription: 'Connect stock geographic revenue, bilateral trade flows, and country macro data. 196 countries, 130+ assets, 38,000+ trade pairs. Free forever.',
 })
 
 useHead({
@@ -479,17 +667,9 @@ useHead({
 </script>
 
 <style scoped>
-.ticker-wrap {
-  overflow: hidden;
-  width: 100%;
-}
-.ticker-track {
-  display: inline-flex;
-  animation: ticker-scroll 45s linear infinite;
-}
-.ticker-track.paused {
-  animation-play-state: paused;
-}
+.ticker-wrap { overflow: hidden; width: 100%; }
+.ticker-track { display: inline-flex; animation: ticker-scroll 45s linear infinite; }
+.ticker-track.paused { animation-play-state: paused; }
 @keyframes ticker-scroll {
   from { transform: translateX(0); }
   to   { transform: translateX(-50%); }

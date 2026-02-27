@@ -5,7 +5,7 @@
       <NuxtLink to="/" class="text-emerald-500/60 hover:text-emerald-400 font-bold tracking-tight text-sm transition-colors">METRICSHOUR</NuxtLink>
     </div>
 
-    <!-- Links row -->
+    <!-- Nav links -->
     <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap gap-x-6 gap-y-2 justify-center text-xs text-gray-600">
       <NuxtLink to="/markets"     class="hover:text-gray-400 transition-colors">Markets</NuxtLink>
       <NuxtLink to="/countries"   class="hover:text-gray-400 transition-colors">Countries</NuxtLink>
@@ -13,6 +13,15 @@
       <NuxtLink to="/commodities" class="hover:text-gray-400 transition-colors">Commodities</NuxtLink>
       <NuxtLink to="/feed"        class="hover:text-gray-400 transition-colors">Feed</NuxtLink>
       <NuxtLink to="/pricing"     class="hover:text-emerald-500 transition-colors text-emerald-700">Pro</NuxtLink>
+    </div>
+
+    <!-- Legal links -->
+    <div class="flex flex-wrap gap-x-5 gap-y-1 justify-center text-[11px] text-gray-700 pb-1">
+      <a href="/privacy" class="hover:text-gray-500 transition-colors">Privacy Policy</a>
+      <span class="text-gray-800">·</span>
+      <a href="/terms"   class="hover:text-gray-500 transition-colors">Terms of Service</a>
+      <span class="text-gray-800">·</span>
+      <a href="mailto:hello@metricshour.com" class="hover:text-gray-500 transition-colors">Contact</a>
     </div>
 
     <!-- Disclaimer -->

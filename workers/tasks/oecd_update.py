@@ -24,7 +24,7 @@ from app.models.country import Country, CountryIndicator
 
 log = logging.getLogger(__name__)
 
-OECD_BASE = "https://stats.oecd.org/restsdmx/sdmx.ashx/GetData"
+OECD_BASE = "https://stats.oecd.org/sdmx-json/data"
 
 # OECD country codes (ISO alpha-2, but OECD uses alpha-3 for API)
 # OECD 3-letter → ISO 2-letter for our DB
@@ -116,61 +116,89 @@ QUERIES: list[dict] = [
     },
 ]
 
-ALL_OECD = "+".join(OECD_TO_ISO2.keys())
-
-
-def _fetch_oecd_json(dataset: str, key: str) -> list[dict]:
+def _fetch_oecd_one_country(dataset: str, key_template: str, country3: str) -> list[dict]:
     """
-    Fetch OECD SDMX data as JSON. Returns list of {country_code3, period, value}.
-    Uses all OECD countries in one request.
+    Fetch OECD SDMX-JSON data for ONE country. Returns list of {country_code3, period, value}.
+
+    Uses stats.oecd.org/sdmx-json (SDMX JSON 2.0 format).
+    Fetches one country at a time to keep responses manageable.
     """
-    series_key = key.replace("{country}", ALL_OECD)
+    series_key = key_template.replace("{country}", country3)
     url = f"{OECD_BASE}/{dataset}/{series_key}/all"
-    params = {"format": "json", "startTime": "2018-01", "endTime": "2099-12"}
+    params = {"startTime": "2018-01", "endTime": "2099-12"}
 
     try:
-        r = requests.get(url, params=params, timeout=60)
+        r = requests.get(url, params=params, timeout=90, allow_redirects=True)
+        if r.status_code == 404:
+            return []
         r.raise_for_status()
         data = r.json()
     except Exception:
-        log.exception(f"OECD fetch failed: {dataset}/{key}")
+        log.warning(f"OECD fetch failed: {dataset}/{country3}")
         return []
 
-    # OECD JSON structure: data.dataSets[0].series, data.structure.dimensions
+    # SDMX JSON 2.0: data.data.structures[0] + data.data.dataSets[0]
+    # Older endpoint: data.structure + data.dataSets[0]
     try:
-        structure = data["structure"]
-        dimensions = structure["dimensions"]["series"]
-        # Find location dimension index
-        loc_dim = next((d for d in dimensions if d["id"] in ("LOCATION", "COUNTRY")), None)
+        top = data.get("data", data)  # handles both wrapper formats
+        structures_list = top.get("structures", [top.get("structure")])
+        structure = structures_list[0] if structures_list else top.get("structure", {})
+        dataset_list = top.get("dataSets", [])
+        if not dataset_list:
+            return []
+        dataset_obj = dataset_list[0]
+
+        # Find dimension lists — SDMX JSON 2.0 uses list, 1.0 uses dict
+        dims_raw = structure.get("dimensions", {})
+        series_dims = dims_raw.get("series", [])
+        obs_dims = dims_raw.get("observation", [])
+
+        # Find LOCATION / REF_AREA dimension
+        loc_dim = next((d for d in series_dims if d.get("id") in ("LOCATION", "COUNTRY", "REF_AREA")), None)
         if not loc_dim:
             return []
-        loc_idx = dimensions.index(loc_dim)
-        loc_values = loc_dim["values"]  # list of {id: "USA", ...}
+        loc_idx = series_dims.index(loc_dim)
 
-        time_periods = structure["dimensions"]["observation"][0]["values"]
-        # [{id: "2023-01", name: "January 2023"}, ...]
+        # Time periods from observation dimension
+        time_dim = obs_dims[0] if obs_dims else None
+        if not time_dim:
+            return []
+        time_periods = time_dim.get("values", [])
 
-        series_data = data["dataSets"][0]["series"]
+        series_data = dataset_obj.get("series", {})
         results = []
 
         for series_key_str, series_obj in series_data.items():
             key_parts = series_key_str.split(":")
-            loc_code = loc_values[int(key_parts[loc_idx])]["id"]
+            loc_values = loc_dim.get("values", [])
+            if loc_idx >= len(key_parts):
+                continue
+            loc_idx_val = int(key_parts[loc_idx])
+            if loc_idx_val >= len(loc_values):
+                continue
+            loc_code = loc_values[loc_idx_val].get("id", "")
             observations = series_obj.get("observations", {})
 
-            for obs_idx_str, obs_values in observations.items():
-                if obs_values[0] is None:
+            for obs_idx_str, obs_arr in observations.items():
+                obs_val = obs_arr[0] if obs_arr else None
+                if obs_val is None:
                     continue
-                period_id = time_periods[int(obs_idx_str)]["id"]  # e.g. "2023-01"
-                results.append({
-                    "country_code3": loc_code,
-                    "period": period_id,
-                    "value": float(obs_values[0]),
-                })
+                obs_idx = int(obs_idx_str)
+                if obs_idx >= len(time_periods):
+                    continue
+                period_id = time_periods[obs_idx].get("id", "")
+                try:
+                    results.append({
+                        "country_code3": loc_code,
+                        "period": period_id,
+                        "value": float(obs_val),
+                    })
+                except (TypeError, ValueError):
+                    pass
 
         return results
     except (KeyError, IndexError, ValueError):
-        log.exception(f"OECD parse error: {dataset}")
+        log.exception(f"OECD parse error: {dataset}/{country3}")
         return []
 
 

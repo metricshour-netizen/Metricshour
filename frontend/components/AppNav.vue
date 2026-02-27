@@ -55,7 +55,14 @@
       <NuxtLink to="/trade"       @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">Trade <span class="text-gray-600 text-xs">→</span></NuxtLink>
       <NuxtLink to="/commodities" @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">Commodities <span class="text-gray-600 text-xs">→</span></NuxtLink>
       <NuxtLink to="/pricing"     @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-emerald-400 font-semibold border-b border-[#1f2937]">Pro → <span class="text-[10px] bg-emerald-900/40 text-emerald-400 px-2 py-0.5 rounded">Upgrade</span></NuxtLink>
-      <div class="py-3">
+      <div class="py-3 space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="text-xs text-gray-600">Appearance</span>
+          <button
+            class="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white border border-[#1f2937] px-3 py-1.5 rounded-lg transition-colors"
+            @click="toggleTheme"
+          >{{ isDark ? '☀️ Light' : '🌙 Dark' }}</button>
+        </div>
         <template v-if="isLoggedIn && user">
           <div class="flex items-center justify-between">
             <span class="text-xs text-gray-500 truncate max-w-[200px]">{{ user.email }}</span>
