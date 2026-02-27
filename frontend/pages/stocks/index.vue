@@ -121,7 +121,7 @@
               <div class="text-right shrink-0 ml-2">
                 <div class="text-sm font-bold tabular-nums font-mono" :class="isStale(s.price?.timestamp) ? 'text-gray-400' : 'text-white'">{{ s.price ? fmtPrice(s.price.close) : '—' }}</div>
                 <div class="text-[10px] text-gray-600 tabular-nums">{{ fmtCap(s.market_cap_usd) }}</div>
-                <div v-if="s.price?.timestamp" class="text-[9px] mt-0.5 tabular-nums" :class="isStale(s.price.timestamp) ? 'text-amber-600' : 'text-emerald-600'">{{ fmtCloseDate(s.price.timestamp) }}</div>
+                <div v-if="s.price?.timestamp" class="text-[10px] mt-0.5 tabular-nums font-mono" :class="isStale(s.price.timestamp) ? 'text-amber-500' : 'text-emerald-500'">↻ {{ fmtCloseDate(s.price.timestamp) }}</div>
               </div>
             </div>
             <!-- Desktop row -->
@@ -138,8 +138,8 @@
               <span class="text-xs text-gray-500 truncate pr-2">{{ s.sector || '—' }}</span>
               <div class="text-right">
                 <div class="text-sm font-bold tabular-nums font-mono" :class="isStale(s.price?.timestamp) ? 'text-gray-400' : 'text-white'">{{ s.price ? fmtPrice(s.price.close) : '—' }}</div>
-                <div v-if="s.price?.timestamp" class="text-[10px] tabular-nums" :class="isStale(s.price.timestamp) ? 'text-amber-600' : 'text-emerald-600'">
-                  {{ fmtCloseDate(s.price.timestamp) }}
+                <div v-if="s.price?.timestamp" class="text-xs tabular-nums font-mono mt-0.5" :class="isStale(s.price.timestamp) ? 'text-amber-500' : 'text-emerald-500'">
+                  ↻ {{ fmtCloseDate(s.price.timestamp) }}
                 </div>
                 <div v-else class="text-[10px] text-gray-600">no data</div>
               </div>
