@@ -1,0 +1,11 @@
+name = "metricshour-share"
+main = "src/index.js"
+compatibility_date = "2024-11-01"
+
+# Route: intercept /feed/* on the main domain
+# Set this in Cloudflare dashboard:
+#   Workers & Pages → metricshour-share → Triggers → Routes
+#   Add route: metricshour.com/feed/*  (zone: metricshour.com)
+[[routes]]
+pattern = "metricshour.com/feed/*"
+zone_name = "metricshour.com"

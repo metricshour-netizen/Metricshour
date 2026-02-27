@@ -163,6 +163,15 @@ def get_feed(
     return FeedPageOut(page=page, page_size=page_size, events=events)
 
 
+@router.get("/events/{event_id}", response_model=FeedEventOut)
+def get_feed_event(event_id: int, db: Session = Depends(get_db)):
+    """Return a single feed event by ID — used by the social share og:meta worker."""
+    event = db.query(FeedEvent).filter(FeedEvent.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    return event
+
+
 @router.post("/{event_id}/interact", status_code=status.HTTP_204_NO_CONTENT)
 def record_interaction(
     event_id: int,

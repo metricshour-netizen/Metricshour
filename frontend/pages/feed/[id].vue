@@ -83,13 +83,10 @@ const { get } = useApi()
 const eventId = route.params.id as string
 const cardUrl = `https://metricshour.com/feed/${eventId}`
 
-// Fetch the event from the feed list (filter by id client-side)
+// Fetch single event by ID — fast, no need to load the entire feed
 const { data: feedData, pending, error } = await useAsyncData(
   `feed-event-${eventId}`,
-  async () => {
-    const events = await get<any[]>('/api/feed').catch(() => [])
-    return events.find((e: any) => String(e.id) === String(eventId)) ?? null
-  },
+  () => get<any>(`/api/feed/events/${eventId}`).catch(() => null),
   { server: false },
 )
 
