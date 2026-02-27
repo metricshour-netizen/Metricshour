@@ -406,8 +406,7 @@ const absoluteTime = computed(() => {
 // ── External URL ──────────────────────────────────────────────────────────────
 const isExternal = computed(() => (props.event.source_url || '').startsWith('http'))
 const externalUrl = computed(() => props.event.source_url || '#')
-// Use the API share-preview endpoint — serves proper OG tags to social crawlers
-const shareUrl = computed(() => `https://api.metricshour.com/s/${props.event.id}`)
+const shareUrl = computed(() => `https://metricshour.com/feed/${props.event.id}`)
 
 // Share panel state
 const showSharePanel = ref(false)
@@ -434,7 +433,7 @@ async function handleCopy() {
   } catch (_) {
     // last-resort fallback
     const el = document.createElement('textarea')
-    el.value = shareUrl.value
+    el.value = `https://metricshour.com/feed/${props.event.id}`
     document.body.appendChild(el)
     el.select()
     document.execCommand('copy')
