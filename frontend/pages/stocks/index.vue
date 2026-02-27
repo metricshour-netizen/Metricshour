@@ -188,7 +188,13 @@ const filtered = computed(() => {
     )
   }
 
-  return list
+  // Rank: stocks with price data first, then by market cap desc
+  return [...list].sort((a, b) => {
+    const aHasPrice = a.price ? 1 : 0
+    const bHasPrice = b.price ? 1 : 0
+    if (bHasPrice !== aHasPrice) return bHasPrice - aHasPrice
+    return (b.market_cap_usd || 0) - (a.market_cap_usd || 0)
+  })
 })
 
 // Terminal View: max 50 rows, densely packed
@@ -233,16 +239,27 @@ function fmtAge(ts: string): string {
   return `${Math.floor(hrs / 24)}d ago`
 }
 
+function parseUTC(ts: string): Date {
+  // Ensure naive ISO strings (no timezone suffix) are parsed as UTC
+  if (ts && !ts.endsWith('Z') && !ts.includes('+') && !/[+-]\d{2}:\d{2}$/.test(ts)) {
+    return new Date(ts + 'Z')
+  }
+  return new Date(ts)
+}
+
 function isStale(ts: string | undefined): boolean {
   if (!ts) return false
-  return Date.now() - new Date(ts).getTime() > 86_400_000 // >24h
+  return Date.now() - parseUTC(ts).getTime() > 86_400_000 // >24h
 }
 
 function fmtCloseDate(ts: string): string {
-  const d = new Date(ts)
-  const diff = Date.now() - d.getTime()
-  if (diff < 86_400_000) return fmtAge(ts) // same day: show relative
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) // older: "Feb 24"
+  const d = parseUTC(ts)
+  if (isNaN(d.getTime())) return '—'
+  const now = new Date()
+  const isToday = d.toDateString() === now.toDateString()
+  const time = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC', hour12: false }) + ' UTC'
+  if (isToday) return time
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' · ' + time
 }
 
 useSeoMeta({

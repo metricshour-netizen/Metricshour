@@ -124,7 +124,7 @@
       </div>
 
       <!-- ── BOTTOM: content + actions ──────────────────────────────── -->
-      <div class="flex items-end gap-3 px-4 pb-6">
+      <div class="flex items-end gap-3 px-4 pb-14">
 
         <!-- Text (left) -->
         <div class="flex-1 min-w-0 space-y-1.5">

@@ -152,8 +152,18 @@ def _country_summary(code: str, db: Session) -> str | None:
         groups.append("OPEC")
     group_str = ", ".join(groups[:3]) if groups else "the UN"
 
+    # Infer development status if not explicitly set
+    dev_label = country.development_status
+    if not dev_label:
+        if country.is_g7 or country.is_oecd or country.income_level == "high":
+            dev_label = "developed"
+        elif country.income_level in ("low", "lower_middle"):
+            dev_label = "developing"
+        else:
+            dev_label = "emerging"
+
     parts = [
-        f"{country.name} ({country.code}) is a {country.development_status or 'developing'} economy"
+        f"{country.name} ({country.code}) is a {dev_label} economy"
         f" with a GDP of {fmt_gdp(gdp)}.",
     ]
     if growth is not None:

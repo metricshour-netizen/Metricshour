@@ -103,7 +103,7 @@ function copyLink() {
 
 // SEO meta for social sharing
 const ogImage = computed(() =>
-  event.value?.image_url || 'https://metricshour.com/og-image.png'
+  event.value?.image_url || `https://api.metricshour.com/og/feed/${eventId}.png`
 )
 
 useSeoMeta({

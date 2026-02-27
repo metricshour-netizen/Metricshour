@@ -144,7 +144,15 @@ def _country_summary_text(country: Country, db) -> str:
         ("ASEAN", country.is_asean), ("OECD", country.is_oecd),
     ] if flag]
 
-    dev_status = (country.development_status or "developing").lower()
+    # Infer development status if not explicitly set — never default to "developing" for G7/OECD
+    if country.development_status:
+        dev_status = country.development_status.lower()
+    elif country.is_g7 or country.is_oecd or country.income_level == "high":
+        dev_status = "developed"
+    elif country.income_level in ("low", "lower_middle"):
+        dev_status = "developing"
+    else:
+        dev_status = "emerging"
     currency = country.currency_name or country.currency_code or "its local currency"
 
     # Try Gemini AI first
