@@ -17,7 +17,7 @@
       :src="event.image_url"
       alt=""
       class="absolute inset-0 w-full h-full object-cover opacity-40"
-      loading="lazy"
+      loading="eager"
     />
 
     <!-- Gradients for readability -->
