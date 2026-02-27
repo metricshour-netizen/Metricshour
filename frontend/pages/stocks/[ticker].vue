@@ -221,6 +221,33 @@
         </div>
       </div>
 
+      <!-- Related Trade Flows — internal linking moat -->
+      <div v-if="tradeFlowLinks.length" class="bg-[#111827] border border-[#1f2937] rounded-xl p-6 mb-6">
+        <h2 class="text-base font-bold text-white mb-1">Trade Flows Impacting {{ stock.symbol }}</h2>
+        <p class="text-xs text-gray-500 mb-4">
+          Bilateral trade between {{ stock.country?.name }} and {{ stock.symbol }}'s key revenue markets
+        </p>
+        <div class="flex flex-wrap gap-2">
+          <NuxtLink
+            v-for="r in tradeFlowLinks"
+            :key="r.pair"
+            :to="`/trade/${r.pair}`"
+            class="flex items-center gap-2 bg-[#0d1117] border border-[#1f2937] hover:border-emerald-700 rounded-lg px-3 py-2 transition-colors group"
+          >
+            <span class="text-base leading-none">{{ stock.country?.flag }}</span>
+            <span class="text-[10px] text-gray-600 font-mono">↔</span>
+            <span class="text-base leading-none">{{ r.flag }}</span>
+            <div>
+              <div class="text-xs font-semibold text-white group-hover:text-emerald-400 transition-colors">
+                {{ stock.country?.code }} – {{ r.code }}
+              </div>
+              <div class="text-[9px] text-gray-600">{{ r.revPct.toFixed(0) }}% revenue</div>
+            </div>
+            <span class="text-emerald-800 text-xs ml-1 group-hover:text-emerald-500 transition-colors">→</span>
+          </NuxtLink>
+        </div>
+      </div>
+
       <!-- Related Stocks -->
       <div v-if="stock.sector" class="bg-[#111827] border border-[#1f2937] rounded-xl p-6 mb-6">
         <div class="flex items-center justify-between mb-4">
@@ -383,6 +410,22 @@ const { data: sectorStocks, pending: relatedLoading } = useAsyncData(
 const relatedStocks = computed(() =>
   (sectorStocks.value ?? []).filter((s: any) => s.symbol !== ticker).slice(0, 6),
 )
+
+// Trade flow links — link to bilateral trade pages for top revenue countries
+const tradeFlowLinks = computed(() => {
+  if (!stock.value?.country || !stock.value.country_revenues?.length) return []
+  const hqCode = stock.value.country.code.toLowerCase()
+  return (stock.value.country_revenues as any[])
+    .filter((r: any) => r.country.code.toLowerCase() !== hqCode)
+    .slice(0, 5)
+    .map((r: any) => ({
+      pair: `${hqCode}-${r.country.code.toLowerCase()}`,
+      code: r.country.code,
+      flag: r.country.flag,
+      name: r.country.name,
+      revPct: r.revenue_pct,
+    }))
+})
 
 const topCountryPct = computed(() => {
   const revs = stock.value?.country_revenues ?? []

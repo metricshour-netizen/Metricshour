@@ -324,21 +324,9 @@
         <div v-if="countriesPending" class="grid grid-cols-4 sm:grid-cols-5 gap-2">
           <div v-for="i in 20" :key="i" class="h-16 bg-[#111827] rounded-lg animate-pulse"/>
         </div>
-        <div v-else-if="countriesError || !countries?.length" class="grid grid-cols-4 sm:grid-cols-5 gap-2">
-          <!-- Fallback: static G20 flags when API fails -->
-          <NuxtLink
-            v-for="c in G20_FALLBACK"
-            :key="c.code"
-            :to="`/countries/${c.code.toLowerCase()}`"
-            class="bg-[#111827] border border-[#1f2937] hover:border-emerald-500 rounded-lg p-2 transition-colors flex flex-col items-center"
-          >
-            <div class="text-xl mb-0.5">{{ c.flag }}</div>
-            <div class="text-[9px] font-mono text-gray-600 text-center">{{ c.code }}</div>
-          </NuxtLink>
-        </div>
         <div v-else class="grid grid-cols-4 sm:grid-cols-5 gap-2">
           <NuxtLink
-            v-for="c in countries"
+            v-for="c in (countries?.length ? countries : G20_FALLBACK)"
             :key="c.code"
             :to="`/countries/${c.code.toLowerCase()}`"
             class="bg-[#111827] border border-[#1f2937] hover:border-emerald-500 rounded-lg p-2 transition-colors flex flex-col items-center"
@@ -404,21 +392,34 @@ const { get } = useApi()
 const router = useRouter()
 
 // ── G20 Countries (client-side to avoid SSG build failures) ──────────────────
-const { data: countries, pending: countriesPending, error: countriesError } = useAsyncData(
+const { data: countries, pending: countriesPending } = useAsyncData(
   'g20',
-  () => get<any[]>('/api/countries', { is_g20: 'true' }),
+  () => get<any[]>('/api/countries', { is_g20: 'true' }).catch(() => []),
   { server: false },
 )
 
-// Fallback G20 grid if API is unreachable
+// Fallback G20 grid — shown when API hasn't loaded yet or is unreachable
 const G20_FALLBACK = [
-  { code: 'US', flag: '🇺🇸' }, { code: 'CN', flag: '🇨🇳' }, { code: 'DE', flag: '🇩🇪' },
-  { code: 'JP', flag: '🇯🇵' }, { code: 'GB', flag: '🇬🇧' }, { code: 'FR', flag: '🇫🇷' },
-  { code: 'IN', flag: '🇮🇳' }, { code: 'BR', flag: '🇧🇷' }, { code: 'CA', flag: '🇨🇦' },
-  { code: 'AU', flag: '🇦🇺' }, { code: 'KR', flag: '🇰🇷' }, { code: 'IT', flag: '🇮🇹' },
-  { code: 'RU', flag: '🇷🇺' }, { code: 'MX', flag: '🇲🇽' }, { code: 'SA', flag: '🇸🇦' },
-  { code: 'AR', flag: '🇦🇷' }, { code: 'ZA', flag: '🇿🇦' }, { code: 'ID', flag: '🇮🇩' },
-  { code: 'TR', flag: '🇹🇷' }, { code: 'EU', flag: '🇪🇺' },
+  { code: 'US', flag: '🇺🇸', name: 'United States' },
+  { code: 'CN', flag: '🇨🇳', name: 'China' },
+  { code: 'DE', flag: '🇩🇪', name: 'Germany' },
+  { code: 'JP', flag: '🇯🇵', name: 'Japan' },
+  { code: 'GB', flag: '🇬🇧', name: 'United Kingdom' },
+  { code: 'FR', flag: '🇫🇷', name: 'France' },
+  { code: 'IN', flag: '🇮🇳', name: 'India' },
+  { code: 'BR', flag: '🇧🇷', name: 'Brazil' },
+  { code: 'CA', flag: '🇨🇦', name: 'Canada' },
+  { code: 'AU', flag: '🇦🇺', name: 'Australia' },
+  { code: 'KR', flag: '🇰🇷', name: 'South Korea' },
+  { code: 'IT', flag: '🇮🇹', name: 'Italy' },
+  { code: 'RU', flag: '🇷🇺', name: 'Russia' },
+  { code: 'MX', flag: '🇲🇽', name: 'Mexico' },
+  { code: 'SA', flag: '🇸🇦', name: 'Saudi Arabia' },
+  { code: 'AR', flag: '🇦🇷', name: 'Argentina' },
+  { code: 'ZA', flag: '🇿🇦', name: 'South Africa' },
+  { code: 'ID', flag: '🇮🇩', name: 'Indonesia' },
+  { code: 'TR', flag: '🇹🇷', name: 'Turkey' },
+  { code: 'EU', flag: '🇪🇺', name: 'European Union' },
 ]
 
 // ── Top Stocks ────────────────────────────────────────────────────────────────
