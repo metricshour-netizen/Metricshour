@@ -16,7 +16,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
@@ -98,6 +98,13 @@ class FeedEventOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+    @model_validator(mode='after')
+    def ensure_image_url(self) -> 'FeedEventOut':
+        # Always return an OG image URL so the card always has a background
+        if not self.image_url:
+            self.image_url = f"https://api.metricshour.com/og/feed/{self.id}.png"
+        return self
 
 
 class FeedPageOut(BaseModel):
