@@ -17,7 +17,7 @@ def list_assets(
     db: Session = Depends(get_db),
 ) -> list[dict]:
     # country_code-scoped queries are never cached (too many combinations)
-    cache_key = f"assets:list:v3:{type or 'all'}:{sector or 'all'}" if not country_code else None
+    cache_key = f"assets:list:v4:{type or 'all'}:{sector or 'all'}" if not country_code else None
     if cache_key:
         cached = kv_json_get(cache_key)
         if cached is not None:

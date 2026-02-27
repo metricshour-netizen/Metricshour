@@ -51,15 +51,15 @@ INDICATOR_IMPORTANCE: dict[str, float] = {
 }
 DEFAULT_INDICATOR_IMPORTANCE = 3.0
 
-# Price-move thresholds by asset type (crypto moves more, stocks less)
+# Price-move thresholds by asset type — lower = more events
 PRICE_MOVE_THRESHOLD: dict[str, float] = {
-    "crypto":    1.5,   # crypto moves fast — 1.5% is meaningful
-    "stock":     1.5,   # stocks: notable intraday move
-    "commodity": 1.2,   # commodities: 1.2% signals direction
-    "fx":        0.4,   # FX: 0.4% is a big move for major pairs
-    "index":     1.0,   # indices: 1% is significant
-    "etf":       1.5,
-    "bond":      0.3,   # bond prices rarely move much
+    "crypto":    0.8,   # crypto: 0.8% triggers a card (active 24/7 market)
+    "stock":     0.8,   # stocks: 0.8% intraday move is worth surfacing
+    "commodity": 0.6,   # commodities: 0.6% signals direction change
+    "fx":        0.2,   # FX: 0.2% is significant for major pairs
+    "index":     0.5,   # indices: 0.5% is meaningful
+    "etf":       0.8,
+    "bond":      0.15,  # bond prices: 0.15% matters for fixed income
 }
 
 
@@ -93,8 +93,8 @@ def _generate_price_moves(db) -> list[tuple[str, str]]:
     Returns list of (entity_type, entity_code) tuples for significant events.
     """
     now = datetime.now(timezone.utc)
-    window_start = now - timedelta(minutes=15)
-    dedup_window = now - timedelta(minutes=16)  # slightly wider for query safety
+    window_start = now - timedelta(minutes=5)   # compare last 5-min price
+    dedup_window = now - timedelta(minutes=6)   # slightly wider for query safety
 
     assets = db.query(Asset).filter(Asset.is_active == True).all()
     triggered: list[tuple[str, str]] = []
@@ -196,11 +196,11 @@ def _generate_macro_releases(db) -> list[tuple[str, str]]:
         .filter(
             CountryIndicator.indicator.in_(high_importance),
             CountryIndicator.period_date <= today,          # no forecasts
-            CountryIndicator.period_date >= (now - timedelta(days=730)).date(),  # 2 years back
+            CountryIndicator.period_date >= (now - timedelta(days=1095)).date(),  # 3 years back
             Country.code.in_(G20_CODES),
         )
-        .order_by(CountryIndicator.period_date.desc())
-        .limit(30)
+        .order_by(CountryIndicator.period_date.desc(), CountryIndicator.country_id)
+        .limit(100)
         .all()
     )
 
@@ -216,13 +216,18 @@ def _generate_macro_releases(db) -> list[tuple[str, str]]:
             f"Source: {indicator_row.source}."
         )
 
+        # Dedup per (country, indicator, period) — not just indicator.
+        # Each data point published once; only re-published if period_date is new.
+        period_slug = indicator_row.period_date.strftime("%Y-%m")
+        subtype_with_period = f"{indicator_row.indicator}:{period_slug}"
+
         _upsert_feed_event(
             db,
             event_type="macro_release",
-            event_subtype=indicator_row.indicator,
+            event_subtype=subtype_with_period,
             title=title,
             body=body,
-            published_at=now,   # always NOW — not the data period date
+            published_at=now,
             related_asset_ids=[],
             related_country_ids=[country.id],
             importance_score=importance,
@@ -261,10 +266,12 @@ def _upsert_feed_event(
     Window: 15 min for price_move, 6 hours for macro/indicator.
     """
     if event_type == 'price_move':
-        dedup_minutes = 15
+        dedup_minutes = 5    # one card per asset per 5 min — high-frequency feed
     else:
-        # macro/indicator: one card per (country, indicator) per 6 hours
-        dedup_minutes = 360
+        # macro/indicator: one card per (country, indicator, period) per 30 days
+        # subtype now encodes the period (e.g. "gdp_growth_pct:2024-01") so the
+        # same data point is never duplicated even if the worker re-runs.
+        dedup_minutes = 43200  # 30 days
 
     dedup_cutoff = published_at - timedelta(minutes=dedup_minutes)
 

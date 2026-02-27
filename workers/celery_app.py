@@ -59,6 +59,7 @@ app = Celery('metricshour', include=[
     'tasks.oecd_update',
     'tasks.trade_update',
     'tasks.sitemap_deploy',
+    'tasks.central_bank_rates',
 ])
 
 # Upstash Redis uses TLS (rediss://); Celery requires ssl_cert_reqs to be explicit.

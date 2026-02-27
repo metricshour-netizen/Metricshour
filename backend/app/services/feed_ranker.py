@@ -39,10 +39,13 @@ INTERACTION_WEIGHTS: dict[str, float] = {
     InteractionType.view:  1.0,
     InteractionType.skip: -5.0,
 }
-# Only surface events from the last 48 hours in the candidate pool
-CANDIDATE_WINDOW_HOURS = 48
+# Surface events from the last 72 hours in the primary candidate pool
+CANDIDATE_WINDOW_HOURS = 72
+# Fall back to 7 days if fewer than MIN_CANDIDATE_EVENTS exist in the primary window
+MIN_CANDIDATE_EVENTS = 10
+FALLBACK_WINDOW_HOURS = 168  # 7 days
 # Hard cap on events scored per request (avoids N+1 issues at scale)
-MAX_CANDIDATE_EVENTS = 300
+MAX_CANDIDATE_EVENTS = 400
 
 
 class ScoredEvent(NamedTuple):
@@ -72,7 +75,8 @@ def rank_feed(
         Ordered list of FeedEvent ORM objects.
     """
     page_size = min(page_size, 50)
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=CANDIDATE_WINDOW_HOURS)
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(hours=CANDIDATE_WINDOW_HOURS)
 
     events = (
         db.query(FeedEvent)
@@ -81,6 +85,17 @@ def rank_feed(
         .limit(MAX_CANDIDATE_EVENTS)
         .all()
     )
+
+    # Fallback: if not enough events in primary window, extend to 7 days
+    if len(events) < MIN_CANDIDATE_EVENTS:
+        fallback_cutoff = now - timedelta(hours=FALLBACK_WINDOW_HOURS)
+        events = (
+            db.query(FeedEvent)
+            .filter(FeedEvent.published_at >= fallback_cutoff)
+            .order_by(FeedEvent.published_at.desc())
+            .limit(MAX_CANDIDATE_EVENTS)
+            .all()
+        )
 
     if not events:
         return []
