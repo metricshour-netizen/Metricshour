@@ -124,7 +124,7 @@
       </div>
 
       <!-- ── BOTTOM: content + actions ──────────────────────────────── -->
-      <div class="flex items-end gap-3 px-4 pb-14">
+      <div class="flex items-end gap-3 px-4 pb-card-bottom" style="padding-bottom: max(4.5rem, calc(3rem + env(safe-area-inset-bottom)))">
 
         <!-- Text (left) -->
         <div class="flex-1 min-w-0 space-y-1.5">
