@@ -153,6 +153,12 @@ app.conf.update(
             'schedule': crontab(hour=1, minute=0, day_of_week=0),
         },
 
+        # Central bank policy rates — ECB, BoE, RBA, BoC, Riksbank, FRED, etc. — weekly Sunday 2am
+        'central-bank-rates-weekly': {
+            'task': 'tasks.central_bank_rates.fetch_central_bank_rates',
+            'schedule': crontab(hour=2, minute=0, day_of_week=0),
+        },
+
         # WITS trade matrix: full annual refresh — Jan 15 at 2am
         'trade-update-annual-jan15': {
             'task': 'tasks.trade_update.update_trade_data_annual',
