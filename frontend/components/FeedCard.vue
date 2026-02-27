@@ -409,34 +409,12 @@ const absoluteTime = computed(() => {
 // ── External URL ──────────────────────────────────────────────────────────────
 const isExternal = computed(() => (props.event.source_url || '').startsWith('http'))
 const externalUrl = computed(() => props.event.source_url || '#')
-// Point share links to the API origin (/s/{id}) — bypasses CF Bot Fight Mode
-// so Twitterbot/LinkedIn/WhatsApp crawlers get OG meta tags from FastAPI directly
-const _runtimeConfig = useRuntimeConfig()
-const shareUrl = computed(() => `${_runtimeConfig.public.apiBase}/s/${props.event.id}`)
+// Share the canonical frontend URL — pre-rendered pages already have OG meta tags
+const shareUrl = computed(() => `https://metricshour.com/feed/${props.event.id}`)
 
 function handleCardClick() {
-  const url = props.event.source_url
-  if (url) {
-    url.startsWith('http') ? window.open(url, '_blank', 'noopener') : navigateTo(url)
-    return
-  }
-
-  // No source_url — navigate to the most relevant page based on event type
-  const type = props.event.event_type
-  const data = props.event.event_data || {}
-
-  if (type === 'price_move' && data.symbol) {
-    navigateTo(`/stocks/${data.symbol}`)
-  } else if ((type === 'macro_release' || type === 'indicator_release') && data.country_code) {
-    navigateTo(`/countries/${(data.country_code as string).toLowerCase()}`)
-  } else if (type === 'trade_update' && data.exporter && data.importer) {
-    navigateTo(`/trade/${data.exporter}-${data.importer}`)
-  } else if (type === 'central_bank') {
-    navigateTo('/markets')
-  } else {
-    // Fallback — open the feed detail page for this event
-    navigateTo(`/feed/${props.event.id}`)
-  }
+  // Always navigate to the card's detail page — external source is via the ↗ Open button
+  navigateTo(`/feed/${props.event.id}`)
 }
 
 // ── Actions ───────────────────────────────────────────────────────────────────

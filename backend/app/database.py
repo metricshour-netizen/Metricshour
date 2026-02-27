@@ -10,9 +10,12 @@ def _make_engine():
         raise RuntimeError("DATABASE_URL is not set. Copy .env.example to .env and fill it in.")
     return create_engine(
         settings.database_url,
-        pool_pre_ping=True,   # reconnect if connection dropped
-        pool_size=2,          # PgBouncer handles real pooling; keep SQLAlchemy pool tiny
-        max_overflow=3,       # max 5 total connections from this process
+        pool_pre_ping=True,        # reconnect if connection dropped
+        pool_size=2,               # PgBouncer handles real pooling; keep SQLAlchemy pool tiny
+        max_overflow=3,            # max 5 total connections from this process
+        connect_args={
+            "prepare_threshold": None,  # disable prepared statements for PgBouncer transaction mode
+        },
     )
 
 
