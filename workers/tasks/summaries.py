@@ -74,33 +74,40 @@ def _fmt_cap(v) -> str:
     return f"${v/1e6:.0f}M"
 
 
-# ── Gemini AI summary helper ───────────────────────────────────────────────────
+# ── Claude Haiku AI summary helper ────────────────────────────────────────────
 
 def _ai_summary(prompt: str) -> str | None:
     """
-    Call Gemini 2.0 Flash for a polished 75-100 word summary.
+    Call Claude Haiku for a polished 75-100 word summary.
     Returns None on any failure — caller falls back to template.
-    Free tier: 2M tokens/day, more than enough for all entities daily.
     """
-    api_key = os.environ.get("GEMINI_API_KEY", "")
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
     if not api_key:
         return None
     try:
-        import google.generativeai as genai
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-2.0-flash")
-        resp = model.generate_content(
-            f"{prompt}\n\nIMPORTANT: Reply with ONLY the summary text. "
-            "75-100 words. No headers. No bullet points. No markdown. "
-            "Professional financial tone, third-person. End with a period.",
-            generation_config={"max_output_tokens": 180, "temperature": 0.4},
+        import anthropic
+        client = anthropic.Anthropic(api_key=api_key)
+        msg = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=200,
+            temperature=0.4,
+            messages=[{
+                "role": "user",
+                "content": (
+                    f"{prompt}\n\n"
+                    "Reply with ONLY the summary text. 75-100 words. "
+                    "No headers, no bullet points, no markdown. "
+                    "Professional financial intelligence tone, third-person. "
+                    "Be specific — include actual numbers. End with a period."
+                ),
+            }],
         )
-        text = resp.text.strip()
+        text = msg.content[0].text.strip()
         if 40 < len(text.split()) < 130:
             return text
         return None
     except Exception as exc:
-        log.debug("Gemini summary failed: %s", exc)
+        log.debug("Claude Haiku summary failed: %s", exc)
         return None
 
 
