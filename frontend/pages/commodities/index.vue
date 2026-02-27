@@ -38,7 +38,7 @@
             <NuxtLink
               v-for="c in group.items"
               :key="c.symbol"
-              to="/markets"
+              :to="`/stocks/${c.symbol}`"
               class="bg-[#111827] border border-[#1f2937] hover:border-emerald-500/60 rounded-xl p-4 transition-all hover:bg-[#131d2e] group"
             >
               <div class="flex items-start justify-between mb-3">

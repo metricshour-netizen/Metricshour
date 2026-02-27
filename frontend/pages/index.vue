@@ -8,17 +8,18 @@
   >
     <div class="ticker-wrap">
       <div class="ticker-track" :class="{ paused: tickerPaused }">
-        <span
+        <NuxtLink
           v-for="(item, i) in [...tickerItems, ...tickerItems]"
           :key="`tk-${i}`"
-          class="inline-flex items-center gap-1.5 px-5 py-2 border-r border-[#1a2332] shrink-0"
+          :to="`/stocks/${item.symbol}`"
+          class="inline-flex items-center gap-1.5 px-5 py-2 border-r border-[#1a2332] shrink-0 hover:bg-white/5 transition-colors"
         >
           <span class="text-[11px] font-mono font-bold" :class="item.typeColor">{{ item.symbol }}</span>
           <span class="text-[11px] text-white tabular-nums font-semibold font-mono">{{ item.priceStr }}</span>
           <span class="text-[10px] tabular-nums font-semibold font-mono" :class="item.dir >= 0 ? 'text-emerald-400' : 'text-red-400'">
             {{ item.dir >= 0 ? '▲' : '▼' }}{{ item.changePct }}
           </span>
-        </span>
+        </NuxtLink>
       </div>
     </div>
   </div>
@@ -30,14 +31,14 @@
 
       <!-- Live signal badges -->
       <div class="flex items-center justify-center gap-2 flex-wrap mb-6">
-        <span class="inline-flex items-center gap-1.5 bg-[#111827] border border-[#1f2937] text-xs text-gray-400 px-3 py-1.5 rounded-full">
+        <NuxtLink to="/countries" class="inline-flex items-center gap-1.5 bg-[#111827] border border-[#1f2937] hover:border-emerald-800 text-xs text-gray-400 px-3 py-1.5 rounded-full transition-colors">
           <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block"></span>
           196 countries tracked
-        </span>
-        <span class="inline-flex items-center gap-1.5 bg-[#111827] border border-[#1f2937] text-xs text-gray-400 px-3 py-1.5 rounded-full">
+        </NuxtLink>
+        <NuxtLink to="/markets" class="inline-flex items-center gap-1.5 bg-[#111827] border border-[#1f2937] hover:border-sky-800 text-xs text-gray-400 px-3 py-1.5 rounded-full transition-colors">
           <span class="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse inline-block"></span>
           130+ assets live
-        </span>
+        </NuxtLink>
         <NuxtLink
           v-if="activeSpotlight"
           :to="activeSpotlight.link"

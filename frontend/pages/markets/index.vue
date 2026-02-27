@@ -157,12 +157,12 @@
         <div v-for="group in commodityGroups" :key="group.name" class="mb-6">
           <p v-if="group.items.length" class="text-[10px] text-gray-600 uppercase tracking-widest font-bold mb-2">{{ group.name }}</p>
           <div v-if="group.items.length" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-            <div v-for="c in group.items" :key="c.symbol" class="bg-[#111827] border border-[#1f2937] hover:border-blue-500/40 rounded-xl p-4 transition-colors group">
+            <NuxtLink v-for="c in group.items" :key="c.symbol" :to="`/stocks/${c.symbol}`" class="bg-[#111827] border border-[#1f2937] hover:border-blue-500/40 rounded-xl p-4 transition-colors group">
               <div class="text-xl mb-2">{{ c.icon }}</div>
               <div class="text-sm font-medium text-white group-hover:text-blue-300 transition-colors truncate mb-0.5">{{ apiMap[c.symbol]?.name ?? c.name }}</div>
               <div class="text-xs text-gray-600 mb-2">{{ c.symbol }}</div>
               <PriceBadge :asset="apiMap[c.symbol]" />
-            </div>
+            </NuxtLink>
           </div>
         </div>
         <div class="mb-8"/>
@@ -179,7 +179,7 @@
             <span class="col-span-2 text-right">Exchange</span>
           </div>
           <div class="divide-y divide-[#1f2937]">
-            <div v-for="a in etfFiltered" :key="a.symbol" class="block">
+            <NuxtLink v-for="a in etfFiltered" :key="a.symbol" :to="`/stocks/${a.symbol}`" class="block hover:bg-[#1a2235] transition-colors">
               <!-- Mobile -->
               <div class="flex items-center justify-between px-4 py-3 sm:hidden">
                 <div class="min-w-0">
@@ -191,19 +191,21 @@
                 </div>
                 <div class="text-right shrink-0 ml-2">
                   <div class="text-sm font-bold text-white tabular-nums">{{ fmtCap(a.market_cap_usd) }}</div>
+                  <div class="text-sky-500 text-xs">→</div>
                 </div>
               </div>
               <!-- Desktop -->
-              <div class="hidden sm:grid grid-cols-12 px-4 py-3 items-center hover:bg-[#1a2235] transition-colors">
+              <div class="hidden sm:grid grid-cols-12 px-4 py-3 items-center">
                 <div class="col-span-4">
                   <div class="text-sm font-bold text-sky-400">{{ a.symbol }}</div>
                   <div class="text-xs text-gray-500 truncate">{{ a.name }}</div>
                 </div>
                 <span class="col-span-4 text-xs text-gray-500">{{ a.sector }}</span>
                 <span class="col-span-2 text-xs text-right text-white tabular-nums">{{ fmtCap(a.market_cap_usd) }}</span>
-                <span class="col-span-2 text-xs text-right text-gray-600">{{ a.exchange }}</span>
+                <span class="col-span-1 text-xs text-right text-gray-600">{{ a.exchange }}</span>
+                <span class="col-span-1 text-right text-sky-500 text-xs">→</span>
               </div>
-            </div>
+            </NuxtLink>
           </div>
         </div>
       </template>
@@ -277,9 +279,10 @@
       <template v-if="showSection('bond') && bondFiltered.length">
         <SectionHeader color="bg-rose-400" label="Bonds" />
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 mb-8">
-          <div
+          <NuxtLink
             v-for="a in bondFiltered"
             :key="a.symbol"
+            :to="bondCountryLink(a.symbol)"
             class="bg-[#111827] border border-[#1f2937] hover:border-rose-500/40 rounded-xl p-4 transition-colors group"
           >
             <div class="flex items-start justify-between mb-2">
@@ -290,7 +293,7 @@
             <div class="text-xs text-gray-500 leading-snug mt-0.5 truncate">{{ a.name }}</div>
             <div class="text-[10px] text-gray-600 mt-1.5">{{ a.industry }} · {{ a.exchange }}</div>
             <PriceBadge :asset="a" />
-          </div>
+          </NuxtLink>
         </div>
       </template>
 
@@ -352,8 +355,14 @@ const PriceBadge = defineComponent({
 // ── Data ──────────────────────────────────────────────────────────────────────
 
 const { get } = useApi()
+const route = useRoute()
 const search = ref('')
 const activeTab = ref('all')
+
+onMounted(() => {
+  // Allow /markets?q=SYMBOL to pre-filter (linked from commodities, bonds etc.)
+  if (route.query.q) search.value = String(route.query.q)
+})
 
 const { data: allAssets, pending } = await useAsyncData('markets-all',
   () => get<any[]>('/api/assets').catch(() => []),
@@ -500,9 +509,23 @@ function typeTag(t: string): string {
   return map[t] ?? t.slice(0, 3).toUpperCase()
 }
 
+function bondCountryLink(symbol: string): string {
+  if (symbol.startsWith('US')) return '/countries/us'
+  if (symbol.startsWith('DE')) return '/countries/de'
+  if (symbol.startsWith('GB')) return '/countries/gb'
+  if (symbol.startsWith('FR')) return '/countries/fr'
+  if (symbol.startsWith('IT')) return '/countries/it'
+  if (symbol.startsWith('JP')) return '/countries/jp'
+  if (symbol.startsWith('CN')) return '/countries/cn'
+  if (symbol.startsWith('AU')) return '/countries/au'
+  return `/stocks/${symbol}`
+}
+
 function terminalRowLink(a: any): string | undefined {
-  if (a.asset_type === 'stock' || a.asset_type === 'crypto') return `/stocks/${a.symbol}`
+  if (a.asset_type === 'stock' || a.asset_type === 'crypto' || a.asset_type === 'etf') return `/stocks/${a.symbol}`
   if (a.asset_type === 'index') return `/indices/${a.symbol}`
+  if (a.asset_type === 'commodity') return `/stocks/${a.symbol}`
+  if (a.asset_type === 'bond') return bondCountryLink(a.symbol)
   return undefined
 }
 
