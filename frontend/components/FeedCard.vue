@@ -11,9 +11,9 @@
     <div class="absolute inset-0 pointer-events-none" :style="glowStyle" />
     <div class="absolute inset-0 opacity-[0.03] pointer-events-none noise-layer" />
 
-    <!-- Cover image — always shown (OG-generated fallback gives every card a visual) -->
+    <!-- Cover image — loaded from R2 via image_url; fallback to on-demand API generation -->
     <img
-      :src="event.image_url || `https://api.metricshour.com/og/feed/${event.id}.png`"
+      :src="event.image_url || `${r2Base}/og/feed/${event.id}.png`"
       alt=""
       class="absolute inset-0 w-full h-full object-cover opacity-20 blur-sm"
       loading="eager"
@@ -407,6 +407,8 @@ const absoluteTime = computed(() => {
 const isExternal = computed(() => (props.event.source_url || '').startsWith('http'))
 const externalUrl = computed(() => props.event.source_url || '#')
 const shareUrl = computed(() => `https://metricshour.com/feed/${props.event.id}`)
+const { public: { r2PublicUrl } } = useRuntimeConfig()
+const r2Base = (r2PublicUrl as string || 'https://api.metricshour.com').replace(/\/$/, '')
 
 // Share panel state
 const showSharePanel = ref(false)
