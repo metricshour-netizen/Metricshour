@@ -20,6 +20,7 @@
           <div class="flex flex-col gap-4">
             <!-- Countries -->
             <div class="flex items-center gap-4 flex-wrap">
+              <h1 class="sr-only">{{ data.exporter.name }}–{{ data.importer.name }} Bilateral Trade — MetricsHour</h1>
               <div class="flex items-center gap-3">
                 <div class="w-14 h-14 rounded-xl bg-[#1f2937] border border-[#374151] flex items-center justify-center text-3xl">
                   {{ data.exporter.flag }}
@@ -94,7 +95,7 @@
       </div>
 
       <!-- Page Summary -->
-      <div v-if="pageSummary?.summary" class="bg-[#111827] border border-[#1f2937] rounded-lg p-4 mb-3 text-sm text-gray-300 leading-relaxed">
+      <div v-if="pageSummary?.summary" class="page-summary bg-[#111827] border border-[#1f2937] rounded-lg p-4 mb-3 text-sm text-gray-300 leading-relaxed">
         {{ pageSummary.summary }}
       </div>
 
@@ -104,7 +105,7 @@
           v-for="(insight, i) in pageInsights"
           :key="insight.generated_at"
           class="relative border rounded-lg p-4 mb-2 overflow-hidden"
-          :class="i === 0 ? 'bg-[#0d1520] border-emerald-900/50' : 'bg-[#0b0f1a] border-[#1f2937]'"
+          :class="[i === 0 ? 'bg-[#0d1520] border-emerald-900/50 page-insight-latest' : 'bg-[#0b0f1a] border-[#1f2937]']"
         >
           <div v-if="i === 0" class="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent"/>
           <div class="flex items-start gap-3">
@@ -374,6 +375,7 @@ useSeoMeta({
   twitterTitle: computed(() => data.value ? `${data.value.exporter.name}–${data.value.importer.name} Trade — MetricsHour` : 'Bilateral Trade — MetricsHour'),
   twitterDescription: computed(() => data.value ? `${data.value.exporter.name} and ${data.value.importer.name} bilateral trade flows, top products, and GDP dependency.` : ''),
   twitterImage: ogImageUrl,
+  twitterCard: 'summary_large_image',
 })
 
 useHead(computed(() => ({
@@ -386,6 +388,10 @@ useHead(computed(() => ({
       name: `${data.value.exporter.name}–${data.value.importer.name} Trade — MetricsHour`,
       url: `https://metricshour.com/trade/${pair}`,
       description: `${data.value.exporter.name} and ${data.value.importer.name} bilateral trade flows, top products, and GDP dependency. Source: UN Comtrade.`,
+      speakable: {
+        '@type': 'SpeakableSpecification',
+        cssSelector: ['.page-summary', '.page-insight-latest'],
+      },
       breadcrumb: {
         '@type': 'BreadcrumbList',
         itemListElement: [
