@@ -120,6 +120,86 @@ def build_alert_email(symbol: str, name: str, condition: str, target: float, cur
 """
 
 
+def send_welcome_email(to: str) -> str | None:
+    """Send a welcome email to a new user."""
+    html = f"""
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#0a0e1a;font-family:sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0e1a;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="520" cellpadding="0" cellspacing="0" style="background:#111827;border:1px solid #1f2937;border-radius:12px;overflow:hidden;">
+        <tr>
+          <td style="background:#0d1117;padding:24px 28px;border-bottom:1px solid #1f2937;">
+            <span style="font-size:20px;font-weight:800;color:#10b981;letter-spacing:1px;">METRICSHOUR</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:32px 28px;">
+            <p style="font-size:22px;font-weight:700;color:#ffffff;margin:0 0 8px 0;">Welcome aboard 👋</p>
+            <p style="font-size:14px;color:#9ca3af;margin:0 0 28px 0;">You now have access to institutional-grade macro intelligence.</p>
+
+            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
+              <tr>
+                <td style="padding:0 6px 12px 0;" width="50%">
+                  <div style="background:#0d1117;border:1px solid #1f2937;border-radius:8px;padding:16px;">
+                    <p style="font-size:18px;margin:0 0 6px 0;">🌍</p>
+                    <p style="font-size:13px;font-weight:700;color:#ffffff;margin:0 0 4px 0;">196 Countries</p>
+                    <p style="font-size:11px;color:#6b7280;margin:0;">GDP, inflation, trade, governance — 80+ indicators each</p>
+                  </div>
+                </td>
+                <td style="padding:0 0 12px 6px;" width="50%">
+                  <div style="background:#0d1117;border:1px solid #1f2937;border-radius:8px;padding:16px;">
+                    <p style="font-size:18px;margin:0 0 6px 0;">📈</p>
+                    <p style="font-size:13px;font-weight:700;color:#ffffff;margin:0 0 4px 0;">Stock Exposure</p>
+                    <p style="font-size:11px;color:#6b7280;margin:0;">See which countries drive every stock's revenue</p>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:0 6px 0 0;" width="50%">
+                  <div style="background:#0d1117;border:1px solid #1f2937;border-radius:8px;padding:16px;">
+                    <p style="font-size:18px;margin:0 0 6px 0;">🔔</p>
+                    <p style="font-size:13px;font-weight:700;color:#ffffff;margin:0 0 4px 0;">Price Alerts</p>
+                    <p style="font-size:11px;color:#6b7280;margin:0;">Telegram + email when assets hit your targets</p>
+                  </div>
+                </td>
+                <td style="padding:0 0 0 6px;" width="50%">
+                  <div style="background:#0d1117;border:1px solid #1f2937;border-radius:8px;padding:16px;">
+                    <p style="font-size:18px;margin:0 0 6px 0;">⚡</p>
+                    <p style="font-size:13px;font-weight:700;color:#ffffff;margin:0 0 4px 0;">Live Feed</p>
+                    <p style="font-size:11px;color:#6b7280;margin:0;">Market-moving events personalised to your follows</p>
+                  </div>
+                </td>
+              </tr>
+            </table>
+
+            <a href="https://metricshour.com" style="display:inline-block;background:#10b981;color:#000000;font-weight:700;font-size:14px;padding:14px 28px;border-radius:8px;text-decoration:none;margin-bottom:24px;">Explore MetricsHour →</a>
+
+            <p style="font-size:13px;color:#6b7280;margin:0;">
+              Questions? Just reply to this email — I read every one.<br>
+              <span style="color:#4b5563;">— The MetricsHour team</span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:16px 28px;border-top:1px solid #1f2937;">
+            <p style="font-size:11px;color:#374151;margin:0;">
+              You're receiving this because you created an account at metricshour.com.
+              <a href="https://metricshour.com" style="color:#4b5563;">Unsubscribe</a>
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>
+"""
+    return send_email(to, "Welcome to MetricsHour 🌍", html)
+
+
 def build_alert_telegram(symbol: str, name: str, condition: str, target: float, current: float) -> str:
     direction = "above ↑" if condition == "above" else "below ↓"
     emoji = "🟢" if condition == "above" else "🔴"

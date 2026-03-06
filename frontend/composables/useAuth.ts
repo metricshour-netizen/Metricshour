@@ -85,10 +85,16 @@ export function useAuth() {
     await restore()
   }
 
+  function loginWithToken(t: string, tier: string) {
+    // Used by Google OAuth callback — token already issued by backend
+    _persist(t)
+    restore()
+  }
+
   function logout() {
     _persist(null)
     user.value = null
   }
 
-  return { token, user, isLoggedIn, isAdmin, login, register, logout, restore }
+  return { token, user, isLoggedIn, isAdmin, login, register, logout, restore, loginWithToken }
 }

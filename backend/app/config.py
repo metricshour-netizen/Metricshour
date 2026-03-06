@@ -29,6 +29,10 @@ class Settings:
     r2_public_url: str = os.environ.get("R2_PUBLIC_URL", "")
     # Sentry
     sentry_dsn: str = os.environ.get("SENTRY_DSN", "")
+    # Google OAuth
+    google_client_id: str = os.environ.get("GOOGLE_CLIENT_ID", "")
+    google_client_secret: str = os.environ.get("GOOGLE_CLIENT_SECRET", "")
+    frontend_url: str = os.environ.get("FRONTEND_URL", "https://metricshour.com")
     # Notifications
     telegram_bot_token: str = os.environ.get("TELEGRAM_BOT_TOKEN", "")
     telegram_webhook_secret: str = os.environ.get("TELEGRAM_WEBHOOK_SECRET", "")

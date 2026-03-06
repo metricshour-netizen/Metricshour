@@ -1,15 +1,22 @@
 """
-Auth router — register, login, /me.
-POST /api/auth/register  — create account (returns token)
-POST /api/auth/login     — OAuth2 password flow (returns token)
-GET  /api/auth/me        — current user info (requires token)
+Auth router — register, login, /me, Google OAuth.
+POST /api/auth/register              — create account (returns token)
+POST /api/auth/login                 — OAuth2 password flow (returns token)
+GET  /api/auth/me                    — current user info (requires token)
+GET  /api/auth/google/authorize      — redirect to Google OAuth consent
+GET  /api/auth/google/callback       — handle Google OAuth callback
 """
 
+import os
+import secrets
 from datetime import datetime, timedelta, timezone
+from urllib.parse import urlencode
 
+import requests as http_requests
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import RedirectResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from pydantic import BaseModel, EmailStr
@@ -19,6 +26,13 @@ from app.config import settings
 from app.database import get_db
 from app.limiter import limiter
 from app.models.user import User, UserTier
+from app.notifications import send_welcome_email
+from app.storage import redis_json_set, redis_json_get
+
+_GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
+_GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
+_GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo"
+_FRONTEND_URL = os.environ.get("FRONTEND_URL", "https://metricshour.com")
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -103,6 +117,12 @@ def register(request: Request, body: RegisterIn, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(user)
 
+    # Welcome email — fire and forget (don't fail registration if email fails)
+    try:
+        send_welcome_email(user.email)
+    except Exception:
+        pass
+
     return TokenOut(access_token=_make_token(user.id, user.tier, user.is_admin), tier=user.tier)
 
 
@@ -138,4 +158,96 @@ def me(current_user: User = Depends(get_current_user)):
         tier=current_user.tier,
         is_admin=current_user.is_admin,
         created_at=current_user.created_at,
+    )
+
+
+# ── Google OAuth ──────────────────────────────────────────────────────────────
+
+@router.get("/google/authorize")
+def google_authorize():
+    """Redirect user to Google OAuth consent screen."""
+    if not settings.google_client_id:
+        raise HTTPException(status_code=501, detail="Google OAuth not configured")
+
+    state = secrets.token_urlsafe(16)
+    redis_json_set(f"oauth:state:{state}", {"valid": True}, ttl_seconds=600)
+
+    params = urlencode({
+        "client_id": settings.google_client_id,
+        "redirect_uri": f"https://api.metricshour.com/api/auth/google/callback",
+        "response_type": "code",
+        "scope": "openid email profile",
+        "state": state,
+        "access_type": "online",
+        "prompt": "select_account",
+    })
+    return RedirectResponse(f"{_GOOGLE_AUTH_URL}?{params}")
+
+
+@router.get("/google/callback")
+def google_callback(code: str, state: str, db: Session = Depends(get_db)):
+    """Exchange Google code for user info, create/find user, return JWT."""
+    if not settings.google_client_id:
+        raise HTTPException(status_code=501, detail="Google OAuth not configured")
+
+    # Validate state (CSRF)
+    cached = redis_json_get(f"oauth:state:{state}")
+    if not cached:
+        return RedirectResponse(f"{_FRONTEND_URL}/auth/callback?error=invalid_state")
+
+    # Exchange code for tokens
+    token_resp = http_requests.post(_GOOGLE_TOKEN_URL, data={
+        "code": code,
+        "client_id": settings.google_client_id,
+        "client_secret": settings.google_client_secret,
+        "redirect_uri": f"https://api.metricshour.com/api/auth/google/callback",
+        "grant_type": "authorization_code",
+    }, timeout=10)
+
+    if token_resp.status_code != 200:
+        return RedirectResponse(f"{_FRONTEND_URL}/auth/callback?error=token_exchange_failed")
+
+    access_token = token_resp.json().get("access_token")
+
+    # Get user info from Google
+    userinfo_resp = http_requests.get(
+        _GOOGLE_USERINFO_URL,
+        headers={"Authorization": f"Bearer {access_token}"},
+        timeout=10,
+    )
+    if userinfo_resp.status_code != 200:
+        return RedirectResponse(f"{_FRONTEND_URL}/auth/callback?error=userinfo_failed")
+
+    userinfo = userinfo_resp.json()
+    email = userinfo.get("email", "").lower().strip()
+    if not email:
+        return RedirectResponse(f"{_FRONTEND_URL}/auth/callback?error=no_email")
+
+    # Find or create user
+    user = db.query(User).filter(User.email == email).first()
+    is_new = user is None
+
+    if is_new:
+        user = User(
+            email=email,
+            password_hash="__google__",   # no password — Google-only account
+            tier=UserTier.free,
+            is_active=True,
+            is_admin=False,
+            created_at=datetime.now(timezone.utc),
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        try:
+            send_welcome_email(user.email)
+        except Exception:
+            pass
+
+    user.last_login_at = datetime.now(timezone.utc)
+    db.commit()
+
+    jwt_token = _make_token(user.id, user.tier, user.is_admin)
+    return RedirectResponse(
+        f"{_FRONTEND_URL}/auth/callback?token={jwt_token}&tier={user.tier}&new={str(is_new).lower()}"
     )
