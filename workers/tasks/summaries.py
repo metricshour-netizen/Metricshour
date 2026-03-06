@@ -28,6 +28,7 @@ from celery_app import app
 from app.database import SessionLocal
 from app.models.country import Country, CountryIndicator, TradePair
 from app.models.asset import Asset, StockCountryRevenue
+from app.models.feed import FeedEvent
 from app.models.summary import PageSummary
 
 log = logging.getLogger(__name__)
@@ -611,7 +612,63 @@ def _commodity_insight_text(asset: Asset) -> str | None:
     return _call_gemini(prompt, min_words=50, max_words=95)
 
 
-# ── Upsert helper ──────────────────────────────────────────────────────────────
+# ── Emoji helpers ─────────────────────────────────────────────────────────────
+
+_COMMODITY_EMOJI: dict[str, str] = {
+    "WTI": "🛢️", "BRENT": "🛢️", "NG": "🔥", "GASOLINE": "⛽", "COAL": "⚫",
+    "XAUUSD": "🥇", "XAGUSD": "🥈", "XPTUSD": "⬜", "HG": "🟤", "ALI": "⬛",
+    "ZNC": "🔩", "NI": "🔩", "ZW": "🌾", "ZC": "🌽", "ZS": "🟤",
+    "KC": "☕", "SB": "🍬", "CT": "🌿", "CC": "🍫", "LE": "🐄", "PALM": "🌴",
+}
+
+def _commodity_emoji(symbol: str) -> str:
+    return _COMMODITY_EMOJI.get(symbol, "📦")
+
+
+# ── Upsert helpers ─────────────────────────────────────────────────────────────
+
+def _upsert_feed_insight(
+    db,
+    now: datetime,
+    title: str,
+    body: str,
+    source_url: str,
+    entity_type: str,
+    entity_name: str,
+    entity_flag: str,
+    importance_score: float,
+    related_country_ids: list | None = None,
+    related_asset_ids: list | None = None,
+):
+    """
+    Upsert a daily_insight FeedEvent. Uses source_url as a unique key (one per entity per day).
+    Old records from previous days are replaced.
+    """
+    # Delete yesterday's insight for this entity (keep only today's)
+    db.query(FeedEvent).filter(
+        FeedEvent.event_type == "daily_insight",
+        FeedEvent.source_url == source_url,
+    ).delete()
+
+    event_data = {
+        "entity_type": entity_type,
+        "entity_name": entity_name,
+        "entity_flag": entity_flag,
+    }
+
+    db.add(FeedEvent(
+        title=title,
+        body=body,
+        event_type="daily_insight",
+        event_subtype=entity_type,
+        source_url=source_url,
+        published_at=now,
+        related_country_ids=related_country_ids,
+        related_asset_ids=related_asset_ids,
+        event_data=event_data,
+        importance_score=importance_score,
+    ))
+
 
 def _upsert_summary(db, entity_type: str, entity_code: str, text_: str):
     now = datetime.now(timezone.utc)
@@ -728,6 +785,8 @@ def generate_daily_insights(self):
     try:
         total = 0
 
+        now = datetime.now(timezone.utc)
+
         # Country insights
         countries = db.query(Country).all()
         for c in countries:
@@ -735,6 +794,16 @@ def generate_daily_insights(self):
                 insight = _country_insight_text(c, db)
                 if insight:
                     _upsert_summary(db, "country_insight", c.code, insight)
+                    _upsert_feed_insight(db, now,
+                        title=f"{c.flag_emoji or '🌍'} {c.name} — Daily Macro Insight",
+                        body=insight,
+                        source_url=f"/countries/{c.code.lower()}",
+                        entity_type="country",
+                        entity_name=c.name,
+                        entity_flag=c.flag_emoji or "🌍",
+                        related_country_ids=[c.id],
+                        importance_score=6.0,
+                    )
                     total += 1
             except Exception as e:
                 log.warning("Country insight failed %s: %s", c.code, e)
@@ -749,6 +818,16 @@ def generate_daily_insights(self):
                 insight = _stock_insight_text(s, db)
                 if insight:
                     _upsert_summary(db, "stock_insight", s.symbol, insight)
+                    _upsert_feed_insight(db, now,
+                        title=f"{s.symbol} — Daily Equity Insight",
+                        body=insight,
+                        source_url=f"/stocks/{s.symbol}",
+                        entity_type="stock",
+                        entity_name=s.name,
+                        entity_flag=s.symbol[:2],
+                        related_asset_ids=[s.id],
+                        importance_score=6.5,
+                    )
                     total += 1
                     stock_count += 1
             except Exception as e:
@@ -763,7 +842,18 @@ def generate_daily_insights(self):
             try:
                 insight = _commodity_insight_text(c)
                 if insight:
+                    meta = COMMODITY_META.get(c.symbol, {})
                     _upsert_summary(db, "commodity_insight", c.symbol, insight)
+                    _upsert_feed_insight(db, now,
+                        title=f"{meta.get('full_name', c.name)} — Daily Commodity Insight",
+                        body=insight,
+                        source_url=f"/stocks/{c.symbol}",
+                        entity_type="commodity",
+                        entity_name=meta.get("full_name", c.name),
+                        entity_flag=_commodity_emoji(c.symbol),
+                        related_asset_ids=[c.id],
+                        importance_score=6.0,
+                    )
                     total += 1
                     commodity_count += 1
             except Exception as e:

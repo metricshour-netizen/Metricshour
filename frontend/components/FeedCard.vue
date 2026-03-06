@@ -112,6 +112,21 @@
           <div class="text-xs text-white/30 font-mono mt-2 tracking-widest">{{ eventData.year }} TRADE VOLUME</div>
         </div>
 
+        <!-- DAILY INSIGHT -->
+        <div v-else-if="eventType === 'daily_insight'" class="text-center px-2 w-full">
+          <div class="text-4xl mb-3" :style="{ color: accentColor }">◆</div>
+          <div class="text-xs font-black uppercase tracking-[0.2em] mb-3" :style="{ color: accentColor }">
+            MetricsHour Intelligence
+          </div>
+          <div v-if="eventData.entity_flag" class="text-5xl mb-2 drop-shadow-2xl">{{ eventData.entity_flag }}</div>
+          <div v-if="eventData.entity_name" class="text-sm font-bold text-white/80 leading-tight">
+            {{ eventData.entity_name }}
+          </div>
+          <div v-if="eventData.entity_type" class="text-[10px] font-mono text-white/30 mt-1 uppercase tracking-widest">
+            {{ eventData.entity_type }}
+          </div>
+        </div>
+
         <!-- BLOG / NEWS -->
         <div v-else class="text-center px-2 w-full">
           <div class="text-5xl mb-4">{{ blogEmoji }}</div>
@@ -290,6 +305,7 @@ const ACCENT: Record<string, string> = {
   macro_release:     '#3b82f6',
   trade_update:      '#f59e0b',
   blog:              '#a855f7',
+  daily_insight:     '#34d399',
 }
 const accentColor = computed(() => ACCENT[eventType.value] || '#6b7280')
 
@@ -300,6 +316,7 @@ const BG: Record<string, string> = {
   macro_release:     '#020818',
   trade_update:      '#0d0800',
   blog:              '#080212',
+  daily_insight:     '#010f0a',
 }
 const bgBase = computed(() => ({ background: BG[eventType.value] || '#050505' }))
 
@@ -362,6 +379,7 @@ const TYPE_LABELS: Record<string, string> = {
   macro_release:     '📈 Macro Data',
   trade_update:      '🌐 Trade',
   blog:              '✍️ Article',
+  daily_insight:     '◆ AI Insight',
 }
 const typeLabel = computed(() => TYPE_LABELS[eventType.value] || eventType.value.replace(/_/g, ' ').toUpperCase())
 const badgeStyle = computed(() => ({
@@ -461,6 +479,8 @@ function handleCardClick() {
     navigateTo(`/countries/${data.country_code.toLowerCase()}`)
   } else if (eventType.value === 'trade_update' && data.exporter && data.importer) {
     navigateTo(`/trade/${data.exporter}-${data.importer}`)
+  } else if (eventType.value === 'daily_insight' && props.event.source_url) {
+    navigateTo(props.event.source_url)
   } else if (eventType.value === 'blog' && props.event.source_url?.includes('/blog/')) {
     const slug = props.event.source_url.split('/blog/')[1]?.replace(/\/$/, '')
     navigateTo(slug ? `/blog/${slug}` : `/feed/${props.event.id}`)
