@@ -29,7 +29,7 @@ from app.database import SessionLocal
 from app.models.country import Country, CountryIndicator, TradePair
 from app.models.asset import Asset, StockCountryRevenue
 from app.models.feed import FeedEvent
-from app.models.summary import PageSummary
+from app.models.summary import PageSummary, PageInsight
 
 log = logging.getLogger(__name__)
 
@@ -670,6 +670,17 @@ def _upsert_feed_insight(
     ))
 
 
+def _insert_insight(db, entity_type: str, entity_code: str, text_: str):
+    """Insert a new insight row — keeps full history, one row per day per entity."""
+    now = datetime.now(timezone.utc)
+    db.add(PageInsight(
+        entity_type=entity_type,
+        entity_code=entity_code,
+        summary=text_,
+        generated_at=now,
+    ))
+
+
 def _upsert_summary(db, entity_type: str, entity_code: str, text_: str):
     now = datetime.now(timezone.utc)
     existing = (
@@ -794,6 +805,7 @@ def generate_daily_insights(self):
                 insight = _country_insight_text(c, db)
                 if insight:
                     _upsert_summary(db, "country_insight", c.code, insight)
+                    _insert_insight(db, "country", c.code, insight)
                     _upsert_feed_insight(db, now,
                         title=f"{c.flag_emoji or '🌍'} {c.name} — Daily Macro Insight",
                         body=insight,
@@ -818,6 +830,7 @@ def generate_daily_insights(self):
                 insight = _stock_insight_text(s, db)
                 if insight:
                     _upsert_summary(db, "stock_insight", s.symbol, insight)
+                    _insert_insight(db, "stock", s.symbol, insight)
                     _upsert_feed_insight(db, now,
                         title=f"{s.symbol} — Daily Equity Insight",
                         body=insight,
@@ -844,6 +857,7 @@ def generate_daily_insights(self):
                 if insight:
                     meta = COMMODITY_META.get(c.symbol, {})
                     _upsert_summary(db, "commodity_insight", c.symbol, insight)
+                    _insert_insight(db, "commodity", c.symbol, insight)
                     _upsert_feed_insight(db, now,
                         title=f"{meta.get('full_name', c.name)} — Daily Commodity Insight",
                         body=insight,

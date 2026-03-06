@@ -20,7 +20,7 @@ from app.config import settings
 from app.database import get_db
 from app.models.asset import Asset, StockCountryRevenue
 from app.models.country import Country, CountryIndicator, TradePair
-from app.models.summary import PageSummary
+from app.models.summary import PageSummary, PageInsight
 from app.routers.auth import get_admin_user
 
 log = logging.getLogger(__name__)
@@ -407,6 +407,35 @@ def get_summary(entity_type: str, entity_code: str, db: Session = Depends(get_db
         "summary": summary_text,
         "generated_at": now.isoformat(),
     }
+
+
+INSIGHT_ENTITY_TYPES = ("country", "stock", "commodity")
+
+
+@router.get("/insights/{entity_type}/{entity_code}")
+def get_insights(entity_type: str, entity_code: str, db: Session = Depends(get_db)) -> list:
+    """
+    Returns full insight history for an entity, most recent first.
+    entity_type: country | stock | commodity
+    """
+    entity_type = entity_type.lower()
+    entity_code = entity_code.upper()
+
+    if entity_type not in INSIGHT_ENTITY_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"entity_type must be one of: {', '.join(INSIGHT_ENTITY_TYPES)}"
+        )
+
+    rows = (
+        db.query(PageInsight)
+        .filter(PageInsight.entity_type == entity_type)
+        .filter(PageInsight.entity_code == entity_code)
+        .order_by(PageInsight.generated_at.desc())
+        .limit(30)
+        .all()
+    )
+    return [{"summary": r.summary, "generated_at": r.generated_at.isoformat()} for r in rows]
 
 
 @router.post("/summaries/refresh")

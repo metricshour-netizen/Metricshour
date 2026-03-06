@@ -266,6 +266,9 @@
       :style="pulseRingStyle"
     />
   </article>
+
+  <!-- Auth modal — shown when unauthenticated user tries to save -->
+  <AuthModal v-model="showAuthModal" />
 </template>
 
 <script setup lang="ts">
@@ -294,6 +297,7 @@ const { post } = useApi()
 const { isLoggedIn } = useAuth()
 const cardEl = ref<HTMLElement | null>(null)
 const isSaved = ref(false)
+const showAuthModal = ref(false)
 
 const eventType = computed(() => props.event.event_type)
 const eventData = computed(() => props.event.event_data || {})
@@ -495,7 +499,7 @@ async function _interact(type: string) {
   try { await post(`/api/feed/${props.event.id}/interact`, { interaction_type: type }) } catch {}
 }
 function handleSave() {
-  if (!isLoggedIn.value) return
+  if (!isLoggedIn.value) { showAuthModal.value = true; return }
   isSaved.value = !isSaved.value
   _interact(isSaved.value ? 'save' : 'view')
   emit('save', props.event.id)
