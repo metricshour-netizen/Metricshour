@@ -114,9 +114,28 @@ app.conf.update(
             'task': 'tasks.summaries.generate_page_summaries',
             'schedule': crontab(hour=2, minute=0),
         },
-        'daily-insights-345am': {
-            'task': 'tasks.summaries.generate_daily_insights',
-            'schedule': crontab(hour=3, minute=45),
+        # Staggered insight batches — each type runs on its own schedule so page
+        # update timestamps are spread throughout the day (not bulk-stamped at once).
+        # Each run processes only the stalest N entities; all entities cycle ~daily.
+        'country-insights-every-2h': {
+            'task': 'tasks.summaries.run_insight_batch',
+            'schedule': crontab(minute=0, hour='*/2'),   # :00 every 2h  (12x/day × 25 = 300 slots for 250 countries)
+            'kwargs': {'insight_type': 'country'},
+        },
+        'stock-insights-every-3h': {
+            'task': 'tasks.summaries.run_insight_batch',
+            'schedule': crontab(minute=15, hour='*/3'),  # :15 every 3h  (8x/day × 6 = 48 slots for 24 stocks)
+            'kwargs': {'insight_type': 'stock'},
+        },
+        'commodity-insights-every-4h': {
+            'task': 'tasks.summaries.run_insight_batch',
+            'schedule': crontab(minute=30, hour='*/4'),  # :30 every 4h  (6x/day × 5 = 30 slots for 21 commodities)
+            'kwargs': {'insight_type': 'commodity'},
+        },
+        'trade-insights-every-2h': {
+            'task': 'tasks.summaries.run_insight_batch',
+            'schedule': crontab(minute=45, hour='*/2'),  # :45 every 2h  (12x/day × 25 = 300 slots for 253 pairs)
+            'kwargs': {'insight_type': 'trade'},
         },
         'spotlight-refresh-every-3hr': {
             'task': 'tasks.summaries.refresh_spotlight',

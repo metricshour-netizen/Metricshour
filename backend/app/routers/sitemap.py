@@ -18,6 +18,7 @@ from sqlalchemy.orm import aliased
 from app.database import get_db
 from app.models.asset import Asset
 from app.models.country import Country, TradePair
+from app.models.summary import PageSummary
 
 router = APIRouter()
 
@@ -35,10 +36,12 @@ STATIC_ROUTES = [
 ]
 
 
-def _url(loc: str, priority: str, changefreq: str) -> str:
+def _url(loc: str, priority: str, changefreq: str, lastmod: str | None = None) -> str:
+    lastmod_tag = f"    <lastmod>{lastmod}</lastmod>\n" if lastmod else ""
     return (
         f"  <url>\n"
         f"    <loc>{loc}</loc>\n"
+        f"{lastmod_tag}"
         f"    <changefreq>{changefreq}</changefreq>\n"
         f"    <priority>{priority}</priority>\n"
         f"  </url>"
@@ -47,15 +50,27 @@ def _url(loc: str, priority: str, changefreq: str) -> str:
 
 @router.get("/sitemap.xml", include_in_schema=False)
 def sitemap(db: Session = Depends(get_db)):
+    # Pull actual last-updated timestamps from page_summaries so Google sees
+    # accurate lastmod per URL instead of a bulk-same timestamp.
+    # Key: (entity_type, entity_code) → "YYYY-MM-DD"
+    lastmod_map: dict[tuple, str] = {}
+    for row in db.execute(
+        select(PageSummary.entity_type, PageSummary.entity_code, PageSummary.generated_at)
+    ):
+        lastmod_map[(row.entity_type, row.entity_code)] = row.generated_at.strftime("%Y-%m-%d")
+
     entries: list[str] = [_url(*r) for r in STATIC_ROUTES]
 
     # Assets → /stocks/{symbol}
     for (symbol,) in db.execute(select(Asset.symbol).where(Asset.symbol.isnot(None))):
-        entries.append(_url(f"{BASE}/stocks/{symbol}", "0.7", "daily"))
+        # Use the insight timestamp if available, else summary
+        lm = lastmod_map.get(("stock_insight", symbol)) or lastmod_map.get(("stock", symbol))
+        entries.append(_url(f"{BASE}/stocks/{symbol}", "0.7", "daily", lm))
 
     # Countries → /countries/{code}
     for (code,) in db.execute(select(Country.code).where(Country.code.isnot(None))):
-        entries.append(_url(f"{BASE}/countries/{code.lower()}", "0.7", "weekly"))
+        lm = lastmod_map.get(("country_insight", code)) or lastmod_map.get(("country", code))
+        entries.append(_url(f"{BASE}/countries/{code.lower()}", "0.7", "weekly", lm))
 
     # Trade pairs → /trade/{exp}-{imp}
     Exporter = aliased(Country)
@@ -68,7 +83,9 @@ def sitemap(db: Session = Depends(get_db)):
         .distinct()
     ):
         if exp_code and imp_code:
-            entries.append(_url(f"{BASE}/trade/{exp_code.lower()}-{imp_code.lower()}", "0.6", "monthly"))
+            pair_code = f"{exp_code}-{imp_code}"
+            lm = lastmod_map.get(("trade_insight", pair_code)) or lastmod_map.get(("trade", pair_code))
+            entries.append(_url(f"{BASE}/trade/{exp_code.lower()}-{imp_code.lower()}", "0.6", "daily", lm))
 
     xml = (
         '<?xml version="1.0" encoding="UTF-8"?>\n'

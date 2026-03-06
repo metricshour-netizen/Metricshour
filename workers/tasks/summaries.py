@@ -15,11 +15,12 @@ refresh_entity_summary / refresh_entity_insight  — event-triggered
 refresh_spotlight        — every 3 hours
   Rebuilds adaptive spotlight cards and caches in Redis (TTL = 3 hours).
 """
+import hashlib
 import json
 import logging
 import os
 import ssl
-from datetime import datetime, timezone, date
+from datetime import datetime, timezone, date, timedelta
 
 import redis as redis_lib
 from sqlalchemy import text
@@ -27,7 +28,7 @@ from sqlalchemy import text
 from celery_app import app
 from app.database import SessionLocal
 from app.models.country import Country, CountryIndicator, TradePair
-from app.models.asset import Asset, StockCountryRevenue
+from app.models.asset import Asset, StockCountryRevenue, Price
 from app.models.feed import FeedEvent
 from app.models.summary import PageSummary, PageInsight
 
@@ -249,8 +250,8 @@ def _country_summary_text(country: Country, db) -> str:
 
 def _country_insight_text(country: Country, db) -> str | None:
     """
-    Opinionated 60-80 word analyst take for a country page. Generated daily.
-    Focuses on what investors should watch NOW — not a description.
+    Opinionated analyst take for a country page.
+    Focuses on the single most investable signal in the data — not a description.
     """
     if not os.environ.get("GEMINI_API_KEY"):
         return None
@@ -281,45 +282,67 @@ def _country_insight_text(country: Country, db) -> str | None:
         ("ASEAN", country.is_asean), ("OECD", country.is_oecd),
     ] if flag]
 
-    def _pct1(key: str) -> str:
+    def _f1(key: str) -> str:
         v = ind.get(key)
         return f"{v:.1f}%" if v is not None else "N/A"
 
-    def _pct2(key: str) -> str:
+    def _f2(key: str) -> str:
         v = ind.get(key)
         return f"{v:.2f}%" if v is not None else "N/A"
 
-    def _pct0(key: str) -> str:
-        v = ind.get(key)
-        return f"{v:.0f}%" if v is not None else "N/A"
+    # Real interest rate = policy rate - inflation (key FX/bond signal)
+    rate = ind.get("interest_rate_pct")
+    infl = ind.get("inflation_pct")
+    real_rate = f"{(rate - infl):.1f}%" if rate is not None and infl is not None else "N/A"
 
     facts = (
-        f"Country: {country.name} ({country.code})\n"
-        f"GDP: {_fmt_gdp(ind.get('gdp_usd'))}\n"
-        f"GDP growth: {_pct1('gdp_growth_pct')}\n"
-        f"Inflation: {_pct1('inflation_pct')}\n"
-        f"Policy rate: {_pct2('interest_rate_pct')}\n"
-        f"Unemployment: {_pct1('unemployment_pct')}\n"
-        f"Govt debt/GDP: {_pct0('govt_debt_pct_gdp')}\n"
-        f"Current account (% GDP): {_pct1('current_account_pct_gdp')}\n"
-        f"S&P rating: {country.credit_rating_sp or 'N/A'}\n"
-        f"Group memberships: {', '.join(groups) if groups else 'UN member'}\n"
-        f"Currency: {country.currency_name or country.currency_code or 'N/A'}\n"
-        f"Today's date: {date.today().strftime('%B %d, %Y')}\n"
+        f"Country: {country.name} ({country.code}) | Currency: {country.currency_code or 'N/A'}\n"
+        f"GDP: {_fmt_gdp(ind.get('gdp_usd'))} | GDP growth: {_f1('gdp_growth_pct')}\n"
+        f"Inflation: {_f1('inflation_pct')} | Policy rate: {_f2('interest_rate_pct')} | Real rate: {real_rate}\n"
+        f"Unemployment: {_f1('unemployment_pct')} | Current account: {_f1('current_account_pct_gdp')} of GDP\n"
+        f"Govt debt/GDP: {_f1('govt_debt_pct_gdp')} | S&P: {country.credit_rating_sp or 'N/A'}\n"
+        f"Blocs: {', '.join(groups) if groups else 'UN member'}\n"
+        f"Date: {date.today().strftime('%B %d, %Y')}\n"
     )
 
+    # Word count and analytical angle both vary by day — prevents structural pattern detection
+    _COUNTRY_ANGLES = [
+        # 0: monetary / real rate
+        (45, 60,
+         f"The real rate for {country.name} is {real_rate} (policy {_f2('interest_rate_pct')} minus inflation {_f1('inflation_pct')}). "
+         f"Open with what that spread means for the currency and bond market right now, citing the exact numbers. "
+         f"Then say what it implies for the next policy move. Close with the specific data release or CB meeting that will reset this trade."),
+        # 1: external balance / FX
+        (50, 65,
+         f"Open with {country.name}'s current account ({_f1('current_account_pct_gdp')} of GDP) and what it means for FX and capital flows — "
+         f"name the pressure specifically (surplus = currency support, deficit = funding risk). "
+         f"Then identify the most acute near-term FX risk. Close with the trade or policy event nearest to today that could reprice it."),
+        # 2: growth / labour
+        (55, 70,
+         f"Open with the tension between GDP growth ({_f1('gdp_growth_pct')}) and unemployment ({_f1('unemployment_pct')}) "
+         f"and what it means for consumer spending and equities — name the sector most exposed. "
+         f"Then say whether this is acceleration or deceleration and why it matters now. "
+         f"Close with the next GDP or labour print to watch."),
+        # 3: fiscal / sovereign credit
+        (45, 60,
+         f"Open with {country.name}'s debt/GDP ({_f1('govt_debt_pct_gdp')}) and S&P rating ({country.credit_rating_sp or 'N/A'}) — "
+         f"is the fiscal position sustainable at a real rate of {real_rate}? "
+         f"State the bond market implication directly. Close with the next budget event, auction, or ratings review."),
+    ]
+    angle = _daily_angle(country.code, len(_COUNTRY_ANGLES))
+    min_w, max_w, focus = _COUNTRY_ANGLES[angle]
+
     prompt = (
-        f"Senior macro strategist. Daily brief. MetricsHour institutional investors.\n\n"
-        f"Data:\n{facts}\n\n"
-        f"Write 55-70 words for {country.name}. Rules:\n"
-        f"1. Open with the single most investable tension in the data RIGHT NOW — cite exact numbers\n"
-        f"2. Second sentence: what that means for rates, FX, or equities — be explicit\n"
-        f"3. Final sentence: the near-term catalyst or risk to watch — specific, dated if possible\n"
-        f"BANNED: 'navigates', 'robust', 'resilient', 'notable', 'landscape', 'remains to be seen', "
-        f"'amid', 'complex', 'dynamic', 'uncertainty'. No hedge words. No generic statements. "
-        f"No bullet points. No headers. End with a period."
+        f"You are a senior macro strategist writing a daily market brief for institutional investors on MetricsHour. "
+        f"Your audience trades FX, rates, and EM equities. They want a specific, data-grounded take — not a summary.\n\n"
+        f"Data (World Bank / IMF, latest available):\n{facts}\n\n"
+        f"Write {min_w}–{max_w} words on {country.name}. {focus}\n\n"
+        f"Style: direct, active voice, no hedging. Use exact numbers from the data. "
+        f"Never write: navigates, robust, resilient, notable, landscape, amid, complex, dynamic, "
+        f"headwinds, tailwinds, uncertainty, remains to be seen, it is worth noting. "
+        f"No bullet points. No headers. No em-dashes used as decoration. End with a period."
     )
-    return _call_gemini(prompt, min_words=45, max_words=80)
+    return _call_gemini(prompt, min_words=min_w - 5, max_words=max_w + 10)
 
 
 # ── Stock summary ──────────────────────────────────────────────────────────────
@@ -452,19 +475,47 @@ def _stock_insight_text(asset: Asset, db) -> str | None:
                 f"HQ country ({hq.name})"
             )
 
+    _STOCK_ANGLES = [
+        # 0: geographic revenue risk
+        (45, 60,
+         f"The top revenue geography is the analytical anchor. Open by naming which market is the single "
+         f"biggest EPS risk or upside driver right now — cite the revenue % and the specific macro driver "
+         f"(tariff rate, recession, policy rate). Quantify the exposure. Close with the one catalyst or date that could reprice it."),
+        # 1: FX translation risk
+        (50, 65,
+         f"Focus on FX translation. Open by identifying which revenue geography's currency has moved most "
+         f"against the reporting currency — cite the move. Translate it into revenue: if that geography is X% "
+         f"of sales, a Y% FX move = Z% EPS delta. Close with the central bank decision or macro print that changes this."),
+        # 2: earnings catalyst
+        (55, 70,
+         f"Focus on what happens next to earnings. Open with the most concrete upcoming catalyst — "
+         f"product cycle, contract, regulatory decision, or earnings date. Name the geography most exposed. "
+         f"Quantify what a miss vs beat means: which revenue line moves, by how much, and what that does to consensus."),
+        # 3: sector macro cycle
+        (45, 60,
+         f"Focus on the macro cycle. Open by saying specifically how the current rate/inflation/credit environment "
+         f"is hitting {asset.sector or 'this sector'} right now — not generically, but with a number. "
+         f"Then say which revenue geography amplifies or damps that exposure. "
+         f"Close with the macro data or policy decision nearest to today that reprices the sector."),
+    ]
+    angle = _daily_angle(asset.symbol, len(_STOCK_ANGLES))
+    min_w, max_w, focus = _STOCK_ANGLES[angle]
+
     prompt = (
-        f"Sell-side equity analyst. Daily brief. MetricsHour.\n\n"
-        f"Stock: {asset.name} ({asset.symbol}) | {asset.sector or 'N/A'} | {_fmt_cap(asset.market_cap_usd)} | HQ: {hq.name if hq else 'N/A'}\n"
-        f"Geographic revenue:\n{rev_lines}\n"
+        f"You are a sell-side equity analyst writing a daily stock brief for MetricsHour. "
+        f"Your readers are portfolio managers and traders who want a specific, numbers-grounded EPS angle — not a company description.\n\n"
+        f"Stock: {asset.name} ({asset.symbol}) | Sector: {asset.sector or 'N/A'} | "
+        f"Market cap: {_fmt_cap(asset.market_cap_usd)} | HQ: {hq.name if hq else 'N/A'}\n"
+        f"{f'HQ macro: {hq_macro}' if hq_macro else ''}\n"
+        f"Geographic revenue (SEC EDGAR):\n{rev_lines}\n"
         f"Date: {date.today().strftime('%B %d, %Y')}\n\n"
-        f"Write 55-70 words. Rules:\n"
-        f"1. Lead with the single geography driving the highest near-term EPS risk or upside — cite the % and the macro driver (tariff, FX, recession, policy rate)\n"
-        f"2. Quantify the impact: how much of revenue is at risk or benefiting\n"
-        f"3. End with one specific catalyst or date-driven event to watch\n"
-        f"BANNED: 'navigates', 'robust', 'resilient', 'notable', 'significant', 'landscape', 'remains', "
-        f"'amid', 'dynamic', 'headwinds', 'tailwinds', 'uncertainty'. No hedge words. No bullet points. End with a period."
+        f"Write {min_w}–{max_w} words. {focus}\n\n"
+        f"Style: sell-side precision. Use real percentages from the data. Active voice. "
+        f"Never write: navigates, robust, resilient, notable, significant, landscape, remains, "
+        f"amid, dynamic, headwinds, tailwinds, uncertainty, poised, well-positioned. "
+        f"No bullet points. No headers. End with a period."
     )
-    return _call_gemini(prompt, min_words=45, max_words=80)
+    return _call_gemini(prompt, min_words=min_w - 5, max_words=max_w + 10)
 
 
 # ── Trade summary ──────────────────────────────────────────────────────────────
@@ -541,35 +592,75 @@ def _trade_insight_text(exporter: Country, importer: Country, trade: TradePair |
     if not os.environ.get("GEMINI_API_KEY"):
         return None
 
-    balance_word = "surplus" if (trade.balance_usd or 0) >= 0 else "deficit" if trade else "balanced"
-    products = [p.get("name", "") for p in (trade.top_export_products or [])[:3] if p.get("name")] if trade else []
+    if not trade:
+        return None
+
+    balance_word = "surplus" if (trade.balance_usd or 0) >= 0 else "deficit"
+    products = [p.get("name", "") for p in (trade.top_export_products or [])[:3] if p.get("name")]
+    imp_products = [p.get("name", "") for p in (trade.top_import_products or [])[:2] if p.get("name")]
     exp_flag = exporter.flag_emoji or ""
     imp_flag = importer.flag_emoji or ""
 
+    def _grp(c: Country) -> str:
+        return ", ".join(g for g, f in [
+            ("G7", c.is_g7), ("G20", c.is_g20), ("EU", c.is_eu),
+            ("NATO", c.is_nato), ("BRICS", c.is_brics), ("OPEC", c.is_opec),
+        ] if f) or "none"
+
     facts = (
-        f"Exporter: {exporter.name} ({exporter.code}) {exp_flag}\n"
-        f"Importer: {importer.name} ({importer.code}) {imp_flag}\n"
-        f"Data year: {trade.year if trade else 'N/A'}\n"
-        f"Export value: {_fmt_usd(trade.exports_usd) if trade else 'N/A'}\n"
-        f"Trade balance: {_fmt_usd(trade.balance_usd) if trade else 'N/A'} ({balance_word} for {exporter.name})\n"
-        f"Exporter GDP share: {f'{trade.exporter_gdp_share_pct:.1f}%' if trade and trade.exporter_gdp_share_pct else 'N/A'}\n"
-        f"Top exports: {', '.join(products) if products else 'N/A'}\n"
-        f"Exporter groups: {', '.join([g for g,f in [('G7',exporter.is_g7),('G20',exporter.is_g20),('EU',exporter.is_eu),('NATO',exporter.is_nato),('BRICS',exporter.is_brics),('OPEC',exporter.is_opec)] if f])}\n"
-        f"Importer groups: {', '.join([g for g,f in [('G7',importer.is_g7),('G20',importer.is_g20),('EU',importer.is_eu),('NATO',importer.is_nato),('BRICS',importer.is_brics),('OPEC',importer.is_opec)] if f])}\n"
-        f"Today's date: {date.today().strftime('%B %d, %Y')}\n"
+        f"{exp_flag} {exporter.name} ({exporter.code}, {_grp(exporter)}) → "
+        f"{imp_flag} {importer.name} ({importer.code}, {_grp(importer)})\n"
+        f"Data year: {trade.year}\n"
+        f"Exports {exporter.name}→{importer.name}: {_fmt_usd(trade.exports_usd)} "
+        f"({f'{trade.exporter_gdp_share_pct:.1f}% of {exporter.name} GDP' if trade.exporter_gdp_share_pct else 'GDP share N/A'})\n"
+        f"Imports {importer.name}→{exporter.name}: {_fmt_usd(trade.imports_usd)} "
+        f"({f'{trade.importer_gdp_share_pct:.1f}% of {importer.name} GDP' if trade.importer_gdp_share_pct else 'GDP share N/A'})\n"
+        f"Trade balance: {_fmt_usd(trade.balance_usd)} ({balance_word} for {exporter.name})\n"
+        f"Top exports ({exporter.name}→{importer.name}): {', '.join(products) if products else 'N/A'}\n"
+        f"Top imports ({importer.name}→{exporter.name}): {', '.join(imp_products) if imp_products else 'N/A'}\n"
+        f"Date: {date.today().strftime('%B %d, %Y')}\n"
     )
 
+    _TRADE_ANGLES = [
+        # 0: tariff / policy risk
+        (45, 60,
+         f"The policy angle. Open with the single highest-impact tariff, sanction, or trade restriction "
+         f"on this corridor right now — state the rate or dollar value and who imposed it. "
+         f"Name the equity sector or listed stock most exposed. "
+         f"Close with the specific negotiation date, election, or vote that could change it."),
+        # 1: FX repricing
+        (50, 65,
+         f"The FX angle. Open with how currency moves between {exporter.currency_code or exporter.code} "
+         f"and {importer.currency_code or importer.code} are repricing this corridor — cite the pair and its recent direction. "
+         f"Translate it: a weaker exporter currency boosts export competitiveness but squeezes importer margins. "
+         f"Close with the next central bank decision for either country."),
+        # 2: supply chain concentration
+        (55, 70,
+         f"The supply chain angle. Open with the single most concentrated product flow in this corridor "
+         f"(from the top exports list) and what event could disrupt it. "
+         f"Name the alternative supplier country that gains if this corridor breaks. "
+         f"Close with the logistics, port, customs, or regulatory trigger nearest to today."),
+        # 3: commodity / strategic exposure
+        (45, 60,
+         f"The commodity angle. Identify the commodity or strategic material embedded in this trade "
+         f"relationship's top products. State how exposed this corridor is to a price move in that commodity. "
+         f"Quantify the dollar impact of a 10% commodity price swing on this {_fmt_usd(trade.exports_usd)} corridor. "
+         f"Close with the next supply or demand catalyst for that commodity."),
+    ]
+    angle = _daily_angle(f"{exporter.code}-{importer.code}", len(_TRADE_ANGLES))
+    min_w, max_w, focus = _TRADE_ANGLES[angle]
+
     prompt = (
-        f"Trade desk analyst. Daily brief. MetricsHour.\n\n"
-        f"Data:\n{facts}\n\n"
-        f"Write 55-70 words on {exporter.name}–{importer.name}. Rules:\n"
-        f"1. Lead with the single highest-impact risk or shift in this corridor RIGHT NOW — cite the dollar value or % and the driver (tariff rate, FX move, sanctions, supply chain)\n"
-        f"2. Name the equity sector or specific stocks most exposed to a disruption\n"
-        f"3. End with the specific event or date that could change this relationship near-term\n"
-        f"BANNED: 'navigates', 'robust', 'resilient', 'notable', 'landscape', 'amid', 'complex', 'dynamic', 'uncertainty', 'headwinds', 'tailwinds'. "
+        f"You are a trade desk analyst writing a daily corridor brief for MetricsHour. "
+        f"Your readers are FX traders, supply chain managers, and equity investors with exposure to these countries.\n\n"
+        f"Data (UN Comtrade {trade.year}):\n{facts}\n\n"
+        f"Write {min_w}–{max_w} words on the {exporter.name}–{importer.name} corridor. {focus}\n\n"
+        f"Style: direct, specific, market-facing. Use exact dollar values and percentages from the data. "
+        f"Never write: navigates, robust, resilient, notable, landscape, amid, complex, dynamic, "
+        f"uncertainty, headwinds, tailwinds, bilateral relations, strategic partnership. "
         f"No bullet points. No headers. Active voice. End with a period."
     )
-    return _call_gemini(prompt, min_words=45, max_words=80)
+    return _call_gemini(prompt, min_words=min_w - 5, max_words=max_w + 10)
 
 
 # ── Commodity summary ──────────────────────────────────────────────────────────
@@ -617,9 +708,9 @@ def _commodity_summary_text(asset: Asset) -> str:
 
 # ── Commodity daily insight ────────────────────────────────────────────────────
 
-def _commodity_insight_text(asset: Asset) -> str | None:
+def _commodity_insight_text(asset: Asset, db=None) -> str | None:
     """
-    Opinionated 60-80 word daily analyst take for a commodity page.
+    Opinionated analyst take for a commodity page. Includes latest price from DB.
     """
     if not os.environ.get("GEMINI_API_KEY"):
         return None
@@ -629,17 +720,57 @@ def _commodity_insight_text(asset: Asset) -> str | None:
     sector = meta.get("sector", asset.sector or "Commodity")
     unit = meta.get("unit", "USD")
 
+    # Pull latest daily close + prior close for % change
+    price_line = ""
+    if db:
+        prices = (
+            db.query(Price.close, Price.timestamp)
+            .filter(Price.asset_id == asset.id, Price.interval == "1d")
+            .order_by(Price.timestamp.desc())
+            .limit(2)
+            .all()
+        )
+        if prices:
+            latest_close = prices[0].close
+            prior_close = prices[1].close if len(prices) > 1 else None
+            pct = f" ({((latest_close - prior_close) / prior_close * 100):+.1f}% prev session)" if prior_close else ""
+            price_line = f"Latest price: {latest_close:,.2f} {unit}{pct}\n"
+
+    _COMMODITY_ANGLES = [
+        # 0: supply side
+        (45, 60,
+         f"Open with the single dominant supply-side driver or disruption risk for {full_name} right now — "
+         f"name the producer nation, cartel decision, mine, or weather event. "
+         f"Identify the nearest catalyst (OPEC meeting, inventory report, sanctions). "
+         f"Close by naming which equity sector or trade corridor takes the hardest hit if the disruption deepens."),
+        # 1: demand outlook
+        (50, 65,
+         f"Open with the demand driver — China, US, or the specific industrial sector whose activity is "
+         f"moving {full_name} price most right now. Be concrete: which PMI, import figure, or capacity "
+         f"utilisation rate tells the story. Close with the next demand-side release that could reprice the market."),
+        # 2: dollar / macro
+        (45, 60,
+         f"Open with how the USD and current macro regime (Fed expectations, recession probability) "
+         f"is driving {full_name}. Name the producer-country currency that amplifies the dollar effect — "
+         f"a strong dollar squeezes USD-denominated commodity margins in local terms. "
+         f"Close with the next Fed decision or CPI print that could reprice both the dollar and this commodity."),
+    ]
+    angle = _daily_angle(asset.symbol, len(_COMMODITY_ANGLES))
+    min_w, max_w, focus = _COMMODITY_ANGLES[angle]
+
     prompt = (
-        f"Commodity desk analyst. Daily brief. MetricsHour.\n\n"
-        f"Commodity: {full_name} ({asset.symbol}) | {sector} | {unit} | Date: {date.today().strftime('%B %d, %Y')}\n\n"
-        f"Write 55-70 words. Rules:\n"
-        f"1. State the dominant price driver RIGHT NOW — name the specific supply/demand factor, producer nation, or policy move\n"
-        f"2. Identify the nearest catalyst: OPEC meeting, harvest data, inventory report, sanctions, seasonal pattern — be specific\n"
-        f"3. Name which equity sector or trade corridor gets hit hardest if the move continues\n"
-        f"BANNED: 'navigates', 'robust', 'resilient', 'notable', 'landscape', 'amid', 'dynamic', 'uncertainty', 'headwinds', 'tailwinds'. "
-        f"No bullet points. No headers. Active voice. End with a period."
+        f"You are a commodity desk analyst writing a daily brief for MetricsHour. "
+        f"Your readers are commodity traders, macro investors, and corporate procurement teams tracking real price signals.\n\n"
+        f"Commodity: {full_name} ({asset.symbol}) | {sector} | Priced in: {unit}\n"
+        f"{price_line}"
+        f"Date: {date.today().strftime('%B %d, %Y')}\n\n"
+        f"Write {min_w}–{max_w} words. {focus}\n\n"
+        f"Style: commodity desk precision. Use the actual price if provided. Active voice. "
+        f"Never write: navigates, robust, resilient, notable, landscape, amid, dynamic, "
+        f"uncertainty, headwinds, tailwinds, volatile, volatility (use 'price swings' instead). "
+        f"No bullet points. No headers. End with a period."
     )
-    return _call_gemini(prompt, min_words=45, max_words=80)
+    return _call_gemini(prompt, min_words=min_w - 5, max_words=max_w + 10)
 
 
 # ── Emoji helpers ─────────────────────────────────────────────────────────────
@@ -655,7 +786,82 @@ def _commodity_emoji(symbol: str) -> str:
     return _COMMODITY_EMOJI.get(symbol, "📦")
 
 
+# ── SEO: angle rotation + dedup ────────────────────────────────────────────────
+
+def _daily_angle(entity_code: str, n_angles: int) -> int:
+    """
+    Deterministic but day-varying angle index for an entity.
+    Same entity returns a different angle each calendar day, preventing structurally
+    identical content being written repeatedly to the same URL.
+    """
+    key = f"{entity_code}{date.today().isoformat()}"
+    return int(hashlib.md5(key.encode()).hexdigest(), 16) % n_angles
+
+
+def _insight_is_duplicate(new_text: str, old_text: str | None, threshold: float = 0.75) -> bool:
+    """
+    Jaccard similarity check — returns True if the new insight is too similar to the
+    previous one. Prevents writing a 'new' page that Google would score as unchanged.
+    Uses word-set overlap, ignoring stopwords is intentionally skipped (keep it cheap).
+    """
+    if not old_text:
+        return False
+    new_words = set(new_text.lower().split())
+    old_words = set(old_text.lower().split())
+    union = len(new_words | old_words)
+    return (len(new_words & old_words) / union) >= threshold if union else False
+
+
 # ── Staleness checks — skip summary regeneration if data hasn't changed ────────
+
+def _asset_price_moved(asset_id: int, since: datetime, db, threshold_pct: float = 2.0) -> bool:
+    """True if the asset's latest daily close has moved >= threshold_pct since `since`."""
+    price_then = (
+        db.query(Price.close)
+        .filter(Price.asset_id == asset_id, Price.interval == "1d", Price.timestamp <= since)
+        .order_by(Price.timestamp.desc())
+        .limit(1)
+        .scalar()
+    )
+    price_now = (
+        db.query(Price.close)
+        .filter(Price.asset_id == asset_id, Price.interval == "1d")
+        .order_by(Price.timestamp.desc())
+        .limit(1)
+        .scalar()
+    )
+    if not price_then or not price_now or price_then == 0:
+        return False
+    return abs((price_now - price_then) / price_then) * 100 >= threshold_pct
+
+
+def _has_fresh_data(insight_type: str, entity_code: str, since: datetime, db) -> bool:
+    """
+    True if the underlying data for this entity changed since `since`.
+    Used to prioritise and gate insight regeneration — avoids generic daily bulk rewrites.
+    - country:   any indicator period_date newer than since
+    - stock:     daily price moved >2% since since
+    - commodity: daily price moved >2% since since
+    - trade:     annual data only — always False (staleness alone drives trade insights)
+    """
+    if insight_type == "country":
+        c = db.query(Country).filter(Country.code == entity_code).first()
+        if not c:
+            return False
+        latest = (
+            db.query(CountryIndicator.period_date)
+            .filter(CountryIndicator.country_id == c.id)
+            .order_by(CountryIndicator.period_date.desc())
+            .scalar()
+        )
+        return bool(latest and latest > since.date())
+    if insight_type in ("stock", "commodity"):
+        asset = db.query(Asset).filter(Asset.symbol == entity_code).first()
+        if not asset:
+            return False
+        return _asset_price_moved(asset.id, since, db, threshold_pct=2.0)
+    return False  # trade: annual data, no intra-day signal
+
 
 def _country_summary_stale(country: Country, existing: PageSummary | None, db) -> bool:
     """True if the country summary needs regenerating."""
@@ -708,11 +914,14 @@ def _trade_summary_stale(pair_code: str, trade_year: int | None, existing: PageS
     return False
 
 
-def _commodity_summary_stale(existing: PageSummary | None) -> bool:
-    """True if the commodity summary needs regenerating (static text — refresh weekly)."""
+def _commodity_summary_stale(asset: Asset, existing: PageSummary | None, db) -> bool:
+    """True if the commodity summary needs regenerating.
+    Refreshes weekly by default, or sooner if price moved >5% since last generation."""
     if not existing:
         return True
-    return (datetime.now(timezone.utc) - existing.generated_at).days > 7
+    if (datetime.now(timezone.utc) - existing.generated_at).days > 7:
+        return True
+    return _asset_price_moved(asset.id, existing.generated_at, db, threshold_pct=5.0)
 
 
 # ── Upsert helpers ─────────────────────────────────────────────────────────────
@@ -849,7 +1058,7 @@ def generate_page_summaries(self):
         comm_skip = 0
         for c in commodities:
             existing = existing_map.get(("commodity", c.symbol))
-            if not _commodity_summary_stale(existing):
+            if not _commodity_summary_stale(c, existing, db):
                 comm_skip += 1
                 continue
             try:
@@ -970,7 +1179,7 @@ def generate_daily_insights(self):
         commodities = db.query(Asset).filter(Asset.asset_type == "commodity").all()
         for c in commodities:
             try:
-                insight = _commodity_insight_text(c)
+                insight = _commodity_insight_text(c, db)
                 if insight:
                     meta = COMMODITY_META.get(c.symbol, {})
                     _upsert_summary(db, "commodity_insight", c.symbol, insight)
@@ -1033,6 +1242,204 @@ def generate_daily_insights(self):
     except Exception as exc:
         db.rollback()
         log.error("generate_daily_insights failed: %s", exc)
+        raise self.retry(exc=exc)
+    finally:
+        db.close()
+
+
+# Batch sizes per run — tuned so all entities cycle once per day across multiple runs
+_INSIGHT_BATCH = {"country": 25, "stock": 6, "commodity": 5, "trade": 25}
+
+
+@app.task(name="tasks.summaries.run_insight_batch", bind=True, max_retries=2)
+def run_insight_batch(self, insight_type: str):
+    """
+    Staggered insight generation — called multiple times per day per type.
+    Each run processes only the stalest BATCH_SIZE entities (oldest generated_at first,
+    never-generated entities first). This spreads page update timestamps throughout the
+    day rather than bulk-stamping everything at once, which avoids bulk-AI-content signals.
+
+    insight_type: 'country' | 'stock' | 'commodity' | 'trade'
+    """
+    if not os.environ.get("GEMINI_API_KEY"):
+        log.warning("run_insight_batch(%s): no GEMINI_API_KEY — skipping", insight_type)
+        return {"skipped": True}
+
+    batch_size = _INSIGHT_BATCH.get(insight_type, 20)
+    summary_type = f"{insight_type}_insight"
+    db = SessionLocal()
+    now = datetime.now(timezone.utc)
+    count = 0
+
+    try:
+        # Build full ordered list of entity codes for this type
+        if insight_type == "country":
+            all_codes = [row[0] for row in db.query(Country.code).all()]
+        elif insight_type == "stock":
+            all_codes = [row[0] for row in db.query(Asset.symbol).filter(Asset.asset_type == "stock").all()]
+        elif insight_type == "commodity":
+            all_codes = [row[0] for row in db.query(Asset.symbol).filter(Asset.asset_type == "commodity").all()]
+        elif insight_type == "trade":
+            pairs = db.query(TradePair).order_by(TradePair.year.desc()).all()
+            seen: set[str] = set()
+            all_codes = []
+            for p in pairs:
+                exp_code = db.query(Country.code).filter(Country.id == p.exporter_id).scalar()
+                imp_code = db.query(Country.code).filter(Country.id == p.importer_id).scalar()
+                if exp_code and imp_code:
+                    code = f"{exp_code}-{imp_code}"
+                    if code not in seen:
+                        seen.add(code)
+                        all_codes.append(code)
+        else:
+            log.error("run_insight_batch: unknown type %s", insight_type)
+            return {"error": "unknown_type"}
+
+        # Preload existing insights: code → (generated_at, summary_text)
+        _existing_rows = (
+            db.query(PageSummary.entity_code, PageSummary.generated_at, PageSummary.summary)
+            .filter(PageSummary.entity_type == summary_type)
+            .all()
+        )
+        existing_ts: dict[str, datetime] = {r.entity_code: r.generated_at for r in _existing_rows}
+        existing_texts: dict[str, str] = {r.entity_code: r.summary for r in _existing_rows}
+        _epoch = datetime.min.replace(tzinfo=timezone.utc)
+        min_age_cutoff = now - timedelta(hours=22)
+
+        # Build candidate list with priority:
+        #   priority 0 = has fresh data (goes first regardless of age)
+        #   priority 1 = old enough but no fresh data (normal staleness rotation)
+        #   excluded   = generated recently AND no data change (skip entirely)
+        candidates: list[tuple[int, datetime, str]] = []
+        for code in all_codes:
+            last_gen = existing_ts.get(code)
+            if last_gen and last_gen > min_age_cutoff:
+                # Generated within last 22h — only include if underlying data changed
+                if _has_fresh_data(insight_type, code, last_gen, db):
+                    candidates.append((0, last_gen, code))
+                # else: skip — no new information to write about
+            else:
+                # Never generated or old enough — include; bump priority if data changed
+                fresh = _has_fresh_data(insight_type, code, last_gen or _epoch, db) if last_gen else True
+                candidates.append((0 if fresh else 1, last_gen or _epoch, code))
+
+        # Sort: data-fresh entities first, then oldest-generated within each priority group
+        candidates.sort(key=lambda x: (x[0], x[1]))
+        batch = [c[2] for c in candidates[:batch_size]]
+
+        for entity_code in batch:
+            try:
+                if insight_type == "country":
+                    c = db.query(Country).filter(Country.code == entity_code).first()
+                    if not c:
+                        continue
+                    insight = _country_insight_text(c, db)
+                    if insight and _insight_is_duplicate(insight, existing_texts.get(entity_code)):
+                        log.debug("Skipping %s — new insight too similar to previous (no new data)", entity_code)
+                        continue
+                    if insight:
+                        _upsert_summary(db, summary_type, entity_code, insight)
+                        _insert_insight(db, "country", entity_code, insight)
+                        _upsert_feed_insight(db, now,
+                            title=f"{c.flag_emoji or '🌍'} {c.name} — Daily Macro Insight",
+                            body=insight,
+                            source_url=f"/countries/{entity_code.lower()}",
+                            entity_type="country",
+                            entity_name=c.name,
+                            entity_flag=c.flag_emoji or "🌍",
+                            related_country_ids=[c.id],
+                            importance_score=6.0,
+                        )
+                        count += 1
+
+                elif insight_type == "stock":
+                    s = db.query(Asset).filter(Asset.symbol == entity_code, Asset.asset_type == "stock").first()
+                    if not s:
+                        continue
+                    insight = _stock_insight_text(s, db)
+                    if insight and _insight_is_duplicate(insight, existing_texts.get(entity_code)):
+                        log.debug("Skipping %s — insight too similar to previous", entity_code)
+                        continue
+                    if insight:
+                        _upsert_summary(db, summary_type, entity_code, insight)
+                        _insert_insight(db, "stock", entity_code, insight)
+                        _upsert_feed_insight(db, now,
+                            title=f"{entity_code} — Daily Equity Insight",
+                            body=insight,
+                            source_url=f"/stocks/{entity_code}",
+                            entity_type="stock",
+                            entity_name=s.name,
+                            entity_flag=entity_code[:2],
+                            related_asset_ids=[s.id],
+                            importance_score=6.5,
+                        )
+                        count += 1
+
+                elif insight_type == "commodity":
+                    c = db.query(Asset).filter(Asset.symbol == entity_code, Asset.asset_type == "commodity").first()
+                    if not c:
+                        continue
+                    insight = _commodity_insight_text(c, db)
+                    if insight and _insight_is_duplicate(insight, existing_texts.get(entity_code)):
+                        log.debug("Skipping %s — insight too similar to previous", entity_code)
+                        continue
+                    if insight:
+                        meta = COMMODITY_META.get(entity_code, {})
+                        _upsert_summary(db, summary_type, entity_code, insight)
+                        _insert_insight(db, "commodity", entity_code, insight)
+                        _upsert_feed_insight(db, now,
+                            title=f"{meta.get('full_name', c.name)} — Daily Commodity Insight",
+                            body=insight,
+                            source_url=f"/stocks/{entity_code}",
+                            entity_type="commodity",
+                            entity_name=meta.get("full_name", c.name),
+                            entity_flag=_commodity_emoji(entity_code),
+                            related_asset_ids=[c.id],
+                            importance_score=6.0,
+                        )
+                        count += 1
+
+                elif insight_type == "trade":
+                    exp_code, imp_code = entity_code.split("-", 1)
+                    exp = db.query(Country).filter(Country.code == exp_code).first()
+                    imp = db.query(Country).filter(Country.code == imp_code).first()
+                    if not exp or not imp:
+                        continue
+                    pair = (
+                        db.query(TradePair)
+                        .filter(TradePair.exporter_id == exp.id, TradePair.importer_id == imp.id)
+                        .order_by(TradePair.year.desc())
+                        .first()
+                    )
+                    insight = _trade_insight_text(exp, imp, pair)
+                    if insight and _insight_is_duplicate(insight, existing_texts.get(entity_code)):
+                        log.debug("Skipping %s — insight too similar to previous", entity_code)
+                        continue
+                    if insight:
+                        _upsert_summary(db, summary_type, entity_code, insight)
+                        _insert_insight(db, "trade", entity_code, insight)
+                        _upsert_feed_insight(db, now,
+                            title=f"{exp.flag_emoji or ''} {exp.name} ↔ {imp.flag_emoji or ''} {imp.name} — Trade Insight",
+                            body=insight,
+                            source_url=f"/trade/{entity_code.lower()}",
+                            entity_type="trade",
+                            entity_name=f"{exp.name}–{imp.name}",
+                            entity_flag=exp.flag_emoji or "🌐",
+                            related_country_ids=[exp.id, imp.id],
+                            importance_score=5.5,
+                        )
+                        count += 1
+
+            except Exception as e:
+                log.warning("Insight failed %s/%s: %s", insight_type, entity_code, e)
+            db.commit()
+
+        log.info("run_insight_batch(%s): %d generated", insight_type, count)
+        return {"insight_type": insight_type, "generated": count}
+
+    except Exception as exc:
+        db.rollback()
+        log.error("run_insight_batch(%s) failed: %s", insight_type, exc)
         raise self.retry(exc=exc)
     finally:
         db.close()
