@@ -281,4 +281,19 @@ useSeoMeta({
   twitterImage: 'https://api.metricshour.com/og/section/stocks.png',
   twitterCard: 'summary_large_image',
 })
+
+useHead({
+  link: [{ rel: 'canonical', href: 'https://metricshour.com/stocks' }],
+  script: [{
+    type: 'application/ld+json',
+    innerHTML: JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'CollectionPage',
+      name: 'Stocks — MetricsHour',
+      url: 'https://metricshour.com/stocks',
+      description: 'Top global stocks with geographic revenue exposure from SEC EDGAR 10-K filings.',
+      isPartOf: { '@type': 'WebSite', name: 'MetricsHour', url: 'https://metricshour.com' },
+    }),
+  }],
+})
 </script>

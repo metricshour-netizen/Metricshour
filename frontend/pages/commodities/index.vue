@@ -184,4 +184,19 @@ useSeoMeta({
   twitterImage: 'https://api.metricshour.com/og/section/commodities.png',
   twitterCard: 'summary_large_image',
 })
+
+useHead({
+  link: [{ rel: 'canonical', href: 'https://metricshour.com/commodities' }],
+  script: [{
+    type: 'application/ld+json',
+    innerHTML: JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'CollectionPage',
+      name: 'Commodities — MetricsHour',
+      url: 'https://metricshour.com/commodities',
+      description: 'Real-time commodity prices: crude oil, gold, silver, copper, wheat and 20+ instruments tracked globally.',
+      isPartOf: { '@type': 'WebSite', name: 'MetricsHour', url: 'https://metricshour.com' },
+    }),
+  }],
+})
 </script>

@@ -114,4 +114,19 @@ useSeoMeta({
   twitterImage: 'https://api.metricshour.com/og/section/trade.png',
   twitterCard: 'summary_large_image',
 })
+
+useHead({
+  link: [{ rel: 'canonical', href: 'https://metricshour.com/trade' }],
+  script: [{
+    type: 'application/ld+json',
+    innerHTML: JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'CollectionPage',
+      name: 'Bilateral Trade — MetricsHour',
+      url: 'https://metricshour.com/trade',
+      description: 'Trade flows between 380 country pairs. Exports, imports, top products, and GDP dependency ratios from UN Comtrade.',
+      isPartOf: { '@type': 'WebSite', name: 'MetricsHour', url: 'https://metricshour.com' },
+    }),
+  }],
+})
 </script>
