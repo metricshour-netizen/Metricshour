@@ -14,7 +14,7 @@ export default defineNuxtConfig({
     public: {
       apiBase: process.env.NUXT_PUBLIC_API_BASE || 'https://api.metricshour.com',
       r2PublicUrl: process.env.NUXT_PUBLIC_R2_URL || 'https://api.metricshour.com',
-      telegramBotUsername: process.env.NUXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'MetricsHourBot',
+      telegramBotUsername: process.env.NUXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'MetricshourBot',
     },
   },
 
