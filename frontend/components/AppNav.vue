@@ -19,6 +19,7 @@
 
         <template v-if="isLoggedIn && user">
           <div class="flex items-center gap-3">
+            <NuxtLink to="/watchlist" class="text-xs text-gray-400 hover:text-white transition-colors font-medium" title="Watchlist">⭐ Watchlist</NuxtLink>
             <NuxtLink to="/alerts" class="text-xs text-amber-400 hover:text-amber-300 transition-colors font-medium" title="Price Alerts">🔔 Alerts</NuxtLink>
             <NuxtLink v-if="user?.is_admin" to="/admin/blog" class="text-xs text-gray-500 hover:text-purple-400 transition-colors hidden md:block font-medium" title="Blog CRM">✍️ CRM</NuxtLink>
             <span class="text-xs text-gray-600 hidden md:block truncate max-w-[110px]">{{ user.email }}</span>
@@ -57,6 +58,10 @@
       <NuxtLink to="/trade"       @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">Trade <span class="text-gray-600 text-xs">→</span></NuxtLink>
       <NuxtLink to="/commodities" @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">Commodities <span class="text-gray-600 text-xs">→</span></NuxtLink>
       <NuxtLink to="/pricing"     @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-emerald-400 font-semibold border-b border-[#1f2937]">Pro → <span class="text-[10px] bg-emerald-900/40 text-emerald-400 px-2 py-0.5 rounded">Upgrade</span></NuxtLink>
+      <template v-if="isLoggedIn && user">
+        <NuxtLink to="/watchlist"  @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">⭐ Watchlist <span class="text-gray-600 text-xs">→</span></NuxtLink>
+        <NuxtLink to="/alerts"    @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-amber-400 hover:text-amber-300 border-b border-[#1f2937]">🔔 Alerts <span class="text-gray-600 text-xs">→</span></NuxtLink>
+      </template>
       <div class="py-3 space-y-3">
         <div class="flex items-center justify-between">
           <span class="text-xs text-gray-600">Appearance</span>

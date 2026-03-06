@@ -453,8 +453,20 @@ onMounted(() => document.addEventListener('click', closePanelOutside))
 onUnmounted(() => document.removeEventListener('click', closePanelOutside))
 
 function handleCardClick() {
-  // Always navigate to the card's detail page — external source is via the ↗ Open button
-  navigateTo(`/feed/${props.event.id}`)
+  // Route to the most relevant page based on event type
+  const data = eventData.value
+  if (eventType.value === 'price_move' && data.symbol) {
+    navigateTo(`/stocks/${data.symbol}`)
+  } else if ((eventType.value === 'indicator_release' || eventType.value === 'macro_release') && data.country_code) {
+    navigateTo(`/countries/${data.country_code.toLowerCase()}`)
+  } else if (eventType.value === 'trade_update' && data.exporter && data.importer) {
+    navigateTo(`/trade/${data.exporter}-${data.importer}`)
+  } else if (eventType.value === 'blog' && props.event.source_url?.includes('/blog/')) {
+    const slug = props.event.source_url.split('/blog/')[1]?.replace(/\/$/, '')
+    navigateTo(slug ? `/blog/${slug}` : `/feed/${props.event.id}`)
+  } else {
+    navigateTo(`/feed/${props.event.id}`)
+  }
 }
 
 // ── Actions ───────────────────────────────────────────────────────────────────

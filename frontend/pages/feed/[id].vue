@@ -17,6 +17,23 @@
         </ClientOnly>
       </div>
 
+      <!-- Internal links — route to the related page -->
+      <div v-if="relatedLinks.length" class="bg-[#111827] border border-[#1f2937] rounded-xl p-4 mb-4">
+        <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Related pages</p>
+        <div class="flex flex-wrap gap-2">
+          <NuxtLink
+            v-for="link in relatedLinks"
+            :key="link.href"
+            :to="link.href"
+            class="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg bg-[#0d1117] border border-[#1f2937] hover:border-emerald-500 hover:text-emerald-400 transition-colors text-gray-300"
+          >
+            <span>{{ link.icon }}</span>
+            <span>{{ link.label }}</span>
+            <span class="text-gray-600">→</span>
+          </NuxtLink>
+        </div>
+      </div>
+
       <!-- Share section -->
       <div class="bg-[#111827] border border-[#1f2937] rounded-xl p-5">
         <h2 class="text-sm font-bold text-white mb-1">Share this insight</h2>
@@ -90,6 +107,29 @@ const { data: feedData, pending, error } = useAsyncData(
 )
 
 const event = computed(() => feedData.value ?? null)
+
+const relatedLinks = computed(() => {
+  if (!event.value) return []
+  const links: { href: string; label: string; icon: string }[] = []
+  const d = event.value.event_data || {}
+  const type = event.value.event_type
+
+  if (d.symbol) {
+    links.push({ href: `/stocks/${d.symbol}`, label: `${d.symbol} Stock`, icon: '📈' })
+  }
+  if (d.country_code) {
+    links.push({ href: `/countries/${d.country_code.toLowerCase()}`, label: `${d.country_code} Economy`, icon: '🌍' })
+  }
+  if (d.exporter && d.importer) {
+    links.push({ href: `/trade/${d.exporter}-${d.importer}`, label: `${d.exporter}–${d.importer} Trade`, icon: '🌐' })
+    links.push({ href: `/countries/${d.exporter.toLowerCase()}`, label: d.exporter, icon: '🗺️' })
+    links.push({ href: `/countries/${d.importer.toLowerCase()}`, label: d.importer, icon: '🗺️' })
+  }
+  if (type === 'price_move' || type === 'indicator_release' || type === 'macro_release') {
+    links.push({ href: '/markets', label: 'Markets', icon: '⚡' })
+  }
+  return links
+})
 
 const copied = ref(false)
 function copyLink() {

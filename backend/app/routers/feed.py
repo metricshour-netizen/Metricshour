@@ -22,7 +22,8 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import get_db
-from app.models.country import Country
+from app.models.asset import Asset, Price
+from app.models.country import Country, CountryIndicator
 from app.models.feed import (
     FeedEvent,
     FollowEntityType,
@@ -286,3 +287,85 @@ def remove_follow(
         raise HTTPException(status_code=404, detail="Follow not found")
     db.delete(follow)
     db.commit()
+
+
+@router.get("/watchlist")
+def get_watchlist(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(_require_user),
+) -> list[dict]:
+    """Return enriched watchlist — follows with current price / indicator data."""
+    from sqlalchemy import select
+
+    follows = (
+        db.query(UserFollow)
+        .filter(UserFollow.user_id == current_user.id)
+        .order_by(UserFollow.followed_at.desc())
+        .all()
+    )
+
+    result = []
+    for f in follows:
+        if f.entity_type == FollowEntityType.asset:
+            asset = db.get(Asset, f.entity_id)
+            if not asset:
+                continue
+            # Latest price
+            price_row = (
+                db.execute(
+                    select(Price)
+                    .where(Price.asset_id == asset.id)
+                    .order_by(Price.timestamp.desc())
+                    .limit(1)
+                )
+                .scalar_one_or_none()
+            )
+            result.append({
+                "follow_id": f.id,
+                "entity_type": "asset",
+                "entity_id": asset.id,
+                "symbol": asset.symbol,
+                "name": asset.name,
+                "asset_type": asset.asset_type,
+                "sector": asset.sector,
+                "market_cap_usd": asset.market_cap_usd,
+                "price": {
+                    "close": price_row.close if price_row else None,
+                    "timestamp": price_row.timestamp.isoformat() if price_row else None,
+                } if price_row else None,
+                "followed_at": f.followed_at.isoformat(),
+            })
+        elif f.entity_type == FollowEntityType.country:
+            country = db.get(Country, f.entity_id)
+            if not country:
+                continue
+            # Latest GDP + GDP growth
+            indicators: dict[str, float] = {}
+            for key in ("gdp_usd", "gdp_growth_pct", "inflation_pct"):
+                row = (
+                    db.execute(
+                        select(CountryIndicator)
+                        .where(
+                            CountryIndicator.country_id == country.id,
+                            CountryIndicator.indicator == key,
+                        )
+                        .order_by(CountryIndicator.period_date.desc())
+                        .limit(1)
+                    )
+                    .scalar_one_or_none()
+                )
+                if row:
+                    indicators[key] = row.value
+            result.append({
+                "follow_id": f.id,
+                "entity_type": "country",
+                "entity_id": country.id,
+                "code": country.code,
+                "name": country.name,
+                "flag": country.flag_emoji,
+                "region": country.region,
+                "indicators": indicators,
+                "followed_at": f.followed_at.isoformat(),
+            })
+
+    return result
