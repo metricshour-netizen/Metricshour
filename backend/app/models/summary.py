@@ -12,9 +12,9 @@ class PageSummary(Base):
     __tablename__ = "page_summaries"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    entity_type: Mapped[str] = mapped_column(String(20), nullable=False)   # country, stock, trade
+    entity_type: Mapped[str] = mapped_column(String(30), nullable=False)   # country, stock, commodity, trade, *_insight
     entity_code: Mapped[str] = mapped_column(String(50), nullable=False)   # US, AAPL, US-CN
-    summary: Mapped[str] = mapped_column(String(800), nullable=False)
+    summary: Mapped[str] = mapped_column(String(2000), nullable=False)
     generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     __table_args__ = (
