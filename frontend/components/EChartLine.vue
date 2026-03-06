@@ -29,25 +29,29 @@ const props = withDefaults(defineProps<{
 
 const el = ref<HTMLDivElement | null>(null)
 let chart: ReturnType<typeof init> | null = null
+let ro: ResizeObserver | null = null
 
-function resize() { chart?.resize() }
-
-// flush:'post' ensures DOM is fully painted before we read container dimensions.
-// chart.resize() after setOption forces ECharts to pick up the actual width/height
-// instead of the 0px it would read during the initial layout pass.
-watch(el, async (newEl) => {
+// ResizeObserver fires whenever the container changes size (including initial layout).
+// This is more reliable than window resize + nextTick for catching 0-width init issues.
+watch(el, (newEl) => {
   if (!newEl) return
-  await nextTick()
+
   chart = init(newEl, null, { renderer: 'canvas' })
   chart.setOption(props.option)
-  chart.resize()
-  window.addEventListener('resize', resize)
+
+  ro = new ResizeObserver(() => {
+    chart?.resize()
+  })
+  ro.observe(newEl)
+  // Fire one manual resize after the first paint to handle any deferred layout
+  requestAnimationFrame(() => chart?.resize())
 }, { flush: 'post' })
 
 onUnmounted(() => {
+  ro?.disconnect()
+  ro = null
   chart?.dispose()
   chart = null
-  window.removeEventListener('resize', resize)
 })
 
 watch(() => props.option, (opt) => {
