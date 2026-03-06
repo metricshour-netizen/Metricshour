@@ -29,6 +29,11 @@ class Settings:
     r2_public_url: str = os.environ.get("R2_PUBLIC_URL", "")
     # Sentry
     sentry_dsn: str = os.environ.get("SENTRY_DSN", "")
+    # Notifications
+    telegram_bot_token: str = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+    telegram_webhook_secret: str = os.environ.get("TELEGRAM_WEBHOOK_SECRET", "")
+    resend_api_key: str = os.environ.get("RESEND_API_KEY", "")
+    resend_from_email: str = os.environ.get("RESEND_FROM_EMAIL", "alerts@metricshour.com")
 
 
 settings = Settings()

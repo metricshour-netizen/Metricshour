@@ -58,6 +58,10 @@
                   : 'border-[#374151] text-gray-400 hover:border-emerald-600 hover:text-emerald-400'"
                 @click="toggleFollow"
               >{{ isFollowing ? '★ Following' : '☆ Follow' }}</button>
+              <button
+                @click="showAlertModal = true"
+                class="mt-1 flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-lg border border-amber-800 text-amber-400 hover:bg-amber-900/20 transition-colors"
+              >🔔 Set Alert</button>
             </div>
           </div>
         </template>
@@ -284,6 +288,11 @@
     </main>
   </div>
   <AuthModal v-model="showAuthModal" />
+  <AlertModal
+    v-model="showAlertModal"
+    :asset="stock ? { id: stock.id, symbol: stock.symbol, name: stock.name } : null"
+    :current-price="stock?.price?.close"
+  />
 </template>
 
 <script setup lang="ts">
@@ -467,6 +476,7 @@ function fmtGdp(v: number | null | undefined): string {
 }
 
 const showAuthModal = ref(false)
+const showAlertModal = ref(false)
 const isFollowing = ref(false)
 
 onMounted(async () => {

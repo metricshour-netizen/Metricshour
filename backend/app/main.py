@@ -9,6 +9,7 @@ from slowapi.errors import RateLimitExceeded
 from app.config import settings
 from app.limiter import limiter
 from app.routers import health, countries, assets, trade, auth, search, feed, admin, share, og, sitemap
+from app.routers import alerts as alerts_router
 from app.routers.admin import public_router as blog_router
 from app.routers import intelligence
 from app.routers import feedback
@@ -51,6 +52,7 @@ app.include_router(feedback.router)
 app.include_router(share.router)   # /s/{id} — social share OG preview (no prefix)
 app.include_router(og.router)      # /og/feed/{id}.png, /og/countries/{code}.png, /og/stocks/{symbol}.png
 app.include_router(sitemap.router) # /sitemap.xml — no Bot Fight Mode here
+app.include_router(alerts_router.router, prefix="/api")
 
 
 @app.get("/")

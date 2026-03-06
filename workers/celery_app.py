@@ -51,6 +51,7 @@ app = Celery('metricshour', include=[
     'tasks.feed_generator',
     'tasks.summaries',
     'tasks.og_images',
+    'tasks.price_alert_checker',
     # Data collection workers
     'tasks.world_bank_update',
     'tasks.ecb_fx_rates',
@@ -79,6 +80,10 @@ app.conf.update(
     beat_schedule={
         'crypto-every-1min': {
             'task': 'tasks.crypto.fetch_crypto_prices',
+            'schedule': 60.0,
+        },
+        'price-alert-checker-every-1min': {
+            'task': 'tasks.price_alert_checker.check_price_alerts',
             'schedule': 60.0,
         },
         'stocks-every-15min': {

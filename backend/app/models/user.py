@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import String, Float, DateTime, ForeignKey, Enum, Boolean, Integer
+from sqlalchemy import String, Float, DateTime, ForeignKey, Enum, Boolean, Integer, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
@@ -25,6 +25,10 @@ class User(Base):
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     last_login_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Notification channels
+    telegram_chat_id: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    notify_telegram: Mapped[bool] = mapped_column(Boolean, default=True)
+    notify_email: Mapped[bool] = mapped_column(Boolean, default=True)
 
     alerts: Mapped[list["PriceAlert"]] = relationship(back_populates="user")
     follows: Mapped[list["UserFollow"]] = relationship(back_populates="user")  # type: ignore[name-defined]
@@ -45,6 +49,19 @@ class PriceAlert(Base):
 
     user: Mapped["User"] = relationship(back_populates="alerts")
     asset: Mapped["Asset"] = relationship(back_populates="alerts")
+
+
+class AlertDelivery(Base):
+    __tablename__ = "alert_deliveries"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    alert_id: Mapped[int] = mapped_column(ForeignKey("price_alerts.id", ondelete="CASCADE"), nullable=False)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    channel: Mapped[str] = mapped_column(String(20), nullable=False)      # 'telegram' | 'email'
+    price_at_trigger: Mapped[float | None] = mapped_column(Float, nullable=True)
+    triggered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 # FeedEvent moved to models/feed.py

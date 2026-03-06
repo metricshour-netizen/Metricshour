@@ -19,6 +19,7 @@
 
         <template v-if="isLoggedIn && user">
           <div class="flex items-center gap-3">
+            <NuxtLink to="/alerts" class="text-xs text-amber-400 hover:text-amber-300 transition-colors font-medium" title="Price Alerts">🔔 Alerts</NuxtLink>
             <NuxtLink v-if="user?.is_admin" to="/admin/blog" class="text-xs text-gray-500 hover:text-purple-400 transition-colors hidden md:block font-medium" title="Blog CRM">✍️ CRM</NuxtLink>
             <span class="text-xs text-gray-600 hidden md:block truncate max-w-[110px]">{{ user.email }}</span>
             <button class="text-xs text-gray-500 hover:text-red-400 transition-colors" @click="logout">Out</button>
