@@ -43,7 +43,7 @@
                 {{ index.price.close >= index.price.open ? '▲' : '▼' }}
                 {{ Math.abs(((index.price.close - index.price.open) / index.price.open) * 100).toFixed(2) }}%
               </div>
-              <div class="text-xs text-gray-600 mt-1">{{ index.price ? 'Last close' : 'Awaiting price feed' }}</div>
+              <div class="text-xs text-gray-600 mt-1">{{ index.price ? 'Last updated' : 'Awaiting price feed' }}</div>
             </div>
           </div>
         </template>
