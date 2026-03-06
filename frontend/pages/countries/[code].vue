@@ -61,7 +61,7 @@
       </div>
 
       <!-- Page Summary -->
-      <div v-if="pageSummary?.summary" class="bg-[#111827] border border-[#1f2937] rounded-lg p-4 mb-3 text-sm text-gray-400 leading-relaxed">
+      <div v-if="pageSummary?.summary" class="page-summary bg-[#111827] border border-[#1f2937] rounded-lg p-4 mb-3 text-sm text-gray-400 leading-relaxed">
         {{ pageSummary.summary }}
       </div>
 
@@ -71,7 +71,7 @@
           v-for="(insight, i) in pageInsights"
           :key="insight.generated_at"
           class="relative border rounded-lg p-4 mb-2 overflow-hidden"
-          :class="i === 0 ? 'bg-[#0d1520] border-emerald-900/50' : 'bg-[#0b0f1a] border-[#1f2937]'"
+          :class="[i === 0 ? 'bg-[#0d1520] border-emerald-900/50 page-insight-latest' : 'bg-[#0b0f1a] border-[#1f2937]']"
         >
           <div v-if="i === 0" class="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent"/>
           <div class="flex items-start gap-3">
@@ -409,6 +409,7 @@ useSeoMeta({
       ? `GDP, inflation, trade flows, and 80+ macro indicators for ${country.value.name}. Data from World Bank, IMF, and UN Comtrade.`
       : ''
   ),
+  twitterCard: 'summary_large_image',
 })
 
 useHead(computed(() => ({
@@ -421,6 +422,10 @@ useHead(computed(() => ({
       name: `${country.value.name} Economy & Macro Data — MetricsHour`,
       url: `https://metricshour.com/countries/${code}`,
       description: `GDP, inflation, trade flows, and 80+ macro indicators for ${country.value.name}. Data from World Bank, IMF, and UN Comtrade.`,
+      speakable: {
+        '@type': 'SpeakableSpecification',
+        cssSelector: ['.page-summary', '.page-insight-latest'],
+      },
       breadcrumb: {
         '@type': 'BreadcrumbList',
         itemListElement: [
