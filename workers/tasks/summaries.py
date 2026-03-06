@@ -538,6 +538,49 @@ def _trade_summary_text(exporter: Country, importer: Country, trade: TradePair |
     return " ".join(parts)
 
 
+# ── Trade daily insight ───────────────────────────────────────────────────────
+
+def _trade_insight_text(exporter: Country, importer: Country, trade: TradePair | None) -> str | None:
+    """
+    Opinionated 60-80 word daily analyst take for a bilateral trade page.
+    Forward-looking: tariff risk, FX impact, supply chain shifts, geopolitical tension.
+    """
+    if not os.environ.get("GEMINI_API_KEY"):
+        return None
+
+    balance_word = "surplus" if (trade.balance_usd or 0) >= 0 else "deficit" if trade else "balanced"
+    products = [p.get("name", "") for p in (trade.top_export_products or [])[:3] if p.get("name")] if trade else []
+    exp_flag = exporter.flag_emoji or ""
+    imp_flag = importer.flag_emoji or ""
+
+    facts = (
+        f"Exporter: {exporter.name} ({exporter.code}) {exp_flag}\n"
+        f"Importer: {importer.name} ({importer.code}) {imp_flag}\n"
+        f"Data year: {trade.year if trade else 'N/A'}\n"
+        f"Export value: {_fmt_usd(trade.exports_usd) if trade else 'N/A'}\n"
+        f"Trade balance: {_fmt_usd(trade.balance_usd) if trade else 'N/A'} ({balance_word} for {exporter.name})\n"
+        f"Exporter GDP share: {f'{trade.exporter_gdp_share_pct:.1f}%' if trade and trade.exporter_gdp_share_pct else 'N/A'}\n"
+        f"Top exports: {', '.join(products) if products else 'N/A'}\n"
+        f"Exporter groups: {', '.join([g for g,f in [('G7',exporter.is_g7),('G20',exporter.is_g20),('EU',exporter.is_eu),('NATO',exporter.is_nato),('BRICS',exporter.is_brics),('OPEC',exporter.is_opec)] if f])}\n"
+        f"Importer groups: {', '.join([g for g,f in [('G7',importer.is_g7),('G20',importer.is_g20),('EU',importer.is_eu),('NATO',importer.is_nato),('BRICS',importer.is_brics),('OPEC',importer.is_opec)] if f])}\n"
+        f"Today's date: {date.today().strftime('%B %d, %Y')}\n"
+    )
+
+    prompt = (
+        f"You are a macro trade analyst at a global investment bank writing a daily brief for MetricsHour.\n\n"
+        f"Write a 60-80 word DAILY INSIGHT for the {exporter.name}–{importer.name} trade corridor. "
+        f"This is NOT a description — it is a forward-looking market take.\n\n"
+        f"Data:\n{facts}\n\n"
+        f"Requirements:\n"
+        f"- Identify the ONE most important near-term risk or opportunity in this trade relationship\n"
+        f"- Reference tariff policy, FX moves, supply chain shifts, sanctions risk, or commodity exposure\n"
+        f"- Name which equity sectors or asset classes are most exposed to a disruption or improvement\n"
+        f"- Be specific and opinionated: 'Watch for...', 'The key tension is...', 'Investors should note...'\n"
+        f"- No bullet points. No headers. Active voice. End with a period."
+    )
+    return _call_gemini(prompt, min_words=50, max_words=95)
+
+
 # ── Commodity summary ──────────────────────────────────────────────────────────
 
 def _commodity_summary_text(asset: Asset) -> str:
@@ -874,6 +917,41 @@ def generate_daily_insights(self):
                 log.warning("Commodity insight failed %s: %s", c.symbol, e)
         db.commit()
         log.info("Commodity insights done: %d", commodity_count)
+
+        # Trade pair insights — latest year per pair only
+        trade_count = 0
+        pairs = db.query(TradePair).order_by(TradePair.year.desc()).all()
+        seen_pairs: set[str] = set()
+        for pair in pairs:
+            exp = db.query(Country).filter(Country.id == pair.exporter_id).first()
+            imp = db.query(Country).filter(Country.id == pair.importer_id).first()
+            if not exp or not imp:
+                continue
+            pair_code = f"{exp.code}-{imp.code}"
+            if pair_code in seen_pairs:
+                continue
+            seen_pairs.add(pair_code)
+            try:
+                insight = _trade_insight_text(exp, imp, pair)
+                if insight:
+                    _upsert_summary(db, "trade_insight", pair_code, insight)
+                    _insert_insight(db, "trade", pair_code, insight)
+                    _upsert_feed_insight(db, now,
+                        title=f"{exp.flag_emoji or ''} {exp.name} ↔ {imp.flag_emoji or ''} {imp.name} — Trade Insight",
+                        body=insight,
+                        source_url=f"/trade/{pair_code.lower()}",
+                        entity_type="trade",
+                        entity_name=f"{exp.name}–{imp.name}",
+                        entity_flag=exp.flag_emoji or "🌐",
+                        related_country_ids=[exp.id, imp.id],
+                        importance_score=5.5,
+                    )
+                    total += 1
+                    trade_count += 1
+            except Exception as e:
+                log.warning("Trade insight failed %s: %s", pair_code, e)
+        db.commit()
+        log.info("Trade insights done: %d", trade_count)
 
         log.info("Total daily insights generated: %d", total)
         return {"insights_generated": total}

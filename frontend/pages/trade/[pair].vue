@@ -94,8 +94,33 @@
       </div>
 
       <!-- Page Summary -->
-      <div v-if="pageSummary?.summary" class="bg-[#111827] border border-[#1f2937] rounded-lg p-4 mb-6 text-sm text-gray-300 leading-relaxed">
+      <div v-if="pageSummary?.summary" class="bg-[#111827] border border-[#1f2937] rounded-lg p-4 mb-3 text-sm text-gray-300 leading-relaxed">
         {{ pageSummary.summary }}
+      </div>
+
+      <!-- Daily Trade Insights history -->
+      <div v-if="pageInsights?.length" class="mb-6">
+        <div
+          v-for="(insight, i) in pageInsights"
+          :key="insight.generated_at"
+          class="relative border rounded-lg p-4 mb-2 overflow-hidden"
+          :class="i === 0 ? 'bg-[#0d1520] border-emerald-900/50' : 'bg-[#0b0f1a] border-[#1f2937]'"
+        >
+          <div v-if="i === 0" class="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent"/>
+          <div class="flex items-start gap-3">
+            <span class="text-base mt-0.5 shrink-0" :class="i === 0 ? 'text-emerald-500' : 'text-gray-600'">◆</span>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 mb-1.5 flex-wrap">
+                <span class="text-[10px] font-bold uppercase tracking-widest" :class="i === 0 ? 'text-emerald-500' : 'text-gray-600'">MetricsHour Intelligence</span>
+                <span v-if="i === 0" class="text-[10px] text-gray-600">· Daily trade take</span>
+                <span class="text-[10px] text-gray-700 ml-auto">
+                  {{ new Date(insight.generated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) }}
+                </span>
+              </div>
+              <p class="text-sm leading-relaxed" :class="i === 0 ? 'text-gray-200' : 'text-gray-500'">{{ insight.summary }}</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Trade flow visualiser -->
@@ -266,6 +291,12 @@ const { data, pending, error } = useAsyncData(
 const { data: pageSummary } = useAsyncData(
   `summary-trade-${codeA}-${codeB}`,
   () => get<any>(`/api/summaries/trade/${codeA.toUpperCase()}-${codeB.toUpperCase()}`).catch(() => null),
+  { server: false },
+)
+
+const { data: pageInsights } = useAsyncData(
+  `insights-trade-${codeA}-${codeB}`,
+  () => get<any[]>(`/api/insights/trade/${codeA.toUpperCase()}-${codeB.toUpperCase()}`).catch(() => []),
   { server: false },
 )
 

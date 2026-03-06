@@ -338,7 +338,7 @@ def get_spotlight(db: Session = Depends(get_db)) -> list[dict]:
 
 
 SUMMARY_TYPES = ("country", "stock", "commodity", "trade")
-INSIGHT_TYPES = ("country_insight", "stock_insight", "commodity_insight")
+INSIGHT_TYPES = ("country_insight", "stock_insight", "commodity_insight", "trade_insight")
 ALL_ENTITY_TYPES = SUMMARY_TYPES + INSIGHT_TYPES
 
 
@@ -409,7 +409,7 @@ def get_summary(entity_type: str, entity_code: str, db: Session = Depends(get_db
     }
 
 
-INSIGHT_ENTITY_TYPES = ("country", "stock", "commodity")
+INSIGHT_ENTITY_TYPES = ("country", "stock", "commodity", "trade")
 
 
 @router.get("/insights/{entity_type}/{entity_code}")
