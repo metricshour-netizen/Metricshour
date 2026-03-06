@@ -27,6 +27,10 @@ app = FastAPI(
     title="MetricsHour API",
     description="Global financial intelligence — stocks, macro, trade, crypto, FX, commodities",
     version="0.1.0",
+    # Disable interactive docs in production to avoid exposing the full API schema
+    docs_url=None if not settings.debug else "/docs",
+    redoc_url=None if not settings.debug else "/redoc",
+    openapi_url=None if not settings.debug else "/openapi.json",
 )
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)

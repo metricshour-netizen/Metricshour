@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select, desc
 
 from app.database import get_db
+from app.limiter import limiter
 from app.models.user import User, PriceAlert, AlertDelivery
 from app.models.asset import Asset
 from app.routers.auth import get_current_user
@@ -192,7 +193,9 @@ def update_prefs(
 
 
 @router.post("/telegram/generate-code")
+@limiter.limit("10/minute")
 def generate_telegram_code(
+    request: Request,
     current_user: User = Depends(get_current_user),
 ) -> dict:
     """Generate a 6-char one-time code. User sends it to the bot to link their account."""
@@ -222,11 +225,20 @@ async def telegram_webhook(
                        ?url=https://api.metricshour.com/api/alerts/telegram/webhook
                        &secret_token={TELEGRAM_WEBHOOK_SECRET}
     """
-    # Verify secret header if configured
-    if TELEGRAM_WEBHOOK_SECRET and x_telegram_bot_api_secret_token != TELEGRAM_WEBHOOK_SECRET:
+    # Always require the secret header — reject requests if secret is not configured
+    # (this prevents the webhook from being open if the env var is accidentally cleared)
+    if not TELEGRAM_WEBHOOK_SECRET:
+        raise HTTPException(status_code=503, detail="Webhook not configured")
+    if x_telegram_bot_api_secret_token != TELEGRAM_WEBHOOK_SECRET:
         raise HTTPException(status_code=403, detail="Invalid webhook secret")
 
-    body = await request.json()
+    raw = await request.body()
+    if len(raw) > 65_536:  # 64 KB max — Telegram payloads are always tiny
+        raise HTTPException(status_code=413, detail="Payload too large")
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON")
     message = body.get("message") or body.get("my_chat_member", {}).get("message")
     if not message:
         return {"ok": True}

@@ -27,7 +27,7 @@ from app.database import get_db
 from app.limiter import limiter
 from app.models.user import User, UserTier
 from app.notifications import send_welcome_email
-from app.storage import redis_json_set, redis_json_get
+from app.storage import redis_json_set, redis_json_get, redis_json_del
 
 _GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 _GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
@@ -190,10 +190,11 @@ def google_callback(code: str, state: str, db: Session = Depends(get_db)):
     if not settings.google_client_id:
         raise HTTPException(status_code=501, detail="Google OAuth not configured")
 
-    # Validate state (CSRF)
+    # Validate state (CSRF) — delete immediately after reading to prevent replay
     cached = redis_json_get(f"oauth:state:{state}")
     if not cached:
         return RedirectResponse(f"{_FRONTEND_URL}/auth/callback?error=invalid_state")
+    redis_json_del(f"oauth:state:{state}")  # consume one-time state
 
     # Exchange code for tokens
     token_resp = http_requests.post(_GOOGLE_TOKEN_URL, data={

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
@@ -9,11 +9,11 @@ router = APIRouter(prefix="/search", tags=["search"])
 
 
 @router.get("")
-def search(q: str = "", db: Session = Depends(get_db)) -> dict:
+def search(q: str = Query(default="", max_length=100), db: Session = Depends(get_db)) -> dict:
     if not q or len(q.strip()) < 2:
         return {"countries": [], "assets": []}
 
-    term = q.strip()
+    term = q.strip()[:100]  # extra safety
 
     countries = db.execute(
         select(Country)

@@ -270,10 +270,17 @@ async def upload_cover(
     if post is None:
         raise HTTPException(status_code=404, detail="Blog post not found")
 
-    if file.content_type not in ("image/jpeg", "image/png", "image/webp", "image/gif"):
+    _ALLOWED_TYPES = {
+        "image/jpeg": "jpg",
+        "image/png": "png",
+        "image/webp": "webp",
+        "image/gif": "gif",
+    }
+    if file.content_type not in _ALLOWED_TYPES:
         raise HTTPException(status_code=400, detail="Only JPEG/PNG/WebP/GIF allowed")
 
-    ext = file.filename.rsplit(".", 1)[-1] if "." in file.filename else "jpg"
+    # Derive extension from content-type — never trust the user-supplied filename
+    ext = _ALLOWED_TYPES[file.content_type]
     key = f"blog-covers/{post_id}/{uuid.uuid4().hex}.{ext}"
     data = await file.read()
     r2_upload(key, data, content_type=file.content_type)
