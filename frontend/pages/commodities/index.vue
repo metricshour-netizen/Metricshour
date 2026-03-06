@@ -51,12 +51,14 @@
               <div class="text-[10px] text-gray-600 mb-2">{{ group.name }}</div>
               <div v-if="apiMap[c.symbol]?.price" class="mt-auto">
                 <div class="text-base font-extrabold text-white tabular-nums">${{ fmtPrice(apiMap[c.symbol].price.close) }}</div>
-                <div class="text-[10px] text-gray-600 mt-0.5 flex items-center gap-1">
-                  <span class="w-1 h-1 rounded-full bg-emerald-600 inline-block"></span>
+                <div class="text-[10px] mt-0.5 flex items-center gap-1"
+                  :class="apiMap[c.symbol].price.timestamp ? 'text-emerald-700' : 'text-gray-600'">
+                  <span class="w-1 h-1 rounded-full inline-block"
+                    :class="apiMap[c.symbol].price.timestamp ? 'bg-emerald-600' : 'bg-gray-600'"></span>
                   {{ fmtTs(apiMap[c.symbol].price.timestamp) }}
                 </div>
               </div>
-              <div v-else class="text-xs text-gray-700 mt-2 flex items-center gap-1">
+              <div v-else class="text-xs text-gray-600 mt-2 flex items-center gap-1">
                 <span class="w-1.5 h-1.5 rounded-full bg-yellow-700 inline-block"></span> Pending feed
               </div>
             </NuxtLink>
@@ -150,9 +152,16 @@ function fmtPrice(v: number): string {
   return v.toFixed(4)
 }
 
+function parseUTC(ts: string): Date {
+  if (ts && !ts.endsWith('Z') && !ts.includes('+') && !/[+-]\d{2}:\d{2}$/.test(ts)) {
+    return new Date(ts + 'Z')
+  }
+  return new Date(ts)
+}
+
 function fmtTs(iso: string | null | undefined): string {
-  if (!iso) return ''
-  const d = new Date(iso)
+  if (!iso) return 'No feed yet'
+  const d = parseUTC(iso)
   const diff = Math.floor((Date.now() - d.getTime()) / 1000)
   if (diff < 60)   return `${diff}s ago`
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`

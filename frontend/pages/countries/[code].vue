@@ -232,29 +232,31 @@
       </div>
 
       <!-- Exports & resources -->
-      <div
-        v-if="country.major_exports?.length || country.natural_resources?.length"
-        class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8"
-      >
-        <div v-if="country.major_exports?.length" class="bg-[#111827] border border-[#1f2937] rounded-lg p-5">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+        <div class="bg-[#111827] border border-[#1f2937] rounded-lg p-5">
           <h2 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Major Exports</h2>
-          <div class="flex gap-2 flex-wrap">
+          <div v-if="country.major_exports?.length" class="flex gap-2 flex-wrap">
             <span
               v-for="e in country.major_exports"
               :key="e"
               class="text-xs bg-[#1f2937] text-gray-300 px-2 py-1 rounded capitalize"
             >{{ e }}</span>
           </div>
+          <div v-else class="text-xs text-gray-600">
+            Export composition data pending —
+            <NuxtLink :to="`/trade?country=${code.toUpperCase()}`" class="text-emerald-700 hover:text-emerald-500 transition-colors">see trade flows →</NuxtLink>
+          </div>
         </div>
-        <div v-if="country.natural_resources?.length" class="bg-[#111827] border border-[#1f2937] rounded-lg p-5">
+        <div class="bg-[#111827] border border-[#1f2937] rounded-lg p-5">
           <h2 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Natural Resources</h2>
-          <div class="flex gap-2 flex-wrap">
+          <div v-if="country.natural_resources?.length" class="flex gap-2 flex-wrap">
             <span
               v-for="r in country.natural_resources"
               :key="r"
               class="text-xs bg-[#1f2937] text-gray-300 px-2 py-1 rounded capitalize"
             >{{ r }}</span>
           </div>
+          <div v-else class="text-xs text-gray-600">Natural resource data pending</div>
         </div>
       </div>
 
@@ -424,7 +426,9 @@ function fmt(key: string, val: number | null | undefined): string {
 
   if (key === 'hdi') return val.toFixed(3)
   if (key === 'gini_coefficient') return val.toFixed(1)
-  if (key.endsWith('_index')) return val.toFixed(1)
+  if (key === 'life_expectancy') return `${val.toFixed(1)} yrs`
+  if (key === 'infant_mortality_per_1000') return `${val.toFixed(1)} / 1k`
+  if (key.endsWith('_index')) return val.toFixed(2)
 
   return val.toFixed(1)
 }
@@ -474,48 +478,60 @@ const economyRows = computed(() => [
   row('GDP (PPP)', 'gdp_ppp_usd'),
   row('GDP per capita (PPP)', 'gdp_per_capita_ppp_usd'),
   row('Population', 'population'),
-])
+].filter(r => r.raw !== null))
 
 const monetaryRows = computed(() => [
   row('Inflation', 'inflation_pct'),
   row('Interest rate', 'interest_rate_pct'),
   row('Real interest rate', 'real_interest_rate_pct'),
   row('Foreign reserves', 'foreign_reserves_usd'),
-  row('M2 money supply', 'money_supply_m2_usd'),
-])
+  row('M2 Supply (% GDP)', 'money_supply_m2_gdp_pct'),
+].filter(r => r.raw !== null))
 
-const tradeRows = computed(() => [
-  row('Exports', 'exports_usd'),
-  row('Imports', 'imports_usd'),
-  row('Trade balance', 'trade_balance_usd'),
-  row('Trade openness', 'trade_openness_pct'),
-  row('Current account (% GDP)', 'current_account_gdp_pct'),
-  row('FDI inflows', 'fdi_inflows_usd'),
-])
+const tradeRows = computed(() => {
+  const ind = country.value?.indicators ?? {}
+  const tradeBalance = (ind.exports_usd != null && ind.imports_usd != null)
+    ? ind.exports_usd - ind.imports_usd
+    : null
+  const tradeOpenness = (ind.exports_usd != null && ind.imports_usd != null && ind.gdp_usd != null)
+    ? ((ind.exports_usd + ind.imports_usd) / ind.gdp_usd) * 100
+    : null
+  return [
+    row('Exports', 'exports_usd'),
+    row('Imports', 'imports_usd'),
+    { label: 'Trade balance', value: fmt('trade_balance_usd', tradeBalance), raw: tradeBalance },
+    { label: 'Trade openness', value: fmt('trade_openness_pct', tradeOpenness), raw: tradeOpenness },
+    row('Current account (% GDP)', 'current_account_gdp_pct'),
+    row('FDI inflows', 'fdi_inflows_usd'),
+  ].filter(r => r.raw !== null)
+})
 
 const fiscalRows = computed(() => [
   row('Govt debt (% GDP)', 'government_debt_gdp_pct'),
   row('Budget balance (% GDP)', 'budget_balance_gdp_pct'),
   row('Tax revenue (% GDP)', 'tax_revenue_gdp_pct'),
   row('Military spending (% GDP)', 'military_spending_gdp_pct'),
-])
+].filter(r => r.raw !== null))
 
 const socialRows = computed(() => [
-  row('HDI', 'hdi'),
   row('Unemployment', 'unemployment_pct'),
+  row('Life expectancy', 'life_expectancy'),
   row('Gini coefficient', 'gini_coefficient'),
   row('Internet penetration', 'internet_penetration_pct'),
   row('Literacy rate', 'literacy_rate_pct'),
   row('Poverty rate', 'poverty_rate_pct'),
-])
+  row('Urban population', 'urban_population_pct'),
+  row('Infant mortality', 'infant_mortality_per_1000'),
+].filter(r => r.raw !== null))
 
 const governanceRows = computed(() => [
-  row('Corruption perception', 'corruption_perception_index'),
+  row('Corruption control', 'control_of_corruption_index'),
   row('Rule of law', 'rule_of_law_index'),
   row('Political stability', 'political_stability_index'),
-  row('Democracy index', 'democracy_index'),
-  row('Economic freedom', 'economic_freedom_index'),
-])
+  row('Govt effectiveness', 'government_effectiveness_index'),
+  row('Regulatory quality', 'regulatory_quality_index'),
+  row('Voice & accountability', 'voice_accountability_index'),
+].filter(r => r.raw !== null))
 
 // ─── GDP chart (ECharts) ──────────────────────────────────────────────────────
 

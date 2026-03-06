@@ -45,7 +45,10 @@
                 <div class="text-4xl font-extrabold text-white tabular-nums tracking-tight">
                   {{ stock.price ? `$${stock.price.close.toFixed(2)}` : '—' }}
                 </div>
-                <div class="text-xs text-gray-600 mt-1">{{ stock.price ? 'Last close' : 'Awaiting price feed' }}</div>
+                <div class="text-xs text-gray-600 mt-1">
+                  <template v-if="stock.price">Last close · <span class="font-mono text-emerald-700">{{ fmtPriceTs(stock.price.timestamp) }}</span></template>
+                  <template v-else>Awaiting price feed</template>
+                </div>
                 <div class="text-sm font-semibold text-gray-400 mt-1">{{ fmtCap(stock.market_cap_usd) }} market cap</div>
               </div>
               <button
@@ -446,6 +449,14 @@ function fmtCap(v: number | null): string {
   if (v >= 1e12) return `$${(v / 1e12).toFixed(1)}T`
   if (v >= 1e9)  return `$${(v / 1e9).toFixed(0)}B`
   return `$${(v / 1e6).toFixed(0)}M`
+}
+
+function fmtPriceTs(ts: string | undefined): string {
+  if (!ts) return '—'
+  const d = new Date(ts)
+  if (isNaN(d.getTime())) return '—'
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+    + ' · ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC', hour12: false }) + ' UTC'
 }
 
 function fmtGdp(v: number | null | undefined): string {
