@@ -1,12 +1,16 @@
 """
-Page summary + spotlight refresh tasks.
+Page summary + daily insight + spotlight refresh tasks.
 
 generate_page_summaries  — daily 2am UTC
-  Generates 75-100 word templated summaries for all countries, stocks, and trade pairs.
-  Upserts into page_summaries table. Falls back to Gemini AI if API key available.
+  Generates 75-100 word summaries for all countries, stocks, commodities, and trade pairs.
+  Summaries are stable descriptions — only regenerated daily; in practice update when data changes.
 
-refresh_summary_on_event  — triggered by macro_release / price_move events
-  Refreshes a single entity's summary when new data arrives.
+generate_daily_insights  — daily 5am UTC
+  Generates 60-80 word opinionated analyst insights for countries, stocks, and commodities.
+  These are forward-looking takes, refreshed every day regardless of data changes.
+
+refresh_entity_summary / refresh_entity_insight  — event-triggered
+  Refresh a single entity on demand.
 
 refresh_spotlight        — every 3 hours
   Rebuilds adaptive spotlight cards and caches in Redis (TTL = 3 hours).
@@ -15,7 +19,7 @@ import json
 import logging
 import os
 import ssl
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 
 import redis as redis_lib
 from sqlalchemy import text
@@ -30,6 +34,31 @@ log = logging.getLogger(__name__)
 
 SPOTLIGHT_KEY = "intelligence:spotlight:v1"
 SPOTLIGHT_TTL = 10_800  # 3 hours
+
+# Commodity metadata — sector + category for richer prompts
+COMMODITY_META: dict[str, dict] = {
+    "WTI":     {"sector": "Energy",      "full_name": "Crude Oil (WTI)", "unit": "USD/barrel"},
+    "BRENT":   {"sector": "Energy",      "full_name": "Crude Oil (Brent)", "unit": "USD/barrel"},
+    "NG":      {"sector": "Energy",      "full_name": "Natural Gas", "unit": "USD/MMBtu"},
+    "GASOLINE":{"sector": "Energy",      "full_name": "Gasoline RBOB", "unit": "USD/gallon"},
+    "COAL":    {"sector": "Energy",      "full_name": "Thermal Coal", "unit": "USD/metric ton"},
+    "XAUUSD":  {"sector": "Metals",      "full_name": "Gold", "unit": "USD/troy oz"},
+    "XAGUSD":  {"sector": "Metals",      "full_name": "Silver", "unit": "USD/troy oz"},
+    "XPTUSD":  {"sector": "Metals",      "full_name": "Platinum", "unit": "USD/troy oz"},
+    "HG":      {"sector": "Metals",      "full_name": "Copper", "unit": "USD/lb (COMEX)"},
+    "ALI":     {"sector": "Metals",      "full_name": "Aluminum", "unit": "USD/metric ton (LME)"},
+    "ZNC":     {"sector": "Metals",      "full_name": "Zinc", "unit": "USD/metric ton (LME)"},
+    "NI":      {"sector": "Metals",      "full_name": "Nickel", "unit": "USD/metric ton (LME)"},
+    "ZW":      {"sector": "Agriculture", "full_name": "Wheat (CBOT)", "unit": "USD/bushel"},
+    "ZC":      {"sector": "Agriculture", "full_name": "Corn (CBOT)", "unit": "USD/bushel"},
+    "ZS":      {"sector": "Agriculture", "full_name": "Soybeans (CBOT)", "unit": "USD/bushel"},
+    "KC":      {"sector": "Agriculture", "full_name": "Arabica Coffee", "unit": "USD/lb (ICE)"},
+    "SB":      {"sector": "Agriculture", "full_name": "Raw Sugar No.11", "unit": "USD/lb (ICE)"},
+    "CT":      {"sector": "Agriculture", "full_name": "Cotton No.2", "unit": "USD/lb (ICE)"},
+    "CC":      {"sector": "Agriculture", "full_name": "Cocoa", "unit": "USD/metric ton (ICE)"},
+    "LE":      {"sector": "Agriculture", "full_name": "Live Cattle", "unit": "USD/lb (CME)"},
+    "PALM":    {"sector": "Agriculture", "full_name": "Crude Palm Oil (CPO)", "unit": "USD/metric ton (BMD)"},
+}
 
 
 def _get_redis():
@@ -74,40 +103,33 @@ def _fmt_cap(v) -> str:
     return f"${v/1e6:.0f}M"
 
 
-# ── Claude Haiku AI summary helper ────────────────────────────────────────────
+# ── Gemini AI helper ──────────────────────────────────────────────────────────
 
-def _ai_summary(prompt: str) -> str | None:
+def _call_gemini(prompt: str, min_words: int = 55, max_words: int = 110) -> str | None:
     """
-    Call Claude Haiku for a polished 75-100 word summary.
-    Returns None on any failure — caller falls back to template.
+    Call Gemini 2.5 Flash. Returns None on any failure — caller uses template fallback.
     """
-    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    api_key = os.environ.get("GEMINI_API_KEY", "")
     if not api_key:
         return None
     try:
-        import anthropic
-        client = anthropic.Anthropic(api_key=api_key)
-        msg = client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=200,
-            temperature=0.4,
-            messages=[{
-                "role": "user",
-                "content": (
-                    f"{prompt}\n\n"
-                    "Reply with ONLY the summary text. 75-100 words. "
-                    "No headers, no bullet points, no markdown. "
-                    "Professional financial intelligence tone, third-person. "
-                    "Be specific — include actual numbers. End with a period."
-                ),
-            }],
+        from google import genai
+        client = genai.Client(api_key=api_key)
+        r = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
         )
-        text = msg.content[0].text.strip()
-        if 40 < len(text.split()) < 130:
+        text = r.text.strip()
+        # Strip any stray markdown the model might add
+        if text.startswith("**") or text.startswith("#"):
+            import re
+            text = re.sub(r"^[#*\-]+\s*", "", text, flags=re.MULTILINE).strip()
+        words = len(text.split())
+        if (min_words - 15) < words < (max_words + 25):
             return text
         return None
     except Exception as exc:
-        log.debug("Claude Haiku summary failed: %s", exc)
+        log.debug("Gemini call failed: %s", exc)
         return None
 
 
@@ -115,10 +137,9 @@ def _ai_summary(prompt: str) -> str | None:
 
 def _country_summary_text(country: Country, db) -> str:
     """
-    Write a compelling, SEO-rich 75-100 word summary for a country page.
+    Stable 75-100 word macro overview for a country page.
     Uses Gemini AI with real indicator data. Falls back to polished template.
     """
-    # Gather latest indicators
     ind: dict[str, float] = {}
     rows = (
         db.query(CountryIndicator)
@@ -151,7 +172,6 @@ def _country_summary_text(country: Country, db) -> str:
         ("ASEAN", country.is_asean), ("OECD", country.is_oecd),
     ] if flag]
 
-    # Infer development status if not explicitly set — never default to "developing" for G7/OECD
     if country.development_status:
         dev_status = country.development_status.lower()
     elif country.is_g7 or country.is_oecd or country.income_level == "high":
@@ -162,88 +182,153 @@ def _country_summary_text(country: Country, db) -> str:
         dev_status = "emerging"
     currency = country.currency_name or country.currency_code or "its local currency"
 
-    # Try Gemini AI first
     if os.environ.get("GEMINI_API_KEY"):
         facts = (
             f"Country: {country.name} ({country.code})\n"
-            f"Economy type: {dev_status}\n"
+            f"Economy classification: {dev_status}\n"
+            f"Region: {country.region or 'N/A'}\n"
             f"GDP: {_fmt_gdp(gdp)}\n"
             f"GDP growth: {f'{growth:.1f}%' if growth is not None else 'N/A'}\n"
             f"Inflation: {f'{inflation:.1f}%' if inflation is not None else 'N/A'}\n"
-            f"Central bank rate: {f'{rate:.2f}%' if rate is not None else 'N/A'}\n"
+            f"Central bank policy rate: {f'{rate:.2f}%' if rate is not None else 'N/A'}\n"
             f"Unemployment: {f'{unemployment:.1f}%' if unemployment is not None else 'N/A'}\n"
-            f"Government debt (% GDP): {f'{debt:.0f}%' if debt is not None else 'N/A'}\n"
-            f"Memberships: {', '.join(groups) if groups else 'UN member'}\n"
+            f"Government debt (% of GDP): {f'{debt:.0f}%' if debt is not None else 'N/A'}\n"
+            f"S&P credit rating: {country.credit_rating_sp or 'N/A'}\n"
+            f"International group memberships: {', '.join(groups) if groups else 'UN member'}\n"
             f"Currency: {currency}\n"
-            f"Region: {country.region or 'N/A'}\n"
+            f"Major exports: {country.major_exports or 'N/A'}\n"
         )
         prompt = (
-            f"Write a concise financial intelligence summary for the MetricsHour country page "
-            f"for {country.name}. Use these latest economic indicators:\n\n{facts}\n\n"
-            f"The summary should help investors and analysts quickly understand the macro environment. "
-            f"Mention GDP, growth trend, inflation, and key group memberships. "
-            f"Focus on what matters for financial decision-making."
+            f"You are a senior macro strategist writing for MetricsHour, a financial intelligence "
+            f"platform used by institutional investors, hedge funds, and equity analysts.\n\n"
+            f"Write a factual 75-100 word macro overview for the {country.name} country page.\n\n"
+            f"Data:\n{facts}\n\n"
+            f"Requirements:\n"
+            f"- Cover GDP size and growth trajectory\n"
+            f"- Describe the inflation and monetary policy environment\n"
+            f"- Note key group memberships that matter for trade and policy\n"
+            f"- Highlight any standout macro characteristic (high debt, commodity exports, trade balance, credit quality)\n"
+            f"- Write in Financial Times macro-brief style: third-person, authoritative, data-specific\n"
+            f"- Include exact numbers. No bullet points. No headers. End with a period."
         )
-        ai = _ai_summary(prompt)
+        ai = _call_gemini(prompt, min_words=65, max_words=110)
         if ai:
             return ai
 
     # Polished template fallback
     group_str = ", ".join(groups[:3]) if groups else "the United Nations"
     parts = []
-
-    # Opening: economy classification and size
     gdp_str = _fmt_gdp(gdp)
     if dev_status == "developed":
-        parts.append(
-            f"{country.name} ({country.code}) is a developed economy with a GDP of {gdp_str},"
-            f" one of the world's larger markets by output."
-        )
+        parts.append(f"{country.name} ({country.code}) is a developed economy with a GDP of {gdp_str}.")
     else:
-        parts.append(
-            f"{country.name} ({country.code}) is a {dev_status} economy with a GDP of {gdp_str},"
-            f" tracked across 80+ macroeconomic indicators on MetricsHour."
-        )
-
-    # Growth and inflation together
+        parts.append(f"{country.name} ({country.code}) is a {dev_status} economy with a GDP of {gdp_str}.")
     if growth is not None and inflation is not None:
         growth_word = "expanding" if growth > 0 else "contracting"
-        parts.append(
-            f"The economy is {growth_word} at {growth:.1f}% annual growth with inflation at {inflation:.1f}%."
-        )
+        parts.append(f"The economy is {growth_word} at {growth:.1f}% annual growth with inflation at {inflation:.1f}%.")
     elif growth is not None:
         parts.append(f"Annual GDP growth stands at {growth:.1f}%.")
-
-    # Monetary policy
     if rate is not None:
         if rate > 10:
-            parts.append(f"The central bank maintains a high {rate:.2f}% policy rate, signalling tight monetary conditions.")
+            parts.append(f"The central bank maintains a restrictive {rate:.2f}% policy rate.")
         elif rate > 5:
-            parts.append(f"The central bank holds rates at {rate:.2f}%, balancing growth and inflation pressures.")
+            parts.append(f"The central bank holds rates at {rate:.2f}%.")
         else:
-            parts.append(f"With a {rate:.2f}% policy rate, monetary conditions remain relatively accommodative.")
-
-    # Labour market
+            parts.append(f"Monetary policy is accommodative at {rate:.2f}%.")
     if unemployment is not None:
-        if unemployment < 5:
-            parts.append(f"Unemployment is tight at {unemployment:.1f}%.")
-        else:
-            parts.append(f"Unemployment stands at {unemployment:.1f}%.")
-
-    # Closing: memberships and currency
+        parts.append(f"Unemployment stands at {unemployment:.1f}%.")
     parts.append(
         f"A member of {group_str}, {country.name} transacts in {currency}."
-        f" Trade flows, bilateral relationships, and stock exposure are linked from this page."
+        f" Trade flows, bilateral relationships, and global stock exposure are tracked on MetricsHour."
+    )
+    return " ".join(parts)
+
+
+# ── Country daily insight ──────────────────────────────────────────────────────
+
+def _country_insight_text(country: Country, db) -> str | None:
+    """
+    Opinionated 60-80 word analyst take for a country page. Generated daily.
+    Focuses on what investors should watch NOW — not a description.
+    """
+    if not os.environ.get("GEMINI_API_KEY"):
+        return None
+
+    ind: dict[str, float] = {}
+    rows = (
+        db.query(CountryIndicator)
+        .filter(CountryIndicator.country_id == country.id)
+        .filter(CountryIndicator.indicator.in_([
+            "gdp_usd", "gdp_growth_pct", "inflation_pct",
+            "interest_rate_pct", "unemployment_pct",
+            "current_account_usd", "govt_debt_pct_gdp",
+            "current_account_pct_gdp",
+        ]))
+        .order_by(CountryIndicator.period_date.desc())
+        .limit(40)
+        .all()
+    )
+    seen: set[str] = set()
+    for r in rows:
+        if r.indicator not in seen:
+            ind[r.indicator] = r.value
+            seen.add(r.indicator)
+
+    groups = [g for g, flag in [
+        ("G7", country.is_g7), ("G20", country.is_g20), ("EU", country.is_eu),
+        ("NATO", country.is_nato), ("BRICS", country.is_brics), ("OPEC", country.is_opec),
+        ("ASEAN", country.is_asean), ("OECD", country.is_oecd),
+    ] if flag]
+
+    def _pct1(key: str) -> str:
+        v = ind.get(key)
+        return f"{v:.1f}%" if v is not None else "N/A"
+
+    def _pct2(key: str) -> str:
+        v = ind.get(key)
+        return f"{v:.2f}%" if v is not None else "N/A"
+
+    def _pct0(key: str) -> str:
+        v = ind.get(key)
+        return f"{v:.0f}%" if v is not None else "N/A"
+
+    facts = (
+        f"Country: {country.name} ({country.code})\n"
+        f"GDP: {_fmt_gdp(ind.get('gdp_usd'))}\n"
+        f"GDP growth: {_pct1('gdp_growth_pct')}\n"
+        f"Inflation: {_pct1('inflation_pct')}\n"
+        f"Policy rate: {_pct2('interest_rate_pct')}\n"
+        f"Unemployment: {_pct1('unemployment_pct')}\n"
+        f"Govt debt/GDP: {_pct0('govt_debt_pct_gdp')}\n"
+        f"Current account (% GDP): {_pct1('current_account_pct_gdp')}\n"
+        f"S&P rating: {country.credit_rating_sp or 'N/A'}\n"
+        f"Group memberships: {', '.join(groups) if groups else 'UN member'}\n"
+        f"Currency: {country.currency_name or country.currency_code or 'N/A'}\n"
+        f"Today's date: {date.today().strftime('%B %d, %Y')}\n"
     )
 
-    return " ".join(parts)
+    prompt = (
+        f"You are a macro strategist at a tier-1 investment bank writing a daily intelligence brief "
+        f"for professional investors on MetricsHour.\n\n"
+        f"Write a 60-80 word DAILY INSIGHT for {country.name}. This is NOT a description — "
+        f"it is a forward-looking analytical take.\n\n"
+        f"Data:\n{facts}\n\n"
+        f"Requirements:\n"
+        f"- Identify the ONE most important macro dynamic investors should watch in this country right now\n"
+        f"- Reference a specific indicator level or trend that supports your view\n"
+        f"- Name the key risk or opportunity for portfolio positioning\n"
+        f"- Use active, confident language: 'Watch for...', 'The key tension is...', 'Investors should note...'\n"
+        f"- Be opinionated and specific. No generic statements.\n"
+        f"- No bullet points. No headers. Third-person. End with a period."
+    )
+    return _call_gemini(prompt, min_words=50, max_words=95)
 
 
 # ── Stock summary ──────────────────────────────────────────────────────────────
 
 def _stock_summary_text(asset: Asset, db) -> str:
     """
-    Write a compelling 75-100 word summary for a stock page.
+    Stable 75-100 word overview for a stock page.
     Focuses on geographic revenue exposure — the MetricsHour differentiator.
     """
     hq = db.query(Country).filter(Country.id == asset.country_id).first() if asset.country_id else None
@@ -261,88 +346,144 @@ def _stock_summary_text(asset: Asset, db) -> str:
     cap_str = _fmt_cap(asset.market_cap_usd)
     sector = asset.sector or "company"
 
-    # Try Gemini AI first
-    if os.environ.get("GEMINI_API_KEY") and revs:
+    if os.environ.get("GEMINI_API_KEY"):
         rev_lines = "\n".join(
-            f"  - {c.name} ({c.flag_emoji or ''}): {r.revenue_pct:.0f}% (FY{r.fiscal_year})"
+            f"  - {c.flag_emoji or ''} {c.name}: {r.revenue_pct:.0f}% (FY{r.fiscal_year})"
             for r, c in revs
-        )
+        ) if revs else "  - Geographic breakdown not yet available (SEC EDGAR pending)"
+
         prompt = (
-            f"Write a concise financial intelligence summary for the MetricsHour stock page for {asset.name} ({asset.symbol}).\n\n"
-            f"Key facts:\n"
-            f"- Company: {asset.name} ({asset.symbol})\n"
+            f"You are a senior equity analyst at a global investment bank writing for MetricsHour, "
+            f"a financial intelligence platform used by fund managers and institutional investors.\n\n"
+            f"Write a factual 75-100 word geographic revenue overview for {asset.name} ({asset.symbol}).\n\n"
+            f"Company data:\n"
+            f"- Name: {asset.name} ({asset.symbol})\n"
             f"- Sector: {sector}\n"
+            f"- Industry: {asset.industry or 'N/A'}\n"
             f"- Headquarters: {hq_name}\n"
             f"- Market cap: {cap_str}\n"
-            f"- Geographic revenue breakdown (from SEC EDGAR 10-K filings):\n{rev_lines}\n\n"
-            f"Focus on the geographic revenue exposure and what it means for investors — e.g., "
-            f"exposure to trade tensions, currency risk, or geopolitical events. "
-            f"This is the unique data MetricsHour provides."
+            f"- Geographic revenue (SEC EDGAR 10-K filings):\n{rev_lines}\n\n"
+            f"Requirements:\n"
+            f"- Lead with the company's business and scale\n"
+            f"- Highlight the top 2-3 revenue markets by geography\n"
+            f"- Explain what the geographic concentration means for investors "
+            f"(FX risk, tariff exposure, geopolitical sensitivity, or growth tailwind)\n"
+            f"- Connect revenue geography to real-world macro risk where specific\n"
+            f"- Write in Goldman Sachs equity note style: precise, data-driven, forward-oriented\n"
+            f"- No bullet points. No headers. Third-person. Include exact percentages. End with a period."
         )
-        ai = _ai_summary(prompt)
+        ai = _call_gemini(prompt, min_words=65, max_words=110)
         if ai:
             return ai
 
     # Polished template fallback
-    parts = []
-
-    # Opening: size and sector
-    parts.append(
-        f"{asset.name} ({asset.symbol}) is a {cap_str} market capitalisation {sector} headquartered in {hq_name}."
-    )
-
-    # Geographic revenue — the core value proposition
+    parts = [f"{asset.name} ({asset.symbol}) is a {cap_str} market cap {sector} headquartered in {hq_name}."]
     if revs:
         top_rev, top_c = revs[0]
-        fiscal_year = top_rev.fiscal_year
         flag = top_c.flag_emoji or ""
         parts.append(
-            f"According to SEC EDGAR {fiscal_year} filings, the largest revenue market is"
-            f" {flag} {top_c.name}, contributing {top_rev.revenue_pct:.0f}% of total revenue."
+            f"SEC EDGAR FY{top_rev.fiscal_year} filings show {flag} {top_c.name} as the largest revenue market"
+            f" at {top_rev.revenue_pct:.0f}% of total revenue."
         )
         if len(revs) >= 2:
             r2, c2 = revs[1]
-            parts.append(
-                f"{c2.flag_emoji or ''} {c2.name} is the second-largest market at {r2.revenue_pct:.0f}%."
-            )
-        if len(revs) >= 3:
-            r3, c3 = revs[2]
-            parts.append(f"{c3.name} contributes {r3.revenue_pct:.0f}%.")
-
-        # Insight: what this exposure means
+            parts.append(f"{c2.flag_emoji or ''} {c2.name} contributes {r2.revenue_pct:.0f}%.")
         top_pct = top_rev.revenue_pct
         if top_pct >= 40:
             parts.append(
-                f"This high geographic concentration makes {asset.symbol} particularly sensitive"
-                f" to macro conditions, trade policy, and currency movements in {top_c.name}."
+                f"This concentration makes {asset.symbol} particularly sensitive to macro conditions and trade policy in {top_c.name}."
             )
         elif top_pct >= 20:
             parts.append(
-                f"This exposure links {asset.symbol}'s earnings outlook to {top_c.name}'s"
-                f" GDP trajectory and bilateral trade flows tracked on MetricsHour."
+                f"This exposure links {asset.symbol}'s earnings to {top_c.name}'s GDP trajectory and bilateral trade flows."
             )
     else:
-        parts.append(
-            f"Geographic revenue data and bilateral trade exposure are tracked on MetricsHour"
-            f" using SEC EDGAR 10-K and 10-Q filings."
-        )
-
+        parts.append("Geographic revenue data is tracked on MetricsHour using SEC EDGAR 10-K and 10-Q filings.")
     return " ".join(parts)
+
+
+# ── Stock daily insight ────────────────────────────────────────────────────────
+
+def _stock_insight_text(asset: Asset, db) -> str | None:
+    """
+    Opinionated 60-80 word analyst take for a stock page. Generated daily.
+    """
+    if not os.environ.get("GEMINI_API_KEY"):
+        return None
+
+    hq = db.query(Country).filter(Country.id == asset.country_id).first() if asset.country_id else None
+
+    revs = (
+        db.query(StockCountryRevenue, Country)
+        .join(Country, StockCountryRevenue.country_id == Country.id)
+        .filter(StockCountryRevenue.asset_id == asset.id)
+        .order_by(StockCountryRevenue.revenue_pct.desc())
+        .limit(4)
+        .all()
+    )
+
+    if not revs:
+        return None
+
+    rev_lines = "\n".join(
+        f"  - {c.flag_emoji or ''} {c.name}: {r.revenue_pct:.0f}% (FY{r.fiscal_year})"
+        for r, c in revs
+    )
+
+    # Pull HQ country indicators for macro context
+    hq_macro = ""
+    if hq:
+        hq_inds: dict[str, float] = {}
+        hq_rows = (
+            db.query(CountryIndicator)
+            .filter(CountryIndicator.country_id == hq.id)
+            .filter(CountryIndicator.indicator.in_(["gdp_growth_pct", "inflation_pct", "interest_rate_pct"]))
+            .order_by(CountryIndicator.period_date.desc())
+            .limit(10)
+            .all()
+        )
+        seen_h: set[str] = set()
+        for r in hq_rows:
+            if r.indicator not in seen_h:
+                hq_inds[r.indicator] = r.value
+                seen_h.add(r.indicator)
+        if hq_inds:
+            hq_macro = (
+                f"HQ country ({hq.name}) macro: "
+                f"GDP growth {hq_inds.get('gdp_growth_pct', 'N/A'):.1f}%" if isinstance(hq_inds.get('gdp_growth_pct'), float) else
+                f"HQ country ({hq.name})"
+            )
+
+    prompt = (
+        f"You are a sell-side equity analyst writing a daily intelligence brief for MetricsHour investors.\n\n"
+        f"Write a 60-80 word DAILY INSIGHT for {asset.name} ({asset.symbol}). "
+        f"This is NOT a company description — it is a forward-looking analyst take.\n\n"
+        f"Company data:\n"
+        f"- Sector: {asset.sector or 'N/A'}, Market cap: {_fmt_cap(asset.market_cap_usd)}\n"
+        f"- Headquarters: {hq.name if hq else 'N/A'}\n"
+        f"- Geographic revenue breakdown:\n{rev_lines}\n"
+        f"- Today's date: {date.today().strftime('%B %d, %Y')}\n\n"
+        f"Requirements:\n"
+        f"- Pick ONE geographic exposure that carries the highest near-term risk or opportunity\n"
+        f"- Name the specific macro driver: tariff risk, FX headwind/tailwind, recession risk, trade flow, or growth catalyst\n"
+        f"- Give an actionable framing of what this means for the stock's earnings outlook\n"
+        f"- Write like a Wall Street equity research note: confident, specific, numbers-driven\n"
+        f"- No bullet points. No headers. Active voice. End with a period."
+    )
+    return _call_gemini(prompt, min_words=50, max_words=95)
 
 
 # ── Trade summary ──────────────────────────────────────────────────────────────
 
 def _trade_summary_text(exporter: Country, importer: Country, trade: TradePair | None) -> str:
     """
-    Write a compelling 75-100 word summary for a bilateral trade page.
-    Includes trade value, balance, top products, and GDP significance.
+    Stable 75-100 word overview for a bilateral trade page.
     """
     if not trade:
         return (
-            f"{exporter.name} and {importer.name} are bilateral trade partners"
-            f" tracked by MetricsHour using WTO and IMF data."
-            f" Historical trade flows, top export products, and GDP dependency ratios"
-            f" are updated annually from UN Comtrade releases."
+            f"{exporter.name} and {importer.name} are bilateral trade partners tracked by MetricsHour "
+            f"using WTO, IMF, and UN Comtrade data. Historical trade flows, top export products, "
+            f"and GDP dependency ratios are updated annually."
         )
 
     balance_word = "surplus" if (trade.balance_usd or 0) >= 0 else "deficit"
@@ -350,61 +491,124 @@ def _trade_summary_text(exporter: Country, importer: Country, trade: TradePair |
     exp_flag = exporter.flag_emoji or ""
     imp_flag = importer.flag_emoji or ""
 
-    # Try Gemini AI first
     if os.environ.get("GEMINI_API_KEY"):
         facts = (
             f"Exporter: {exporter.name} ({exporter.code}) {exp_flag}\n"
             f"Importer: {importer.name} ({importer.code}) {imp_flag}\n"
-            f"Year: {trade.year}\n"
+            f"Data year: {trade.year}\n"
             f"Exports value: {_fmt_usd(trade.exports_usd)}\n"
             f"Imports value: {_fmt_usd(trade.imports_usd)}\n"
-            f"Trade balance: {_fmt_usd(trade.balance_usd)} ({balance_word})\n"
-            f"Trade as % of exporter GDP: {f'{trade.exporter_gdp_share_pct:.1f}%' if trade.exporter_gdp_share_pct else 'N/A'}\n"
+            f"Trade balance: {_fmt_usd(trade.balance_usd)} ({balance_word} for {exporter.name})\n"
+            f"Trade as % of {exporter.name} GDP: {f'{trade.exporter_gdp_share_pct:.1f}%' if trade.exporter_gdp_share_pct else 'N/A'}\n"
             f"Top export products: {', '.join(products) if products else 'N/A'}\n"
         )
         prompt = (
-            f"Write a concise financial intelligence summary for the MetricsHour bilateral trade page "
-            f"for {exporter.name}–{importer.name}.\n\n{facts}\n\n"
-            f"Explain the significance of this trade relationship — its scale, balance, "
-            f"key products, and what it means for both economies. "
-            f"Mention what investors tracking global supply chains should know."
+            f"You are a macro economist and trade analyst writing for MetricsHour, used by supply chain "
+            f"analysts, FX traders, and equity investors.\n\n"
+            f"Write a factual 75-100 word overview of the {exporter.name}–{importer.name} trade relationship.\n\n"
+            f"Data:\n{facts}\n\n"
+            f"Requirements:\n"
+            f"- Lead with the scale and direction of the trade relationship\n"
+            f"- Describe the trade balance and what it implies about economic dependency or leverage\n"
+            f"- Name the top export product categories and which industries rely on these flows\n"
+            f"- Explain any strategic or geopolitical significance of this trade corridor\n"
+            f"- Note what FX traders and equity investors exposed to these countries should understand\n"
+            f"- Write in Reuters/FT trade desk style: factual, concise, market-aware\n"
+            f"- No bullet points. No headers. Include specific dollar amounts. End with a period."
         )
-        ai = _ai_summary(prompt)
+        ai = _call_gemini(prompt, min_words=65, max_words=110)
         if ai:
             return ai
 
     # Polished template fallback
     parts = []
-    exp_str = _fmt_usd(trade.exports_usd)
-    bal_str = _fmt_usd(trade.balance_usd)
-
     parts.append(
-        f"{exp_flag} {exporter.name} exported {exp_str} to"
+        f"{exp_flag} {exporter.name} exported {_fmt_usd(trade.exports_usd)} to"
         f" {imp_flag} {importer.name} in {trade.year},"
-        f" running a {bal_str} trade {balance_word}."
+        f" running a {_fmt_usd(trade.balance_usd)} trade {balance_word}."
     )
-
     if products:
         prod_str = ", ".join(products[:-1]) + f" and {products[-1]}" if len(products) > 1 else products[0]
         parts.append(f"Top exports include {prod_str}.")
-
     if trade.exporter_gdp_share_pct:
-        significance = (
-            "a critical" if trade.exporter_gdp_share_pct >= 5 else
-            "a significant" if trade.exporter_gdp_share_pct >= 2 else
-            "a modest"
-        )
-        parts.append(
-            f"Bilateral trade represents {significance} {trade.exporter_gdp_share_pct:.1f}%"
-            f" of {exporter.name}'s GDP, sourced from UN Comtrade {trade.year} data."
-        )
+        sig = "critical" if trade.exporter_gdp_share_pct >= 5 else "significant" if trade.exporter_gdp_share_pct >= 2 else "modest"
+        parts.append(f"This {sig} {trade.exporter_gdp_share_pct:.1f}% of {exporter.name}'s GDP is sourced from UN Comtrade {trade.year} data.")
+    parts.append("Track stock revenue exposure, macro indicators, and currency links for both countries on MetricsHour.")
+    return " ".join(parts)
 
-    parts.append(
-        f"Track stock revenue exposure, macro indicators, and currency links"
-        f" for both countries on MetricsHour."
+
+# ── Commodity summary ──────────────────────────────────────────────────────────
+
+def _commodity_summary_text(asset: Asset) -> str:
+    """
+    Stable 75-100 word overview for a commodity page.
+    """
+    meta = COMMODITY_META.get(asset.symbol, {})
+    full_name = meta.get("full_name", asset.name)
+    sector = meta.get("sector", asset.sector or "Commodity")
+    unit = meta.get("unit", "USD")
+
+    if os.environ.get("GEMINI_API_KEY"):
+        prompt = (
+            f"You are a commodity analyst at a major trading house writing for MetricsHour, "
+            f"a financial intelligence platform used by commodity traders, macro investors, and corporate procurement teams.\n\n"
+            f"Write a factual 75-100 word overview for the {full_name} ({asset.symbol}) commodity page.\n\n"
+            f"Commodity details:\n"
+            f"- Full name: {full_name}\n"
+            f"- Symbol: {asset.symbol}\n"
+            f"- Sector: {sector}\n"
+            f"- Pricing unit: {unit}\n\n"
+            f"Requirements:\n"
+            f"- Describe what this commodity is and why it matters to the global economy\n"
+            f"- Name the key producers, consumers, or trading regions that drive this market\n"
+            f"- Explain the primary supply and demand factors that move the price\n"
+            f"- Identify which equity sectors or asset classes are most exposed to this commodity\n"
+            f"- Mention any exchange or benchmark standard (NYMEX WTI, LME copper, CBOT wheat, etc.)\n"
+            f"- Write in commodity desk style: precise, market-fluent, no fluff\n"
+            f"- No bullet points. No headers. Third-person. End with a period."
+        )
+        ai = _call_gemini(prompt, min_words=65, max_words=110)
+        if ai:
+            return ai
+
+    # Fallback template
+    return (
+        f"{full_name} ({asset.symbol}) is a globally traded {sector.lower()} commodity priced in {unit}. "
+        f"Price movements are driven by supply and demand dynamics across major producers and consumers worldwide. "
+        f"MetricsHour tracks {asset.symbol} alongside bilateral trade flows, country macro indicators, "
+        f"and equity stocks exposed to this commodity sector."
     )
 
-    return " ".join(parts)
+
+# ── Commodity daily insight ────────────────────────────────────────────────────
+
+def _commodity_insight_text(asset: Asset) -> str | None:
+    """
+    Opinionated 60-80 word daily analyst take for a commodity page.
+    """
+    if not os.environ.get("GEMINI_API_KEY"):
+        return None
+
+    meta = COMMODITY_META.get(asset.symbol, {})
+    full_name = meta.get("full_name", asset.name)
+    sector = meta.get("sector", asset.sector or "Commodity")
+    unit = meta.get("unit", "USD")
+
+    prompt = (
+        f"You are a commodity market analyst at a major trading house writing a daily brief for MetricsHour.\n\n"
+        f"Write a 60-80 word DAILY INSIGHT for {full_name} ({asset.symbol}). "
+        f"This is NOT a description — it is a forward-looking market take.\n\n"
+        f"Commodity: {full_name} ({asset.symbol}), {sector}, priced in {unit}\n"
+        f"Today's date: {date.today().strftime('%B %d, %Y')}\n\n"
+        f"Requirements:\n"
+        f"- Identify the dominant supply or demand factor driving this market right now\n"
+        f"- Name one near-term catalyst or risk that traders should watch\n"
+        f"- Reference specific geopolitics, production data, seasonal pattern, or demand trend\n"
+        f"- Explain what equity sector or macro theme is most exposed to this price move\n"
+        f"- Write like a Reuters commodity brief: direct, specific, market-focused\n"
+        f"- No bullet points. No headers. Active voice. End with a period."
+    )
+    return _call_gemini(prompt, min_words=50, max_words=95)
 
 
 # ── Upsert helper ──────────────────────────────────────────────────────────────
@@ -433,8 +637,9 @@ def _upsert_summary(db, entity_type: str, entity_code: str, text_: str):
 @app.task(name="tasks.summaries.generate_page_summaries", bind=True, max_retries=2)
 def generate_page_summaries(self):
     """
-    Daily 2am UTC: regenerate all page summaries.
-    Uses Gemini AI (free tier) if GEMINI_API_KEY is set, else polished templates.
+    Daily 2am UTC: regenerate stable page summaries for countries, stocks, commodities, trade pairs.
+    Uses Gemini 2.5 Flash if GEMINI_API_KEY is set, else polished templates.
+    Summaries are factual/descriptive — only regenerate when underlying data changes meaningfully.
     """
     db = SessionLocal()
     try:
@@ -463,6 +668,18 @@ def generate_page_summaries(self):
                 log.warning("Stock summary failed %s: %s", s.symbol, e)
         db.commit()
         log.info("Stock summaries done: %d", len(stocks))
+
+        # Commodity summaries
+        commodities = db.query(Asset).filter(Asset.asset_type == "commodity").all()
+        for c in commodities:
+            try:
+                summary = _commodity_summary_text(c)
+                _upsert_summary(db, "commodity", c.symbol, summary)
+                total += 1
+            except Exception as e:
+                log.warning("Commodity summary failed %s: %s", c.symbol, e)
+        db.commit()
+        log.info("Commodity summaries done: %d", len(commodities))
 
         # Trade pair summaries — latest year per pair only
         pairs = db.query(TradePair).order_by(TradePair.year.desc()).all()
@@ -496,12 +713,80 @@ def generate_page_summaries(self):
         db.close()
 
 
+@app.task(name="tasks.summaries.generate_daily_insights", bind=True, max_retries=2)
+def generate_daily_insights(self):
+    """
+    Daily 5am UTC: regenerate opinionated AI insights for all key pages.
+    Insights are forward-looking analyst takes — always refreshed daily regardless of data changes.
+    Stored as entity_type = 'country_insight', 'stock_insight', 'commodity_insight'.
+    """
+    if not os.environ.get("GEMINI_API_KEY"):
+        log.warning("generate_daily_insights: no GEMINI_API_KEY — skipping")
+        return {"skipped": True}
+
+    db = SessionLocal()
+    try:
+        total = 0
+
+        # Country insights
+        countries = db.query(Country).all()
+        for c in countries:
+            try:
+                insight = _country_insight_text(c, db)
+                if insight:
+                    _upsert_summary(db, "country_insight", c.code, insight)
+                    total += 1
+            except Exception as e:
+                log.warning("Country insight failed %s: %s", c.code, e)
+        db.commit()
+        log.info("Country insights done: %d", total)
+
+        # Stock insights
+        stock_count = 0
+        stocks = db.query(Asset).filter(Asset.asset_type == "stock").all()
+        for s in stocks:
+            try:
+                insight = _stock_insight_text(s, db)
+                if insight:
+                    _upsert_summary(db, "stock_insight", s.symbol, insight)
+                    total += 1
+                    stock_count += 1
+            except Exception as e:
+                log.warning("Stock insight failed %s: %s", s.symbol, e)
+        db.commit()
+        log.info("Stock insights done: %d", stock_count)
+
+        # Commodity insights
+        commodity_count = 0
+        commodities = db.query(Asset).filter(Asset.asset_type == "commodity").all()
+        for c in commodities:
+            try:
+                insight = _commodity_insight_text(c)
+                if insight:
+                    _upsert_summary(db, "commodity_insight", c.symbol, insight)
+                    total += 1
+                    commodity_count += 1
+            except Exception as e:
+                log.warning("Commodity insight failed %s: %s", c.symbol, e)
+        db.commit()
+        log.info("Commodity insights done: %d", commodity_count)
+
+        log.info("Total daily insights generated: %d", total)
+        return {"insights_generated": total}
+
+    except Exception as exc:
+        db.rollback()
+        log.error("generate_daily_insights failed: %s", exc)
+        raise self.retry(exc=exc)
+    finally:
+        db.close()
+
+
 @app.task(name="tasks.summaries.refresh_entity_summary", bind=True, max_retries=1)
 def refresh_entity_summary(self, entity_type: str, entity_code: str):
     """
-    Refresh a single entity summary. Triggered by macro_release or price_move events.
-    entity_type: 'country' | 'stock' | 'trade'
-    entity_code: 'US' | 'AAPL' | 'US-CN'
+    Refresh a single entity summary on demand.
+    entity_type: 'country' | 'stock' | 'commodity' | 'trade'
     """
     db = SessionLocal()
     try:
@@ -514,6 +799,12 @@ def refresh_entity_summary(self, entity_type: str, entity_code: str):
             asset = db.query(Asset).filter(Asset.symbol == entity_code.upper()).first()
             if asset:
                 summary = _stock_summary_text(asset, db)
+        elif entity_type == "commodity":
+            asset = db.query(Asset).filter(
+                Asset.symbol == entity_code.upper(), Asset.asset_type == "commodity"
+            ).first()
+            if asset:
+                summary = _commodity_summary_text(asset)
         elif entity_type == "trade":
             codes = entity_code.upper().split("-")
             if len(codes) == 2:

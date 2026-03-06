@@ -61,8 +61,26 @@
       </div>
 
       <!-- Page Summary -->
-      <div v-if="pageSummary?.summary" class="bg-[#111827] border border-[#1f2937] rounded-lg p-4 mb-6 text-sm text-gray-300 leading-relaxed">
+      <div v-if="pageSummary?.summary" class="bg-[#111827] border border-[#1f2937] rounded-lg p-4 mb-3 text-sm text-gray-400 leading-relaxed">
         {{ pageSummary.summary }}
+      </div>
+
+      <!-- Daily Insight -->
+      <div v-if="pageInsight?.summary" class="relative bg-[#0d1520] border border-emerald-900/50 rounded-lg p-4 mb-6 overflow-hidden">
+        <div class="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent"/>
+        <div class="flex items-start gap-3">
+          <span class="text-emerald-500 text-base mt-0.5 shrink-0">◆</span>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 mb-1.5 flex-wrap">
+              <span class="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">MetricsHour Intelligence</span>
+              <span class="text-[10px] text-gray-600">· Daily analyst take</span>
+              <span v-if="pageInsight.generated_at" class="text-[10px] text-gray-700 ml-auto">
+                {{ new Date(pageInsight.generated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) }}
+              </span>
+            </div>
+            <p class="text-sm text-gray-200 leading-relaxed">{{ pageInsight.summary }}</p>
+          </div>
+        </div>
       </div>
 
       <!-- Quick facts -->
@@ -309,6 +327,12 @@ const { data: timeseries, pending: timeseriesLoading } = useAsyncData(
 const { data: pageSummary } = useAsyncData(
   `summary-country-${code}`,
   () => get<any>(`/api/summaries/country/${code.toUpperCase()}`).catch(() => null),
+  { server: false },
+)
+
+const { data: pageInsight } = useAsyncData(
+  `insight-country-${code}`,
+  () => get<any>(`/api/summaries/country_insight/${code.toUpperCase()}`).catch(() => null),
   { server: false },
 )
 

@@ -8,7 +8,7 @@ client = genai.Client(api_key=os.environ['GEMINI_API_KEY'])
 
 try:
     response = client.models.generate_content(
-        model="gemini-2.0-flash", 
+        model="gemini-2.5-flash",
         contents="Confirm: Finland Node is live and ready for MetricsHour."
     )
     print(f"TERMINAL FEED: {response.text}")
