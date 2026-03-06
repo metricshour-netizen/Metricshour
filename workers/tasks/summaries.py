@@ -309,20 +309,17 @@ def _country_insight_text(country: Country, db) -> str | None:
     )
 
     prompt = (
-        f"You are a macro strategist at a tier-1 investment bank writing a daily intelligence brief "
-        f"for professional investors on MetricsHour.\n\n"
-        f"Write a 60-80 word DAILY INSIGHT for {country.name}. This is NOT a description — "
-        f"it is a forward-looking analytical take.\n\n"
+        f"Senior macro strategist. Daily brief. MetricsHour institutional investors.\n\n"
         f"Data:\n{facts}\n\n"
-        f"Requirements:\n"
-        f"- Identify the ONE most important macro dynamic investors should watch in this country right now\n"
-        f"- Reference a specific indicator level or trend that supports your view\n"
-        f"- Name the key risk or opportunity for portfolio positioning\n"
-        f"- Use active, confident language: 'Watch for...', 'The key tension is...', 'Investors should note...'\n"
-        f"- Be opinionated and specific. No generic statements.\n"
-        f"- No bullet points. No headers. Third-person. End with a period."
+        f"Write 55-70 words for {country.name}. Rules:\n"
+        f"1. Open with the single most investable tension in the data RIGHT NOW — cite exact numbers\n"
+        f"2. Second sentence: what that means for rates, FX, or equities — be explicit\n"
+        f"3. Final sentence: the near-term catalyst or risk to watch — specific, dated if possible\n"
+        f"BANNED: 'navigates', 'robust', 'resilient', 'notable', 'landscape', 'remains to be seen', "
+        f"'amid', 'complex', 'dynamic', 'uncertainty'. No hedge words. No generic statements. "
+        f"No bullet points. No headers. End with a period."
     )
-    return _call_gemini(prompt, min_words=50, max_words=95)
+    return _call_gemini(prompt, min_words=45, max_words=80)
 
 
 # ── Stock summary ──────────────────────────────────────────────────────────────
@@ -456,22 +453,18 @@ def _stock_insight_text(asset: Asset, db) -> str | None:
             )
 
     prompt = (
-        f"You are a sell-side equity analyst writing a daily intelligence brief for MetricsHour investors.\n\n"
-        f"Write a 60-80 word DAILY INSIGHT for {asset.name} ({asset.symbol}). "
-        f"This is NOT a company description — it is a forward-looking analyst take.\n\n"
-        f"Company data:\n"
-        f"- Sector: {asset.sector or 'N/A'}, Market cap: {_fmt_cap(asset.market_cap_usd)}\n"
-        f"- Headquarters: {hq.name if hq else 'N/A'}\n"
-        f"- Geographic revenue breakdown:\n{rev_lines}\n"
-        f"- Today's date: {date.today().strftime('%B %d, %Y')}\n\n"
-        f"Requirements:\n"
-        f"- Pick ONE geographic exposure that carries the highest near-term risk or opportunity\n"
-        f"- Name the specific macro driver: tariff risk, FX headwind/tailwind, recession risk, trade flow, or growth catalyst\n"
-        f"- Give an actionable framing of what this means for the stock's earnings outlook\n"
-        f"- Write like a Wall Street equity research note: confident, specific, numbers-driven\n"
-        f"- No bullet points. No headers. Active voice. End with a period."
+        f"Sell-side equity analyst. Daily brief. MetricsHour.\n\n"
+        f"Stock: {asset.name} ({asset.symbol}) | {asset.sector or 'N/A'} | {_fmt_cap(asset.market_cap_usd)} | HQ: {hq.name if hq else 'N/A'}\n"
+        f"Geographic revenue:\n{rev_lines}\n"
+        f"Date: {date.today().strftime('%B %d, %Y')}\n\n"
+        f"Write 55-70 words. Rules:\n"
+        f"1. Lead with the single geography driving the highest near-term EPS risk or upside — cite the % and the macro driver (tariff, FX, recession, policy rate)\n"
+        f"2. Quantify the impact: how much of revenue is at risk or benefiting\n"
+        f"3. End with one specific catalyst or date-driven event to watch\n"
+        f"BANNED: 'navigates', 'robust', 'resilient', 'notable', 'significant', 'landscape', 'remains', "
+        f"'amid', 'dynamic', 'headwinds', 'tailwinds', 'uncertainty'. No hedge words. No bullet points. End with a period."
     )
-    return _call_gemini(prompt, min_words=50, max_words=95)
+    return _call_gemini(prompt, min_words=45, max_words=80)
 
 
 # ── Trade summary ──────────────────────────────────────────────────────────────
@@ -567,18 +560,16 @@ def _trade_insight_text(exporter: Country, importer: Country, trade: TradePair |
     )
 
     prompt = (
-        f"You are a macro trade analyst at a global investment bank writing a daily brief for MetricsHour.\n\n"
-        f"Write a 60-80 word DAILY INSIGHT for the {exporter.name}–{importer.name} trade corridor. "
-        f"This is NOT a description — it is a forward-looking market take.\n\n"
+        f"Trade desk analyst. Daily brief. MetricsHour.\n\n"
         f"Data:\n{facts}\n\n"
-        f"Requirements:\n"
-        f"- Identify the ONE most important near-term risk or opportunity in this trade relationship\n"
-        f"- Reference tariff policy, FX moves, supply chain shifts, sanctions risk, or commodity exposure\n"
-        f"- Name which equity sectors or asset classes are most exposed to a disruption or improvement\n"
-        f"- Be specific and opinionated: 'Watch for...', 'The key tension is...', 'Investors should note...'\n"
-        f"- No bullet points. No headers. Active voice. End with a period."
+        f"Write 55-70 words on {exporter.name}–{importer.name}. Rules:\n"
+        f"1. Lead with the single highest-impact risk or shift in this corridor RIGHT NOW — cite the dollar value or % and the driver (tariff rate, FX move, sanctions, supply chain)\n"
+        f"2. Name the equity sector or specific stocks most exposed to a disruption\n"
+        f"3. End with the specific event or date that could change this relationship near-term\n"
+        f"BANNED: 'navigates', 'robust', 'resilient', 'notable', 'landscape', 'amid', 'complex', 'dynamic', 'uncertainty', 'headwinds', 'tailwinds'. "
+        f"No bullet points. No headers. Active voice. End with a period."
     )
-    return _call_gemini(prompt, min_words=50, max_words=95)
+    return _call_gemini(prompt, min_words=45, max_words=80)
 
 
 # ── Commodity summary ──────────────────────────────────────────────────────────
@@ -639,20 +630,16 @@ def _commodity_insight_text(asset: Asset) -> str | None:
     unit = meta.get("unit", "USD")
 
     prompt = (
-        f"You are a commodity market analyst at a major trading house writing a daily brief for MetricsHour.\n\n"
-        f"Write a 60-80 word DAILY INSIGHT for {full_name} ({asset.symbol}). "
-        f"This is NOT a description — it is a forward-looking market take.\n\n"
-        f"Commodity: {full_name} ({asset.symbol}), {sector}, priced in {unit}\n"
-        f"Today's date: {date.today().strftime('%B %d, %Y')}\n\n"
-        f"Requirements:\n"
-        f"- Identify the dominant supply or demand factor driving this market right now\n"
-        f"- Name one near-term catalyst or risk that traders should watch\n"
-        f"- Reference specific geopolitics, production data, seasonal pattern, or demand trend\n"
-        f"- Explain what equity sector or macro theme is most exposed to this price move\n"
-        f"- Write like a Reuters commodity brief: direct, specific, market-focused\n"
-        f"- No bullet points. No headers. Active voice. End with a period."
+        f"Commodity desk analyst. Daily brief. MetricsHour.\n\n"
+        f"Commodity: {full_name} ({asset.symbol}) | {sector} | {unit} | Date: {date.today().strftime('%B %d, %Y')}\n\n"
+        f"Write 55-70 words. Rules:\n"
+        f"1. State the dominant price driver RIGHT NOW — name the specific supply/demand factor, producer nation, or policy move\n"
+        f"2. Identify the nearest catalyst: OPEC meeting, harvest data, inventory report, sanctions, seasonal pattern — be specific\n"
+        f"3. Name which equity sector or trade corridor gets hit hardest if the move continues\n"
+        f"BANNED: 'navigates', 'robust', 'resilient', 'notable', 'landscape', 'amid', 'dynamic', 'uncertainty', 'headwinds', 'tailwinds'. "
+        f"No bullet points. No headers. Active voice. End with a period."
     )
-    return _call_gemini(prompt, min_words=50, max_words=95)
+    return _call_gemini(prompt, min_words=45, max_words=80)
 
 
 # ── Emoji helpers ─────────────────────────────────────────────────────────────
