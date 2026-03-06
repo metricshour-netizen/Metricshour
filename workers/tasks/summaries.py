@@ -668,6 +668,66 @@ def _commodity_emoji(symbol: str) -> str:
     return _COMMODITY_EMOJI.get(symbol, "📦")
 
 
+# ── Staleness checks — skip summary regeneration if data hasn't changed ────────
+
+def _country_summary_stale(country: Country, existing: PageSummary | None, db) -> bool:
+    """True if the country summary needs regenerating."""
+    if not existing:
+        return True
+    age_days = (datetime.now(timezone.utc) - existing.generated_at).days
+    if age_days > 30:
+        return True
+    # Regenerate if any indicator is newer than the summary
+    latest_ind = (
+        db.query(CountryIndicator.period_date)
+        .filter(CountryIndicator.country_id == country.id)
+        .order_by(CountryIndicator.period_date.desc())
+        .scalar()
+    )
+    if latest_ind and latest_ind > existing.generated_at.date():
+        return True
+    return False
+
+
+def _stock_summary_stale(asset: Asset, existing: PageSummary | None, db) -> bool:
+    """True if the stock summary needs regenerating."""
+    if not existing:
+        return True
+    age_days = (datetime.now(timezone.utc) - existing.generated_at).days
+    if age_days > 30:
+        return True
+    # Regenerate if a newer fiscal year of revenue data has arrived
+    latest_fy = (
+        db.query(StockCountryRevenue.fiscal_year)
+        .filter(StockCountryRevenue.asset_id == asset.id)
+        .order_by(StockCountryRevenue.fiscal_year.desc())
+        .scalar()
+    )
+    if latest_fy and latest_fy > existing.generated_at.year:
+        return True
+    return False
+
+
+def _trade_summary_stale(pair_code: str, trade_year: int | None, existing: PageSummary | None) -> bool:
+    """True if the trade summary needs regenerating."""
+    if not existing:
+        return True
+    age_days = (datetime.now(timezone.utc) - existing.generated_at).days
+    if age_days > 365:
+        return True
+    # Regenerate if a newer year of trade data has arrived
+    if trade_year and trade_year > existing.generated_at.year:
+        return True
+    return False
+
+
+def _commodity_summary_stale(existing: PageSummary | None) -> bool:
+    """True if the commodity summary needs regenerating (static text — refresh weekly)."""
+    if not existing:
+        return True
+    return (datetime.now(timezone.utc) - existing.generated_at).days > 7
+
+
 # ── Upsert helpers ─────────────────────────────────────────────────────────────
 
 def _upsert_feed_insight(
@@ -756,9 +816,21 @@ def generate_page_summaries(self):
     try:
         total = 0
 
+        # Pre-load existing summaries into a lookup dict to avoid N+1 queries
+        existing_map: dict[tuple, PageSummary] = {
+            (r.entity_type, r.entity_code): r
+            for r in db.query(PageSummary).all()
+        }
+
+        skipped = 0
+
         # Country summaries
         countries = db.query(Country).all()
         for c in countries:
+            existing = existing_map.get(("country", c.code))
+            if not _country_summary_stale(c, existing, db):
+                skipped += 1
+                continue
             try:
                 summary = _country_summary_text(c, db)
                 _upsert_summary(db, "country", c.code, summary)
@@ -766,11 +838,16 @@ def generate_page_summaries(self):
             except Exception as e:
                 log.warning("Country summary failed %s: %s", c.code, e)
         db.commit()
-        log.info("Country summaries done: %d", len(countries))
+        log.info("Country summaries: %d regenerated, %d skipped (up to date)", total, skipped)
 
         # Stock summaries
         stocks = db.query(Asset).filter(Asset.asset_type == "stock").all()
+        stock_skip = 0
         for s in stocks:
+            existing = existing_map.get(("stock", s.symbol))
+            if not _stock_summary_stale(s, existing, db):
+                stock_skip += 1
+                continue
             try:
                 summary = _stock_summary_text(s, db)
                 _upsert_summary(db, "stock", s.symbol, summary)
@@ -778,11 +855,16 @@ def generate_page_summaries(self):
             except Exception as e:
                 log.warning("Stock summary failed %s: %s", s.symbol, e)
         db.commit()
-        log.info("Stock summaries done: %d", len(stocks))
+        log.info("Stock summaries: %d regenerated, %d skipped", total, stock_skip)
 
         # Commodity summaries
         commodities = db.query(Asset).filter(Asset.asset_type == "commodity").all()
+        comm_skip = 0
         for c in commodities:
+            existing = existing_map.get(("commodity", c.symbol))
+            if not _commodity_summary_stale(existing):
+                comm_skip += 1
+                continue
             try:
                 summary = _commodity_summary_text(c)
                 _upsert_summary(db, "commodity", c.symbol, summary)
@@ -790,11 +872,12 @@ def generate_page_summaries(self):
             except Exception as e:
                 log.warning("Commodity summary failed %s: %s", c.symbol, e)
         db.commit()
-        log.info("Commodity summaries done: %d", len(commodities))
+        log.info("Commodity summaries: %d regenerated, %d skipped", total, comm_skip)
 
         # Trade pair summaries — latest year per pair only
         pairs = db.query(TradePair).order_by(TradePair.year.desc()).all()
         seen_pairs: set[str] = set()
+        trade_skip = 0
         for pair in pairs:
             exp = db.query(Country).filter(Country.id == pair.exporter_id).first()
             imp = db.query(Country).filter(Country.id == pair.importer_id).first()
@@ -804,6 +887,10 @@ def generate_page_summaries(self):
             if pair_code in seen_pairs:
                 continue
             seen_pairs.add(pair_code)
+            existing = existing_map.get(("trade", pair_code))
+            if not _trade_summary_stale(pair_code, pair.year, existing):
+                trade_skip += 1
+                continue
             try:
                 summary = _trade_summary_text(exp, imp, pair)
                 _upsert_summary(db, "trade", pair_code, summary)
@@ -811,10 +898,10 @@ def generate_page_summaries(self):
             except Exception as e:
                 log.warning("Trade summary failed %s: %s", pair_code, e)
         db.commit()
-        log.info("Trade summaries done: %d", len(seen_pairs))
+        log.info("Trade summaries: %d regenerated, %d skipped", total, trade_skip)
 
-        log.info("Total summaries generated/updated: %d", total)
-        return {"summaries_generated": total}
+        log.info("Total summaries regenerated: %d (data-driven skips applied)", total)
+        return {"summaries_generated": total, "skipped": skipped + stock_skip + comm_skip + trade_skip}
 
     except Exception as exc:
         db.rollback()
