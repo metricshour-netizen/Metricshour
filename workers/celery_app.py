@@ -114,9 +114,9 @@ app.conf.update(
             'task': 'tasks.summaries.generate_page_summaries',
             'schedule': crontab(hour=2, minute=0),
         },
-        'daily-insights-5am': {
+        'daily-insights-345am': {
             'task': 'tasks.summaries.generate_daily_insights',
-            'schedule': crontab(hour=5, minute=0),
+            'schedule': crontab(hour=3, minute=45),
         },
         'spotlight-refresh-every-3hr': {
             'task': 'tasks.summaries.refresh_spotlight',
