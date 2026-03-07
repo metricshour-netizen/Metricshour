@@ -3,17 +3,22 @@ Central bank policy rate fetcher — free public APIs, no auth required.
 Stores as interest_rate_pct (monthly) — overrides World Bank annual data with current readings.
 
 Sources (all free, no API key):
-  ECB Data Portal  → Eurozone (20 countries)
-  Bank of Canada   → CA
-  Reserve Bank AU  → AU
-  Riksbank         → SE
-  Norges Bank      → NO
-  Bank of England  → GB
-  FRED CSV         → US, JP, KR, MX, TR, NZ, ZA, CZ, HU, PL, DK, CH, IN, ID, TH
+  BIS WS_CBPOL     → 38 central banks (AU BR CA CH CL CN CO CZ DK GB HK HU ID IL IN IS JP KR
+                      KW MA MK MX MY NO NZ PE PH PL RO RS RU SA SE TH TR US ZA + XM)
+  ECB Data Portal  → Eurozone individual countries (AT BE CY DE EE ES FI FR GR IE IT LT LU LV MT NL PT SI SK)
+  Bank of Canada   → CA (overrides BIS — same-day decision updates)
+  Reserve Bank AU  → AU (overrides BIS)
+  Riksbank         → SE (overrides BIS)
+  Norges Bank      → NO (overrides BIS)
+  Bank of England  → GB (overrides BIS)
+  FRED CSV         → US (DFF daily, overrides BIS), JP KR MX TR NZ ZA CZ HU PL DK CH IN ID
 
-Runs weekly: Sunday 2am UTC.
+Run order: BIS first (baseline) → direct central bank APIs override for most-current data.
+
+Runs daily: 6:15am UTC.
 """
 
+import csv
 import logging
 from datetime import date, datetime
 from io import StringIO
@@ -50,6 +55,115 @@ def _row(country_id: int, value: float, period: date, source: str = "central_ban
         "period_type": "monthly",
         "source": source,
     }
+
+
+# ── Manual fallback rates ──────────────────────────────────────────────────────
+# Countries with independent central banks but no machine-readable public API.
+# Update this dict when an official rate decision is announced.
+# Format: iso2 → (rate_pct, year, month)  e.g. (27.5, 2025, 7)
+# Source links in comments.
+
+MANUAL_RATES: dict[str, tuple[float, int, int]] = {
+    "NG": (27.50, 2025, 7),   # CBN MPR raised to 27.5% Jul 2025 — cbn.gov.ng
+    "GH": (27.00, 2025, 5),   # Bank of Ghana — bankofghana.org
+    "ET": (15.00, 2024, 1),   # National Bank of Ethiopia
+    "TZ": (7.00,  2024, 6),   # Bank of Tanzania
+    "KE": (13.00, 2024, 12),  # Central Bank of Kenya
+    "UG": (9.75,  2024, 10),  # Bank of Uganda
+    "ZM": (14.00, 2024, 11),  # Bank of Zambia
+    "MW": (26.00, 2024, 6),   # Reserve Bank of Malawi
+    "SD": (25.00, 2024, 1),   # Central Bank of Sudan
+    "AO": (19.50, 2024, 6),   # Banco Nacional de Angola
+    "MZ": (14.25, 2024, 12),  # Banco de Moçambique
+}
+
+# ── Currency peg inference ─────────────────────────────────────────────────────
+# Countries that use USD/EUR/AED directly or maintain hard pegs — no independent CB.
+# Their rate = the base currency rate.
+# AED pegs exactly to USD (since 1997). XAF/XOF/XPF peg to EUR (CFA franc zone).
+
+USD_PEGGED = {
+    "AE",  # UAE — AED pegs to USD, CBUAE mirrors Fed
+    "BH",  # Bahrain — BHD pegs to USD (already in BIS but re-affirmed here)
+    "EC",  # Ecuador — uses USD directly
+    "SV",  # El Salvador — USD legal tender
+    "AS",  # American Samoa
+    "GU",  # Guam
+    "MP",  # N. Mariana Islands
+    "PR",  # Puerto Rico
+    "VI",  # US Virgin Islands
+    "MH",  # Marshall Islands
+    "PW",  # Palau
+    "TC",  # Turks and Caicos
+    "BQ",  # Caribbean Netherlands
+    "UM",  # US Minor Outlying Islands
+    "IO",  # British Indian Ocean Territory
+    "VG",  # British Virgin Islands
+}
+EUR_PEGGED = {
+    "AD",  # Andorra
+    "MC",  # Monaco
+    "SM",  # San Marino
+    "VA",  # Vatican
+    "ME",  # Montenegro (uses EUR unilaterally)
+    "XK",  # Kosovo
+    "AX",  # Åland Islands
+    "GF",  # French Guiana
+    "GP",  # Guadeloupe
+    "MQ",  # Martinique
+    "YT",  # Mayotte
+    "RE",  # Réunion
+    "PM",  # St Pierre & Miquelon
+    "BL",  # St Barthélemy
+    "MF",  # St Martin
+    "TF",  # French Southern Territories
+    "CM",  # Cameroon — XAF (CFA franc, EUR peg)
+    "CF",  # Central African Republic
+    "TD",  # Chad
+    "CG",  # Republic of Congo
+    "GQ",  # Equatorial Guinea
+    "GA",  # Gabon
+    "NC",  # New Caledonia — XPF
+    "PF",  # French Polynesia
+    "WF",  # Wallis and Futuna
+}
+
+
+# ── 0. BIS WS_CBPOL (38 central banks — baseline source) ──────────────────────
+# Single call returns all 38 central banks. XM = Eurozone (skip — handled per-country via ECB).
+# BIS data is monthly, typically 1-2 months behind. Direct bank APIs below override where fresher.
+
+def fetch_bis() -> list[tuple[str, float, date]]:
+    """Fetch BIS central bank policy rates dataset. Returns (iso2, rate, period_date) list."""
+    url = "https://stats.bis.org/api/v1/data/WS_CBPOL?startperiod=2024-01-01&format=csv"
+    try:
+        r = requests.get(url, timeout=60, headers={"User-Agent": "MetricsHour/1.0"})
+        r.raise_for_status()
+        reader = csv.DictReader(StringIO(r.text))
+        # Keep only monthly rows (FREQ=M), skip Eurozone aggregate (XM)
+        latest: dict[str, tuple[float, date]] = {}
+        for row in reader:
+            if row.get("FREQ") != "M":
+                continue
+            iso2 = row.get("REF_AREA", "")
+            if iso2 == "XM":
+                continue
+            period_str = row.get("TIME_PERIOD", "")
+            obs_str = row.get("OBS_VALUE", "").strip()
+            if not obs_str or not period_str:
+                continue
+            try:
+                rate = float(obs_str)
+                year, month = period_str.split("-")
+                d = date(int(year), int(month), 1)
+            except (ValueError, TypeError):
+                continue
+            if iso2 not in latest or d > latest[iso2][1]:
+                latest[iso2] = (rate, d)
+        return [(iso2, v[0], v[1]) for iso2, v in latest.items()]
+    except Exception:
+        log.exception("BIS fetch failed")
+        return []
 
 
 # ── 1. ECB (Eurozone) ──────────────────────────────────────────────────────────
@@ -215,7 +329,7 @@ def fetch_boe() -> tuple[float, date] | None:
 # Monthly series. Maps FRED series_id → ISO2 country code.
 
 FRED_SERIES: dict[str, str] = {
-    "FEDFUNDS":          "US",   # US Federal Funds Rate (monthly avg)
+    "DFF":               "US",   # US Daily Effective Federal Funds Rate (~1 business day lag)
     "IRSTCI01JPM156N":   "JP",   # Japan 3-month rate
     "IRSTCI01KRM156N":   "KR",   # South Korea
     "IRSTCI01MXM156N":   "MX",   # Mexico
@@ -257,81 +371,142 @@ def fetch_fred_series(series_id: str) -> tuple[float, date] | None:
 
 @app.task(name="tasks.central_bank_rates.fetch_central_bank_rates", bind=True, max_retries=2)
 def fetch_central_bank_rates(self):
-    """Fetch central bank policy rates from official free APIs. Runs weekly Sunday 2am UTC."""
+    """Fetch central bank policy rates from official free APIs. Runs daily 6:15am UTC."""
     db = SessionLocal()
     try:
         iso2_map: dict[str, int] = {c.code: c.id for c in db.query(Country.code, Country.id).all()}
         total = 0
-        batch = []
 
-        # 1. ECB → Eurozone
+        # ── Pass 1: BIS baseline (38 central banks) ───────────────────────────
+        # Upserted first so direct-source feeds below can override on the same period_date.
+        log.info("Fetching BIS central bank rates...")
+        bis_rows = fetch_bis()
+        bis_batch = []
+        for iso2, rate, period in bis_rows:
+            cid = iso2_map.get(iso2)
+            if cid:
+                bis_batch.append(_row(cid, rate, period, source="bis"))
+        if bis_batch:
+            total += _upsert(db, bis_batch)
+            db.commit()
+        log.info(f"BIS: {len(bis_rows)} country rows")
+
+        # ── Pass 2: direct central bank APIs (more current — override BIS) ────
+        direct_batch = []
+
+        # ECB → individual Eurozone countries
         log.info("Fetching ECB rate...")
         ecb_rows = fetch_ecb()
         for iso2, rate, period in ecb_rows:
             cid = iso2_map.get(iso2)
             if cid:
-                batch.append(_row(cid, rate, period))
+                direct_batch.append(_row(cid, rate, period))
         log.info(f"ECB: {len(ecb_rows)} country rows")
 
-        # 2. Bank of Canada
+        # Bank of Canada
         log.info("Fetching Bank of Canada rate...")
         result = fetch_bank_of_canada()
         if result:
             cid = iso2_map.get("CA")
             if cid:
-                batch.append(_row(cid, result[0], result[1]))
+                direct_batch.append(_row(cid, result[0], result[1]))
                 log.info(f"BoC: {result[0]}% at {result[1]}")
 
-        # 3. RBA
+        # RBA
         log.info("Fetching RBA rate...")
         result = fetch_rba()
         if result:
             cid = iso2_map.get("AU")
             if cid:
-                batch.append(_row(cid, result[0], result[1]))
+                direct_batch.append(_row(cid, result[0], result[1]))
                 log.info(f"RBA: {result[0]}% at {result[1]}")
 
-        # 4. Riksbank (Sweden)
+        # Riksbank (Sweden)
         log.info("Fetching Riksbank rate...")
         result = fetch_riksbank()
         if result:
             cid = iso2_map.get("SE")
             if cid:
-                batch.append(_row(cid, result[0], result[1]))
+                direct_batch.append(_row(cid, result[0], result[1]))
                 log.info(f"Riksbank: {result[0]}% at {result[1]}")
 
-        # 5. Norges Bank (Norway)
+        # Norges Bank (Norway)
         log.info("Fetching Norges Bank rate...")
         result = fetch_norges_bank()
         if result:
             cid = iso2_map.get("NO")
             if cid:
-                batch.append(_row(cid, result[0], result[1]))
+                direct_batch.append(_row(cid, result[0], result[1]))
                 log.info(f"Norges Bank: {result[0]}% at {result[1]}")
 
-        # 6. Bank of England
+        # Bank of England
         log.info("Fetching BoE rate...")
         result = fetch_boe()
         if result:
             cid = iso2_map.get("GB")
             if cid:
-                batch.append(_row(cid, result[0], result[1]))
+                direct_batch.append(_row(cid, result[0], result[1]))
                 log.info(f"BoE: {result[0]}% at {result[1]}")
 
-        # 7. FRED CSV series
+        # FRED CSV series
         log.info("Fetching FRED series...")
         for series_id, iso2 in FRED_SERIES.items():
             result = fetch_fred_series(series_id)
             if result:
                 cid = iso2_map.get(iso2)
                 if cid:
-                    batch.append(_row(cid, result[0], result[1], source="fred"))
+                    direct_batch.append(_row(cid, result[0], result[1], source="fred"))
                     log.info(f"FRED {series_id}/{iso2}: {result[0]}% at {result[1]}")
 
-        # Upsert all
-        if batch:
-            total = _upsert(db, batch)
+        if direct_batch:
+            total += _upsert(db, direct_batch)
             db.commit()
+
+        # ── Pass 3: manual fallback + peg inference ────────────────────────────
+        # Collect the current US and ECB rates from what we just stored
+        us_id = iso2_map.get("US")
+        de_id = iso2_map.get("DE")  # DE always has ECB rate
+        from sqlalchemy import text as sa_text
+        def _latest_rate(country_id: int) -> tuple[float, date] | None:
+            row = db.execute(
+                sa_text(
+                    "SELECT value, period_date FROM country_indicators "
+                    "WHERE country_id=:cid AND indicator='interest_rate_pct' "
+                    "ORDER BY period_date DESC LIMIT 1"
+                ),
+                {"cid": country_id},
+            ).fetchone()
+            return (row[0], row[1]) if row else None
+
+        us_rate = _latest_rate(us_id) if us_id else None
+        ecb_rate = _latest_rate(de_id) if de_id else None
+
+        fallback_batch = []
+
+        # Manual known rates
+        for iso2, (rate, year, month) in MANUAL_RATES.items():
+            cid = iso2_map.get(iso2)
+            if cid:
+                fallback_batch.append(_row(cid, rate, date(year, month, 1), source="manual"))
+
+        # USD-pegged countries
+        if us_rate:
+            for iso2 in USD_PEGGED:
+                cid = iso2_map.get(iso2)
+                if cid:
+                    fallback_batch.append(_row(cid, us_rate[0], us_rate[1], source="peg_usd"))
+
+        # EUR-pegged countries
+        if ecb_rate:
+            for iso2 in EUR_PEGGED:
+                cid = iso2_map.get(iso2)
+                if cid:
+                    fallback_batch.append(_row(cid, ecb_rate[0], ecb_rate[1], source="peg_eur"))
+
+        if fallback_batch:
+            total += _upsert(db, fallback_batch)
+            db.commit()
+            log.info(f"Fallback/peg: {len(fallback_batch)} rows")
 
         log.info(f"Central bank rates: {total} rows upserted")
         return f"ok: {total} rows"

@@ -183,10 +183,10 @@ app.conf.update(
             'schedule': crontab(hour=1, minute=0, day_of_week=0),
         },
 
-        # Central bank policy rates — ECB, BoE, RBA, BoC, Riksbank, FRED, etc. — weekly Sunday 2am
-        'central-bank-rates-weekly': {
+        # Central bank policy rates — ECB, BoE, RBA, BoC, Riksbank, FRED, etc. — daily 6:15am
+        'central-bank-rates-daily': {
             'task': 'tasks.central_bank_rates.fetch_central_bank_rates',
-            'schedule': crontab(hour=2, minute=0, day_of_week=0),
+            'schedule': crontab(hour=6, minute=15),
         },
 
         # Price history backfill — 5yr daily OHLCV, monthly on 2nd at 1am
