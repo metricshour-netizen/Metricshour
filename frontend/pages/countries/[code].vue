@@ -301,6 +301,7 @@ const code = route.params.code as string
 const { data: country, pending, error } = useAsyncData(
   `country-${code}`,
   () => get<any>(`/api/countries/${code}`).catch(() => null),
+  { server: false },
 )
 
 // Lazy-load supplementary data (non-blocking)
