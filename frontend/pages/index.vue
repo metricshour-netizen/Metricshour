@@ -392,11 +392,10 @@
 const { get } = useApi()
 const router = useRouter()
 
-// ── G20 Countries (client-side to avoid SSG build failures) ──────────────────
+// ── G20 Countries ─────────────────────────────────────────────────────────────
 const { data: countries, pending: countriesPending } = useAsyncData(
   'g20',
   () => get<any[]>('/api/countries', { is_g20: 'true' }).catch(() => []),
-  { server: false },
 )
 
 // Fallback G20 grid — shown when API hasn't loaded yet or is unreachable
@@ -427,14 +426,12 @@ const G20_FALLBACK = [
 const { data: allStocks, pending: stocksPending, error: stocksError } = useAsyncData(
   'top-stocks',
   () => get<any[]>('/api/assets', { type: 'stock' }).catch(() => []),
-  { server: false },
 )
 
 // ── Trade pairs ───────────────────────────────────────────────────────────────
 const { data: trades, pending: tradesPending } = useAsyncData(
   'top-trades',
   () => get<any[]>('/api/trade').catch(() => []),
-  { server: false },
 )
 
 const topStocks = computed(() => (allStocks.value ?? []).slice(0, 5))

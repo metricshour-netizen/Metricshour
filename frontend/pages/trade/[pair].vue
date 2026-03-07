@@ -20,7 +20,9 @@
           <div class="flex flex-col gap-4">
             <!-- Countries -->
             <div class="flex items-center gap-4 flex-wrap">
-              <h1 class="sr-only">{{ data.exporter.name }}–{{ data.importer.name }} Bilateral Trade — MetricsHour</h1>
+              <h1 class="text-xl sm:text-2xl font-extrabold text-white leading-tight mb-1">
+                {{ data.exporter.name }}–{{ data.importer.name }} Trade
+              </h1>
               <div class="flex items-center gap-3">
                 <div class="w-14 h-14 rounded-xl bg-[#1f2937] border border-[#374151] flex items-center justify-center text-3xl">
                   {{ data.exporter.flag }}

@@ -81,7 +81,6 @@ const search = ref('')
 
 const { data: commodities, pending } = useAsyncData('commodities',
   () => get<any[]>('/api/assets?type=commodity').catch(() => []),
-  { server: false },
 )
 
 const apiMap = computed(() => {
