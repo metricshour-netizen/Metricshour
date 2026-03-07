@@ -918,6 +918,7 @@ def _has_fresh_data(insight_type: str, entity_code: str, since: datetime, db) ->
             db.query(CountryIndicator.period_date)
             .filter(CountryIndicator.country_id == c.id)
             .order_by(CountryIndicator.period_date.desc())
+            .limit(1)
             .scalar()
         )
         return bool(latest and latest > since.date())
