@@ -4,7 +4,7 @@ from sqlalchemy import select, func
 
 from app.database import get_db
 from app.models import Asset, AssetType, Country, Price, StockCountryRevenue
-from app.storage import kv_json_get, kv_json_set, cache_get, cache_set
+from app.storage import cache_get, cache_set
 
 router = APIRouter(prefix="/assets", tags=["assets"])
 
@@ -19,7 +19,7 @@ def list_assets(
     # country_code-scoped queries are never cached (too many combinations)
     cache_key = f"assets:list:v4:{type or 'all'}:{sector or 'all'}" if not country_code else None
     if cache_key:
-        cached = kv_json_get(cache_key)
+        cached = cache_get(cache_key)
         if cached is not None:
             return cached
 
@@ -90,7 +90,7 @@ def list_assets(
         result.append(row)
 
     if cache_key:
-        kv_json_set(cache_key, result, ttl_seconds=300)
+        cache_set(cache_key, result, ttl_seconds=300)
     return result
 
 
