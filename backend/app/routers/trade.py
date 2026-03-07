@@ -96,6 +96,7 @@ def get_trade_pair(
             trade_data = {
                 "id": pair.id,
                 "year": pair.year,
+                "data_source": pair.data_source,
                 "exporter": _country_ref(exp),
                 "importer": _country_ref(imp),
                 "trade_value_usd": pair.trade_value_usd,
@@ -148,6 +149,7 @@ def _pair_summary(pair: TradePair, countries: dict[int, Country]) -> dict:
     return {
         "id": pair.id,
         "year": pair.year,
+        "data_source": pair.data_source,
         "exporter": _country_ref(exp) if exp else None,
         "importer": _country_ref(imp) if imp else None,
         "trade_value_usd": pair.trade_value_usd,

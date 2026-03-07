@@ -278,6 +278,10 @@ class TradePair(Base):
     # This trade as % of exporter's GDP — shows dependency
     importer_gdp_share_pct: Mapped[float] = mapped_column(Float, nullable=True)
 
+    # Data provenance — shown on page for SEO credibility
+    data_source: Mapped[str] = mapped_column(String(30), nullable=True)
+    # e.g. "UN Comtrade 2022", "US Census Bureau 2023"
+
     exporter: Mapped["Country"] = relationship(foreign_keys=[exporter_id], back_populates="exports_to")
     importer: Mapped["Country"] = relationship(foreign_keys=[importer_id], back_populates="imports_from")
 

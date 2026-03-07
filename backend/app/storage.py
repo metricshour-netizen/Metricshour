@@ -174,3 +174,15 @@ def cache_set(key: str, value: list | dict, ttl_seconds: int = 3600) -> None:
     """Write to both Redis (L1) and KV (L2) simultaneously."""
     redis_json_set(key, value, ttl_seconds=ttl_seconds)
     kv_json_set(key, value, ttl_seconds=ttl_seconds)
+
+
+def cache_del(key: str) -> None:
+    """Invalidate a key from both Redis (L1) and KV (L2)."""
+    try:
+        redis_json_del(key)
+    except Exception:
+        pass
+    try:
+        kv_delete(key)
+    except Exception:
+        pass

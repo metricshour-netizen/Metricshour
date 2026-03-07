@@ -54,6 +54,9 @@
                 {{ (td.balance_usd ?? 0) >= 0 ? `${codeA.toUpperCase()} surplus` : `${codeA.toUpperCase()} deficit` }}
                 <span v-if="td.year"> · {{ td.year }}</span>
               </div>
+              <div v-if="td.data_source" class="inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded text-[10px] font-mono bg-[#111827] border border-[#1f2937] text-gray-500">
+                <span class="text-emerald-700">◆</span> {{ td.data_source }}
+              </div>
             </div>
           </div>
         </template>
@@ -270,7 +273,9 @@
         </div>
       </div>
 
-      <p class="text-xs text-gray-700 text-center">Data: UN Comtrade · World Bank · IMF</p>
+      <p class="text-xs text-gray-700 text-center">
+        Trade: {{ td?.data_source || 'UN Comtrade 2022' }} · Macro: World Bank · IMF
+      </p>
     </main>
   </div>
 </template>

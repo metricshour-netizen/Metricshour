@@ -65,6 +65,11 @@ def run_all() -> None:
             from app.seeders.institutions import seed_institutions
             seed_institutions(db)
 
+        if not only or only == "census_trade":
+            log.info("=== Seeding 2023 US bilateral trade (US Census Bureau) ===")
+            from app.seeders.census_trade import seed_census_trade
+            seed_census_trade(db)
+
     finally:
         db.close()
 
