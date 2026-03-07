@@ -163,21 +163,60 @@ def kv_json_set(key: str, value: list | dict, ttl_seconds: int = 3600) -> None:
         _kv_log.warning("KV set failed for %s: %s", key, exc)
 
 
-# ── Two-layer cache helper ─────────────────────────────────────────────────────
+# ── L0: process-level memory cache (per Gunicorn worker, 30s TTL) ─────────────
+# Absorbs burst traffic inside the worker — eliminates redundant Redis/KV calls
+# for hot keys requested multiple times within the same 30s window.
+
+import time as _time
+
+_L0: dict[str, tuple[float, list | dict]] = {}  # key → (expires_at, value)
+_L0_TTL = 30  # seconds
+
+
+def _l0_get(key: str) -> list | dict | None:
+    entry = _L0.get(key)
+    if entry and _time.monotonic() < entry[0]:
+        return entry[1]
+    if entry:
+        del _L0[key]
+    return None
+
+
+def _l0_set(key: str, value: list | dict) -> None:
+    _L0[key] = (_time.monotonic() + _L0_TTL, value)
+
+
+def _l0_del(key: str) -> None:
+    _L0.pop(key, None)
+
+
+# ── Three-layer cache: L0 memory → L1 Redis → L2 KV ──────────────────────────
 
 def cache_get(key: str) -> list | dict | None:
-    """L1 Redis → L2 KV. Returns first hit or None."""
-    return redis_json_get(key) or kv_json_get(key)
+    """L0 memory → L1 Redis → L2 KV. Returns first hit or None."""
+    hit = _l0_get(key)
+    if hit is not None:
+        return hit
+    hit = redis_json_get(key)
+    if hit is not None:
+        _l0_set(key, hit)
+        return hit
+    hit = kv_json_get(key)
+    if hit is not None:
+        _l0_set(key, hit)
+    return hit
 
 
 def cache_set(key: str, value: list | dict, ttl_seconds: int = 3600) -> None:
-    """Write to both Redis (L1) and KV (L2) simultaneously."""
+    """Write to L0 memory, L1 Redis, and L2 KV."""
+    _l0_set(key, value)
     redis_json_set(key, value, ttl_seconds=ttl_seconds)
     kv_json_set(key, value, ttl_seconds=ttl_seconds)
 
 
 def cache_del(key: str) -> None:
-    """Invalidate a key from both Redis (L1) and KV (L2)."""
+    """Invalidate from all three layers."""
+    _l0_del(key)
     try:
         redis_json_del(key)
     except Exception:

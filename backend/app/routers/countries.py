@@ -4,7 +4,7 @@ from sqlalchemy import select, or_
 
 from app.database import get_db
 from app.models import Country, CountryIndicator, TradePair, StockCountryRevenue, Asset
-from app.storage import kv_json_get, kv_json_set, cache_get, cache_set
+from app.storage import cache_get, cache_set
 
 router = APIRouter(prefix="/countries", tags=["countries"])
 
@@ -17,7 +17,7 @@ def list_countries(
 ) -> list[dict]:
     # Key encodes filters so different combos are cached separately
     cache_key = f"countries:list:{region or 'all'}:{is_g20}"
-    cached = kv_json_get(cache_key)
+    cached = cache_get(cache_key)
     if cached is not None:
         return cached
 
@@ -32,7 +32,7 @@ def list_countries(
     result = [_country_summary(c) for c in countries]
 
     # Country list changes very rarely — cache for 1 hour
-    kv_json_set(cache_key, result, ttl_seconds=3600)
+    cache_set(cache_key, result, ttl_seconds=3600)
     return result
 
 
