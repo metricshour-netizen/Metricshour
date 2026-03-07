@@ -147,6 +147,15 @@ def _call_gemini(prompt: str, min_words: int = 55, max_words: int = 110) -> str 
         return None
 
 
+_DS_SYSTEM = (
+    "You are a financial data writer for an institutional terminal. "
+    "OUTPUT ONLY the paragraph requested — no greeting, no sign-off, no 'Certainly', "
+    "no meta-commentary, no markdown. "
+    "Every sentence must contain at least one specific number or proper noun from the data. "
+    "Active voice. Zero filler. Hit the word count exactly. Begin writing immediately."
+)
+
+
 def _call_deepseek(prompt: str, min_words: int = 55, max_words: int = 110) -> str | None:
     """Call DeepSeek V3 (OpenAI-compatible REST). Returns None on any failure."""
     api_key = os.environ.get("DEEPSEEK_API_KEY", "")
@@ -159,16 +168,19 @@ def _call_deepseek(prompt: str, min_words: int = 55, max_words: int = 110) -> st
             headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
             json={
                 "model": "deepseek-chat",
-                "messages": [{"role": "user", "content": prompt}],
-                "max_tokens": 350,
-                "temperature": 0.7,
+                "messages": [
+                    {"role": "system", "content": _DS_SYSTEM},
+                    {"role": "user", "content": prompt},
+                ],
+                "max_tokens": 200,
+                "temperature": 0.35,
             },
             timeout=30,
         )
         resp.raise_for_status()
         text = _strip_markdown(resp.json()["choices"][0]["message"]["content"].strip())
         words = len(text.split())
-        if (min_words - 15) < words < (max_words + 25):
+        if (min_words - 10) < words < (max_words + 10):
             return text
         return None
     except Exception as exc:
@@ -261,17 +273,12 @@ def _country_summary_text(country: Country, db) -> str:
             f"Major exports: {country.major_exports or 'N/A'}\n"
         )
         prompt = (
-            f"You are a senior macro strategist writing for MetricsHour, a financial intelligence "
-            f"platform used by institutional investors, hedge funds, and equity analysts.\n\n"
-            f"Write a factual 75-100 word macro overview for the {country.name} country page.\n\n"
+            f"Write a 75-100 word macro overview for the {country.name} country page on MetricsHour.\n\n"
             f"Data:\n{facts}\n\n"
-            f"Requirements:\n"
-            f"- Cover GDP size and growth trajectory\n"
-            f"- Describe the inflation and monetary policy environment\n"
-            f"- Note key group memberships that matter for trade and policy\n"
-            f"- Highlight any standout macro characteristic (high debt, commodity exports, trade balance, credit quality)\n"
-            f"- Write in Financial Times macro-brief style: third-person, authoritative, data-specific\n"
-            f"- Include exact numbers. No bullet points. No headers. End with a period."
+            f"Pack in: GDP size + growth trajectory, inflation + policy rate, one standout characteristic "
+            f"(debt, credit rating, commodity exports, or current account), and bloc memberships that affect trade. "
+            f"FT macro-brief style: third-person, every sentence has a number. "
+            f"No bullet points. No headers. No padding. End with a period."
         )
         # G20 countries → Gemini (quality tier); rest → DeepSeek (bulk tier)
         ai = _call_ai(prompt, min_words=65, max_words=110, prefer_gemini=bool(country.is_g20))
@@ -394,14 +401,14 @@ def _country_insight_text(country: Country, db) -> str | None:
     min_w, max_w, focus = _COUNTRY_ANGLES[angle]
 
     prompt = (
-        f"You are a senior macro strategist writing a daily market brief for institutional investors on MetricsHour. "
-        f"Your audience trades FX, rates, and EM equities. They want a specific, data-grounded take — not a summary.\n\n"
-        f"Data (World Bank / IMF, latest available):\n{facts}\n\n"
-        f"Write {min_w}–{max_w} words on {country.name}. {focus}\n\n"
-        f"Style: direct, active voice, no hedging. Use exact numbers from the data. "
-        f"Never write: navigates, robust, resilient, notable, landscape, amid, complex, dynamic, "
-        f"headwinds, tailwinds, uncertainty, remains to be seen, it is worth noting. "
-        f"No bullet points. No headers. No em-dashes used as decoration. End with a period."
+        f"Daily macro brief for {country.name} — {min_w}–{max_w} words. "
+        f"Audience: FX and EM equity traders who want numbers, not narrative.\n\n"
+        f"Data (World Bank / IMF):\n{facts}\n\n"
+        f"{focus}\n\n"
+        f"Rules: active voice, every sentence has a specific number from the data. "
+        f"Banned words: navigates, robust, resilient, notable, landscape, amid, complex, dynamic, "
+        f"headwinds, tailwinds, uncertainty. "
+        f"No bullets. No headers. End with a period."
     )
     return _call_ai(prompt, min_words=min_w - 5, max_words=max_w + 10,
                     prefer_gemini=bool(country.is_g20))
@@ -436,24 +443,14 @@ def _stock_summary_text(asset: Asset, db) -> str:
         ) if revs else "  - Geographic breakdown not yet available (SEC EDGAR pending)"
 
         prompt = (
-            f"You are a senior equity analyst at a global investment bank writing for MetricsHour, "
-            f"a financial intelligence platform used by fund managers and institutional investors.\n\n"
-            f"Write a factual 75-100 word geographic revenue overview for {asset.name} ({asset.symbol}).\n\n"
-            f"Company data:\n"
-            f"- Name: {asset.name} ({asset.symbol})\n"
-            f"- Sector: {sector}\n"
-            f"- Industry: {asset.industry or 'N/A'}\n"
-            f"- Headquarters: {hq_name}\n"
-            f"- Market cap: {cap_str}\n"
-            f"- Geographic revenue (SEC EDGAR 10-K filings):\n{rev_lines}\n\n"
-            f"Requirements:\n"
-            f"- Lead with the company's business and scale\n"
-            f"- Highlight the top 2-3 revenue markets by geography\n"
-            f"- Explain what the geographic concentration means for investors "
-            f"(FX risk, tariff exposure, geopolitical sensitivity, or growth tailwind)\n"
-            f"- Connect revenue geography to real-world macro risk where specific\n"
-            f"- Write in Goldman Sachs equity note style: precise, data-driven, forward-oriented\n"
-            f"- No bullet points. No headers. Third-person. Include exact percentages. End with a period."
+            f"Write a 75-100 word geographic revenue overview for {asset.name} ({asset.symbol}).\n\n"
+            f"Data:\n"
+            f"- Sector: {sector} | Industry: {asset.industry or 'N/A'} | HQ: {hq_name} | Cap: {cap_str}\n"
+            f"- Geographic revenue (SEC EDGAR 10-K):\n{rev_lines}\n\n"
+            f"Pack in: company business + scale, top 2-3 revenue geographies with exact %, "
+            f"what the concentration means for investors (FX risk / tariff / geopolitical / growth). "
+            f"GS equity note style: third-person, precise, data-driven. "
+            f"No bullets. No headers. Every sentence has a number. End with a period."
         )
         ai = _call_ai(prompt, min_words=65, max_words=110, prefer_gemini=False)
         if ai:
@@ -564,18 +561,17 @@ def _stock_insight_text(asset: Asset, db) -> str | None:
     min_w, max_w, focus = _STOCK_ANGLES[angle]
 
     prompt = (
-        f"You are a sell-side equity analyst writing a daily stock brief for MetricsHour. "
-        f"Your readers are portfolio managers and traders who want a specific, numbers-grounded EPS angle — not a company description.\n\n"
-        f"Stock: {asset.name} ({asset.symbol}) | Sector: {asset.sector or 'N/A'} | "
-        f"Market cap: {_fmt_cap(asset.market_cap_usd)} | HQ: {hq.name if hq else 'N/A'}\n"
-        f"{f'HQ macro: {hq_macro}' if hq_macro else ''}\n"
+        f"Daily stock brief for {asset.name} ({asset.symbol}) — {min_w}–{max_w} words. "
+        f"Audience: portfolio managers who want EPS numbers, not company description.\n\n"
+        f"Stock: {asset.symbol} | {asset.sector or 'N/A'} | Cap: {_fmt_cap(asset.market_cap_usd)} | HQ: {hq.name if hq else 'N/A'}\n"
+        f"{f'{hq_macro}' if hq_macro else ''}\n"
         f"Geographic revenue (SEC EDGAR):\n{rev_lines}\n"
         f"Date: {date.today().strftime('%B %d, %Y')}\n\n"
-        f"Write {min_w}–{max_w} words. {focus}\n\n"
-        f"Style: sell-side precision. Use real percentages from the data. Active voice. "
-        f"Never write: navigates, robust, resilient, notable, significant, landscape, remains, "
+        f"{focus}\n\n"
+        f"Rules: use real percentages, active voice, every sentence has a number. "
+        f"Banned: navigates, robust, resilient, notable, significant, landscape, remains, "
         f"amid, dynamic, headwinds, tailwinds, uncertainty, poised, well-positioned. "
-        f"No bullet points. No headers. End with a period."
+        f"No bullets. No headers. End with a period."
     )
     return _call_ai(prompt, min_words=min_w - 5, max_words=max_w + 10, prefer_gemini=False)
 
@@ -610,18 +606,12 @@ def _trade_summary_text(exporter: Country, importer: Country, trade: TradePair |
             f"Top export products: {', '.join(products) if products else 'N/A'}\n"
         )
         prompt = (
-            f"You are a macro economist and trade analyst writing for MetricsHour, used by supply chain "
-            f"analysts, FX traders, and equity investors.\n\n"
-            f"Write a factual 75-100 word overview of the {exporter.name}–{importer.name} trade relationship.\n\n"
+            f"Write a 75-100 word overview of the {exporter.name}–{importer.name} trade corridor.\n\n"
             f"Data:\n{facts}\n\n"
-            f"Requirements:\n"
-            f"- Lead with the scale and direction of the trade relationship\n"
-            f"- Describe the trade balance and what it implies about economic dependency or leverage\n"
-            f"- Name the top export product categories and which industries rely on these flows\n"
-            f"- Explain any strategic or geopolitical significance of this trade corridor\n"
-            f"- Note what FX traders and equity investors exposed to these countries should understand\n"
-            f"- Write in Reuters/FT trade desk style: factual, concise, market-aware\n"
-            f"- No bullet points. No headers. Include specific dollar amounts. End with a period."
+            f"Pack in: flow scale + direction, trade balance with dollar amount, top export products, "
+            f"what the balance implies (dependency / leverage), one investor takeaway (FX or equity). "
+            f"Reuters/FT trade desk style: factual, every sentence has a number or country name. "
+            f"No bullets. No headers. End with a period."
         )
         # G20×G20 corridors → Gemini; all others → DeepSeek
         top_corridor = bool(exporter.is_g20 and importer.is_g20)
@@ -715,14 +705,14 @@ def _trade_insight_text(exporter: Country, importer: Country, trade: TradePair |
     min_w, max_w, focus = _TRADE_ANGLES[angle]
 
     prompt = (
-        f"You are a trade desk analyst writing a daily corridor brief for MetricsHour. "
-        f"Your readers are FX traders, supply chain managers, and equity investors with exposure to these countries.\n\n"
+        f"Daily corridor brief — {exporter.name}–{importer.name} — {min_w}–{max_w} words. "
+        f"Audience: FX traders and equity investors, not diplomats.\n\n"
         f"Data (UN Comtrade {trade.year}):\n{facts}\n\n"
-        f"Write {min_w}–{max_w} words on the {exporter.name}–{importer.name} corridor. {focus}\n\n"
-        f"Style: direct, specific, market-facing. Use exact dollar values and percentages from the data. "
-        f"Never write: navigates, robust, resilient, notable, landscape, amid, complex, dynamic, "
-        f"uncertainty, headwinds, tailwinds, bilateral relations, strategic partnership. "
-        f"No bullet points. No headers. Active voice. End with a period."
+        f"{focus}\n\n"
+        f"Rules: exact dollar values and percentages from the data, active voice. "
+        f"Banned: navigates, robust, resilient, notable, landscape, amid, complex, dynamic, "
+        f"uncertainty, headwinds, tailwinds, 'bilateral relations', 'strategic partnership'. "
+        f"No bullets. No headers. End with a period."
     )
     top_corridor = bool(exporter.is_g20 and importer.is_g20)
     return _call_ai(prompt, min_words=min_w - 5, max_words=max_w + 10,
@@ -742,22 +732,12 @@ def _commodity_summary_text(asset: Asset) -> str:
 
     if _has_ai_key():
         prompt = (
-            f"You are a commodity analyst at a major trading house writing for MetricsHour, "
-            f"a financial intelligence platform used by commodity traders, macro investors, and corporate procurement teams.\n\n"
-            f"Write a factual 75-100 word overview for the {full_name} ({asset.symbol}) commodity page.\n\n"
-            f"Commodity details:\n"
-            f"- Full name: {full_name}\n"
-            f"- Symbol: {asset.symbol}\n"
-            f"- Sector: {sector}\n"
-            f"- Pricing unit: {unit}\n\n"
-            f"Requirements:\n"
-            f"- Describe what this commodity is and why it matters to the global economy\n"
-            f"- Name the key producers, consumers, or trading regions that drive this market\n"
-            f"- Explain the primary supply and demand factors that move the price\n"
-            f"- Identify which equity sectors or asset classes are most exposed to this commodity\n"
-            f"- Mention any exchange or benchmark standard (NYMEX WTI, LME copper, CBOT wheat, etc.)\n"
-            f"- Write in commodity desk style: precise, market-fluent, no fluff\n"
-            f"- No bullet points. No headers. Third-person. End with a period."
+            f"Write a 75-100 word overview for {full_name} ({asset.symbol}), priced in {unit}.\n\n"
+            f"Pack in: what it is + global economic role, key producer/consumer regions, "
+            f"primary price drivers (supply + demand), equity sectors most exposed, "
+            f"exchange or benchmark standard. "
+            f"Commodity desk style: third-person, every sentence has a number or proper noun, no fluff. "
+            f"No bullets. No headers. End with a period."
         )
         ai = _call_ai(prompt, min_words=65, max_words=110, prefer_gemini=False)
         if ai:
@@ -825,16 +805,16 @@ def _commodity_insight_text(asset: Asset, db=None) -> str | None:
     min_w, max_w, focus = _COMMODITY_ANGLES[angle]
 
     prompt = (
-        f"You are a commodity desk analyst writing a daily brief for MetricsHour. "
-        f"Your readers are commodity traders, macro investors, and corporate procurement teams tracking real price signals.\n\n"
-        f"Commodity: {full_name} ({asset.symbol}) | {sector} | Priced in: {unit}\n"
+        f"Daily commodity brief — {full_name} ({asset.symbol}) — {min_w}–{max_w} words. "
+        f"Audience: commodity traders tracking real price signals.\n\n"
+        f"{asset.symbol} | {sector} | {unit}\n"
         f"{price_line}"
         f"Date: {date.today().strftime('%B %d, %Y')}\n\n"
-        f"Write {min_w}–{max_w} words. {focus}\n\n"
-        f"Style: commodity desk precision. Use the actual price if provided. Active voice. "
-        f"Never write: navigates, robust, resilient, notable, landscape, amid, dynamic, "
-        f"uncertainty, headwinds, tailwinds, volatile, volatility (use 'price swings' instead). "
-        f"No bullet points. No headers. End with a period."
+        f"{focus}\n\n"
+        f"Rules: use the actual price, active voice, every sentence has a number or place name. "
+        f"Banned: navigates, robust, resilient, notable, landscape, amid, dynamic, "
+        f"uncertainty, headwinds, tailwinds, volatile, volatility (say 'price swings'). "
+        f"No bullets. No headers. End with a period."
     )
     return _call_ai(prompt, min_words=min_w - 5, max_words=max_w + 10, prefer_gemini=False)
 
