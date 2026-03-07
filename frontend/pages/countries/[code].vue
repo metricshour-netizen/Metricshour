@@ -138,7 +138,7 @@
       <div class="bg-[#111827] border border-[#1f2937] rounded-lg p-5 mb-6">
         <div class="flex items-center justify-between mb-3">
           <h2 class="text-sm font-bold text-white">Key Indicators Over Time</h2>
-          <span class="text-[10px] text-gray-600">World Bank · 2015–2024</span>
+          <span class="text-[10px] text-gray-600">World Bank · 2000–2024</span>
         </div>
         <div v-if="timeseriesLoading" class="h-44 bg-[#0d1117] rounded-lg animate-pulse" />
         <div v-else-if="!hasTimeseries" class="h-44 flex items-center justify-center text-gray-600 text-xs">
@@ -488,7 +488,8 @@ function fmtUsd(v: number | null | undefined): string {
 
 function row(label: string, key: string) {
   const val = country.value?.indicators?.[key]
-  return { label, value: fmt(key, val), raw: val ?? null }
+  const year = country.value?.indicator_years?.[key]
+  return { label, value: fmt(key, val), raw: val ?? null, year: year ?? null }
 }
 
 // ─── Key indicator cards ─────────────────────────────────────────────────────

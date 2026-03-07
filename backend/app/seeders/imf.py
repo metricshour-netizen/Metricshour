@@ -51,7 +51,7 @@ IMF_TO_ISO3: dict[str, str] = {
 }
 
 # Years to import — include WEO projections for current year (they're labeled as estimates)
-YEAR_START = 2015
+YEAR_START = 2000
 YEAR_END = 2024
 
 

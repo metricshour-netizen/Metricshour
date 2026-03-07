@@ -20,6 +20,7 @@ import json
 import logging
 import os
 import ssl
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone, date, timedelta
 
 import redis as redis_lib
@@ -105,27 +106,38 @@ def _fmt_cap(v) -> str:
     return f"${v/1e6:.0f}M"
 
 
-# ── Gemini AI helper ──────────────────────────────────────────────────────────
+# ── AI helpers ────────────────────────────────────────────────────────────────
+# Routing:
+#   prefer_gemini=True  → Gemini first (G20 countries, G20×G20 trade corridors)
+#   prefer_gemini=False → DeepSeek first (all other bulk — non-G20 countries,
+#                         stocks, commodities, non-top trade pairs)
+# Keys never logged. Falls back gracefully if either key is absent.
+
+MAX_SUMMARY_WORKERS = 4  # concurrent threads for bulk AI calls; stays within DB pool
+
+_MD_RE = None  # compiled lazily
+
+
+def _strip_markdown(text: str) -> str:
+    global _MD_RE
+    import re
+    if _MD_RE is None:
+        _MD_RE = re.compile(r"^[#*\-]+\s*", re.MULTILINE)
+    if text[:2] in ("**", "# ", "- "):
+        text = _MD_RE.sub("", text).strip()
+    return text
+
 
 def _call_gemini(prompt: str, min_words: int = 55, max_words: int = 110) -> str | None:
-    """
-    Call Gemini 2.5 Flash. Returns None on any failure — caller uses template fallback.
-    """
+    """Call Gemini 2.5 Flash. Returns None on any failure."""
     api_key = os.environ.get("GEMINI_API_KEY", "")
     if not api_key:
         return None
     try:
         from google import genai
         client = genai.Client(api_key=api_key)
-        r = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt,
-        )
-        text = r.text.strip()
-        # Strip any stray markdown the model might add
-        if text.startswith("**") or text.startswith("#"):
-            import re
-            text = re.sub(r"^[#*\-]+\s*", "", text, flags=re.MULTILINE).strip()
+        r = client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
+        text = _strip_markdown(r.text.strip())
         words = len(text.split())
         if (min_words - 15) < words < (max_words + 25):
             return text
@@ -133,6 +145,54 @@ def _call_gemini(prompt: str, min_words: int = 55, max_words: int = 110) -> str 
     except Exception as exc:
         log.debug("Gemini call failed: %s", exc)
         return None
+
+
+def _call_deepseek(prompt: str, min_words: int = 55, max_words: int = 110) -> str | None:
+    """Call DeepSeek V3 (OpenAI-compatible REST). Returns None on any failure."""
+    api_key = os.environ.get("DEEPSEEK_API_KEY", "")
+    if not api_key:
+        return None
+    try:
+        import requests as _req
+        resp = _req.post(
+            "https://api.deepseek.com/v1/chat/completions",
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json={
+                "model": "deepseek-chat",
+                "messages": [{"role": "user", "content": prompt}],
+                "max_tokens": 350,
+                "temperature": 0.7,
+            },
+            timeout=30,
+        )
+        resp.raise_for_status()
+        text = _strip_markdown(resp.json()["choices"][0]["message"]["content"].strip())
+        words = len(text.split())
+        if (min_words - 15) < words < (max_words + 25):
+            return text
+        return None
+    except Exception as exc:
+        log.debug("DeepSeek call failed: %s", exc)
+        return None
+
+
+def _call_ai(prompt: str, min_words: int = 55, max_words: int = 110,
+             prefer_gemini: bool = False) -> str | None:
+    """
+    Route to best available AI model.
+    prefer_gemini=True  → Gemini first (G20/top-corridor quality tier).
+    prefer_gemini=False → DeepSeek first (bulk tier — faster, cheaper, concurrent).
+    Falls back to the other model if primary fails or key is absent.
+    """
+    if prefer_gemini:
+        return (_call_gemini(prompt, min_words, max_words)
+                or _call_deepseek(prompt, min_words, max_words))
+    return (_call_deepseek(prompt, min_words, max_words)
+            or _call_gemini(prompt, min_words, max_words))
+
+
+def _has_ai_key() -> bool:
+    return bool(os.environ.get("DEEPSEEK_API_KEY") or os.environ.get("GEMINI_API_KEY"))
 
 
 # ── Country summary ────────────────────────────────────────────────────────────
@@ -184,7 +244,7 @@ def _country_summary_text(country: Country, db) -> str:
         dev_status = "emerging"
     currency = country.currency_name or country.currency_code or "its local currency"
 
-    if os.environ.get("GEMINI_API_KEY"):
+    if _has_ai_key():
         facts = (
             f"Country: {country.name} ({country.code})\n"
             f"Economy classification: {dev_status}\n"
@@ -213,7 +273,8 @@ def _country_summary_text(country: Country, db) -> str:
             f"- Write in Financial Times macro-brief style: third-person, authoritative, data-specific\n"
             f"- Include exact numbers. No bullet points. No headers. End with a period."
         )
-        ai = _call_gemini(prompt, min_words=65, max_words=110)
+        # G20 countries → Gemini (quality tier); rest → DeepSeek (bulk tier)
+        ai = _call_ai(prompt, min_words=65, max_words=110, prefer_gemini=bool(country.is_g20))
         if ai:
             return ai
 
@@ -253,7 +314,7 @@ def _country_insight_text(country: Country, db) -> str | None:
     Opinionated analyst take for a country page.
     Focuses on the single most investable signal in the data — not a description.
     """
-    if not os.environ.get("GEMINI_API_KEY"):
+    if not _has_ai_key():
         return None
 
     ind: dict[str, float] = {}
@@ -342,7 +403,8 @@ def _country_insight_text(country: Country, db) -> str | None:
         f"headwinds, tailwinds, uncertainty, remains to be seen, it is worth noting. "
         f"No bullet points. No headers. No em-dashes used as decoration. End with a period."
     )
-    return _call_gemini(prompt, min_words=min_w - 5, max_words=max_w + 10)
+    return _call_ai(prompt, min_words=min_w - 5, max_words=max_w + 10,
+                    prefer_gemini=bool(country.is_g20))
 
 
 # ── Stock summary ──────────────────────────────────────────────────────────────
@@ -367,7 +429,7 @@ def _stock_summary_text(asset: Asset, db) -> str:
     cap_str = _fmt_cap(asset.market_cap_usd)
     sector = asset.sector or "company"
 
-    if os.environ.get("GEMINI_API_KEY"):
+    if _has_ai_key():
         rev_lines = "\n".join(
             f"  - {c.flag_emoji or ''} {c.name}: {r.revenue_pct:.0f}% (FY{r.fiscal_year})"
             for r, c in revs
@@ -393,7 +455,7 @@ def _stock_summary_text(asset: Asset, db) -> str:
             f"- Write in Goldman Sachs equity note style: precise, data-driven, forward-oriented\n"
             f"- No bullet points. No headers. Third-person. Include exact percentages. End with a period."
         )
-        ai = _call_gemini(prompt, min_words=65, max_words=110)
+        ai = _call_ai(prompt, min_words=65, max_words=110, prefer_gemini=False)
         if ai:
             return ai
 
@@ -429,7 +491,7 @@ def _stock_insight_text(asset: Asset, db) -> str | None:
     """
     Opinionated 60-80 word analyst take for a stock page. Generated daily.
     """
-    if not os.environ.get("GEMINI_API_KEY"):
+    if not _has_ai_key():
         return None
 
     hq = db.query(Country).filter(Country.id == asset.country_id).first() if asset.country_id else None
@@ -515,7 +577,7 @@ def _stock_insight_text(asset: Asset, db) -> str | None:
         f"amid, dynamic, headwinds, tailwinds, uncertainty, poised, well-positioned. "
         f"No bullet points. No headers. End with a period."
     )
-    return _call_gemini(prompt, min_words=min_w - 5, max_words=max_w + 10)
+    return _call_ai(prompt, min_words=min_w - 5, max_words=max_w + 10, prefer_gemini=False)
 
 
 # ── Trade summary ──────────────────────────────────────────────────────────────
@@ -536,7 +598,7 @@ def _trade_summary_text(exporter: Country, importer: Country, trade: TradePair |
     exp_flag = exporter.flag_emoji or ""
     imp_flag = importer.flag_emoji or ""
 
-    if os.environ.get("GEMINI_API_KEY"):
+    if _has_ai_key():
         facts = (
             f"Exporter: {exporter.name} ({exporter.code}) {exp_flag}\n"
             f"Importer: {importer.name} ({importer.code}) {imp_flag}\n"
@@ -561,7 +623,9 @@ def _trade_summary_text(exporter: Country, importer: Country, trade: TradePair |
             f"- Write in Reuters/FT trade desk style: factual, concise, market-aware\n"
             f"- No bullet points. No headers. Include specific dollar amounts. End with a period."
         )
-        ai = _call_gemini(prompt, min_words=65, max_words=110)
+        # G20×G20 corridors → Gemini; all others → DeepSeek
+        top_corridor = bool(exporter.is_g20 and importer.is_g20)
+        ai = _call_ai(prompt, min_words=65, max_words=110, prefer_gemini=top_corridor)
         if ai:
             return ai
 
@@ -589,7 +653,7 @@ def _trade_insight_text(exporter: Country, importer: Country, trade: TradePair |
     Opinionated 60-80 word daily analyst take for a bilateral trade page.
     Forward-looking: tariff risk, FX impact, supply chain shifts, geopolitical tension.
     """
-    if not os.environ.get("GEMINI_API_KEY"):
+    if not _has_ai_key():
         return None
 
     if not trade:
@@ -660,7 +724,9 @@ def _trade_insight_text(exporter: Country, importer: Country, trade: TradePair |
         f"uncertainty, headwinds, tailwinds, bilateral relations, strategic partnership. "
         f"No bullet points. No headers. Active voice. End with a period."
     )
-    return _call_gemini(prompt, min_words=min_w - 5, max_words=max_w + 10)
+    top_corridor = bool(exporter.is_g20 and importer.is_g20)
+    return _call_ai(prompt, min_words=min_w - 5, max_words=max_w + 10,
+                    prefer_gemini=top_corridor)
 
 
 # ── Commodity summary ──────────────────────────────────────────────────────────
@@ -674,7 +740,7 @@ def _commodity_summary_text(asset: Asset) -> str:
     sector = meta.get("sector", asset.sector or "Commodity")
     unit = meta.get("unit", "USD")
 
-    if os.environ.get("GEMINI_API_KEY"):
+    if _has_ai_key():
         prompt = (
             f"You are a commodity analyst at a major trading house writing for MetricsHour, "
             f"a financial intelligence platform used by commodity traders, macro investors, and corporate procurement teams.\n\n"
@@ -693,7 +759,7 @@ def _commodity_summary_text(asset: Asset) -> str:
             f"- Write in commodity desk style: precise, market-fluent, no fluff\n"
             f"- No bullet points. No headers. Third-person. End with a period."
         )
-        ai = _call_gemini(prompt, min_words=65, max_words=110)
+        ai = _call_ai(prompt, min_words=65, max_words=110, prefer_gemini=False)
         if ai:
             return ai
 
@@ -712,7 +778,7 @@ def _commodity_insight_text(asset: Asset, db=None) -> str | None:
     """
     Opinionated analyst take for a commodity page. Includes latest price from DB.
     """
-    if not os.environ.get("GEMINI_API_KEY"):
+    if not _has_ai_key():
         return None
 
     meta = COMMODITY_META.get(asset.symbol, {})
@@ -770,7 +836,7 @@ def _commodity_insight_text(asset: Asset, db=None) -> str | None:
         f"uncertainty, headwinds, tailwinds, volatile, volatility (use 'price swings' instead). "
         f"No bullet points. No headers. End with a period."
     )
-    return _call_gemini(prompt, min_words=min_w - 5, max_words=max_w + 10)
+    return _call_ai(prompt, min_words=min_w - 5, max_words=max_w + 10, prefer_gemini=False)
 
 
 # ── Emoji helpers ─────────────────────────────────────────────────────────────
@@ -875,6 +941,7 @@ def _country_summary_stale(country: Country, existing: PageSummary | None, db) -
         db.query(CountryIndicator.period_date)
         .filter(CountryIndicator.country_id == country.id)
         .order_by(CountryIndicator.period_date.desc())
+        .limit(1)
         .scalar()
     )
     if latest_ind and latest_ind > existing.generated_at.date():
@@ -894,6 +961,7 @@ def _stock_summary_stale(asset: Asset, existing: PageSummary | None, db) -> bool
         db.query(StockCountryRevenue.fiscal_year)
         .filter(StockCountryRevenue.asset_id == asset.id)
         .order_by(StockCountryRevenue.fiscal_year.desc())
+        .limit(1)
         .scalar()
     )
     if latest_fy and latest_fy > existing.generated_at.year:
@@ -999,82 +1067,83 @@ def _upsert_summary(db, entity_type: str, entity_code: str, text_: str):
         ))
 
 
+# ── Thread-safe summary worker ─────────────────────────────────────────────────
+
+def _summary_worker(args: dict) -> dict:
+    """
+    Thread-safe: opens its own DB session, generates one summary, closes session.
+    DB writes happen on the calling thread after this returns.
+    """
+    entity_type = args["entity_type"]
+    entity_code = args["entity_code"]
+    db = SessionLocal()
+    try:
+        if entity_type == "country":
+            e = db.query(Country).filter(Country.id == args["id"]).first()
+            text = _country_summary_text(e, db) if e else None
+        elif entity_type == "stock":
+            e = db.query(Asset).filter(Asset.id == args["id"]).first()
+            text = _stock_summary_text(e, db) if e else None
+        elif entity_type == "commodity":
+            e = db.query(Asset).filter(Asset.id == args["id"]).first()
+            text = _commodity_summary_text(e) if e else None
+        elif entity_type == "trade":
+            exp = db.query(Country).filter(Country.id == args["exp_id"]).first()
+            imp = db.query(Country).filter(Country.id == args["imp_id"]).first()
+            pair = db.query(TradePair).filter(TradePair.id == args["pair_id"]).first()
+            text = _trade_summary_text(exp, imp, pair) if exp and imp else None
+        else:
+            text = None
+        return {"entity_type": entity_type, "entity_code": entity_code, "text": text}
+    except Exception as e:
+        log.warning("Summary worker failed %s/%s: %s", entity_type, entity_code, e)
+        return {"entity_type": entity_type, "entity_code": entity_code, "text": None}
+    finally:
+        db.close()
+
+
 # ── Celery tasks ───────────────────────────────────────────────────────────────
 
 @app.task(name="tasks.summaries.generate_page_summaries", bind=True, max_retries=2)
 def generate_page_summaries(self):
     """
-    Daily 2am UTC: regenerate stable page summaries for countries, stocks, commodities, trade pairs.
-    Uses Gemini 2.5 Flash if GEMINI_API_KEY is set, else polished templates.
-    Summaries are factual/descriptive — only regenerate when underlying data changes meaningfully.
+    Daily 2am UTC: regenerate stable page summaries for all entity types.
+    G20 countries + G20×G20 trade corridors → Gemini.
+    All other bulk (230 countries, stocks, commodities, non-top trade pairs) → DeepSeek.
+    Concurrent: MAX_SUMMARY_WORKERS threads fire AI calls in parallel.
+    Schedule unchanged; execution time reduced ~4×.
     """
     db = SessionLocal()
     try:
-        total = 0
-
-        # Pre-load existing summaries into a lookup dict to avoid N+1 queries
         existing_map: dict[tuple, PageSummary] = {
             (r.entity_type, r.entity_code): r
             for r in db.query(PageSummary).all()
         }
 
+        # ── Build work queue (stale entities only) ──────────────────────────
+        work_items: list[dict] = []
         skipped = 0
 
-        # Country summaries
-        countries = db.query(Country).all()
-        for c in countries:
-            existing = existing_map.get(("country", c.code))
-            if not _country_summary_stale(c, existing, db):
+        for c in db.query(Country).all():
+            if _country_summary_stale(c, existing_map.get(("country", c.code)), db):
+                work_items.append({"entity_type": "country", "entity_code": c.code, "id": c.id})
+            else:
                 skipped += 1
-                continue
-            try:
-                summary = _country_summary_text(c, db)
-                _upsert_summary(db, "country", c.code, summary)
-                total += 1
-            except Exception as e:
-                log.warning("Country summary failed %s: %s", c.code, e)
-        db.commit()
-        log.info("Country summaries: %d regenerated, %d skipped (up to date)", total, skipped)
 
-        # Stock summaries
-        stocks = db.query(Asset).filter(Asset.asset_type == "stock").all()
-        stock_skip = 0
-        for s in stocks:
-            existing = existing_map.get(("stock", s.symbol))
-            if not _stock_summary_stale(s, existing, db):
-                stock_skip += 1
-                continue
-            try:
-                summary = _stock_summary_text(s, db)
-                _upsert_summary(db, "stock", s.symbol, summary)
-                total += 1
-            except Exception as e:
-                log.warning("Stock summary failed %s: %s", s.symbol, e)
-        db.commit()
-        log.info("Stock summaries: %d regenerated, %d skipped", total, stock_skip)
+        for s in db.query(Asset).filter(Asset.asset_type == "stock").all():
+            if _stock_summary_stale(s, existing_map.get(("stock", s.symbol)), db):
+                work_items.append({"entity_type": "stock", "entity_code": s.symbol, "id": s.id})
+            else:
+                skipped += 1
 
-        # Commodity summaries
-        commodities = db.query(Asset).filter(Asset.asset_type == "commodity").all()
-        comm_skip = 0
-        for c in commodities:
-            existing = existing_map.get(("commodity", c.symbol))
-            if not _commodity_summary_stale(c, existing, db):
-                comm_skip += 1
-                continue
-            try:
-                summary = _commodity_summary_text(c)
-                _upsert_summary(db, "commodity", c.symbol, summary)
-                total += 1
-            except Exception as e:
-                log.warning("Commodity summary failed %s: %s", c.symbol, e)
-        db.commit()
-        log.info("Commodity summaries: %d regenerated, %d skipped", total, comm_skip)
+        for c in db.query(Asset).filter(Asset.asset_type == "commodity").all():
+            if _commodity_summary_stale(c, existing_map.get(("commodity", c.symbol)), db):
+                work_items.append({"entity_type": "commodity", "entity_code": c.symbol, "id": c.id})
+            else:
+                skipped += 1
 
-        # Trade pair summaries — latest year per pair only
-        pairs = db.query(TradePair).order_by(TradePair.year.desc()).all()
         seen_pairs: set[str] = set()
-        trade_skip = 0
-        for pair in pairs:
+        for pair in db.query(TradePair).order_by(TradePair.year.desc()).all():
             exp = db.query(Country).filter(Country.id == pair.exporter_id).first()
             imp = db.query(Country).filter(Country.id == pair.importer_id).first()
             if not exp or not imp:
@@ -1083,21 +1152,32 @@ def generate_page_summaries(self):
             if pair_code in seen_pairs:
                 continue
             seen_pairs.add(pair_code)
-            existing = existing_map.get(("trade", pair_code))
-            if not _trade_summary_stale(pair_code, pair.year, existing):
-                trade_skip += 1
-                continue
-            try:
-                summary = _trade_summary_text(exp, imp, pair)
-                _upsert_summary(db, "trade", pair_code, summary)
-                total += 1
-            except Exception as e:
-                log.warning("Trade summary failed %s: %s", pair_code, e)
-        db.commit()
-        log.info("Trade summaries: %d regenerated, %d skipped", total, trade_skip)
+            if _trade_summary_stale(pair_code, pair.year, existing_map.get(("trade", pair_code))):
+                work_items.append({
+                    "entity_type": "trade", "entity_code": pair_code,
+                    "exp_id": exp.id, "imp_id": imp.id, "pair_id": pair.id,
+                })
+            else:
+                skipped += 1
 
-        log.info("Total summaries regenerated: %d (data-driven skips applied)", total)
-        return {"summaries_generated": total, "skipped": skipped + stock_skip + comm_skip + trade_skip}
+        log.info("generate_page_summaries: %d stale, %d up-to-date", len(work_items), skipped)
+
+        # ── Process concurrently (workers create own DB sessions) ───────────
+        total = 0
+        with ThreadPoolExecutor(max_workers=MAX_SUMMARY_WORKERS) as executor:
+            futures = {executor.submit(_summary_worker, item): item for item in work_items}
+            for future in as_completed(futures):
+                result = future.result()
+                if result["text"]:
+                    _upsert_summary(db, result["entity_type"], result["entity_code"], result["text"])
+                    total += 1
+                    if total % 20 == 0:
+                        db.commit()
+                        log.info("  ... %d summaries written", total)
+
+        db.commit()
+        log.info("generate_page_summaries complete: %d regenerated, %d skipped", total, skipped)
+        return {"summaries_generated": total, "skipped": skipped}
 
     except Exception as exc:
         db.rollback()
@@ -1114,8 +1194,8 @@ def generate_daily_insights(self):
     Insights are forward-looking analyst takes — always refreshed daily regardless of data changes.
     Stored as entity_type = 'country_insight', 'stock_insight', 'commodity_insight'.
     """
-    if not os.environ.get("GEMINI_API_KEY"):
-        log.warning("generate_daily_insights: no GEMINI_API_KEY — skipping")
+    if not _has_ai_key():
+        log.warning("generate_daily_insights: no AI key configured — skipping")
         return {"skipped": True}
 
     db = SessionLocal()
@@ -1261,8 +1341,8 @@ def run_insight_batch(self, insight_type: str):
 
     insight_type: 'country' | 'stock' | 'commodity' | 'trade'
     """
-    if not os.environ.get("GEMINI_API_KEY"):
-        log.warning("run_insight_batch(%s): no GEMINI_API_KEY — skipping", insight_type)
+    if not _has_ai_key():
+        log.warning("run_insight_batch(%s): no AI key configured — skipping", insight_type)
         return {"skipped": True}
 
     batch_size = _INSIGHT_BATCH.get(insight_type, 20)

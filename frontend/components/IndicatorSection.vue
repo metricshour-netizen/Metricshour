@@ -8,10 +8,13 @@
         class="flex items-center justify-between gap-4 text-sm"
       >
         <span class="text-gray-500 truncate">{{ r.label }}</span>
-        <span
-          class="font-medium tabular-nums shrink-0"
-          :class="r.raw == null ? 'text-gray-700' : 'text-white'"
-        >{{ r.value }}</span>
+        <div class="text-right shrink-0">
+          <span
+            class="font-medium tabular-nums block"
+            :class="r.raw == null ? 'text-gray-700' : 'text-white'"
+          >{{ r.value }}</span>
+          <span v-if="r.year" class="text-[10px] text-gray-600 leading-none">{{ r.year }}</span>
+        </div>
       </div>
     </div>
   </div>
@@ -20,6 +23,6 @@
 <script setup lang="ts">
 defineProps<{
   title: string
-  rows: { label: string; value: string; raw?: number | null }[]
+  rows: { label: string; value: string; raw?: number | null; year?: number | null }[]
 }>()
 </script>

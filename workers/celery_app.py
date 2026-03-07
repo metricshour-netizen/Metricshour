@@ -61,6 +61,7 @@ app = Celery('metricshour', include=[
     'tasks.trade_update',
     'tasks.sitemap_deploy',
     'tasks.central_bank_rates',
+    'tasks.backfill',
 ])
 
 # Upstash Redis uses TLS (rediss://); Celery requires ssl_cert_reqs to be explicit.
@@ -186,6 +187,12 @@ app.conf.update(
         'central-bank-rates-weekly': {
             'task': 'tasks.central_bank_rates.fetch_central_bank_rates',
             'schedule': crontab(hour=2, minute=0, day_of_week=0),
+        },
+
+        # Price history backfill — 5yr daily OHLCV, monthly on 2nd at 1am
+        'price-backfill-monthly': {
+            'task': 'tasks.backfill.backfill_price_history',
+            'schedule': crontab(hour=1, minute=0, day_of_month=2),
         },
 
         # WITS trade matrix: full annual refresh — Jan 15 at 2am

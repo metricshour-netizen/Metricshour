@@ -59,11 +59,13 @@ def get_country(code: str, db: Session = Depends(get_db)) -> dict:
 
     # Deduplicate — keep only the most recent per indicator
     latest: dict[str, float] = {}
+    latest_years: dict[str, int] = {}
     for row in indicators:
         if row.indicator not in latest:
             latest[row.indicator] = row.value
+            latest_years[row.indicator] = row.period_date.year
 
-    result = {**_country_summary(country), "indicators": latest}
+    result = {**_country_summary(country), "indicators": latest, "indicator_years": latest_years}
     cache_set(cache_key, result, ttl_seconds=3600)
     return result
 

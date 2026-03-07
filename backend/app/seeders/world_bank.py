@@ -21,7 +21,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 log = logging.getLogger(__name__)
 
 WB_BASE = "https://api.worldbank.org/v2"
-DATE_RANGE = "2015:2024"
+DATE_RANGE = "2000:2024"
 PER_PAGE = 20000  # large enough for all countries × years in one page
 
 # Maps World Bank indicator code → our internal indicator name
