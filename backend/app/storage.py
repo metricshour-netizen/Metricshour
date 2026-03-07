@@ -193,15 +193,11 @@ def _l0_del(key: str) -> None:
 # ── Three-layer cache: L0 memory → L1 Redis → L2 KV ──────────────────────────
 
 def cache_get(key: str) -> list | dict | None:
-    """L0 memory → L1 Redis → L2 KV. Returns first hit or None."""
+    """L0 memory → L1 Redis. KV is write-only from the API — never read back."""
     hit = _l0_get(key)
     if hit is not None:
         return hit
     hit = redis_json_get(key)
-    if hit is not None:
-        _l0_set(key, hit)
-        return hit
-    hit = kv_json_get(key)
     if hit is not None:
         _l0_set(key, hit)
     return hit
