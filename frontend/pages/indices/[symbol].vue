@@ -185,15 +185,27 @@ useSeoMeta({
 })
 
 useHead({
+  link: [{ rel: 'canonical', href: `https://metricshour.com/indices/${symbol}` }],
   script: index.value ? [{
     type: 'application/ld+json',
     innerHTML: JSON.stringify({
       '@context': 'https://schema.org',
-      '@type': 'BreadcrumbList',
-      'itemListElement': [
-        { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://metricshour.com' },
-        { '@type': 'ListItem', position: 2, name: 'Markets', item: 'https://metricshour.com/markets' },
-        { '@type': 'ListItem', position: 3, name: index.value?.symbol, item: `https://metricshour.com/indices/${symbol}` },
+      '@graph': [
+        {
+          '@type': 'WebPage',
+          name: `${index.value.symbol} — ${index.value.name} — MetricsHour`,
+          url: `https://metricshour.com/indices/${symbol}`,
+          description: `${index.value.name} live price, chart, and market data.`,
+          isPartOf: { '@type': 'WebSite', name: 'MetricsHour', url: 'https://metricshour.com' },
+        },
+        {
+          '@type': 'BreadcrumbList',
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://metricshour.com' },
+            { '@type': 'ListItem', position: 2, name: 'Markets', item: 'https://metricshour.com/markets' },
+            { '@type': 'ListItem', position: 3, name: index.value.symbol, item: `https://metricshour.com/indices/${symbol}` },
+          ],
+        },
       ],
     }),
   }] : [],

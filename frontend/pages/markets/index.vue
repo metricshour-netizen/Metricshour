@@ -549,4 +549,30 @@ useSeoMeta({
   twitterImage: 'https://api.metricshour.com/og/section/markets.png',
   twitterCard: 'summary_large_image',
 })
+
+useHead({
+  link: [{ rel: 'canonical', href: 'https://metricshour.com/markets' }],
+  script: [{
+    type: 'application/ld+json',
+    innerHTML: JSON.stringify({
+      '@context': 'https://schema.org',
+      '@graph': [
+        {
+          '@type': 'WebPage',
+          name: 'Markets — MetricsHour',
+          url: 'https://metricshour.com/markets',
+          description: 'Search crypto, stocks, ETFs, indices, bonds, commodities and FX. Real-time prices and global market data.',
+          isPartOf: { '@type': 'WebSite', name: 'MetricsHour', url: 'https://metricshour.com' },
+        },
+        {
+          '@type': 'BreadcrumbList',
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://metricshour.com' },
+            { '@type': 'ListItem', position: 2, name: 'Markets', item: 'https://metricshour.com/markets' },
+          ],
+        },
+      ],
+    }),
+  }],
+})
 </script>

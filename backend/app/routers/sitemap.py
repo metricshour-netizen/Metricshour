@@ -8,6 +8,7 @@ Cloudflare Bot Fight Mode blocks Googlebot/Bingbot on the Pages origin
 Generates the sitemap dynamically from the database, with Cache-Control so
 Cloudflare caches it at the edge for 1 hour.
 """
+from datetime import date
 from fastapi import APIRouter, Depends
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
@@ -24,15 +25,18 @@ router = APIRouter()
 
 BASE = "https://metricshour.com"
 
+# lastmod = today for pages that update frequently, None for static pages
+_TODAY = date.today().isoformat()
+
 STATIC_ROUTES = [
-    (f"{BASE}/",             "1.0", "daily"),
-    (f"{BASE}/markets",      "0.9", "daily"),
-    (f"{BASE}/stocks",       "0.9", "daily"),
-    (f"{BASE}/countries",    "0.9", "weekly"),
-    (f"{BASE}/trade",        "0.9", "weekly"),
-    (f"{BASE}/commodities",  "0.8", "daily"),
-    (f"{BASE}/feed",         "0.7", "daily"),
-    (f"{BASE}/pricing",      "0.6", "monthly"),
+    (f"{BASE}/",             "1.0", "daily",   _TODAY),
+    (f"{BASE}/markets",      "0.9", "daily",   _TODAY),
+    (f"{BASE}/stocks",       "0.9", "daily",   _TODAY),
+    (f"{BASE}/countries",    "0.9", "weekly",  _TODAY),
+    (f"{BASE}/trade",        "0.9", "weekly",  _TODAY),
+    (f"{BASE}/commodities",  "0.8", "daily",   _TODAY),
+    (f"{BASE}/feed",         "0.7", "daily",   _TODAY),
+    (f"{BASE}/pricing",      "0.6", "monthly", None),
 ]
 
 
@@ -59,7 +63,7 @@ def sitemap(db: Session = Depends(get_db)):
     ):
         lastmod_map[(row.entity_type, row.entity_code)] = row.generated_at.strftime("%Y-%m-%d")
 
-    entries: list[str] = [_url(*r) for r in STATIC_ROUTES]
+    entries: list[str] = [_url(loc, pri, freq, lm) for loc, pri, freq, lm in STATIC_ROUTES]
 
     # Assets → /stocks/{symbol}
     for (symbol,) in db.execute(select(Asset.symbol).where(Asset.symbol.isnot(None))):

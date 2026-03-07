@@ -20,11 +20,15 @@ export default defineNuxtConfig({
 
   app: {
     head: {
+      htmlAttrs: { lang: 'en' },
+      charset: 'utf-8',
       title: 'MetricsHour — Global Financial Intelligence',
       meta: [
         { name: 'description', content: 'Stocks, macro, trade flows, and commodities in one place. Understand how global events affect your investments.' },
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+        { name: 'robots', content: 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1' },
         { property: 'og:site_name', content: 'MetricsHour' },
+        { property: 'og:locale', content: 'en_US' },
         { property: 'og:image', content: 'https://api.metricshour.com/og/section/home.png' },
         { property: 'og:image:width', content: '1200' },
         { property: 'og:image:height', content: '630' },

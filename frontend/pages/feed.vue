@@ -1,5 +1,6 @@
 <template>
   <div class="feed-viewport fixed inset-0 bg-black" style="top: 48px;">
+    <h1 class="sr-only">Market Intelligence Feed — MetricsHour</h1>
 
     <!-- METRICSHOUR home tap zone — always accessible on feed -->
     <NuxtLink
@@ -309,6 +310,32 @@ useSeoMeta({
   twitterDescription: 'Personalised market intelligence feed. Price moves, macro releases, and trade updates ranked for you.',
   twitterImage: 'https://api.metricshour.com/og/section/feed.png',
   twitterCard: 'summary_large_image',
+})
+
+useHead({
+  link: [{ rel: 'canonical', href: 'https://metricshour.com/feed' }],
+  script: [{
+    type: 'application/ld+json',
+    innerHTML: JSON.stringify({
+      '@context': 'https://schema.org',
+      '@graph': [
+        {
+          '@type': 'WebPage',
+          name: 'Market Intelligence Feed — MetricsHour',
+          url: 'https://metricshour.com/feed',
+          description: 'Personalised market intelligence feed. Price moves, macro releases, and trade updates ranked for you.',
+          isPartOf: { '@type': 'WebSite', name: 'MetricsHour', url: 'https://metricshour.com' },
+        },
+        {
+          '@type': 'BreadcrumbList',
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://metricshour.com' },
+            { '@type': 'ListItem', position: 2, name: 'Feed', item: 'https://metricshour.com/feed' },
+          ],
+        },
+      ],
+    }),
+  }],
 })
 </script>
 
