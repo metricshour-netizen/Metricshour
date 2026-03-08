@@ -23,7 +23,7 @@ const CACHE_RULES = [
   { re: /^\/api\/countries$/, ttl: 300 },
   { re: /^\/api\/assets\/[A-Z0-9.\-]+$/, ttl: 900 },
   { re: /^\/api\/assets$/, ttl: 300 },
-  { re: /^\/api\/trade\/[A-Z]{2,3}-[A-Z]{2,3}$/, ttl: 86400 },
+  { re: /^\/api\/trade\/[A-Z]{2,3}\/[A-Z]{2,3}$/, ttl: 86400 },
   { re: /^\/api\/intelligence\/spotlight$/, ttl: 10800 },
   { re: /^\/api\/summaries\/[a-z]+\/.+$/, ttl: 3600 },
   { re: /^\/api\/feed$/, ttl: 60 },
@@ -65,32 +65,45 @@ export default {
       return forwardToOrigin(request, env)
     }
 
-    // ── KV-served routes (globally consistent hot data) ───────────────────────
-    const kvRule = KV_RULES.find(r => r.re.test(url.pathname))
-    if (kvRule) {
-      const cached = await env.API_CACHE.get(kvRule.key)
-      if (cached !== null) {
-        return jsonResponse(cached, 'KV-HIT')
-      }
-      // KV miss — fall through to CF Cache / origin
-    }
-
-    // ── CF Cache API (free, no quotas, per-datacenter) ────────────────────────
     const rule = CACHE_RULES.find(r => r.re.test(url.pathname))
     if (!rule) {
       return forwardToOrigin(request, env)
     }
 
+    // ── CF Cache API — check first (free, per-datacenter, no quota) ───────────
     const cache = caches.default
     const cacheRequest = new Request(url.toString(), { method: 'GET' })
 
-    const cached = await cache.match(cacheRequest)
-    if (cached) {
-      const body = await cached.text()
+    const cfCached = await cache.match(cacheRequest)
+    if (cfCached) {
+      const body = await cfCached.text()
       return jsonResponse(body, 'HIT', rule.ttl)
     }
 
-    // Cache miss — fetch from origin
+    // ── KV-served routes — only on CF Cache miss (globally consistent) ────────
+    // KV is checked AFTER CF Cache to avoid burning KV reads on every request.
+    // Free tier: 100k reads/day — CF Cache absorbs the vast majority.
+    const kvRule = KV_RULES.find(r => r.re.test(url.pathname))
+    if (kvRule) {
+      const kvData = await env.API_CACHE.get(kvRule.key)
+      if (kvData !== null) {
+        // Warm CF Cache so subsequent requests in this datacenter skip KV
+        ctx.waitUntil(
+          cache.put(
+            cacheRequest,
+            new Response(kvData, {
+              headers: {
+                'Content-Type': 'application/json',
+                'Cache-Control': `public, max-age=${rule.ttl}`,
+              },
+            })
+          )
+        )
+        return jsonResponse(kvData, 'KV-HIT', rule.ttl)
+      }
+    }
+
+    // ── Origin fetch ──────────────────────────────────────────────────────────
     const originResp = await forwardToOrigin(request, env)
     if (!originResp.ok) return addCors(originResp)
 
@@ -118,8 +131,11 @@ function forwardToOrigin(request, env) {
   const originUrl = env.ORIGIN + url.pathname + url.search
   return fetch(originUrl, {
     method: request.method,
-    headers: { ...Object.fromEntries(request.headers), host: new URL(env.ORIGIN).host },
+    headers: Object.fromEntries(request.headers),
     body: request.body,
+    // resolveOverride: connect directly to the origin IP, bypass CF proxy loop,
+    // but use api.metricshour.com as SNI so the Let's Encrypt cert validates.
+    cf: { resolveOverride: env.ORIGIN_IP },
   })
 }
 
@@ -131,6 +147,17 @@ function corsHeaders() {
   }
 }
 
+function securityHeaders() {
+  return {
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'X-XSS-Protection': '1; mode=block',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+    'Content-Security-Policy': "default-src 'none'; frame-ancestors 'none'",
+  }
+}
+
 function jsonResponse(body, cacheStatus, ttl = 60) {
   return new Response(body, {
     headers: {
@@ -138,12 +165,13 @@ function jsonResponse(body, cacheStatus, ttl = 60) {
       'Cache-Control': `public, max-age=${ttl}`,
       'X-Cache': cacheStatus,
       ...corsHeaders(),
+      ...securityHeaders(),
     },
   })
 }
 
 function addCors(response) {
   const r = new Response(response.body, response)
-  Object.entries(corsHeaders()).forEach(([k, v]) => r.headers.set(k, v))
+  Object.entries({ ...corsHeaders(), ...securityHeaders() }).forEach(([k, v]) => r.headers.set(k, v))
   return r
 }

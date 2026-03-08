@@ -13,7 +13,8 @@ binding = "R2"
 bucket_name = "metricshour-assets"
 
 [vars]
-ORIGIN = "https://89.167.35.114"
+ORIGIN = "https://api.metricshour.com"
+ORIGIN_IP = "89.167.35.114"
 
 [[routes]]
 pattern = "api.metricshour.com/*"
