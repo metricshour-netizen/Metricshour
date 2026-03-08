@@ -109,10 +109,10 @@ useSeoMeta({
   ogDescription: computed(() => post.value?.excerpt || ''),
   ogUrl: computed(() => `https://metricshour.com/blog/${slug}`),
   ogType: 'article',
-  ogImage: computed(() => post.value?.cover_image_url || 'https://metricshour.com/og-image.png'),
+  ogImage: computed(() => post.value?.cover_image_url || 'https://api.metricshour.com/og/section/home.png'),
   twitterTitle: computed(() => post.value ? `${post.value.title} — MetricsHour` : 'Article — MetricsHour'),
   twitterDescription: computed(() => post.value?.excerpt || ''),
-  twitterImage: computed(() => post.value?.cover_image_url || 'https://metricshour.com/og-image.png'),
+  twitterImage: computed(() => post.value?.cover_image_url || 'https://api.metricshour.com/og/section/home.png'),
 })
 
 useHead({

@@ -4,6 +4,8 @@ On-demand OG image generation — served directly from FastAPI.
 GET /og/feed/{event_id}.png   → 1200x630 PNG for a feed event
 GET /og/countries/{code}.png  → 1200x630 PNG for a country page
 GET /og/stocks/{symbol}.png   → 1200x630 PNG for a stock page
+GET /og/trade/{pair}.png      → 1200x630 PNG for a trade pair page (e.g. 'us-cn')
+GET /og/indices/{symbol}.png  → 1200x630 PNG for an index page (e.g. 'dji')
 
 Flow:
   1. CF Worker checks R2 for the key → serves from edge (global CDN, ~1ms) if found.
@@ -282,6 +284,50 @@ def _render_stock(symbol: str, name: str, price: float | None, market_cap: float
     return _to_png_bytes(img)
 
 
+# ── Trade renderer ─────────────────────────────────────────────────────────────
+
+def _render_trade(flag_a: str, name_a: str, flag_b: str, name_b: str, trade_value: float | None) -> bytes:
+    img = Image.new("RGB", (W, H), BG)
+    draw = ImageDraw.Draw(img)
+
+    for x in range(0, W, 80):
+        draw.line([(x, 0), (x, H)], fill=(255, 255, 255, 6), width=1)
+    for y in range(0, H, 80):
+        draw.line([(0, y), (W, y)], fill=(255, 255, 255, 6), width=1)
+
+    AMBER = (245, 158, 11)
+    draw.rectangle([(0, 0), (W, 4)], fill=AMBER)
+    draw.text((W - 32, H - 40), "METRICSHOUR", font=_font(18, bold=True), fill=AMBER, anchor="rm")
+
+    # Country A (left)
+    draw.text((80, H // 2 - 30), flag_a, font=_font(80), fill=WHITE, anchor="lm")
+    a_name = name_a if len(name_a) <= 18 else name_a[:16] + "…"
+    draw.text((200, H // 2 - 30), a_name, font=_font(44, bold=True), fill=WHITE, anchor="lm")
+
+    # Arrow (centre)
+    draw.text((W // 2, H // 2 - 30), "↔", font=_font(56, bold=True), fill=AMBER, anchor="mm")
+
+    # Country B (right)
+    b_x = W - 80
+    draw.text((b_x, H // 2 - 30), flag_b, font=_font(80), fill=WHITE, anchor="rm")
+    b_name = name_b if len(name_b) <= 18 else name_b[:16] + "…"
+    draw.text((b_x - 130, H // 2 - 30), b_name, font=_font(44, bold=True), fill=WHITE, anchor="rm")
+
+    # Trade value
+    if trade_value is not None:
+        val_str: str
+        if trade_value >= 1e12:
+            val_str = f"${trade_value / 1e12:.1f}T"
+        elif trade_value >= 1e9:
+            val_str = f"${trade_value / 1e9:.0f}B"
+        else:
+            val_str = f"${trade_value / 1e6:.0f}M"
+        draw.text((W // 2, H // 2 + 60), f"Trade volume  {val_str}", font=_font(32), fill=GRAY_LT, anchor="mm")
+
+    draw.text((80, H - 40), "Bilateral Trade Intelligence · UN Comtrade", font=_font(22), fill=GRAY, anchor="lm")
+    return _to_png_bytes(img)
+
+
 # ── R2 upload helper (runs in background thread — never blocks the response) ───
 
 def _upload_to_r2_bg(key: str, data: bytes) -> None:
@@ -474,6 +520,81 @@ def og_country(code: str, db: Session = Depends(get_db)):
         return Response(content=png, media_type="image/png", headers=_PNG_HEADERS)
     except Exception as exc:
         log.error("OG country render failed for %s: %s", code, exc)
+        raise HTTPException(status_code=500, detail="Image generation failed")
+
+
+@router.get("/og/trade/{pair}.png", include_in_schema=False)
+def og_trade(pair: str, db: Session = Depends(get_db)):
+    """On-demand OG image for /trade/{pair} pages (e.g. 'us-cn')."""
+    from sqlalchemy import select, or_
+    from app.models.country import TradePair
+    # pair = "us-cn" — split on first hyphen; country codes have no hyphens
+    parts = pair.lower().split("-", 1)
+    if len(parts) != 2:
+        raise HTTPException(status_code=400, detail="Invalid pair format")
+    exp_code, imp_code = parts[0].upper(), parts[1].upper()
+
+    exp = db.query(Country).filter(Country.code == exp_code).first()
+    imp = db.query(Country).filter(Country.code == imp_code).first()
+    if not exp or not imp:
+        raise HTTPException(status_code=404, detail="Country not found")
+
+    # Grab trade value from either direction
+    trade_row = db.execute(
+        select(TradePair)
+        .where(
+            or_(
+                (TradePair.exporter_id == exp.id) & (TradePair.importer_id == imp.id),
+                (TradePair.exporter_id == imp.id) & (TradePair.importer_id == exp.id),
+            )
+        )
+        .order_by(TradePair.year.desc())
+        .limit(1)
+    ).scalar_one_or_none()
+
+    try:
+        png = _render_trade(
+            exp.flag_emoji or "",
+            exp.name,
+            imp.flag_emoji or "",
+            imp.name,
+            trade_row.trade_value_usd if trade_row else None,
+        )
+        _fire_r2_upload(f"og/trade/{pair.lower()}.png", png)
+        return Response(content=png, media_type="image/png", headers=_PNG_HEADERS)
+    except Exception as exc:
+        log.error("OG trade render failed for %s: %s", pair, exc)
+        raise HTTPException(status_code=500, detail="Image generation failed")
+
+
+@router.get("/og/indices/{symbol}.png", include_in_schema=False)
+def og_index(symbol: str):
+    """On-demand OG image for /indices/{symbol} pages — rendered as a section image."""
+    # Indices don't have their own rich data model yet; render as a branded section image.
+    cfg = {
+        "label": symbol.upper(),
+        "tagline": "Real-time index price · Markets · MetricsHour",
+        "accent": (52, 211, 153),  # emerald-400
+    }
+    img = Image.new("RGB", (W, H), BG)
+    draw = ImageDraw.Draw(img)
+    for x in range(0, W, 80):
+        draw.line([(x, 0), (x, H)], fill=(255, 255, 255, 5), width=1)
+    for y in range(0, H, 80):
+        draw.line([(0, y), (W, y)], fill=(255, 255, 255, 5), width=1)
+    accent = cfg["accent"]
+    draw.rectangle([(0, 0), (W, 6)], fill=accent)
+    draw.text((W // 2, H // 2 - 90), "METRICSHOUR", font=_font(72, bold=True), fill=WHITE, anchor="mm")
+    draw.text((W // 2, H // 2 - 10), cfg["label"], font=_font(40, bold=True), fill=accent, anchor="mm")
+    draw.text((W // 2, H // 2 + 50), cfg["tagline"], font=_font(22), fill=GRAY_LT, anchor="mm")
+    draw.text((W // 2, H - 44), "metricshour.com", font=_font(20, bold=True), fill=GRAY, anchor="mm")
+    draw.rectangle([(0, H - 6), (W, H)], fill=accent)
+    try:
+        png = _to_png_bytes(img)
+        _fire_r2_upload(f"og/indices/{symbol.lower()}.png", png)
+        return Response(content=png, media_type="image/png", headers=_PNG_HEADERS)
+    except Exception as exc:
+        log.error("OG index render failed for %s: %s", symbol, exc)
         raise HTTPException(status_code=500, detail="Image generation failed")
 
 
