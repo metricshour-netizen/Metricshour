@@ -24,13 +24,37 @@ MARKETSTACK_KEY = os.environ.get('MARKETSTACK_API_KEY', '')
 MARKETSTACK_URL = 'http://api.marketstack.com/v1'
 CHUNK_SIZE = 50   # marketstack accepts up to 100 symbols per call; 50 is safe
 
+# Set to True if Marketstack key is confirmed invalid — skips all calls silently
+_marketstack_disabled = False
+
+
+def _check_marketstack_key() -> bool:
+    """Probe Marketstack with a single symbol. Disables globally on 401/invalid_access_key."""
+    global _marketstack_disabled
+    if not MARKETSTACK_KEY:
+        _marketstack_disabled = True
+        return False
+    try:
+        resp = requests.get(
+            f'{MARKETSTACK_URL}/eod/latest',
+            params={'access_key': MARKETSTACK_KEY, 'symbols': 'AAPL', 'limit': 1},
+            timeout=10,
+        )
+        if resp.status_code == 401 or resp.json().get('error', {}).get('code') == 'invalid_access_key':
+            log.warning('Marketstack API key invalid — falling back to yfinance for all symbols')
+            _marketstack_disabled = True
+            return False
+    except Exception:
+        pass
+    return True
+
 
 def _fetch_marketstack(symbols: list[str]) -> dict[str, float]:
     """
     Fetch latest EOD close prices for a batch of symbols via Marketstack.
     Returns {symbol: close_price}. Skips symbols that fail quietly.
     """
-    if not MARKETSTACK_KEY:
+    if _marketstack_disabled or not MARKETSTACK_KEY:
         return {}
 
     result: dict[str, float] = {}
@@ -53,7 +77,7 @@ def _fetch_marketstack(symbols: list[str]) -> dict[str, float]:
                 if sym and row.get('close'):
                     result[sym] = float(row['close'])
         except Exception:
-            log.warning(f'Marketstack batch {i}-{i+CHUNK_SIZE} failed', exc_info=True)
+            log.warning(f'Marketstack batch {i}-{i+CHUNK_SIZE} failed')
 
     return result
 
@@ -126,7 +150,11 @@ def fetch_stock_prices(self):
 
         now = datetime.now(timezone.utc).replace(second=0, microsecond=0)
 
-        # Primary: Marketstack
+        # Probe Marketstack key on first run — disables globally if invalid
+        if not _marketstack_disabled and MARKETSTACK_KEY:
+            _check_marketstack_key()
+
+        # Primary: Marketstack (skipped silently if key invalid)
         prices = _fetch_marketstack(symbols)
 
         # Fallback: yfinance for anything Marketstack missed
@@ -137,7 +165,9 @@ def fetch_stock_prices(self):
 
         count = _upsert_prices(db, symbol_to_asset, prices, now)
         db.commit()
-        log.info(f'Stocks: upserted {count}/{len(symbols)} prices (marketstack={len(prices)-len(missed)}, yf={len(prices)-count+count-len(missed)})')
+        ms_count = len(symbols) - len(missed)
+        yf_count = len(prices) - ms_count
+        log.info(f'Stocks: upserted {count}/{len(symbols)} prices (marketstack={ms_count}, yfinance={yf_count})')
 
     except Exception as exc:
         db.rollback()

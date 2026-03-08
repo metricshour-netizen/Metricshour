@@ -51,6 +51,20 @@ class BlogPublicOut(BaseModel):
         from_attributes = True
 
 
+@public_router.get("", response_model=list[BlogPublicOut])
+def list_blog_posts(limit: int = 20, offset: int = 0, db: Session = Depends(get_db)):
+    """Public blog listing — published posts only, newest first."""
+    posts = (
+        db.query(BlogPost)
+        .filter(BlogPost.status == BlogStatus.published)
+        .order_by(BlogPost.published_at.desc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+    return posts
+
+
 @public_router.get("/{slug}", response_model=BlogPublicOut)
 def get_blog_post(slug: str, db: Session = Depends(get_db)):
     """Public blog article endpoint — returns published posts only."""
