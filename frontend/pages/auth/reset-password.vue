@@ -58,7 +58,14 @@ useHead({ link: [{ rel: 'canonical', href: 'https://metricshour.com/auth/reset-p
 
 const config = useRuntimeConfig()
 const route = useRoute()
-const token = computed(() => route.query.token as string | undefined)
+
+// Use ref + onMounted instead of computed: route.query is empty during SSG
+// pre-render, so a computed always returns undefined server-side and the
+// hydrated DOM never switches to the form state.
+const token = ref<string | undefined>(undefined)
+onMounted(() => {
+  token.value = route.query.token as string | undefined
+})
 
 const password = ref('')
 const loading = ref(false)

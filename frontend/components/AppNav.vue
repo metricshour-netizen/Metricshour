@@ -72,7 +72,7 @@
         <template v-if="isLoggedIn && user">
           <div class="flex items-center justify-between">
             <span class="text-xs text-gray-500 truncate max-w-[200px]">{{ user.email }}</span>
-            <button class="text-xs text-gray-500 hover:text-red-400 transition-colors" @click="logout; menuOpen = false">Sign out</button>
+            <button class="text-xs text-gray-500 hover:text-red-400 transition-colors" @click="logout(); menuOpen = false">Sign out</button>
           </div>
         </template>
         <template v-else>
