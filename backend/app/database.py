@@ -10,11 +10,13 @@ def _make_engine():
         raise RuntimeError("DATABASE_URL is not set. Copy .env.example to .env and fill it in.")
     return create_engine(
         settings.database_url,
-        pool_pre_ping=True,
-        pool_size=10,
-        max_overflow=20,
-        pool_timeout=30,
+        pool_pre_ping=True,        # reconnect if connection dropped
+        pool_size=2,               # Aiven has strict connection limits; keep pool tiny
+        max_overflow=3,            # max 5 total connections from this process
         pool_recycle=300,
+        connect_args={
+            "prepare_threshold": None,  # disable prepared statements (Aiven compatibility)
+        },
     )
 
 
