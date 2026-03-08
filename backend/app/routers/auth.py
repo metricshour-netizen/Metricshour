@@ -174,7 +174,7 @@ def google_authorize():
 
     params = urlencode({
         "client_id": settings.google_client_id,
-        "redirect_uri": f"https://api.metricshour.com/api/auth/google/callback",
+        "redirect_uri": f"{settings.api_url}/api/auth/google/callback",
         "response_type": "code",
         "scope": "openid email profile",
         "state": state,
@@ -201,7 +201,7 @@ def google_callback(code: str, state: str, db: Session = Depends(get_db)):
         "code": code,
         "client_id": settings.google_client_id,
         "client_secret": settings.google_client_secret,
-        "redirect_uri": f"https://api.metricshour.com/api/auth/google/callback",
+        "redirect_uri": f"{settings.api_url}/api/auth/google/callback",
         "grant_type": "authorization_code",
     }, timeout=10)
 

@@ -173,6 +173,10 @@ function indexDescription(symbol: string): string {
     `${symbol} is a market index tracking a basket of securities. Indices provide a statistical measure of market performance for a group of assets, region, or sector.`
 }
 
+const config = useRuntimeConfig()
+const r2PublicUrl = config.public.r2PublicUrl || 'https://api.metricshour.com'
+const ogImageUrl = `${r2PublicUrl}/og/indices/${symbol.toLowerCase()}.png`
+
 useSeoMeta({
   title: computed(() => index.value ? `${index.value.symbol} — ${index.value.name} — MetricsHour` : 'Index — MetricsHour'),
   description: computed(() => index.value ? `${index.value.name} (${index.value.symbol}) live price, performance data, and market analysis. ${indexDescription(symbol).slice(0, 120)}` : ''),
@@ -180,8 +184,13 @@ useSeoMeta({
   ogDescription: computed(() => index.value ? `${index.value.name} live price and market data on MetricsHour.` : ''),
   ogUrl: `https://metricshour.com/indices/${symbol}`,
   ogType: 'website',
+  ogImage: ogImageUrl,
+  ogImageWidth: 1200,
+  ogImageHeight: 630,
+  twitterCard: 'summary_large_image',
   twitterTitle: computed(() => index.value ? `${index.value.symbol} — ${index.value.name}` : 'Index — MetricsHour'),
   twitterDescription: computed(() => index.value ? `${index.value.name} live price on MetricsHour.` : ''),
+  twitterImage: ogImageUrl,
 })
 
 useHead({

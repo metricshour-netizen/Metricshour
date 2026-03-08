@@ -283,6 +283,11 @@ async def upload_cover(
     ext = _ALLOWED_TYPES[file.content_type]
     key = f"blog-covers/{post_id}/{uuid.uuid4().hex}.{ext}"
     data = await file.read()
+
+    _MAX_UPLOAD_BYTES = 5 * 1024 * 1024  # 5 MB
+    if len(data) > _MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="File too large — maximum 5 MB")
+
     r2_upload(key, data, content_type=file.content_type)
 
     url = r2_public_url(key)
