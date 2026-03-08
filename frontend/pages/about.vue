@@ -79,7 +79,6 @@
     <div class="border-t border-[#1f2937] pt-6 flex gap-4 text-xs text-gray-600">
       <NuxtLink to="/terms" class="hover:text-gray-400">Terms of Service</NuxtLink>
       <NuxtLink to="/privacy" class="hover:text-gray-400">Privacy Policy</NuxtLink>
-      <NuxtLink to="/pricing" class="hover:text-gray-400 text-emerald-700">Pro Plan →</NuxtLink>
     </div>
   </main>
 </template>
