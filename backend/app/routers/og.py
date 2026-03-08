@@ -86,6 +86,48 @@ def _fmt_large(val: float | None) -> str:
 
 # ── Feed event renderer ────────────────────────────────────────────────────────
 
+def _wrap_text(draw: ImageDraw.ImageDraw, text: str, x: int, y: int, max_width: int, font, line_height: int) -> int:
+    """Word-wrap text; returns the y position after the last line."""
+    words = text.split()
+    lines: list[str] = []
+    current = ""
+    for w in words:
+        test = f"{current} {w}".strip()
+        bbox = draw.textbbox((0, 0), test, font=font)
+        if bbox[2] > max_width and current:
+            lines.append(current)
+            current = w
+        else:
+            current = test
+    if current:
+        lines.append(current)
+    for line in lines[:3]:
+        draw.text((x, y), line, font=font, fill=WHITE, anchor="lm")
+        y += line_height
+    return y
+
+
+def _draw_glow(draw: ImageDraw.ImageDraw, accent: tuple, bg_color: tuple) -> None:
+    """Radial glow centred in the upper half — bright centre, fading outward."""
+    glow_r, glow_g, glow_b = accent
+    # Draw large→small so smaller (brighter) ellipses paint on top
+    steps = 14
+    for i in range(steps, 0, -1):
+        # Outermost (i=steps): faint.  Innermost (i=1): brightest.
+        brightness = (steps - i + 1) / steps  # 1/14 → 14/14
+        alpha = int(200 * brightness)
+        rw = W * (i / steps) * 0.95
+        rh = H * (i / steps) * 0.85
+        x0 = (W - rw) / 2
+        y0 = (H - rh) / 2 - H * 0.08
+        color = (
+            min(255, bg_color[0] + int((glow_r - bg_color[0]) * alpha / 255)),
+            min(255, bg_color[1] + int((glow_g - bg_color[1]) * alpha / 255)),
+            min(255, bg_color[2] + int((glow_b - bg_color[2]) * alpha / 255)),
+        )
+        draw.ellipse([x0, y0, x0 + rw, y0 + rh], fill=color)
+
+
 def _render_feed_event(
     event_type: str,
     title: str,
@@ -99,108 +141,88 @@ def _render_feed_event(
     img = Image.new("RGB", (W, H), bg_color)
     draw = ImageDraw.Draw(img)
 
-    # Radial glow
-    glow_r, glow_g, glow_b = accent
-    for i in range(12, 0, -1):
-        alpha = int(20 * (i / 12))
-        rect_w, rect_h = W * (1 - i * 0.03), H * (1 - i * 0.05)
-        x0 = (W - rect_w) / 2
-        y0 = (H - rect_h) / 2 - H * 0.1
-        glow_color = (
-            max(0, bg_color[0] + int((glow_r - bg_color[0]) * alpha / 255)),
-            max(0, bg_color[1] + int((glow_g - bg_color[1]) * alpha / 255)),
-            max(0, bg_color[2] + int((glow_b - bg_color[2]) * alpha / 255)),
-        )
-        draw.ellipse([x0, y0, x0 + rect_w, y0 + rect_h], fill=glow_color)
+    # Glow — fixed: large outer drawn first, small bright centre drawn last
+    _draw_glow(draw, accent, bg_color)
 
-    # Importance bar
-    if importance:
-        bar_width = int(W * min(1.0, importance / 10))
-        draw.rectangle([(0, 0), (bar_width, 5)], fill=accent)
+    # Importance bar (top edge)
+    bar_width = int(W * min(1.0, (importance or 5) / 10))
+    draw.rectangle([(0, 0), (bar_width, 6)], fill=accent)
 
-    # Brand
-    draw.text((W - 32, 32), "METRICSHOUR", font=_font(20, bold=True), fill=accent, anchor="rm")
+    # Brand (top-right)
+    draw.text((W - 44, 44), "METRICSHOUR", font=_font(22, bold=True), fill=accent, anchor="rm")
 
-    # Event type badge
+    # Event type badge (top-left)
     TYPE_LABELS = {
-        "price_move": "PRICE MOVE",
+        "price_move":        "PRICE MOVE",
         "indicator_release": "MACRO DATA",
-        "macro_release": "MACRO DATA",
-        "trade_update": "TRADE",
-        "central_bank": "CENTRAL BANK",
-        "blog": "ARTICLE",
+        "macro_release":     "MACRO DATA",
+        "trade_update":      "TRADE",
+        "central_bank":      "CENTRAL BANK",
+        "blog":              "ARTICLE",
+        "daily_insight":     "AI INSIGHT",
+        "geopolitical":      "GEOPOLITICAL",
+        "commodity":         "COMMODITY",
+        "commodity_move":    "COMMODITY",
     }
     badge_text = TYPE_LABELS.get(event_type, event_type.upper().replace("_", " "))
-    draw.text((60, 44), badge_text, font=_font(18, bold=True), fill=accent, anchor="lm")
+    draw.text((60, 44), badge_text, font=_font(20, bold=True), fill=accent, anchor="lm")
 
+    # ── Hero (vertical centre, offset slightly up) ──────────────────────────────
     cy = H // 2 - 20
 
     if event_type == "price_move":
         change_pct = float(data.get("change_pct", 0) or 0)
-        symbol = str(data.get("symbol", ""))
-        price = data.get("price")
-        sign = "+" if change_pct >= 0 else ""
-        pct_color = (16, 185, 129) if change_pct >= 0 else (239, 68, 68)
-        arrow = "↑" if change_pct >= 0 else "↓"
+        symbol     = str(data.get("symbol", ""))
+        price      = data.get("price")
+        sign       = "+" if change_pct >= 0 else ""
+        pct_color  = (16, 185, 129) if change_pct >= 0 else (239, 68, 68)
+        arrow      = "↑" if change_pct >= 0 else "↓"
 
-        draw.text((W // 2, cy - 20), f"{sign}{change_pct:.2f}%", font=_font(110, bold=True), fill=pct_color, anchor="mm")
-        draw.text((W // 2, cy + 90), f"{arrow}  {symbol}", font=_font(48, bold=True), fill=WHITE, anchor="mm")
+        draw.text((W // 2, cy - 20), f"{sign}{change_pct:.2f}%", font=_font(120, bold=True), fill=pct_color, anchor="mm")
+        draw.text((W // 2, cy + 100), f"{arrow}  {symbol}",      font=_font(52, bold=True),  fill=WHITE,     anchor="mm")
         if price:
-            draw.text((W // 2, cy + 150), f"${float(price):,.2f}", font=_font(32), fill=GRAY_LT, anchor="mm")
+            draw.text((W // 2, cy + 164), f"${float(price):,.2f}", font=_font(34), fill=GRAY_LT, anchor="mm")
 
     elif event_type in ("indicator_release", "macro_release"):
         country_code = str(data.get("country_code", "")).upper()
-        value = data.get("value")
-        indicator = str(data.get("indicator") or data.get("indicator_slug", "")).replace("_", " ").upper()
+        value        = data.get("value")
+        indicator    = str(data.get("indicator") or data.get("indicator_slug", "")).replace("_", " ").upper()
 
         if country_code:
-            draw.text((W // 2, cy - 60), country_code, font=_font(80, bold=True), fill=accent, anchor="mm")
+            draw.text((W // 2, cy - 70), country_code, font=_font(88, bold=True), fill=accent, anchor="mm")
         if value is not None:
             n = float(value)
-            if abs(n) >= 1e12:
-                val_str = f"${n / 1e12:.1f}T"
-            elif abs(n) >= 1e9:
-                val_str = f"${n / 1e9:.1f}B"
-            else:
-                val_str = f"{n:.2f}" if abs(n) < 1000 else f"{n:,.0f}"
-            draw.text((W // 2, cy + 30), val_str, font=_font(96, bold=True), fill=WHITE, anchor="mm")
+            if abs(n) >= 1e12:   val_str = f"${n / 1e12:.1f}T"
+            elif abs(n) >= 1e9:  val_str = f"${n / 1e9:.1f}B"
+            elif abs(n) >= 1e6:  val_str = f"${n / 1e6:.1f}M"
+            else:                val_str = f"{n:.2f}" if abs(n) < 1000 else f"{n:,.0f}"
+            draw.text((W // 2, cy + 40), val_str, font=_font(96, bold=True), fill=WHITE, anchor="mm")
         if indicator:
             ind_display = indicator[:50] + "…" if len(indicator) > 50 else indicator
-            draw.text((W // 2, cy + 120), ind_display, font=_font(28), fill=GRAY_LT, anchor="mm")
+            draw.text((W // 2, cy + 130), ind_display, font=_font(28), fill=GRAY_LT, anchor="mm")
 
     elif event_type == "trade_update":
-        exp = str(data.get("exporter", "")).upper()
-        imp = str(data.get("importer", "")).upper()
+        exp   = str(data.get("exporter", "")).upper()
+        imp   = str(data.get("importer", "")).upper()
         value = data.get("value_usd")
 
-        draw.text((200, cy), exp, font=_font(96, bold=True), fill=WHITE, anchor="mm")
-        draw.text((W // 2, cy), "↔", font=_font(72, bold=True), fill=accent, anchor="mm")
-        draw.text((W - 200, cy), imp, font=_font(96, bold=True), fill=WHITE, anchor="mm")
+        draw.text((180,     cy), exp,  font=_font(104, bold=True), fill=WHITE,  anchor="mm")
+        draw.text((W // 2,  cy), "↔",  font=_font(72,  bold=True), fill=accent, anchor="mm")
+        draw.text((W - 180, cy), imp,  font=_font(104, bold=True), fill=WHITE,  anchor="mm")
         if value:
             n = float(value)
             val_str = f"${n / 1e9:.0f}B" if n >= 1e9 else f"${n / 1e6:.0f}M"
-            draw.text((W // 2, cy + 100), val_str, font=_font(48, bold=True), fill=accent, anchor="mm")
+            draw.text((W // 2, cy + 110), val_str, font=_font(52, bold=True), fill=accent, anchor="mm")
 
-    # Title block (bottom)
+    else:
+        # Generic / blog / daily_insight: show a large label
+        draw.text((W // 2, cy), badge_text, font=_font(72, bold=True), fill=accent, anchor="mm")
+
+    # ── Title block (bottom) ────────────────────────────────────────────────────
     clean_title = title.encode("ascii", "ignore").decode("ascii").strip(" →↑↓·–—") or title
-    words = clean_title.split()
-    lines: list[str] = []
-    current = ""
-    for w in words:
-        if len(current) + len(w) + 1 <= 55:
-            current = (current + " " + w).strip()
-        else:
-            if current:
-                lines.append(current)
-            current = w
-    if current:
-        lines.append(current)
-    lines = lines[:3]
+    _wrap_text(draw, clean_title, 60, H - 148, W - 120, _font(34, bold=True), 46)
 
-    title_y = H - 120
-    for i, line in enumerate(lines):
-        draw.text((60, title_y + i * 44), line, font=_font(34, bold=True), fill=WHITE, anchor="lm")
-
+    # Bottom bar
     draw.rectangle([(0, H - 6), (W, H)], fill=accent)
 
     return _to_png_bytes(img)

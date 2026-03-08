@@ -11,13 +11,6 @@
     <div class="absolute inset-0 pointer-events-none" :style="glowStyle" />
     <div class="absolute inset-0 opacity-[0.03] pointer-events-none noise-layer" />
 
-    <!-- Cover image — loaded from R2 via image_url; fallback to on-demand API generation -->
-    <img
-      :src="event.image_url || `${r2Base}/og/feed/${event.id}.png`"
-      alt=""
-      class="absolute inset-0 w-full h-full object-cover opacity-20 blur-sm"
-      loading="eager"
-    />
 
     <!-- Gradients for readability -->
     <div class="absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 to-transparent pointer-events-none" />
@@ -231,23 +224,25 @@
             <div class="flex gap-2 mb-3">
               <button
                 class="flex-1 flex flex-col items-center gap-1.5 py-2 rounded-xl hover:bg-white/10 transition-colors border border-white/10"
-                :disabled="imageGenerating !== null"
+                :disabled="_pregenBusy || !_cachedBlobs.story"
                 @click="shareAsImage('story')"
               >
-                <div class="w-7 h-12 rounded border-2 flex items-center justify-center text-[10px] font-bold transition-colors"
-                  :class="imageGenerating === 'story' ? 'border-emerald-400 text-emerald-400 animate-pulse' : 'border-white/30 text-white/50'">
-                  {{ imageGenerating === 'story' ? '…' : '9:16' }}
+                <div class="w-7 h-12 rounded overflow-hidden border-2 flex items-center justify-center text-[10px] font-bold transition-colors"
+                  :class="_pregenBusy ? 'border-white/20 text-white/20 animate-pulse' : 'border-white/30 text-white/50'">
+                  <img v-if="_previewUrls.story" :src="_previewUrls.story" class="w-full h-full object-cover" alt="" />
+                  <span v-else>{{ _pregenBusy ? '…' : '9:16' }}</span>
                 </div>
                 <span class="text-[9px] text-white/40">Story</span>
               </button>
               <button
                 class="flex-1 flex flex-col items-center gap-1.5 py-2 rounded-xl hover:bg-white/10 transition-colors border border-white/10"
-                :disabled="imageGenerating !== null"
+                :disabled="_pregenBusy || !_cachedBlobs.post"
                 @click="shareAsImage('post')"
               >
-                <div class="w-10 h-10 rounded border-2 flex items-center justify-center text-[10px] font-bold transition-colors"
-                  :class="imageGenerating === 'post' ? 'border-emerald-400 text-emerald-400 animate-pulse' : 'border-white/30 text-white/50'">
-                  {{ imageGenerating === 'post' ? '…' : '1:1' }}
+                <div class="w-10 h-10 rounded overflow-hidden border-2 flex items-center justify-center text-[10px] font-bold transition-colors"
+                  :class="_pregenBusy ? 'border-white/20 text-white/20 animate-pulse' : 'border-white/30 text-white/50'">
+                  <img v-if="_previewUrls.post" :src="_previewUrls.post" class="w-full h-full object-cover" alt="" />
+                  <span v-else>{{ _pregenBusy ? '…' : '1:1' }}</span>
                 </div>
                 <span class="text-[9px] text-white/40">Post</span>
               </button>
@@ -335,6 +330,10 @@ const ACCENT: Record<string, string> = {
   indicator_release: '#3b82f6',
   macro_release:     '#3b82f6',
   trade_update:      '#f59e0b',
+  central_bank:      '#a855f7',
+  geopolitical:      '#ef4444',
+  commodity:         '#f59e0b',
+  commodity_move:    '#f59e0b',
   blog:              '#a855f7',
   daily_insight:     '#34d399',
 }
@@ -346,6 +345,10 @@ const BG: Record<string, string> = {
   indicator_release: '#020818',
   macro_release:     '#020818',
   trade_update:      '#0d0800',
+  central_bank:      '#080212',
+  geopolitical:      '#140202',
+  commodity:         '#0d0800',
+  commodity_move:    '#0d0800',
   blog:              '#080212',
   daily_insight:     '#010f0a',
 }
@@ -409,6 +412,10 @@ const TYPE_LABELS: Record<string, string> = {
   indicator_release: '📈 Macro Data',
   macro_release:     '📈 Macro Data',
   trade_update:      '🌐 Trade',
+  central_bank:      '🏦 Central Bank',
+  geopolitical:      '🌍 Geopolitical',
+  commodity:         '🛢 Commodity',
+  commodity_move:    '🛢 Commodity',
   blog:              '✍️ Article',
   daily_insight:     '◆ AI Insight',
 }
@@ -462,7 +469,35 @@ const r2Base = (r2PublicUrl as string || 'https://api.metricshour.com').replace(
 // Share panel state
 const showSharePanel = ref(false)
 const copied = ref(false)
-const imageGenerating = ref<'story' | 'post' | null>(null)
+
+// Pre-generated blobs — ready before user clicks Story/Post so navigator.share
+// can be called synchronously (iOS Safari drops the gesture after any await)
+const _cachedBlobs = ref<Record<'story' | 'post', Blob | null>>({ story: null, post: null })
+const _previewUrls = ref<Record<'story' | 'post', string | null>>({ story: null, post: null })
+const _pregenBusy = ref(false)
+
+watch(showSharePanel, async (visible) => {
+  if (!visible) {
+    if (_previewUrls.value.story) URL.revokeObjectURL(_previewUrls.value.story)
+    if (_previewUrls.value.post)  URL.revokeObjectURL(_previewUrls.value.post)
+    _previewUrls.value = { story: null, post: null }
+    _cachedBlobs.value = { story: null, post: null }
+    return
+  }
+  if (_pregenBusy.value) return
+  _pregenBusy.value = true
+  try {
+    const storyBlob = await generateImage('story').catch(() => null)
+    _cachedBlobs.value.story = storyBlob
+    if (storyBlob) _previewUrls.value.story = URL.createObjectURL(storyBlob)
+
+    const postBlob = await generateImage('post').catch(() => null)
+    _cachedBlobs.value.post = postBlob
+    if (postBlob) _previewUrls.value.post = URL.createObjectURL(postBlob)
+  } finally {
+    _pregenBusy.value = false
+  }
+})
 
 // ── Canvas image generation ───────────────────────────────────────────────────
 function wrapText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, maxW: number, lineH: number): number {
@@ -500,19 +535,19 @@ async function generateImage(format: 'story' | 'post'): Promise<Blob> {
   ctx.fillStyle = bg
   ctx.fillRect(0, 0, W, H)
 
-  // Radial glow
-  const intensity = Math.max(0.15, Math.min(0.4, importance / 10 * 0.4))
-  const grd = ctx.createRadialGradient(W / 2, H * 0.33, 0, W / 2, H * 0.33, W * 0.75)
+  // Radial glow — bright centre, fading out
+  const intensity = Math.max(0.25, Math.min(0.55, importance / 10 * 0.55))
+  const grd = ctx.createRadialGradient(W / 2, H * 0.38, 0, W / 2, H * 0.38, W * 0.65)
   grd.addColorStop(0, accent + Math.round(intensity * 255).toString(16).padStart(2, '0'))
+  grd.addColorStop(0.6, accent + '22')
   grd.addColorStop(1, 'rgba(0,0,0,0)')
   ctx.fillStyle = grd
   ctx.fillRect(0, 0, W, H)
 
-  // Bottom dark gradient
-  const bottomGrad = ctx.createLinearGradient(0, H * 0.42, 0, H)
+  // Gentle bottom gradient — only the bottom quarter, so content stays visible
+  const bottomGrad = ctx.createLinearGradient(0, H * 0.65, 0, H)
   bottomGrad.addColorStop(0, 'rgba(0,0,0,0)')
-  bottomGrad.addColorStop(0.35, 'rgba(0,0,0,0.6)')
-  bottomGrad.addColorStop(1, 'rgba(0,0,0,0.97)')
+  bottomGrad.addColorStop(1, 'rgba(0,0,0,0.88)')
   ctx.fillStyle = bottomGrad
   ctx.fillRect(0, 0, W, H)
 
@@ -658,34 +693,38 @@ async function generateImage(format: 'story' | 'post'): Promise<Blob> {
   })
 }
 
-async function shareAsImage(format: 'story' | 'post') {
-  if (imageGenerating.value) return
-  imageGenerating.value = format
-  try {
-    const blob = await generateImage(format)
-    const file = new File([blob], `metricshour-${format}-${props.event.id}.png`, { type: 'image/png' })
-    // Web Share API with files (mobile) — opens system share sheet with image
-    if (typeof navigator !== 'undefined' && navigator.canShare?.({ files: [file] })) {
-      await navigator.share({
-        files: [file],
-        title: cleanTitle.value,
-        text: `${cleanTitle.value} — metricshour.com/feed/${props.event.id}`,
-      })
-    } else {
-      // Fallback: download the image
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = file.name
-      a.click()
-      URL.revokeObjectURL(url)
-    }
-  } catch (err: any) {
-    if (err?.name !== 'AbortError') console.warn('shareAsImage failed', err)
-  } finally {
-    imageGenerating.value = null
-    showSharePanel.value = false
+function shareAsImage(format: 'story' | 'post') {
+  const blob = _cachedBlobs.value[format]
+  if (!blob) return  // still pre-generating — button is disabled anyway
+
+  const file = new File([blob], `metricshour-${format}-${props.event.id}.png`, { type: 'image/png' })
+
+  // Call navigator.share SYNCHRONOUSLY from the click handler so the browser
+  // never considers the user gesture expired (iOS Safari / Chrome strict mode)
+  if (typeof navigator !== 'undefined' && navigator.canShare?.({ files: [file] })) {
+    navigator.share({
+      files: [file],
+      title: cleanTitle.value,
+      text: `${cleanTitle.value} — metricshour.com/feed/${props.event.id}`,
+    }).catch((err) => {
+      if (err?.name !== 'AbortError') {
+        // share API not available after all — fall back to download
+        _downloadBlob(blob, file.name)
+      }
+    })
+  } else {
+    _downloadBlob(blob, file.name)
   }
+  showSharePanel.value = false
+}
+
+function _downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
 }
 
 async function handleShare() {
@@ -727,19 +766,67 @@ onMounted(() => document.addEventListener('click', closePanelOutside))
 onUnmounted(() => document.removeEventListener('click', closePanelOutside))
 
 function handleCardClick() {
-  // Route to the most relevant page based on event type
   const data = eventData.value
-  if (eventType.value === 'price_move' && data.symbol) {
+  const type = eventType.value
+
+  // price move → stock page
+  if (type === 'price_move' && data.symbol) {
     navigateTo(`/stocks/${data.symbol}`)
-  } else if ((eventType.value === 'indicator_release' || eventType.value === 'macro_release') && data.country_code) {
+
+  // macro / indicator → country page
+  } else if ((type === 'indicator_release' || type === 'macro_release') && data.country_code) {
     navigateTo(`/countries/${data.country_code.toLowerCase()}`)
-  } else if (eventType.value === 'trade_update' && data.exporter && data.importer) {
+
+  // trade → trade pair page
+  } else if (type === 'trade_update' && data.exporter && data.importer) {
     navigateTo(`/trade/${data.exporter}-${data.importer}`)
-  } else if (eventType.value === 'daily_insight' && props.event.source_url) {
-    navigateTo(props.event.source_url)
-  } else if (eventType.value === 'blog' && props.event.source_url?.includes('/blog/')) {
-    const slug = props.event.source_url.split('/blog/')[1]?.replace(/\/$/, '')
-    navigateTo(slug ? `/blog/${slug}` : `/feed/${props.event.id}`)
+
+  // central bank → country page (or markets fallback)
+  } else if (type === 'central_bank') {
+    if (data.country_code) navigateTo(`/countries/${data.country_code.toLowerCase()}`)
+    else navigateTo('/markets')
+
+  // commodity → commodities page (or specific commodity if symbol)
+  } else if (type === 'commodity' || type === 'commodity_move') {
+    if (data.symbol) navigateTo(`/commodities`)
+    else navigateTo('/commodities')
+
+  // geopolitical → country page, or trade pair, or feed detail
+  } else if (type === 'geopolitical') {
+    if (data.exporter && data.importer) navigateTo(`/trade/${data.exporter}-${data.importer}`)
+    else if (data.country_code) navigateTo(`/countries/${data.country_code.toLowerCase()}`)
+    else navigateTo(`/feed/${props.event.id}`)
+
+  // daily insight → smart route by entity type
+  } else if (type === 'daily_insight') {
+    const et = (data.entity_type || '').toLowerCase()
+    if (et === 'stock' && data.symbol) navigateTo(`/stocks/${data.symbol}`)
+    else if (et === 'country' && data.country_code) navigateTo(`/countries/${data.country_code.toLowerCase()}`)
+    else if (et === 'trade' && data.exporter && data.importer) navigateTo(`/trade/${data.exporter}-${data.importer}`)
+    else if (et === 'commodity') navigateTo('/commodities')
+    else if (props.event.source_url) navigateTo(props.event.source_url)
+    else navigateTo(`/feed/${props.event.id}`)
+
+  // blog / article → internal blog or feed detail
+  } else if (type === 'blog') {
+    if (props.event.source_url?.includes('/blog/')) {
+      const slug = props.event.source_url.split('/blog/')[1]?.replace(/\/$/, '')
+      navigateTo(slug ? `/blog/${slug}` : `/feed/${props.event.id}`)
+    } else if (props.event.source_url) {
+      navigateTo(props.event.source_url)
+    } else {
+      navigateTo(`/feed/${props.event.id}`)
+    }
+
+  // any event with a symbol → try stocks
+  } else if (data.symbol) {
+    navigateTo(`/stocks/${data.symbol}`)
+
+  // any event with country_code → try countries
+  } else if (data.country_code) {
+    navigateTo(`/countries/${data.country_code.toLowerCase()}`)
+
+  // fallback → feed detail page
   } else {
     navigateTo(`/feed/${props.event.id}`)
   }
