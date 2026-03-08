@@ -7,6 +7,10 @@ compatibility_date = "2024-11-01"
 binding = "API_CACHE"
 id = "f58822613dbd46e6b044b5ae8d5553aa"
 
+# R2: serve /og/* images directly from edge (zero egress cost)
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "metricshour-assets"
 
 [vars]
 ORIGIN = "https://89.167.35.114"

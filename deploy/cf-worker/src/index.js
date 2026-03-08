@@ -43,8 +43,20 @@ export default {
       return new Response(null, { status: 204, headers: corsHeaders() })
     }
 
-    // ── /og/* — forward to origin (R2 Worker binding needs Workers R2 Storage:Edit token)
+    // ── /og/* — serve PNG images directly from R2 (zero origin hit) ─────────
     if (request.method === 'GET' && url.pathname.startsWith('/og/')) {
+      const key = url.pathname.slice(1)  // /og/countries/US.png → og/countries/US.png
+      const obj = await env.R2.get(key)
+      if (obj) {
+        return new Response(obj.body, {
+          headers: {
+            'Content-Type': 'image/png',
+            'Cache-Control': 'public, max-age=86400',
+            'X-Served-From': 'R2',
+            ...corsHeaders(),
+          },
+        })
+      }
       return forwardToOrigin(request, env)
     }
 
