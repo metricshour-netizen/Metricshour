@@ -296,7 +296,7 @@ const route = useRoute()
 const { get, post, del } = useApi()
 const { isLoggedIn } = useAuth()
 
-const code = route.params.code as string
+const code = (route.params.code as string).toLowerCase()
 
 const { data: country, pending, error } = useAsyncData(
   `country-${code}`,
@@ -378,40 +378,60 @@ const { public: { r2PublicUrl } } = useRuntimeConfig()
 const ogImageUrl = computed(() =>
   r2PublicUrl
     ? `${r2PublicUrl}/og/countries/${code.toLowerCase()}.png`
-    : 'https://metricshour.com/og-image.png',
+    : `https://api.metricshour.com/og/countries/${code.toLowerCase()}.png`,
 )
 
+// ── SEO helpers: inject real data for long-tail keyword ranking ───────────────
+const _ind = computed(() => (country.value as any)?.indicators ?? {})
+
+function _fmtGdp(v: number | null | undefined): string | null {
+  if (v == null) return null
+  if (v >= 1e12) return `$${(v / 1e12).toFixed(1)}T`
+  if (v >= 1e9)  return `$${(v / 1e9).toFixed(0)}B`
+  return null
+}
+
+const _seoTitle = computed(() => {
+  if (!country.value) return 'Country Economy — MetricsHour'
+  const name = (country.value as any).name
+  const gdp  = _fmtGdp(_ind.value.gdp_usd)
+  const grow = _ind.value.gdp_growth_pct != null
+    ? `${_ind.value.gdp_growth_pct >= 0 ? '+' : ''}${(_ind.value.gdp_growth_pct as number).toFixed(1)}% Growth`
+    : null
+  if (gdp && grow) return `${name} Economy: GDP ${gdp}, ${grow} — MetricsHour`
+  return `${name} Economy & Macro Indicators — MetricsHour`
+})
+
+const _seoDesc = computed(() => {
+  if (!country.value) return ''
+  const c    = country.value as any
+  const name = c.name
+  const gdp  = _fmtGdp(_ind.value.gdp_usd)
+  const grow = _ind.value.gdp_growth_pct != null
+    ? `${_ind.value.gdp_growth_pct >= 0 ? '+' : ''}${(_ind.value.gdp_growth_pct as number).toFixed(1)}%`
+    : null
+  const inf  = _ind.value.inflation_pct != null ? `${(_ind.value.inflation_pct as number).toFixed(1)}%` : null
+  const rate = _ind.value.interest_rate_pct != null ? `${(_ind.value.interest_rate_pct as number).toFixed(2)}%` : null
+  const parts: string[] = []
+  if (gdp && grow) parts.push(`${name}'s GDP is ${gdp} (${grow} growth)`)
+  else parts.push(`${name} economy and macro data`)
+  if (inf)  parts.push(`inflation ${inf}`)
+  if (rate) parts.push(`interest rate ${rate}`)
+  parts.push('80+ indicators from World Bank, IMF and UN Comtrade')
+  return parts.join('. ') + '.'
+})
+
 useSeoMeta({
-  title: computed(() =>
-    country.value
-      ? `${country.value.name} Economy & Macro Data — MetricsHour`
-      : 'Country — MetricsHour',
-  ),
-  description: computed(() =>
-    country.value
-      ? `GDP, inflation, trade flows, and 80+ macro indicators for ${country.value.name}. Data from World Bank, IMF, and UN Comtrade.`
-      : '',
-  ),
-  ogTitle: computed(() =>
-    country.value ? `${country.value.name} Economy & Macro Data — MetricsHour` : 'Country — MetricsHour'
-  ),
-  ogDescription: computed(() =>
-    country.value
-      ? `GDP, inflation, trade flows, and 80+ macro indicators for ${country.value.name}. Data from World Bank, IMF, and UN Comtrade.`
-      : ''
-  ),
+  title: _seoTitle,
+  description: _seoDesc,
+  ogTitle: _seoTitle,
+  ogDescription: _seoDesc,
   ogUrl: `https://metricshour.com/countries/${code}`,
   ogType: 'website',
   ogImage: ogImageUrl,
   twitterImage: ogImageUrl,
-  twitterTitle: computed(() =>
-    country.value ? `${country.value.name} Economy & Macro Data — MetricsHour` : 'Country — MetricsHour'
-  ),
-  twitterDescription: computed(() =>
-    country.value
-      ? `GDP, inflation, trade flows, and 80+ macro indicators for ${country.value.name}. Data from World Bank, IMF, and UN Comtrade.`
-      : ''
-  ),
+  twitterTitle: _seoTitle,
+  twitterDescription: _seoDesc,
   twitterCard: 'summary_large_image',
 })
 

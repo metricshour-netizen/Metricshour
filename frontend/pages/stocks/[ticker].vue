@@ -558,19 +558,59 @@ const { public: { r2PublicUrl } } = useRuntimeConfig()
 const ogImageUrl = computed(() =>
   r2PublicUrl
     ? `${r2PublicUrl}/og/stocks/${ticker.toLowerCase()}.png`
-    : 'https://metricshour.com/og-image.png',
+    : `https://api.metricshour.com/og/stocks/${ticker.toLowerCase()}.png`,
 )
 
+// ── SEO helpers: inject real revenue data for long-tail keyword ranking ───────
+const _topRevs = computed(() => ((stock.value as any)?.country_revenues ?? []).slice(0, 3))
+
+const _seoTitle = computed(() => {
+  if (!stock.value) return `${ticker} Stock — MetricsHour`
+  const sym  = (stock.value as any).symbol
+  const name = (stock.value as any).name
+  const revs = _topRevs.value
+  if (revs.length >= 2) {
+    const top2 = (revs as any[]).slice(0, 2)
+      .map((r: any) => `${r.country.name} ${(r.revenue_pct as number).toFixed(0)}%`)
+      .join(', ')
+    return `${sym} Revenue: ${top2} — MetricsHour`
+  }
+  return `${sym} — ${name} | Geographic Revenue — MetricsHour`
+})
+
+const _seoDesc = computed(() => {
+  if (!stock.value) return ''
+  const s    = stock.value as any
+  const sym  = s.symbol
+  const name = s.name
+  const revs = _topRevs.value as any[]
+  const fy   = revs[0]?.fiscal_year ? ` FY${revs[0].fiscal_year}` : ''
+  const cap  = s.market_cap_usd
+  const capStr = cap
+    ? (cap >= 1e12 ? `$${(cap / 1e12).toFixed(1)}T` : `$${(cap / 1e9).toFixed(0)}B`)
+    : null
+  const parts: string[] = [`${name} (${sym})`]
+  if (revs.length) {
+    const revStr = revs.slice(0, 3)
+      .map((r: any) => `${r.country.name} ${(r.revenue_pct as number).toFixed(0)}%`)
+      .join(', ')
+    parts.push(`earns ${revStr}`)
+  }
+  if (capStr) parts.push(`market cap ${capStr}`)
+  parts.push(`Geographic revenue from SEC EDGAR${fy}`)
+  return parts.join('. ') + '.'
+})
+
 useSeoMeta({
-  title: computed(() => stock.value ? `${stock.value.symbol} — ${stock.value.name} — MetricsHour` : `${ticker} Stock — MetricsHour`),
-  description: computed(() => stock.value ? `${stock.value.name} (${stock.value.symbol}) geographic revenue breakdown from SEC EDGAR. See which countries drive ${stock.value.symbol} earnings.` : ''),
-  ogTitle: computed(() => stock.value ? `${stock.value.symbol} — ${stock.value.name} — MetricsHour` : `${ticker} Stock — MetricsHour`),
-  ogDescription: computed(() => stock.value ? `${stock.value.name} (${stock.value.symbol}) geographic revenue breakdown from SEC EDGAR. See which countries drive ${stock.value.symbol} earnings.` : ''),
+  title: _seoTitle,
+  description: _seoDesc,
+  ogTitle: _seoTitle,
+  ogDescription: _seoDesc,
   ogUrl: `https://metricshour.com/stocks/${ticker}`,
   ogType: 'website',
   ogImage: ogImageUrl,
-  twitterTitle: computed(() => stock.value ? `${stock.value.symbol} — ${stock.value.name} — MetricsHour` : `${ticker} Stock — MetricsHour`),
-  twitterDescription: computed(() => stock.value ? `${stock.value.name} (${stock.value.symbol}) geographic revenue breakdown from SEC EDGAR. See which countries drive ${stock.value.symbol} earnings.` : ''),
+  twitterTitle: _seoTitle,
+  twitterDescription: _seoDesc,
   twitterImage: ogImageUrl,
   twitterCard: 'summary_large_image',
 })

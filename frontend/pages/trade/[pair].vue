@@ -80,7 +80,7 @@
             {{ td ? fmtUsd(td.balance_usd) : '—' }}
           </div>
           <div class="text-[10px] mt-1" :class="td ? ((td.balance_usd ?? 0) >= 0 ? 'text-emerald-700' : 'text-red-700') : 'text-gray-700'">
-            {{ td ? ((td.balance_usd ?? 0) >= 0 ? 'surplus' : 'deficit') : '' }}
+            {{ td ? ((td.balance_usd ?? 0) >= 0 ? `${codeA.toUpperCase()} surplus` : `${codeA.toUpperCase()} deficit`) : '' }}
           </div>
         </div>
         <div class="bg-[#111827] border border-[#1f2937] rounded-xl p-4">
@@ -368,19 +368,60 @@ const { public: { r2PublicUrl } } = useRuntimeConfig()
 const ogImageUrl = computed(() =>
   r2PublicUrl
     ? `${r2PublicUrl}/og/trade/${pair.toLowerCase()}.png`
-    : 'https://metricshour.com/og-image.png',
+    : `https://api.metricshour.com/og/trade/${pair.toLowerCase()}.png`,
 )
 
+// ── SEO helpers: inject real trade data for long-tail keyword ranking ─────────
+const _seoTitle = computed(() => {
+  if (!data.value) return 'Bilateral Trade — MetricsHour'
+  const A = data.value.exporter.name
+  const B = data.value.importer.name
+  const vol = td.value?.trade_value_usd
+  const year = td.value?.year
+  if (vol && year) {
+    const volStr = vol >= 1e12 ? `$${(vol / 1e12).toFixed(1)}T` : `$${(vol / 1e9).toFixed(0)}B`
+    return `${A}–${B} Trade ${year}: ${volStr} Volume — MetricsHour`
+  }
+  return `${A}–${B} Bilateral Trade — MetricsHour`
+})
+
+const _seoDesc = computed(() => {
+  if (!data.value) return ''
+  const A = data.value.exporter.name
+  const B = data.value.importer.name
+  const vol    = td.value?.trade_value_usd
+  const bal    = td.value?.balance_usd
+  const year   = td.value?.year
+  const source = td.value?.data_source ?? 'UN Comtrade'
+  const prods  = (td.value?.top_export_products as any[] | undefined)
+    ?.slice(0, 3).map((p: any) => p.name).join(', ')
+  const parts: string[] = []
+  if (vol && year) {
+    const volStr = vol >= 1e12 ? `$${(vol / 1e12).toFixed(1)}T` : `$${(vol / 1e9).toFixed(0)}B`
+    parts.push(`${A} and ${B} traded ${volStr} in ${year}`)
+  } else {
+    parts.push(`${A} and ${B} bilateral trade flows`)
+  }
+  if (bal != null) {
+    const absB   = Math.abs(bal as number)
+    const balStr = absB >= 1e9 ? `$${(absB / 1e9).toFixed(0)}B` : `$${(absB / 1e6).toFixed(0)}M`
+    parts.push(`${A} ${(bal as number) >= 0 ? 'surplus' : 'deficit'} ${balStr}`)
+  }
+  if (prods) parts.push(`top exports: ${prods}`)
+  parts.push(`Source: ${source}`)
+  return parts.join('. ') + '.'
+})
+
 useSeoMeta({
-  title: computed(() => data.value ? `${data.value.exporter.name}–${data.value.importer.name} Trade — MetricsHour` : 'Bilateral Trade — MetricsHour'),
-  description: computed(() => data.value ? `${data.value.exporter.name} and ${data.value.importer.name} bilateral trade flows, top products, and GDP dependency.` : ''),
-  ogTitle: computed(() => data.value ? `${data.value.exporter.name}–${data.value.importer.name} Trade — MetricsHour` : 'Bilateral Trade — MetricsHour'),
-  ogDescription: computed(() => data.value ? `${data.value.exporter.name} and ${data.value.importer.name} bilateral trade flows, top products, and GDP dependency.` : ''),
+  title: _seoTitle,
+  description: _seoDesc,
+  ogTitle: _seoTitle,
+  ogDescription: _seoDesc,
   ogUrl: `https://metricshour.com/trade/${pair}`,
   ogType: 'website',
   ogImage: ogImageUrl,
-  twitterTitle: computed(() => data.value ? `${data.value.exporter.name}–${data.value.importer.name} Trade — MetricsHour` : 'Bilateral Trade — MetricsHour'),
-  twitterDescription: computed(() => data.value ? `${data.value.exporter.name} and ${data.value.importer.name} bilateral trade flows, top products, and GDP dependency.` : ''),
+  twitterTitle: _seoTitle,
+  twitterDescription: _seoDesc,
   twitterImage: ogImageUrl,
   twitterCard: 'summary_large_image',
 })
@@ -414,7 +455,7 @@ function buildTradeFaqs(d: any, tdVal: any) {
 }
 
 useHead(computed(() => ({
-  link: [{ rel: 'canonical', href: `https://metricshour.com/trade/${pair}/` }],
+  link: [{ rel: 'canonical', href: `https://metricshour.com/trade/${data.value?.canonical_pair ?? pair}/` }],
   script: data.value ? [
     {
       type: 'application/ld+json',
