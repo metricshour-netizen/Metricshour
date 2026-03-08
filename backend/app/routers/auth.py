@@ -7,6 +7,7 @@ GET  /api/auth/google/authorize      — redirect to Google OAuth consent
 GET  /api/auth/google/callback       — handle Google OAuth callback
 """
 
+import hashlib
 import os
 import secrets
 from datetime import datetime, timedelta, timezone
@@ -72,6 +73,11 @@ def _make_token(user_id: int, tier: str, is_admin: bool = False) -> str:
     )
 
 
+def _token_key(token: str) -> str:
+    """Short Redis key derived from token hash — never stores the raw token."""
+    return "auth:revoked:" + hashlib.sha256(token.encode()).hexdigest()[:32]
+
+
 def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db),
@@ -87,6 +93,10 @@ def get_current_user(
         if user_id is None:
             raise credentials_error
     except JWTError:
+        raise credentials_error
+
+    # Check revocation list — logout stores the token hash here
+    if redis_json_get(_token_key(token)) is not None:
         raise credentials_error
 
     user = db.query(User).filter(User.id == int(user_id), User.is_active == True).first()
@@ -159,6 +169,19 @@ def me(current_user: User = Depends(get_current_user)):
         is_admin=current_user.is_admin,
         created_at=current_user.created_at,
     )
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+def logout(token: str = Depends(oauth2_scheme)):
+    """Revoke the current JWT so it cannot be reused even before it expires."""
+    try:
+        payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
+        exp: int = payload.get("exp", 0)
+        remaining_ttl = max(1, exp - int(datetime.now(timezone.utc).timestamp()))
+    except JWTError:
+        # Token already invalid — nothing to revoke
+        return
+    redis_json_set(_token_key(token), {"revoked": True}, ttl_seconds=remaining_ttl)
 
 
 # ── Google OAuth ──────────────────────────────────────────────────────────────

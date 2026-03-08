@@ -91,7 +91,15 @@ export function useAuth() {
     restore()
   }
 
-  function logout() {
+  async function logout() {
+    // Revoke the token server-side so it can't be reused before it expires
+    if (token.value) {
+      const config = useRuntimeConfig()
+      await fetch(`${config.public.apiBase}/api/auth/logout`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token.value}` },
+      }).catch(() => {})  // fire-and-forget — always clear locally even if API fails
+    }
     _persist(null)
     user.value = null
   }
