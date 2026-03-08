@@ -712,10 +712,15 @@ function _cardDestination(): string {
   }
   if (type === 'trade_update' && data.exporter && data.importer)
     return `/trade/${data.exporter}-${data.importer}`
-  if (type === 'geopolitical' || type === 'macro_release') {
+  if (type === 'geopolitical') {
+    // Source article takes priority — opens in new tab so user stays on MetricsHour
+    if (props.event.source_url) return props.event.source_url
     if (data.exporter && data.importer) return `/trade/${data.exporter}-${data.importer}`
     if (cc) return `/countries/${cc}`
-    if (props.event.source_url) return props.event.source_url  // external article, opens in new tab
+  }
+  if (type === 'macro_release') {
+    if (data.exporter && data.importer) return `/trade/${data.exporter}-${data.importer}`
+    if (cc) return `/countries/${cc}`
   }
   if (type === 'market_move' && data.symbol)
     return `/stocks/${data.symbol.toUpperCase()}`

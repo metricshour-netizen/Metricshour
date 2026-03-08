@@ -1,5 +1,5 @@
 <template>
-  <div class="feed-viewport fixed inset-0 bg-black" style="top: 49px;">
+  <div class="feed-viewport fixed inset-0 bg-black z-10" style="top: 48px;">
     <h1 class="sr-only">Market Intelligence Feed — MetricsHour</h1>
 
     <!-- METRICSHOUR home tap zone — always accessible on feed -->
@@ -51,7 +51,7 @@
     <!-- Snap scroll container -->
     <div
       ref="scrollEl"
-      class="h-full overflow-y-scroll snap-y snap-mandatory"
+      class="h-full overflow-y-scroll snap-y snap-mandatory bg-black"
       style="-webkit-overflow-scrolling: touch; scrollbar-width: none;"
       @scroll.passive="onScroll"
     >
@@ -60,7 +60,7 @@
       <div
         v-for="(event, idx) in visibleEvents"
         :key="event.id"
-        class="snap-start snap-always"
+        class="snap-start snap-always w-full shrink-0 overflow-hidden"
         :style="cardStyle"
       >
         <FeedCard
@@ -190,8 +190,8 @@ const activeAccent = computed(() => {
 
 // ── Card height ───────────────────────────────────────────────────────────────
 const cardStyle = computed(() => ({
-  height: 'calc(100vh - 49px)',
-  minHeight: 'calc(100vh - 49px)',
+  height: 'calc(100vh - 48px)',
+  minHeight: 'calc(100vh - 48px)',
 }))
 
 // ── Fetch ─────────────────────────────────────────────────────────────────────
