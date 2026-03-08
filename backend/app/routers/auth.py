@@ -26,7 +26,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.database import get_db
 from app.limiter import limiter
-from app.models.user import User, UserTier
+from app.models.user import User, UserTier, LoginEvent
 from app.notifications import send_welcome_email
 from app.storage import redis_json_set, redis_json_get, redis_json_del
 
@@ -182,7 +182,15 @@ def login(request: Request, form: OAuth2PasswordRequestForm = Depends(), db: Ses
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
     _clear_fails(form.username)
-    user.last_login_at = datetime.now(timezone.utc)
+    now = datetime.now(timezone.utc)
+    user.last_login_at = now
+    db.add(LoginEvent(
+        user_id=user.id,
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent", "")[:512],
+        method="password",
+        created_at=now,
+    ))
     db.commit()
 
     return TokenOut(access_token=_make_token(user.id, user.tier, user.is_admin), tier=user.tier)
@@ -346,7 +354,15 @@ def google_callback(code: str, state: str, db: Session = Depends(get_db)):
         except Exception:
             pass
 
-    user.last_login_at = datetime.now(timezone.utc)
+    now = datetime.now(timezone.utc)
+    user.last_login_at = now
+    db.add(LoginEvent(
+        user_id=user.id,
+        ip_address=None,   # Google OAuth — IP not easily available at callback
+        user_agent=None,
+        method="google",
+        created_at=now,
+    ))
     db.commit()
 
     jwt_token = _make_token(user.id, user.tier, user.is_admin)

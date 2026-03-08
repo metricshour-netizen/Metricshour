@@ -14,16 +14,17 @@ POST   /api/admin/blogs/{id}/cover    — upload cover image to R2
 
 import re
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from pydantic import BaseModel
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.feed import BlogPost, BlogStatus, FeedEvent
-from app.routers.auth import get_admin_user
-from app.models.user import User
+from app.routers.auth import get_admin_user, get_current_user
+from app.models.user import User, LoginEvent, PageView
 from app.storage import r2_public_url, r2_upload
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -296,3 +297,123 @@ async def upload_cover(
     db.commit()
 
     return {"url": url, "key": key}
+
+
+# ── Admin stats dashboard ──────────────────────────────────────────────────────
+
+@router.get("/stats")
+def admin_stats(
+    db: Session = Depends(get_db),
+    _: User = Depends(get_admin_user),
+):
+    now = datetime.now(timezone.utc)
+    d7 = now - timedelta(days=7)
+    d30 = now - timedelta(days=30)
+
+    total_users = db.query(func.count(User.id)).scalar()
+    new_7d = db.query(func.count(User.id)).filter(User.created_at >= d7).scalar()
+    new_30d = db.query(func.count(User.id)).filter(User.created_at >= d30).scalar()
+    pro_users = db.query(func.count(User.id)).filter(User.tier != "free").scalar()
+
+    logins_7d = db.query(func.count(LoginEvent.id)).filter(LoginEvent.created_at >= d7).scalar()
+
+    recent_logins = (
+        db.query(LoginEvent, User.email)
+        .join(User, LoginEvent.user_id == User.id)
+        .order_by(LoginEvent.created_at.desc())
+        .limit(20)
+        .all()
+    )
+
+    recent_signups = (
+        db.query(User)
+        .order_by(User.created_at.desc())
+        .limit(10)
+        .all()
+    )
+
+    top_pages = (
+        db.query(PageView.entity_type, PageView.entity_code, func.count(PageView.id).label("views"))
+        .filter(PageView.created_at >= d7)
+        .group_by(PageView.entity_type, PageView.entity_code)
+        .order_by(func.count(PageView.id).desc())
+        .limit(20)
+        .all()
+    )
+
+    return {
+        "users": {
+            "total": total_users,
+            "new_7d": new_7d,
+            "new_30d": new_30d,
+            "paid": pro_users,
+        },
+        "logins": {
+            "total_7d": logins_7d,
+            "recent": [
+                {
+                    "email": email,
+                    "ip": e.ip_address,
+                    "method": e.method,
+                    "created_at": e.created_at.isoformat(),
+                }
+                for e, email in recent_logins
+            ],
+        },
+        "signups": [
+            {
+                "id": u.id,
+                "email": u.email,
+                "tier": u.tier,
+                "created_at": u.created_at.isoformat(),
+            }
+            for u in recent_signups
+        ],
+        "top_pages": [
+            {"entity_type": et, "entity_code": ec, "views": v}
+            for et, ec, v in top_pages
+        ],
+    }
+
+
+# ── Page view tracker (fire-and-forget from frontend) ─────────────────────────
+
+class TrackIn(BaseModel):
+    entity_type: str   # 'country' | 'stock' | 'trade' | 'commodity'
+    entity_code: str
+
+
+_VALID_ENTITY_TYPES = {"country", "stock", "trade", "commodity"}
+
+# Public router so any visitor's page views are counted (no auth required)
+track_router = APIRouter(tags=["analytics"])
+
+
+@track_router.post("/api/track", status_code=status.HTTP_204_NO_CONTENT)
+def track_page_view(
+    body: TrackIn,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    if body.entity_type not in _VALID_ENTITY_TYPES:
+        return  # silently ignore invalid types
+
+    # Optionally associate with logged-in user (best-effort, no error if token missing)
+    user_id = None
+    try:
+        auth_header = request.headers.get("authorization", "")
+        if auth_header.startswith("Bearer "):
+            from jose import jwt as _jwt
+            from app.config import settings as _s
+            payload = _jwt.decode(auth_header[7:], _s.jwt_secret, algorithms=[_s.jwt_algorithm])
+            user_id = int(payload.get("sub", 0)) or None
+    except Exception:
+        pass
+
+    db.add(PageView(
+        entity_type=body.entity_type,
+        entity_code=body.entity_code[:50],
+        user_id=user_id,
+        created_at=datetime.now(timezone.utc),
+    ))
+    db.commit()

@@ -348,6 +348,9 @@ const showAuthModal = ref(false)
 const isFollowing = ref(false)
 
 onMounted(async () => {
+  // Fire-and-forget page view tracking
+  post('/api/track', { entity_type: 'country', entity_code: code.toUpperCase() }).catch(() => {})
+
   if (!isLoggedIn.value || !country.value?.id) return
   try {
     const follows = await get<any[]>('/api/feed/follows')

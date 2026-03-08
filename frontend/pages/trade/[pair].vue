@@ -284,7 +284,7 @@
 
 <script setup lang="ts">
 const route = useRoute()
-const { get } = useApi()
+const { get, post } = useApi()
 
 const pair = route.params.pair as string
 const parts = pair.split('-')
@@ -410,4 +410,8 @@ useHead(computed(() => ({
     }),
   }] : [],
 })))
+
+onMounted(() => {
+  post('/api/track', { entity_type: 'trade', entity_code: pair.toUpperCase() }).catch(() => {})
+})
 </script>

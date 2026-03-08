@@ -529,6 +529,10 @@ const showAlertModal = ref(false)
 const isFollowing = ref(false)
 
 onMounted(async () => {
+  // Fire-and-forget page view tracking
+  const ticker = route.params.ticker as string
+  post('/api/track', { entity_type: 'stock', entity_code: ticker.toUpperCase() }).catch(() => {})
+
   if (!isLoggedIn.value || !stock.value?.id) return
   try {
     const follows = await get<any[]>('/api/feed/follows')
