@@ -17,7 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import aliased
 
 from app.database import get_db
-from app.models.asset import Asset
+from app.models.asset import Asset, AssetType, Price
 from app.models.country import Country, TradePair
 from app.models.summary import PageSummary
 
@@ -35,6 +35,8 @@ STATIC_ROUTES = [
     (f"{BASE}/countries/",    "0.9", "weekly",  _TODAY),
     (f"{BASE}/trade/",        "0.9", "weekly",  _TODAY),
     (f"{BASE}/commodities/",  "0.8", "daily",   _TODAY),
+    (f"{BASE}/feed/",         "0.8", "hourly",  _TODAY),
+    (f"{BASE}/blog/",         "0.7", "weekly",  _TODAY),
     (f"{BASE}/pricing/",      "0.7", "monthly", None),
     (f"{BASE}/about/",        "0.6", "monthly", None),
 ]
@@ -65,11 +67,36 @@ def sitemap(db: Session = Depends(get_db)):
 
     entries: list[str] = [_url(loc, pri, freq, lm) for loc, pri, freq, lm in STATIC_ROUTES]
 
-    # Assets → /stocks/{symbol}
-    for (symbol,) in db.execute(select(Asset.symbol).where(Asset.symbol.isnot(None))):
-        # Use the insight timestamp if available, else summary
+    # Stocks → /stocks/{symbol}  (only stocks, not commodities/crypto/fx)
+    for (symbol,) in db.execute(
+        select(Asset.symbol).where(
+            Asset.symbol.isnot(None),
+            Asset.asset_type == AssetType.stock,
+            Asset.is_active == True,
+        )
+    ):
         lm = lastmod_map.get(("stock_insight", symbol)) or lastmod_map.get(("stock", symbol))
         entries.append(_url(f"{BASE}/stocks/{symbol}/", "0.7", "daily", lm))
+
+    # Commodities → /commodities/{symbol}  (only those with actual price data)
+    commodity_symbols_with_prices = {
+        row[0] for row in db.execute(
+            select(Asset.symbol)
+            .join(Price, Price.asset_id == Asset.id)
+            .where(Asset.asset_type == AssetType.commodity, Asset.is_active == True)
+            .distinct()
+        )
+    }
+    for (symbol,) in db.execute(
+        select(Asset.symbol).where(
+            Asset.asset_type == AssetType.commodity,
+            Asset.is_active == True,
+            Asset.symbol.isnot(None),
+        )
+    ):
+        if symbol not in commodity_symbols_with_prices:
+            continue  # skip commodities with no price data — thin content penalty risk
+        entries.append(_url(f"{BASE}/commodities/{symbol.lower()}/", "0.7", "daily", _TODAY))
 
     # Countries → /countries/{code}
     for (code,) in db.execute(select(Country.code).where(Country.code.isnot(None))):
@@ -77,19 +104,26 @@ def sitemap(db: Session = Depends(get_db)):
         entries.append(_url(f"{BASE}/countries/{code.lower()}/", "0.7", "weekly", lm))
 
     # Trade pairs → /trade/{exp}-{imp}
+    # DB stores both directions (A→B and B→A); include only one per relationship.
     Exporter = aliased(Country)
     Importer = aliased(Country)
-    for (exp_code, imp_code) in db.execute(
-        select(Exporter.code, Importer.code)
+    seen_trade_pairs: set[tuple[str, str]] = set()
+    for (exp_id, imp_id, exp_code, imp_code) in db.execute(
+        select(TradePair.exporter_id, TradePair.importer_id, Exporter.code, Importer.code)
         .select_from(TradePair)
         .join(Exporter, TradePair.exporter_id == Exporter.id)
         .join(Importer, TradePair.importer_id == Importer.id)
         .distinct()
     ):
-        if exp_code and imp_code:
-            pair_code = f"{exp_code}-{imp_code}"
-            lm = lastmod_map.get(("trade_insight", pair_code)) or lastmod_map.get(("trade", pair_code))
-            entries.append(_url(f"{BASE}/trade/{exp_code.lower()}-{imp_code.lower()}/", "0.6", "daily", lm))
+        if not exp_code or not imp_code:
+            continue
+        canonical_key = (min(exp_id, imp_id), max(exp_id, imp_id))
+        if canonical_key in seen_trade_pairs:
+            continue
+        seen_trade_pairs.add(canonical_key)
+        pair_code = f"{exp_code}-{imp_code}"
+        lm = lastmod_map.get(("trade_insight", pair_code)) or lastmod_map.get(("trade", pair_code))
+        entries.append(_url(f"{BASE}/trade/{exp_code.lower()}-{imp_code.lower()}/", "0.6", "daily", lm))
 
     xml = (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
