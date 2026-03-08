@@ -315,6 +315,7 @@ const emit = defineEmits<{
 
 const { post } = useApi()
 const { isLoggedIn } = useAuth()
+const router = useRouter()
 const cardEl = ref<HTMLElement | null>(null)
 const isSaved = ref(false)
 const showAuthModal = ref(false)
@@ -750,7 +751,7 @@ function handleCardClick() {
   if (cardDestIsExternal.value) {
     window.open(dest, '_blank', 'noopener,noreferrer')
   } else {
-    navigateTo(dest)
+    router.push(dest)
   }
 }
 
