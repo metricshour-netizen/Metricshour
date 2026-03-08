@@ -78,7 +78,7 @@
               <div v-for="item in countries" :key="item.follow_id" class="flex items-center justify-between sm:grid px-4 py-3 hover:bg-[#1a2235] transition-colors"
                    style="grid-template-columns: 1fr 6rem 6rem 6rem 1.5rem">
                 <NuxtLink :to="`/countries/${item.code.toLowerCase()}`" class="flex items-center gap-2.5 min-w-0 pr-2 group">
-                  <span class="text-xl shrink-0">{{ item.flag }}</span>
+                  <span class="text-xl shrink-0" aria-hidden="true">{{ item.flag }}</span>
                   <div class="min-w-0">
                     <div class="text-sm font-medium text-white group-hover:text-emerald-400 transition-colors">{{ item.name }}</div>
                     <div class="text-xs text-gray-600">{{ item.region }}</div>

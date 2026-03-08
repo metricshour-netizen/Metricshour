@@ -111,7 +111,7 @@
             <!-- Mobile row -->
             <div class="flex items-center justify-between px-4 py-3 sm:hidden">
               <div class="flex items-center gap-2.5 min-w-0">
-                <span v-if="s.country" class="text-base leading-none shrink-0">{{ s.country.flag }}</span>
+                <span v-if="s.country" class="text-base leading-none shrink-0" aria-hidden="true">{{ s.country.flag }}</span>
                 <div class="min-w-0">
                   <div class="text-sm font-bold text-white">{{ s.symbol }}</div>
                   <div class="text-xs text-gray-500 truncate max-w-[140px]">{{ s.name }}</div>
@@ -130,7 +130,7 @@
                  style="grid-template-columns: 2rem 1fr 7rem 6rem 7rem 1.5rem">
               <span class="text-xs text-gray-600">{{ i + 1 }}</span>
               <div class="flex items-center gap-2 min-w-0 pr-2">
-                <span v-if="s.country" class="text-base leading-none shrink-0">{{ s.country.flag }}</span>
+                <span v-if="s.country" class="text-base leading-none shrink-0" aria-hidden="true">{{ s.country.flag }}</span>
                 <div class="min-w-0">
                   <div class="text-sm font-bold text-white">{{ s.symbol }}</div>
                   <div class="text-xs text-gray-500 truncate">{{ s.name }}</div>

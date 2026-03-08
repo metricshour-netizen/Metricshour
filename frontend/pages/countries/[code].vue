@@ -11,7 +11,7 @@
       <!-- Header -->
       <div class="mb-8">
         <div class="flex items-start gap-4 mb-3">
-          <span class="text-5xl leading-none">{{ country.flag }}</span>
+          <span class="text-5xl leading-none" aria-hidden="true">{{ country.flag }}</span>
           <div>
             <h1 class="text-2xl font-bold text-white">{{ country.name }}</h1>
             <p class="text-gray-500 text-sm">{{ country.name_official }}</p>
@@ -186,7 +186,7 @@
                       :to="`/trade/${code.toUpperCase()}-${p.partner.code}`"
                       class="flex items-center gap-2 hover:text-emerald-400 transition-colors"
                     >
-                      <span>{{ p.partner.flag }}</span>
+                      <span aria-hidden="true">{{ p.partner.flag }}</span>
                       <span class="text-white">{{ p.partner.name }}</span>
                     </NuxtLink>
                     <NuxtLink

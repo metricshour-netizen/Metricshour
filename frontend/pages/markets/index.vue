@@ -226,7 +226,7 @@
               <!-- Mobile -->
               <div class="flex items-center justify-between px-4 py-3 sm:hidden">
                 <div class="flex items-center gap-2 min-w-0">
-                  <span v-if="s.country" class="text-base shrink-0">{{ s.country.flag }}</span>
+                  <span v-if="s.country" class="text-base shrink-0" aria-hidden="true">{{ s.country.flag }}</span>
                   <div class="min-w-0">
                     <div class="text-sm font-bold text-white">{{ s.symbol }}</div>
                     <div class="text-xs text-gray-500 truncate max-w-[150px]">{{ s.name }}</div>
@@ -241,7 +241,7 @@
               <div class="hidden sm:grid grid-cols-12 px-4 py-3 items-center">
                 <span class="col-span-1 text-xs text-gray-600">{{ i + 1 }}</span>
                 <div class="col-span-5 flex items-center gap-2">
-                  <span v-if="s.country" class="text-base leading-none">{{ s.country.flag }}</span>
+                  <span v-if="s.country" class="text-base leading-none" aria-hidden="true">{{ s.country.flag }}</span>
                   <div><div class="text-sm font-bold text-white">{{ s.symbol }}</div><div class="text-xs text-gray-500 truncate">{{ s.name }}</div></div>
                 </div>
                 <span class="col-span-3 text-xs text-gray-500">{{ s.sector || '—' }}</span>

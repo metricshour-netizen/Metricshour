@@ -19,7 +19,7 @@
           <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-6">
             <!-- Left: identity -->
             <div class="flex items-start gap-4">
-              <div class="w-14 h-14 rounded-xl bg-[#1f2937] border border-[#374151] flex items-center justify-center text-2xl shrink-0">
+              <div class="w-14 h-14 rounded-xl bg-[#1f2937] border border-[#374151] flex items-center justify-center text-2xl shrink-0" aria-hidden="true">
                 {{ stock.country?.flag || '🏢' }}
               </div>
               <div>
@@ -146,7 +146,7 @@
               :to="`/countries/${r.country.code.toLowerCase()}`"
               class="w-32 sm:w-44 flex items-center gap-2 shrink-0 min-w-0 group"
             >
-              <span class="text-base shrink-0">{{ r.country.flag }}</span>
+              <span class="text-base shrink-0" aria-hidden="true">{{ r.country.flag }}</span>
               <span class="text-xs text-gray-300 group-hover:text-emerald-400 truncate flex-1 transition-colors">{{ r.country.name }}</span>
             </NuxtLink>
             <div class="flex-1 bg-[#1f2937] rounded-full h-3 overflow-hidden">
@@ -220,7 +220,7 @@
         <div v-if="stock.country" class="bg-[#111827] border border-[#1f2937] rounded-xl p-6">
           <h2 class="text-base font-bold text-white mb-4">HQ Country Context</h2>
           <div class="flex items-center gap-3 mb-4 p-3 rounded-lg bg-[#0d1117] border border-[#1f2937]">
-            <span class="text-3xl">{{ stock.country.flag }}</span>
+            <span class="text-3xl" aria-hidden="true">{{ stock.country.flag }}</span>
             <div>
               <div class="text-white font-semibold">{{ stock.country.name }}</div>
               <div class="text-xs text-gray-500">Headquarters country</div>
@@ -266,9 +266,9 @@
             :to="`/trade/${r.pair}`"
             class="flex items-center gap-2 bg-[#0d1117] border border-[#1f2937] hover:border-emerald-700 rounded-lg px-3 py-2 transition-colors group"
           >
-            <span class="text-base leading-none">{{ stock.country?.flag }}</span>
+            <span class="text-base leading-none" aria-hidden="true">{{ stock.country?.flag }}</span>
             <span class="text-[10px] text-gray-600 font-mono">↔</span>
-            <span class="text-base leading-none">{{ r.flag }}</span>
+            <span class="text-base leading-none" aria-hidden="true">{{ r.flag }}</span>
             <div>
               <div class="text-xs font-semibold text-white group-hover:text-emerald-400 transition-colors">
                 {{ stock.country?.code }} – {{ r.code }}
@@ -298,7 +298,7 @@
             class="flex items-center justify-between py-3 hover:bg-[#1f2937] -mx-2 px-2 rounded-lg transition-colors"
           >
             <div class="flex items-center gap-3">
-              <span class="text-lg leading-none">{{ s.country?.flag || '🏢' }}</span>
+              <span class="text-lg leading-none" aria-hidden="true">{{ s.country?.flag || '🏢' }}</span>
               <div>
                 <div class="text-sm font-bold text-emerald-400">{{ s.symbol }}</div>
                 <div class="text-xs text-gray-500 truncate max-w-[180px]">{{ s.name }}</div>

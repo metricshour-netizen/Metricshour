@@ -142,7 +142,7 @@
           <div v-if="editingPost">
             <label class="text-xs text-gray-500 block mb-1">Cover image</label>
             <div class="flex items-center gap-3">
-              <img v-if="editingPost.cover_image_url" :src="editingPost.cover_image_url" class="w-16 h-10 object-cover rounded" />
+              <img v-if="editingPost.cover_image_url" :src="editingPost.cover_image_url" alt="Cover image preview" class="w-16 h-10 object-cover rounded" />
               <input
                 ref="fileInput"
                 type="file"

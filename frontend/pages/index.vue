@@ -102,7 +102,7 @@
               class="flex items-center gap-2.5 px-3 py-2.5 hover:bg-[#1f2937] transition-colors"
               :class="focusedIndex === i ? 'bg-[#1f2937]' : ''"
             >
-              <span class="text-base">{{ c.flag }}</span>
+              <span class="text-base" aria-hidden="true">{{ c.flag }}</span>
               <span class="text-sm text-white flex-1">{{ c.name }}</span>
               <span class="text-xs text-gray-600 font-mono">{{ c.code }}</span>
             </NuxtLink>
@@ -301,7 +301,7 @@
             :to="`/stocks/${s.symbol}`"
             class="flex items-center gap-3 bg-[#111827] border border-[#1f2937] hover:border-emerald-500 rounded-lg px-3 py-2.5 transition-colors group"
           >
-            <span class="text-lg leading-none shrink-0">{{ s.country?.flag || '🏢' }}</span>
+            <span class="text-lg leading-none shrink-0" aria-hidden="true">{{ s.country?.flag || '🏢' }}</span>
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-1.5">
                 <span class="text-xs font-mono font-bold text-emerald-400 group-hover:text-emerald-300">{{ s.symbol }}</span>
@@ -332,7 +332,7 @@
             :to="`/countries/${c.code.toLowerCase()}`"
             class="bg-[#111827] border border-[#1f2937] hover:border-emerald-500 rounded-lg p-2 transition-colors flex flex-col items-center"
           >
-            <div class="text-xl mb-0.5">{{ c.flag }}</div>
+            <div class="text-xl mb-0.5" aria-hidden="true">{{ c.flag }}</div>
             <div class="text-[9px] font-mono text-gray-600 text-center leading-tight">{{ c.name.split(' ')[0] }}</div>
           </NuxtLink>
         </div>
@@ -357,9 +357,9 @@
           class="bg-[#111827] border border-[#1f2937] hover:border-emerald-500 rounded-lg p-4 transition-colors group"
         >
           <div class="flex items-center gap-2 mb-2">
-            <span class="text-xl">{{ t.exporter?.flag }}</span>
-            <span class="text-xs text-gray-600">↔</span>
-            <span class="text-xl">{{ t.importer?.flag }}</span>
+            <span class="text-xl" aria-hidden="true">{{ t.exporter?.flag }}</span>
+            <span class="text-xs text-gray-600" aria-hidden="true">↔</span>
+            <span class="text-xl" aria-hidden="true">{{ t.importer?.flag }}</span>
             <span class="text-xs font-semibold text-white ml-1 truncate group-hover:text-emerald-400 transition-colors">
               {{ t.exporter?.name }} – {{ t.importer?.name }}
             </span>

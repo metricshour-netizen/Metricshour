@@ -29,10 +29,10 @@
             <!-- Mobile row -->
             <div class="flex items-center justify-between px-4 py-3 sm:hidden">
               <div class="flex items-center gap-1.5">
-                <span class="text-base">{{ p.exporter?.flag }}</span>
+                <span class="text-base" aria-hidden="true">{{ p.exporter?.flag }}</span>
                 <span class="text-xs font-medium text-gray-300">{{ p.exporter?.code }}</span>
                 <span class="text-gray-600 text-xs mx-0.5">→</span>
-                <span class="text-base">{{ p.importer?.flag }}</span>
+                <span class="text-base" aria-hidden="true">{{ p.importer?.flag }}</span>
                 <span class="text-xs font-medium text-gray-300">{{ p.importer?.code }}</span>
               </div>
               <div class="text-right">
@@ -45,10 +45,10 @@
             <!-- Desktop row -->
             <div class="hidden sm:grid grid-cols-12 px-4 py-3 items-center">
               <div class="col-span-5 flex items-center gap-1.5">
-                <span class="text-base">{{ p.exporter?.flag }}</span>
+                <span class="text-base" aria-hidden="true">{{ p.exporter?.flag }}</span>
                 <span class="text-xs text-gray-400">{{ p.exporter?.code }}</span>
                 <span class="text-gray-600 text-xs mx-1">→</span>
-                <span class="text-base">{{ p.importer?.flag }}</span>
+                <span class="text-base" aria-hidden="true">{{ p.importer?.flag }}</span>
                 <span class="text-xs text-gray-400">{{ p.importer?.code }}</span>
               </div>
               <span class="col-span-2 text-xs text-right text-white tabular-nums">{{ fmtUsd(p.trade_value_usd) }}</span>

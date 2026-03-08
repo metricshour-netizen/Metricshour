@@ -44,7 +44,7 @@
           class="bg-[#111827] border border-[#1f2937] hover:border-emerald-500 rounded-lg p-4 transition-colors"
         >
           <div class="flex items-center gap-2 mb-2">
-            <span class="text-xl">{{ c.flag }}</span>
+            <span class="text-xl" aria-hidden="true">{{ c.flag }}</span>
             <span class="font-medium text-white text-sm">{{ c.name }}</span>
           </div>
           <div class="text-xs text-gray-500 flex gap-2 flex-wrap">

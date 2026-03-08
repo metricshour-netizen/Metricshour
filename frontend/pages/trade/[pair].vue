@@ -24,7 +24,7 @@
                 {{ data.exporter.name }}–{{ data.importer.name }} Trade
               </h1>
               <div class="flex items-center gap-3">
-                <div class="w-14 h-14 rounded-xl bg-[#1f2937] border border-[#374151] flex items-center justify-center text-3xl">
+                <div class="w-14 h-14 rounded-xl bg-[#1f2937] border border-[#374151] flex items-center justify-center text-3xl" aria-hidden="true">
                   {{ data.exporter.flag }}
                 </div>
                 <div>
@@ -37,7 +37,7 @@
                 <div class="text-[10px] text-gray-600 uppercase tracking-wider">bilateral</div>
               </div>
               <div class="flex items-center gap-3">
-                <div class="w-14 h-14 rounded-xl bg-[#1f2937] border border-[#374151] flex items-center justify-center text-3xl">
+                <div class="w-14 h-14 rounded-xl bg-[#1f2937] border border-[#374151] flex items-center justify-center text-3xl" aria-hidden="true">
                   {{ data.importer.flag }}
                 </div>
                 <div>
@@ -133,7 +133,7 @@
       <div v-if="td" class="bg-[#111827] border border-[#1f2937] rounded-xl p-5 mb-6">
         <h2 class="text-sm font-bold text-white mb-4">Trade Flow</h2>
         <div class="flex items-center gap-3">
-          <span class="text-2xl shrink-0">{{ data.exporter.flag }}</span>
+          <span class="text-2xl shrink-0" aria-hidden="true">{{ data.exporter.flag }}</span>
           <div class="flex-1">
             <div class="flex items-center gap-2 mb-1.5">
               <div class="text-[10px] text-emerald-400 uppercase tracking-wider font-bold">Exports {{ fmtUsd(td.exports_usd) }}</div>
@@ -148,7 +148,7 @@
               <div class="text-[10px] text-red-400 uppercase tracking-wider font-bold">Imports {{ fmtUsd(td.imports_usd) }}</div>
             </div>
           </div>
-          <span class="text-2xl shrink-0">{{ data.importer.flag }}</span>
+          <span class="text-2xl shrink-0" aria-hidden="true">{{ data.importer.flag }}</span>
         </div>
       </div>
 
@@ -156,7 +156,7 @@
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <div class="bg-[#111827] border border-[#1f2937] rounded-xl p-5">
           <div class="flex items-center gap-2 mb-4">
-            <span class="text-lg">{{ data.exporter.flag }}</span>
+            <span class="text-lg" aria-hidden="true">{{ data.exporter.flag }}</span>
             <div>
               <div class="text-xs font-bold text-white">{{ data.exporter.name }} exports to</div>
               <div class="text-[10px] text-gray-500">{{ data.importer.name }}</div>
@@ -188,7 +188,7 @@
 
         <div class="bg-[#111827] border border-[#1f2937] rounded-xl p-5">
           <div class="flex items-center gap-2 mb-4">
-            <span class="text-lg">{{ data.importer.flag }}</span>
+            <span class="text-lg" aria-hidden="true">{{ data.importer.flag }}</span>
             <div>
               <div class="text-xs font-bold text-white">{{ data.importer.name }} exports to</div>
               <div class="text-[10px] text-gray-500">{{ data.exporter.name }}</div>
@@ -225,7 +225,7 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div v-for="c in [{ country: data.exporter, code: codeA }, { country: data.importer, code: codeB }]" :key="c.code">
             <div class="flex items-center gap-3 mb-3">
-              <span class="text-2xl">{{ c.country.flag }}</span>
+              <span class="text-2xl" aria-hidden="true">{{ c.country.flag }}</span>
               <div>
                 <div class="text-sm font-bold text-white">{{ c.country.name }}</div>
                 <NuxtLink :to="`/countries/${c.code}`" class="text-xs text-emerald-500 hover:text-emerald-400 transition-colors">Full macro data →</NuxtLink>
