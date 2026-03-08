@@ -18,6 +18,8 @@
 
     <!-- Legal links -->
     <div class="flex flex-wrap gap-x-5 gap-y-1 justify-center text-[11px] text-gray-700 pb-1">
+      <NuxtLink to="/about"   class="hover:text-gray-500 transition-colors">About</NuxtLink>
+      <span class="text-gray-800">·</span>
       <NuxtLink to="/privacy" class="hover:text-gray-500 transition-colors">Privacy Policy</NuxtLink>
       <span class="text-gray-800">·</span>
       <NuxtLink to="/terms"   class="hover:text-gray-500 transition-colors">Terms of Service</NuxtLink>

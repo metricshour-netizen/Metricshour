@@ -415,30 +415,75 @@ useSeoMeta({
   twitterCard: 'summary_large_image',
 })
 
+function buildCountryFaqs(c: any) {
+  const ind = c.indicators ?? {}
+  const faqs: { '@type': string; name: string; acceptedAnswer: { '@type': string; text: string } }[] = []
+  const push = (q: string, a: string) => faqs.push({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })
+
+  if (ind.gdp_usd != null) {
+    const gdp = ind.gdp_usd >= 1e12 ? `$${(ind.gdp_usd / 1e12).toFixed(1)} trillion` : `$${(ind.gdp_usd / 1e9).toFixed(0)} billion`
+    const growth = ind.gdp_growth_pct != null ? ` growing at ${ind.gdp_growth_pct.toFixed(1)}% annually` : ''
+    push(`What is ${c.name}'s GDP?`, `${c.name}'s GDP is ${gdp}${growth}. Source: World Bank.`)
+  }
+  if (ind.inflation_pct != null) {
+    push(`What is ${c.name}'s inflation rate?`, `${c.name}'s inflation rate is ${ind.inflation_pct.toFixed(1)}% (latest annual figure). Source: World Bank / IMF.`)
+  }
+  if (ind.interest_rate_pct != null) {
+    push(`What is ${c.name}'s central bank interest rate?`, `${c.name}'s central bank policy rate is ${ind.interest_rate_pct.toFixed(2)}%. Source: World Bank.`)
+  }
+  if (ind.unemployment_pct != null) {
+    push(`What is ${c.name}'s unemployment rate?`, `${c.name}'s unemployment rate is ${ind.unemployment_pct.toFixed(1)}%. Source: World Bank.`)
+  }
+  if (ind.government_debt_gdp_pct != null) {
+    push(`What is ${c.name}'s government debt as a percentage of GDP?`, `${c.name}'s general government debt is ${ind.government_debt_gdp_pct.toFixed(0)}% of GDP. Source: IMF.`)
+  }
+  if (c.groupings?.length) {
+    const blocs = c.groupings.join(', ')
+    push(`What international organisations is ${c.name} a member of?`, `${c.name} is a member of: ${blocs}. These memberships shape its trade policy, diplomatic relationships, and economic agreements.`)
+  }
+  if (c.credit_rating_sp) {
+    push(`What is ${c.name}'s S&P credit rating?`, `${c.name} has an S&P sovereign credit rating of ${c.credit_rating_sp}. This rating reflects the country's ability to service its government debt.`)
+  }
+  if (c.major_exports) {
+    push(`What does ${c.name} export?`, `${c.name}'s major exports include: ${c.major_exports}. Full bilateral trade flow data is tracked on MetricsHour.`)
+  }
+  return faqs
+}
+
 useHead(computed(() => ({
   link: [{ rel: 'canonical', href: `https://metricshour.com/countries/${code}` }],
-  script: country.value ? [{
-    type: 'application/ld+json',
-    innerHTML: JSON.stringify({
-      '@context': 'https://schema.org',
-      '@type': 'WebPage',
-      name: `${country.value.name} Economy & Macro Data — MetricsHour`,
-      url: `https://metricshour.com/countries/${code}`,
-      description: `GDP, inflation, trade flows, and 80+ macro indicators for ${country.value.name}. Data from World Bank, IMF, and UN Comtrade.`,
-      speakable: {
-        '@type': 'SpeakableSpecification',
-        cssSelector: ['.page-summary', '.page-insight-latest'],
-      },
-      breadcrumb: {
-        '@type': 'BreadcrumbList',
-        itemListElement: [
-          { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://metricshour.com' },
-          { '@type': 'ListItem', position: 2, name: 'Countries', item: 'https://metricshour.com/countries' },
-          { '@type': 'ListItem', position: 3, name: country.value.name, item: `https://metricshour.com/countries/${code}` },
-        ],
-      },
-    }),
-  }] : [],
+  script: country.value ? [
+    {
+      type: 'application/ld+json',
+      innerHTML: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'WebPage',
+        name: `${country.value.name} Economy & Macro Data — MetricsHour`,
+        url: `https://metricshour.com/countries/${code}`,
+        description: `GDP, inflation, trade flows, and 80+ macro indicators for ${country.value.name}. Data from World Bank, IMF, and UN Comtrade.`,
+        speakable: {
+          '@type': 'SpeakableSpecification',
+          cssSelector: ['.page-summary', '.page-insight-latest'],
+        },
+        breadcrumb: {
+          '@type': 'BreadcrumbList',
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://metricshour.com' },
+            { '@type': 'ListItem', position: 2, name: 'Countries', item: 'https://metricshour.com/countries' },
+            { '@type': 'ListItem', position: 3, name: country.value.name, item: `https://metricshour.com/countries/${code}` },
+          ],
+        },
+      }),
+    },
+    {
+      type: 'application/ld+json',
+      innerHTML: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        mainEntity: buildCountryFaqs(country.value),
+      }),
+    },
+  ] : [],
 })))
 
 // ─── Formatting helpers ──────────────────────────────────────────────────────

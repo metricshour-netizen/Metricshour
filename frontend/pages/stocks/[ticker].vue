@@ -575,29 +575,66 @@ useSeoMeta({
   twitterCard: 'summary_large_image',
 })
 
+function buildStockFaqs(s: any) {
+  const faqs: { '@type': string; name: string; acceptedAnswer: { '@type': string; text: string } }[] = []
+  const push = (q: string, a: string) => faqs.push({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })
+
+  if (s.market_cap_usd != null) {
+    const cap = s.market_cap_usd >= 1e12 ? `$${(s.market_cap_usd / 1e12).toFixed(2)} trillion` : `$${(s.market_cap_usd / 1e9).toFixed(1)} billion`
+    push(`What is ${s.symbol}'s market cap?`, `${s.name} (${s.symbol}) has a market capitalisation of approximately ${cap}.`)
+  }
+  if (s.sector) {
+    push(`What sector is ${s.symbol} in?`, `${s.name} (${s.symbol}) operates in the ${s.sector} sector${s.industry ? `, specifically in ${s.industry}` : ''}.`)
+  }
+  if (s.exchange) {
+    push(`What exchange is ${s.symbol} listed on?`, `${s.symbol} is listed on the ${s.exchange}.`)
+  }
+  const revs: any[] = s.country_revenues ?? []
+  if (revs.length) {
+    const topRev = revs[0]
+    push(`What is ${s.symbol}'s largest international market?`, `${s.name}'s largest market by revenue is ${topRev.country?.name ?? 'N/A'}, accounting for ${topRev.pct?.toFixed(1)}% of revenue (FY${topRev.fiscal_year}). Source: SEC EDGAR.`)
+    const countryList = revs.slice(0, 5).map((r: any) => `${r.country?.name} (${r.pct?.toFixed(1)}%)`).join(', ')
+    push(`What countries does ${s.symbol} earn revenue from?`, `${s.name} earns revenue from ${revs.length} tracked countries including: ${countryList}. Full geographic breakdown available on MetricsHour. Source: SEC EDGAR.`)
+  }
+  if (s.country?.name) {
+    push(`Where is ${s.symbol} headquartered?`, `${s.name} is headquartered in ${s.country.name}.`)
+  }
+  return faqs
+}
+
 useHead(computed(() => ({
   link: [{ rel: 'canonical', href: `https://metricshour.com/stocks/${ticker}` }],
-  script: stock.value ? [{
-    type: 'application/ld+json',
-    innerHTML: JSON.stringify({
-      '@context': 'https://schema.org',
-      '@type': 'WebPage',
-      name: `${stock.value.symbol} — ${stock.value.name} — MetricsHour`,
-      url: `https://metricshour.com/stocks/${ticker}`,
-      description: `${stock.value.name} (${stock.value.symbol}) geographic revenue breakdown from SEC EDGAR.`,
-      speakable: {
-        '@type': 'SpeakableSpecification',
-        cssSelector: ['.page-summary', '.page-insight-latest'],
-      },
-      breadcrumb: {
-        '@type': 'BreadcrumbList',
-        itemListElement: [
-          { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://metricshour.com' },
-          { '@type': 'ListItem', position: 2, name: 'Stocks', item: 'https://metricshour.com/stocks' },
-          { '@type': 'ListItem', position: 3, name: stock.value.symbol, item: `https://metricshour.com/stocks/${ticker}` },
-        ],
-      },
-    }),
-  }] : [],
+  script: stock.value ? [
+    {
+      type: 'application/ld+json',
+      innerHTML: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'WebPage',
+        name: `${stock.value.symbol} — ${stock.value.name} — MetricsHour`,
+        url: `https://metricshour.com/stocks/${ticker}`,
+        description: `${stock.value.name} (${stock.value.symbol}) geographic revenue breakdown from SEC EDGAR.`,
+        speakable: {
+          '@type': 'SpeakableSpecification',
+          cssSelector: ['.page-summary', '.page-insight-latest'],
+        },
+        breadcrumb: {
+          '@type': 'BreadcrumbList',
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://metricshour.com' },
+            { '@type': 'ListItem', position: 2, name: 'Stocks', item: 'https://metricshour.com/stocks' },
+            { '@type': 'ListItem', position: 3, name: stock.value.symbol, item: `https://metricshour.com/stocks/${ticker}` },
+          ],
+        },
+      }),
+    },
+    ...(buildStockFaqs(stock.value).length ? [{
+      type: 'application/ld+json',
+      innerHTML: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        mainEntity: buildStockFaqs(stock.value),
+      }),
+    }] : []),
+  ] : [],
 })))
 </script>

@@ -189,7 +189,7 @@ def _call_deepseek(prompt: str, min_words: int = 55, max_words: int = 110) -> st
                     {"role": "system", "content": _DS_SYSTEM},
                     {"role": "user", "content": prompt},
                 ],
-                "max_tokens": 250,
+                "max_tokens": 700,
                 "temperature": 0.1,
                 "frequency_penalty": 0.5,
                 "stop": ["\n\n"],
@@ -292,19 +292,18 @@ def _country_summary_text(country: Country, db) -> str:
             f"Major exports: {country.major_exports or 'N/A'}\n"
         )
         prompt = (
-            f"Country overview — {country.name} — 75-100 words. Third-person. No title.\n\n"
+            f"Country overview — {country.name} — 220-280 words. Third-person. No title. No headings.\n\n"
             f"Data:\n{facts}\n\n"
-            f"4 sentences exactly:\n"
-            f"1. GDP size and most recent growth rate in one sentence.\n"
-            f"2. Inflation rate and central bank policy rate — state both numbers.\n"
-            f"3. The single most extreme characteristic from the data: pick whichever of "
-            f"(debt/GDP, S&P rating, commodity exports, current account) is most distinctive "
-            f"and state its direct investment implication.\n"
-            f"4. Bloc memberships that drive trade or policy, plus the currency name.\n"
+            f"Write 5 paragraphs, each 2-3 sentences:\n"
+            f"1. GDP size, growth rate, and economic classification ({dev_status}). Compare scale to a well-known benchmark if helpful.\n"
+            f"2. Monetary policy: inflation rate and central bank policy rate — state both numbers. Say what the rate implies (restrictive, neutral, accommodative). State the real rate (policy minus inflation).\n"
+            f"3. Labour and fiscal: unemployment rate and government debt as % of GDP. State whether the fiscal position is sustainable and what the S&P rating implies about sovereign credit risk.\n"
+            f"4. External position: current account, major commodity or manufactured exports, and which trade partner accounts for the largest share of commerce. Name the dependency directly.\n"
+            f"5. Geopolitical and structural: bloc memberships that shape trade and capital flows, currency name, and the single biggest structural risk or opportunity for investors right now.\n"
             f"Every sentence has at least one number. No padding. End with a period."
         )
         # G20 countries → Gemini (quality tier); rest → DeepSeek (bulk tier)
-        ai = _call_ai(prompt, min_words=65, max_words=110, prefer_gemini=bool(country.is_g20))
+        ai = _call_ai(prompt, min_words=190, max_words=310, prefer_gemini=bool(country.is_g20))
         if ai:
             return ai
 
@@ -465,19 +464,19 @@ def _stock_summary_text(asset: Asset, db) -> str:
         ) if revs else "  - Geographic breakdown not yet available (SEC EDGAR pending)"
 
         prompt = (
-            f"Stock overview — {asset.name} ({asset.symbol}) — 75-100 words. Third-person. No title.\n\n"
+            f"Stock overview — {asset.name} ({asset.symbol}) — 220-280 words. Third-person. No title. No headings.\n\n"
             f"Data:\n"
             f"- Sector: {sector} | Industry: {asset.industry or 'N/A'} | HQ: {hq_name} | Cap: {cap_str}\n"
             f"- Geographic revenue (SEC EDGAR 10-K):\n{rev_lines}\n\n"
-            f"3-4 sentences: "
-            f"(1) Company, sector, and market cap. "
-            f"(2) Top revenue geography with exact %, fiscal year, and what that concentration means "
-            f"(FX risk, tariff exposure, or growth lever — name the specific risk). "
-            f"(3) Second and/or third geography with % — state the diversification or concentration story. "
-            f"(4) One sentence on earnings sensitivity: what a macro shift in the top market means for EPS. "
+            f"Write 5 paragraphs, each 2-3 sentences:\n"
+            f"(1) Company identity: name, sector, industry, market cap, and HQ country. Context on size within sector.\n"
+            f"(2) Top revenue geography: name the country with the highest %, fiscal year, and what that concentration means — FX exposure, tariff risk, or demand cycle. Be specific.\n"
+            f"(3) Second and third geographies with percentages — explain whether this is diversification or further concentration risk.\n"
+            f"(4) Earnings sensitivity: what does a 100bp move in the dominant market's GDP growth or currency imply for EPS? State the direction and magnitude.\n"
+            f"(5) Macro linkage: which country-level indicators (rate decisions, inflation, consumer spending) most directly drive this stock's near-term earnings. Name the data release to watch.\n"
             f"GS equity note style. Every sentence has a number. No padding. End with a period."
         )
-        ai = _call_ai(prompt, min_words=65, max_words=110, prefer_gemini=False)
+        ai = _call_ai(prompt, min_words=190, max_words=310, prefer_gemini=False)
         if ai:
             return ai
 
@@ -766,21 +765,20 @@ def _trade_summary_text(exporter: Country, importer: Country, trade: TradePair |
             f"Top export products: {', '.join(products) if products else 'N/A'}\n"
         )
         prompt = (
-            f"Trade corridor overview — {exporter.name}–{importer.name} — 75-100 words. "
-            f"Third-person. No title.\n\n"
+            f"Trade corridor overview — {exporter.name}–{importer.name} — 220-280 words. "
+            f"Third-person. No title. No headings.\n\n"
             f"Data:\n{facts}\n\n"
-            f"3-4 sentences: "
-            f"(1) Export value, year, and trade balance in one sentence — state whether surplus or deficit "
-            f"and name which country holds the leverage. "
-            f"(2) Top 2-3 export products and what they reveal about the structural nature of this relationship "
-            f"(commodity dependence, manufactured goods, intermediate inputs). "
-            f"(3) Trade as % of exporter GDP — state the dependency risk or diversification. "
-            f"(4) One investor takeaway: which listed equity sector or FX pair is most exposed to a disruption. "
+            f"Write 5 paragraphs, each 2-3 sentences:\n"
+            f"(1) Headline: total bilateral trade value, year, and which country runs a surplus or deficit. State the dollar amount of the imbalance and name which country holds structural leverage.\n"
+            f"(2) Export composition: top 2-3 products that {exporter.name} ships to {importer.name} — state each product's approximate share or value and what that reveals (commodity dependence, manufactured goods, intermediate inputs, or strategic technology).\n"
+            f"(3) GDP dependency: trade value as % of {exporter.name}'s GDP. State whether this makes the corridor critical or peripheral to the exporting economy. Compare to {importer.name}'s dependency in the reverse direction if data available.\n"
+            f"(4) Geopolitical and structural context: name the bilateral treaties, tariff regimes, or sanctions that govern this corridor. State whether the relationship is deepening or at risk of fragmentation.\n"
+            f"(5) Investor implications: which listed equity sectors, ETFs, or FX pairs are most exposed to a 10% swing in this trade corridor. Name the specific exposure and why.\n"
             f"Every sentence has a number. No padding. End with a period."
         )
         # G20×G20 corridors → Gemini; all others → DeepSeek
         top_corridor = bool(exporter.is_g20 and importer.is_g20)
-        ai = _call_ai(prompt, min_words=65, max_words=110, prefer_gemini=top_corridor)
+        ai = _call_ai(prompt, min_words=190, max_words=310, prefer_gemini=top_corridor)
         if ai:
             return ai
 

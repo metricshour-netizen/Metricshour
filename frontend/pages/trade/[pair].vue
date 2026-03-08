@@ -385,30 +385,68 @@ useSeoMeta({
   twitterCard: 'summary_large_image',
 })
 
+function buildTradeFaqs(d: any, tdVal: any) {
+  const faqs: { '@type': string; name: string; acceptedAnswer: { '@type': string; text: string } }[] = []
+  const push = (q: string, a: string) => faqs.push({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })
+  const A = d.exporter.name, B = d.importer.name
+
+  if (tdVal?.trade_value_usd != null) {
+    const v = tdVal.trade_value_usd
+    const fv = v >= 1e12 ? `$${(v / 1e12).toFixed(1)} trillion` : v >= 1e9 ? `$${(v / 1e9).toFixed(1)} billion` : `$${(v / 1e6).toFixed(0)} million`
+    push(`How much trade is there between ${A} and ${B}?`, `Total bilateral trade between ${A} and ${B} is ${fv} (${tdVal.year ?? 'latest'}). Source: ${tdVal.data_source ?? 'UN Comtrade'}.`)
+  }
+  if (tdVal?.balance_usd != null) {
+    const surplus = tdVal.balance_usd >= 0
+    const abs = Math.abs(tdVal.balance_usd)
+    const fv = abs >= 1e9 ? `$${(abs / 1e9).toFixed(1)} billion` : `$${(abs / 1e6).toFixed(0)} million`
+    push(`What is the trade balance between ${A} and ${B}?`, `${A} runs a trade ${surplus ? 'surplus' : 'deficit'} of ${fv} with ${B} (${tdVal.year ?? 'latest'}). ${surplus ? `${A} exports more than it imports from ${B}.` : `${A} imports more than it exports to ${B}.`}`)
+  }
+  if (tdVal?.top_export_products?.length) {
+    const products = tdVal.top_export_products.slice(0, 5).map((p: any) => p.name).join(', ')
+    push(`What does ${A} export to ${B}?`, `${A}'s top exports to ${B} include: ${products}. Source: ${tdVal.data_source ?? 'UN Comtrade'}.`)
+  }
+  if (tdVal?.top_import_products?.length) {
+    const products = tdVal.top_import_products.slice(0, 5).map((p: any) => p.name).join(', ')
+    push(`What does ${B} export to ${A}?`, `${B}'s top exports to ${A} include: ${products}. Source: ${tdVal.data_source ?? 'UN Comtrade'}.`)
+  }
+  push(`Why is ${A}–${B} trade important?`, `${A} and ${B} bilateral trade reflects economic interdependence through goods, services, and supply chain links. MetricsHour tracks this corridor with GDP dependency ratios, product breakdowns, and balance data updated annually.`)
+  return faqs
+}
+
 useHead(computed(() => ({
   link: [{ rel: 'canonical', href: `https://metricshour.com/trade/${pair}` }],
-  script: data.value ? [{
-    type: 'application/ld+json',
-    innerHTML: JSON.stringify({
-      '@context': 'https://schema.org',
-      '@type': 'WebPage',
-      name: `${data.value.exporter.name}–${data.value.importer.name} Trade — MetricsHour`,
-      url: `https://metricshour.com/trade/${pair}`,
-      description: `${data.value.exporter.name} and ${data.value.importer.name} bilateral trade flows, top products, and GDP dependency. Source: UN Comtrade.`,
-      speakable: {
-        '@type': 'SpeakableSpecification',
-        cssSelector: ['.page-summary', '.page-insight-latest'],
-      },
-      breadcrumb: {
-        '@type': 'BreadcrumbList',
-        itemListElement: [
-          { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://metricshour.com' },
-          { '@type': 'ListItem', position: 2, name: 'Trade', item: 'https://metricshour.com/trade' },
-          { '@type': 'ListItem', position: 3, name: `${data.value.exporter.name}–${data.value.importer.name}`, item: `https://metricshour.com/trade/${pair}` },
-        ],
-      },
-    }),
-  }] : [],
+  script: data.value ? [
+    {
+      type: 'application/ld+json',
+      innerHTML: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'WebPage',
+        name: `${data.value.exporter.name}–${data.value.importer.name} Trade — MetricsHour`,
+        url: `https://metricshour.com/trade/${pair}`,
+        description: `${data.value.exporter.name} and ${data.value.importer.name} bilateral trade flows, top products, and GDP dependency. Source: UN Comtrade.`,
+        speakable: {
+          '@type': 'SpeakableSpecification',
+          cssSelector: ['.page-summary', '.page-insight-latest'],
+        },
+        breadcrumb: {
+          '@type': 'BreadcrumbList',
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://metricshour.com' },
+            { '@type': 'ListItem', position: 2, name: 'Trade', item: 'https://metricshour.com/trade' },
+            { '@type': 'ListItem', position: 3, name: `${data.value.exporter.name}–${data.value.importer.name}`, item: `https://metricshour.com/trade/${pair}` },
+          ],
+        },
+      }),
+    },
+    {
+      type: 'application/ld+json',
+      innerHTML: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        mainEntity: buildTradeFaqs(data.value, td.value),
+      }),
+    },
+  ] : [],
 })))
 
 onMounted(() => {

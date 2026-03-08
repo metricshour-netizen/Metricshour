@@ -1,0 +1,124 @@
+<template>
+  <main class="max-w-3xl mx-auto px-4 py-12">
+    <NuxtLink to="/" class="text-gray-500 text-sm hover:text-gray-300 transition-colors mb-8 inline-block">← Home</NuxtLink>
+
+    <h1 class="text-3xl font-bold text-white mb-2">About MetricsHour</h1>
+    <p class="text-gray-400 text-sm mb-10">Institutional-grade economic intelligence, built for everyone.</p>
+
+    <section class="mb-10">
+      <h2 class="text-lg font-semibold text-white mb-3">What is MetricsHour?</h2>
+      <p class="text-gray-400 text-sm leading-relaxed mb-3">
+        MetricsHour is a macroeconomic data terminal covering 196 countries, 100+ stocks, 380+ bilateral trade corridors,
+        and 20 commodities. We aggregate data from public institutions — the World Bank, IMF, UN Comtrade, SEC EDGAR,
+        and the US Census Bureau — and present it in a clean, analyst-grade interface.
+      </p>
+      <p class="text-gray-400 text-sm leading-relaxed">
+        Our core differentiator is <strong class="text-white">geographic revenue attribution</strong>: we map SEC EDGAR 10-K filings
+        to country-level exposure, so you can see exactly how much of Apple's revenue comes from China, or how much
+        of Toyota's earnings are tied to the US market — then connect that directly to macro data for those countries.
+      </p>
+    </section>
+
+    <section class="mb-10">
+      <h2 class="text-lg font-semibold text-white mb-3">Data Sources</h2>
+      <div class="space-y-4">
+        <div class="bg-[#111827] border border-[#1f2937] rounded-lg p-4">
+          <div class="text-sm font-semibold text-emerald-400 mb-1">World Bank Open Data</div>
+          <p class="text-xs text-gray-400">GDP, GDP growth, inflation, unemployment, population, HDI, governance indicators (WGI), and 80+ macro time-series per country. Data spans 2015–2024. Updated annually.</p>
+        </div>
+        <div class="bg-[#111827] border border-[#1f2937] rounded-lg p-4">
+          <div class="text-sm font-semibold text-emerald-400 mb-1">IMF World Economic Outlook (WEO)</div>
+          <p class="text-xs text-gray-400">Government debt/GDP, current account balance, fiscal balance, and forward projections. Data covers 196 countries. Updated twice yearly (April + October WEO releases).</p>
+        </div>
+        <div class="bg-[#111827] border border-[#1f2937] rounded-lg p-4">
+          <div class="text-sm font-semibold text-emerald-400 mb-1">UN Comtrade</div>
+          <p class="text-xs text-gray-400">Bilateral trade flows between country pairs — export value, import value, trade balance, and top traded product categories. Non-US pairs use 2022 data. Updated annually.</p>
+        </div>
+        <div class="bg-[#111827] border border-[#1f2937] rounded-lg p-4">
+          <div class="text-sm font-semibold text-emerald-400 mb-1">US Census Bureau International Trade</div>
+          <p class="text-xs text-gray-400">US bilateral trade flows with all major partners. 2023 annual data via the Census Bureau free API (api.census.gov). More current than UN Comtrade for US-specific corridors.</p>
+        </div>
+        <div class="bg-[#111827] border border-[#1f2937] rounded-lg p-4">
+          <div class="text-sm font-semibold text-emerald-400 mb-1">SEC EDGAR (10-K / 10-Q filings)</div>
+          <p class="text-xs text-gray-400">Geographic revenue breakdowns for 100+ publicly-listed US companies, extracted from annual and quarterly filings. FY2023/FY2024 data. Updated quarterly as filings are published.</p>
+        </div>
+        <div class="bg-[#111827] border border-[#1f2937] rounded-lg p-4">
+          <div class="text-sm font-semibold text-emerald-400 mb-1">REST Countries API + CoinGecko + Marketstack</div>
+          <p class="text-xs text-gray-400">Country metadata, flags, ISO codes, and currency data via REST Countries. Crypto prices via CoinGecko (updated every 1 minute). Stock and FX prices via Marketstack (updated every 15 minutes during market hours).</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="mb-10">
+      <h2 class="text-lg font-semibold text-white mb-3">Methodology</h2>
+      <div class="space-y-3 text-sm text-gray-400 leading-relaxed">
+        <p><strong class="text-white">Data freshness:</strong> Macro indicators (GDP, inflation, rates) are sourced from World Bank and IMF releases and refreshed monthly. Price data refreshes every 1–15 minutes depending on asset class. Trade data is annual. We display the source and year for every data point.</p>
+        <p><strong class="text-white">Geographic revenue attribution:</strong> We parse SEC EDGAR XBRL filings to extract segment revenue by geography as reported by companies. Where companies use non-standard region names, we map to ISO country codes manually. Not all filings disclose country-level detail — some use broad regions like "Americas" or "APAC".</p>
+        <p><strong class="text-white">AI-generated summaries:</strong> Page summaries on country, stock, and trade pages are generated by AI (Google Gemini / DeepSeek) using structured data from our database. Summaries are refreshed daily and clearly labelled. They are analytical aids, not financial advice.</p>
+        <p><strong class="text-white">Credit ratings:</strong> Sovereign credit ratings (S&P) are sourced from public disclosures. We do not independently assign ratings.</p>
+        <p><strong class="text-white">Trade balance sign convention:</strong> A positive balance on a bilateral trade page means the first-listed country (exporter) has a surplus — it exports more to the second country than it imports from it.</p>
+      </div>
+    </section>
+
+    <section class="mb-10">
+      <h2 class="text-lg font-semibold text-white mb-3">What We Are Not</h2>
+      <ul class="space-y-2 text-sm text-gray-400">
+        <li class="flex gap-2"><span class="text-red-500 shrink-0">✗</span> We are not a financial adviser. Nothing on MetricsHour constitutes financial or investment advice.</li>
+        <li class="flex gap-2"><span class="text-red-500 shrink-0">✗</span> We are not a real-time trading platform. Price data has delays of 1–15 minutes.</li>
+        <li class="flex gap-2"><span class="text-red-500 shrink-0">✗</span> We do not produce original economic research. We aggregate and present public institutional data.</li>
+      </ul>
+    </section>
+
+    <section class="mb-10">
+      <h2 class="text-lg font-semibold text-white mb-3">Contact</h2>
+      <p class="text-sm text-gray-400">
+        Questions, corrections, or data feedback: <a href="mailto:hello@metricshour.com" class="text-emerald-400 hover:underline">hello@metricshour.com</a>
+      </p>
+    </section>
+
+    <div class="border-t border-[#1f2937] pt-6 flex gap-4 text-xs text-gray-600">
+      <NuxtLink to="/terms" class="hover:text-gray-400">Terms of Service</NuxtLink>
+      <NuxtLink to="/privacy" class="hover:text-gray-400">Privacy Policy</NuxtLink>
+      <NuxtLink to="/pricing" class="hover:text-gray-400 text-emerald-700">Pro Plan →</NuxtLink>
+    </div>
+  </main>
+</template>
+
+<script setup lang="ts">
+useSeoMeta({
+  title: 'About MetricsHour — Data Sources & Methodology',
+  description: 'MetricsHour aggregates World Bank, IMF, UN Comtrade, SEC EDGAR, and US Census Bureau data into an institutional-grade macro intelligence terminal. Learn about our data sources and methodology.',
+  ogTitle: 'About MetricsHour — Data Sources & Methodology',
+  ogDescription: 'World Bank, IMF, UN Comtrade, SEC EDGAR, and US Census Bureau — aggregated into one macro terminal. Learn how MetricsHour works.',
+  ogUrl: 'https://metricshour.com/about',
+  ogType: 'website',
+  twitterCard: 'summary',
+})
+
+useHead({
+  link: [{ rel: 'canonical', href: 'https://metricshour.com/about' }],
+  script: [{
+    type: 'application/ld+json',
+    innerHTML: JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'AboutPage',
+      name: 'About MetricsHour',
+      url: 'https://metricshour.com/about',
+      description: 'MetricsHour aggregates World Bank, IMF, UN Comtrade, and SEC EDGAR data into an institutional-grade macroeconomic terminal.',
+      publisher: {
+        '@type': 'Organization',
+        name: 'MetricsHour',
+        url: 'https://metricshour.com',
+        logo: { '@type': 'ImageObject', url: 'https://metricshour.com/og-image.png' },
+      },
+      breadcrumb: {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://metricshour.com' },
+          { '@type': 'ListItem', position: 2, name: 'About', item: 'https://metricshour.com/about' },
+        ],
+      },
+    }),
+  }],
+})
+</script>
