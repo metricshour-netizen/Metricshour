@@ -193,18 +193,6 @@
         <span class="text-[10px] text-white/40">Skip</span>
       </button>
 
-      <!-- Open -->
-      <a
-        v-if="event.source_url"
-        :href="externalUrl"
-        :target="isExternal ? '_blank' : '_self'"
-        class="action-btn flex flex-col items-center gap-1"
-        @click.stop
-      >
-        <div class="w-11 h-11 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center text-lg transition-all">↗</div>
-        <span class="text-[10px] text-white/40">Open</span>
-      </a>
-
       <!-- Share button -->
       <div class="relative">
         <button
@@ -469,8 +457,6 @@ const absoluteTime = computed(() => {
 })
 
 // ── External URL ──────────────────────────────────────────────────────────────
-const isExternal = computed(() => (props.event.source_url || '').startsWith('http'))
-const externalUrl = computed(() => props.event.source_url || '#')
 const shareUrl = computed(() => `https://metricshour.com/feed/${props.event.id}`)
 const { public: { r2PublicUrl } } = useRuntimeConfig()
 const r2Base = (r2PublicUrl as string || 'https://api.metricshour.com').replace(/\/$/, '')
