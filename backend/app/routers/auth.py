@@ -78,6 +78,35 @@ def _token_key(token: str) -> str:
     return "auth:revoked:" + hashlib.sha256(token.encode()).hexdigest()[:32]
 
 
+# ── Brute-force protection ────────────────────────────────────────────────────
+
+_FAIL_MAX = 10       # lock after this many failures
+_FAIL_WINDOW = 900   # seconds — 15 min lockout window
+
+
+def _fail_key(email: str) -> str:
+    return f"auth:fail:{email.lower()}"
+
+
+def _check_brute_force(email: str) -> None:
+    data = redis_json_get(_fail_key(email))
+    if data and data.get("count", 0) >= _FAIL_MAX:
+        raise HTTPException(
+            status_code=429,
+            detail="Too many failed attempts. Try again in 15 minutes.",
+        )
+
+
+def _record_fail(email: str) -> None:
+    data = redis_json_get(_fail_key(email)) or {"count": 0}
+    data["count"] = data["count"] + 1
+    redis_json_set(_fail_key(email), data, ttl_seconds=_FAIL_WINDOW)
+
+
+def _clear_fails(email: str) -> None:
+    redis_json_del(_fail_key(email))
+
+
 def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db),
@@ -139,15 +168,20 @@ def register(request: Request, body: RegisterIn, db: Session = Depends(get_db)):
 @router.post("/login", response_model=TokenOut)
 @limiter.limit("10/minute")
 def login(request: Request, form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    _check_brute_force(form.username)
+
     user = db.query(User).filter(User.email == form.username, User.is_active == True).first()
     if not user:
+        _record_fail(form.username)
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
     try:
         _ph.verify(user.password_hash, form.password)
     except VerifyMismatchError:
+        _record_fail(form.username)
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
+    _clear_fails(form.username)
     user.last_login_at = datetime.now(timezone.utc)
     db.commit()
 
@@ -169,6 +203,50 @@ def me(current_user: User = Depends(get_current_user)):
         is_admin=current_user.is_admin,
         created_at=current_user.created_at,
     )
+
+
+class ForgotIn(BaseModel):
+    email: EmailStr
+
+
+class ResetIn(BaseModel):
+    token: str
+    password: str
+
+
+@router.post("/forgot-password", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("3/minute")
+def forgot_password(request: Request, body: ForgotIn, db: Session = Depends(get_db)):
+    """Send a password reset link. Always returns 204 — never reveals if email exists."""
+    user = db.query(User).filter(User.email == body.email, User.is_active == True).first()
+    if user and user.password_hash != "__google__":
+        token = secrets.token_urlsafe(32)
+        redis_json_set(f"auth:reset:{token}", {"email": user.email}, ttl_seconds=3600)
+        from app.notifications import send_password_reset_email
+        try:
+            send_password_reset_email(user.email, token)
+        except Exception:
+            pass
+
+
+@router.post("/reset-password", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("5/minute")
+def reset_password(request: Request, body: ResetIn, db: Session = Depends(get_db)):
+    """Consume a reset token and update the user's password."""
+    if len(body.password) < 8:
+        raise HTTPException(status_code=422, detail="Password must be at least 8 characters")
+
+    data = redis_json_get(f"auth:reset:{body.token}")
+    if not data:
+        raise HTTPException(status_code=400, detail="Reset link is invalid or has expired")
+
+    user = db.query(User).filter(User.email == data["email"], User.is_active == True).first()
+    if not user:
+        raise HTTPException(status_code=400, detail="Reset link is invalid or has expired")
+
+    user.password_hash = _ph.hash(body.password)
+    db.commit()
+    redis_json_del(f"auth:reset:{body.token}")  # one-time use
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)

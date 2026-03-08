@@ -200,6 +200,44 @@ def send_welcome_email(to: str) -> str | None:
     return send_email(to, "Welcome to MetricsHour 🌍", html)
 
 
+def send_password_reset_email(to: str, token: str) -> str | None:
+    """Send a password reset link via Resend."""
+    frontend_url = os.environ.get("FRONTEND_URL", "https://metricshour.com")
+    reset_url = f"{frontend_url}/auth/reset-password?token={token}"
+    html = f"""
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#0a0e1a;font-family:sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0e1a;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="520" cellpadding="0" cellspacing="0" style="background:#111827;border:1px solid #1f2937;border-radius:12px;overflow:hidden;">
+        <tr>
+          <td style="background:#0d1117;padding:24px 28px;border-bottom:1px solid #1f2937;">
+            <span style="font-size:20px;font-weight:800;color:#10b981;letter-spacing:1px;">METRICSHOUR</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:32px 28px;">
+            <p style="font-size:22px;font-weight:700;color:#ffffff;margin:0 0 8px 0;">Reset your password</p>
+            <p style="font-size:14px;color:#9ca3af;margin:0 0 28px 0;">Click the button below to set a new password. This link expires in 1 hour.</p>
+            <a href="{reset_url}" style="display:inline-block;background:#10b981;color:#000000;font-weight:700;font-size:14px;padding:14px 28px;border-radius:8px;text-decoration:none;margin-bottom:24px;">Reset Password →</a>
+            <p style="font-size:12px;color:#6b7280;margin:0;">If you didn't request this, you can safely ignore this email.</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:16px 28px;border-top:1px solid #1f2937;">
+            <p style="font-size:11px;color:#374151;margin:0;">MetricsHour · metricshour.com</p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>"""
+    return send_email(to, "Reset your MetricsHour password", html)
+
+
 def build_alert_telegram(symbol: str, name: str, condition: str, target: float, current: float) -> str:
     direction = "above ↑" if condition == "above" else "below ↓"
     emoji = "🟢" if condition == "above" else "🔴"
