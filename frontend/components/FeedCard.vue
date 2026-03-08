@@ -724,15 +724,22 @@ function _cardDestination(): string {
     if (et === 'country' && cc) return `/countries/${cc}`
     if (et === 'trade' && data.exporter && data.importer) return `/trade/${data.exporter}-${data.importer}`
     if (et === 'commodity') return '/commodities'
+    // daily_insight stores internal destination in source_url (e.g. /countries/dm)
+    if (props.event.source_url) return props.event.source_url
   }
-  if (type === 'blog' && props.event.source_url?.includes('/blog/')) {
-    const slug = props.event.source_url.split('/blog/')[1]?.replace(/\/$/, '')
-    if (slug) return `/blog/${slug}`
+  if (type === 'blog') {
+    if (props.event.source_url?.includes('/blog/')) {
+      const slug = props.event.source_url.split('/blog/')[1]?.replace(/\/$/, '')
+      if (slug) return `/blog/${slug}`
+    }
+    if (props.event.source_url) return props.event.source_url
   }
-  // Generic fallbacks
+  // Generic fallbacks — try everything before giving up
   if (data.symbol) return `/stocks/${data.symbol}`
   if (cc) return `/countries/${cc}`
-  return '/feed'  // stay on feed rather than 404
+  // Last resort: use source_url (internal path or external article in new tab)
+  if (props.event.source_url) return props.event.source_url
+  return '/feed'
 }
 
 const cardDest = computed(() => _cardDestination())
