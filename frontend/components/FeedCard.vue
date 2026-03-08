@@ -274,10 +274,15 @@
             {{ copied ? '✓ Link copied!' : '🔗 Copy share link' }}
           </button>
 
-          <!-- Generating indicator -->
-          <div v-if="shareGenerating" class="flex items-center justify-center gap-2 mt-3 text-xs text-white/30">
-            <div class="w-3 h-3 border border-white/30 border-t-white/70 rounded-full animate-spin" />
-            Generating {{ shareFormat }} image…
+          <!-- Status: generating or desktop toast -->
+          <div v-if="shareGenerating || shareToast" class="flex items-center justify-center gap-2 mt-3 text-xs">
+            <template v-if="shareGenerating">
+              <div class="w-3 h-3 border border-white/30 border-t-white/70 rounded-full animate-spin" />
+              <span class="text-white/30">Generating {{ shareFormat }} image…</span>
+            </template>
+            <template v-else-if="shareToast">
+              <span class="text-emerald-400 font-semibold">{{ shareToast }}</span>
+            </template>
           </div>
         </div>
       </div>
@@ -655,22 +660,19 @@ async function generateImage(format: 'story' | 'post'): Promise<Blob> {
 }
 
 async function handleCopy() {
+  const text = publicShareUrl
   try {
-    // Copy clean frontend URL (not the API redirect URL)
-    await navigator.clipboard.writeText(`https://api.metricshour.com/s/${props.event.id}`)
-    copied.value = true
-    setTimeout(() => { copied.value = false }, 2000)
-  } catch (_) {
-    // last-resort fallback
+    await navigator.clipboard.writeText(text)
+  } catch {
     const el = document.createElement('textarea')
-    el.value = `https://api.metricshour.com/s/${props.event.id}`
+    el.value = text
     document.body.appendChild(el)
     el.select()
     document.execCommand('copy')
     document.body.removeChild(el)
-    copied.value = true
-    setTimeout(() => { copied.value = false }, 2000)
   }
+  copied.value = true
+  setTimeout(() => { copied.value = false }, 2000)
 }
 
 
@@ -741,6 +743,10 @@ const cardDestIsExternal = computed(() => {
 const showSharePanel = ref(false)
 const shareFormat = ref<'post' | 'story'>('post')
 const shareGenerating = ref(false)
+const shareToast = ref('')
+
+// Clean public URL — no api. subdomain shown to users
+const publicShareUrl = 'https://metricshour.com'
 
 async function _getShareBlob(): Promise<Blob | null> {
   shareGenerating.value = true
@@ -753,37 +759,62 @@ async function _getShareBlob(): Promise<Blob | null> {
   }
 }
 
+function _triggerDownload(blob: Blob, filename: string) {
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = filename
+  a.click()
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000)
+}
+
+function _showToast(msg: string) {
+  shareToast.value = msg
+  setTimeout(() => { shareToast.value = '' }, 4000)
+}
+
 async function sharePlatform(platform: 'twitter' | 'whatsapp' | 'linkedin') {
-  // Try Web Share API with image first (mobile)
   const blob = await _getShareBlob()
-  if (blob) {
-    const file = new File([blob], `metricshour-${props.event.id}.png`, { type: 'image/png' })
-    if (navigator.canShare?.({ files: [file] })) {
-      try {
-        await navigator.share({ files: [file], title: cleanTitle.value, url: shareUrl.value })
-        showSharePanel.value = false
-        return
-      } catch { /* user cancelled or not supported */ }
+  if (!blob) return
+
+  const filename = `metricshour-${props.event.id}-${shareFormat.value}.png`
+  const file = new File([blob], filename, { type: 'image/png' })
+
+  // ── Mobile path: native share sheet with image file attached ────────────
+  if (navigator.canShare?.({ files: [file] })) {
+    try {
+      await navigator.share({
+        files: [file],
+        title: cleanTitle.value,
+        text: cleanTitle.value,
+        // Note: some platforms (iOS) show url below the image
+        url: publicShareUrl,
+      })
+      showSharePanel.value = false
+      return
+    } catch (e) {
+      if ((e as Error).name === 'AbortError') return // user cancelled — do nothing
+      // Fall through to desktop path if canShare lied
     }
   }
-  // Fallback: open platform share URL directly
-  const urls: Record<string, string> = {
-    twitter:  `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl.value)}&text=${encodeURIComponent(cleanTitle.value)}`,
-    whatsapp: `https://wa.me/?text=${encodeURIComponent(cleanTitle.value + ' ' + shareUrl.value)}`,
-    linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl.value)}`,
+
+  // ── Desktop path: auto-download image + open platform compose page ───────
+  _triggerDownload(blob, filename)
+  _showToast('Image saved — attach it to your post!')
+
+  const text = encodeURIComponent(cleanTitle.value)
+  const link = encodeURIComponent(publicShareUrl)
+  const platformUrls: Record<string, string> = {
+    twitter:  `https://twitter.com/intent/tweet?text=${text}&url=${link}`,
+    whatsapp: `https://wa.me/?text=${text}%20${link}`,
+    linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${link}`,
   }
-  window.open(urls[platform], '_blank', 'noopener,noreferrer')
-  showSharePanel.value = false
+  setTimeout(() => window.open(platformUrls[platform], '_blank', 'noopener,noreferrer'), 300)
 }
 
 async function downloadShareImage() {
   const blob = await _getShareBlob()
   if (!blob) return
-  const a = document.createElement('a')
-  a.href = URL.createObjectURL(blob)
-  a.download = `metricshour-${props.event.id}-${shareFormat.value}.png`
-  a.click()
-  URL.revokeObjectURL(a.href)
+  _triggerDownload(blob, `metricshour-${props.event.id}-${shareFormat.value}.png`)
 }
 
 function openShare(url: string) {
