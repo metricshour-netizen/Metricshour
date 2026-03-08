@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
 from app.database import get_db
+from app.limiter import limiter
 from app.models import TradePair, Country
 from app.models.country import CountryIndicator
 from app.storage import cache_get, cache_set
@@ -11,7 +12,9 @@ router = APIRouter(prefix="/trade", tags=["trade"])
 
 
 @router.get("")
+@limiter.limit("60/minute")
 def list_trade_pairs(
+    request: Request,
     exporter: str | None = None,
     importer: str | None = None,
     db: Session = Depends(get_db),
@@ -49,7 +52,9 @@ def list_trade_pairs(
 
 
 @router.get("/{exporter_code}/{importer_code}")
+@limiter.limit("120/minute")
 def get_trade_pair(
+    request: Request,
     exporter_code: str,
     importer_code: str,
     db: Session = Depends(get_db),

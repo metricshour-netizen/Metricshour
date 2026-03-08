@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import select, or_
 
 from app.database import get_db
+from app.limiter import limiter
 from app.models import Country, CountryIndicator, TradePair, StockCountryRevenue, Asset
 from app.storage import cache_get, cache_set
 
@@ -10,7 +11,9 @@ router = APIRouter(prefix="/countries", tags=["countries"])
 
 
 @router.get("")
+@limiter.limit("60/minute")
 def list_countries(
+    request: Request,
     region: str | None = None,
     is_g20: bool | None = None,
     db: Session = Depends(get_db),
@@ -37,7 +40,8 @@ def list_countries(
 
 
 @router.get("/{code}")
-def get_country(code: str, db: Session = Depends(get_db)) -> dict:
+@limiter.limit("120/minute")
+def get_country(request: Request, code: str, db: Session = Depends(get_db)) -> dict:
     cache_key = f"api:country:{code.upper()}"
     cached = cache_get(cache_key)
     if cached is not None:
@@ -101,7 +105,8 @@ def _country_summary(c: Country) -> dict:
 
 
 @router.get("/{code}/gdp-history")
-def get_gdp_history(code: str, db: Session = Depends(get_db)) -> list[dict]:
+@limiter.limit("120/minute")
+def get_gdp_history(request: Request, code: str, db: Session = Depends(get_db)) -> list[dict]:
     country = db.execute(
         select(Country).where(Country.code == code.upper())
     ).scalar_one_or_none()
@@ -118,7 +123,9 @@ def get_gdp_history(code: str, db: Session = Depends(get_db)) -> list[dict]:
 
 
 @router.get("/{code}/timeseries")
+@limiter.limit("120/minute")
 def get_country_timeseries(
+    request: Request,
     code: str,
     keys: str = "gdp_growth_pct,inflation_pct,interest_rate_pct,unemployment_pct",
     db: Session = Depends(get_db),
@@ -152,7 +159,8 @@ def get_country_timeseries(
 
 
 @router.get("/{code}/stocks")
-def get_country_stocks(code: str, db: Session = Depends(get_db)) -> list[dict]:
+@limiter.limit("120/minute")
+def get_country_stocks(request: Request, code: str, db: Session = Depends(get_db)) -> list[dict]:
     country = db.execute(
         select(Country).where(Country.code == code.upper())
     ).scalar_one_or_none()
@@ -183,7 +191,8 @@ def get_country_stocks(code: str, db: Session = Depends(get_db)) -> list[dict]:
 
 
 @router.get("/{code}/trade-partners")
-def get_trade_partners(code: str, db: Session = Depends(get_db)) -> list[dict]:
+@limiter.limit("120/minute")
+def get_trade_partners(request: Request, code: str, db: Session = Depends(get_db)) -> list[dict]:
     cache_key = f"api:country:{code.upper()}:trade-partners"
     cached = cache_get(cache_key)
     if cached is not None:

@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func
 
 from app.database import get_db
+from app.limiter import limiter
 from app.models import Asset, AssetType, Country, Price, StockCountryRevenue
 from app.storage import cache_get, cache_set
 
@@ -10,7 +11,9 @@ router = APIRouter(prefix="/assets", tags=["assets"])
 
 
 @router.get("")
+@limiter.limit("60/minute")
 def list_assets(
+    request: Request,
     type: str | None = None,
     sector: str | None = None,
     country_code: str | None = None,
@@ -95,7 +98,9 @@ def list_assets(
 
 
 @router.get("/{symbol}/prices")
+@limiter.limit("120/minute")
 def get_asset_prices(
+    request: Request,
     symbol: str,
     interval: str = "15m",
     limit: int = 200,
@@ -137,7 +142,8 @@ def get_asset_prices(
 
 
 @router.get("/{symbol}")
-def get_asset(symbol: str, db: Session = Depends(get_db)) -> dict:
+@limiter.limit("120/minute")
+def get_asset(request: Request, symbol: str, db: Session = Depends(get_db)) -> dict:
     cache_key = f"api:asset:{symbol.upper()}"
     cached = cache_get(cache_key)
     if cached is not None:
