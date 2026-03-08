@@ -88,7 +88,10 @@ def fetch_crypto_prices(self):
 
     except Exception as exc:
         db.rollback()
-        log.exception('Crypto price fetch failed')
-        raise self.retry(exc=exc, countdown=10)
+        # Back off longer on rate limit errors
+        import requests as req_mod
+        countdown = 120 if isinstance(exc, req_mod.exceptions.HTTPError) and exc.response is not None and exc.response.status_code == 429 else 30
+        log.warning('Crypto price fetch failed (%s), retrying in %ds', exc, countdown)
+        raise self.retry(exc=exc, countdown=countdown)
     finally:
         db.close()

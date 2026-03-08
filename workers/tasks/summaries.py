@@ -107,11 +107,17 @@ def _fmt_cap(v) -> str:
 
 
 # ── AI helpers ────────────────────────────────────────────────────────────────
-# Routing:
-#   prefer_gemini=True  → Gemini first (G20 countries, G20×G20 trade corridors)
-#   prefer_gemini=False → DeepSeek first (all other bulk — non-G20 countries,
-#                         stocks, commodities, non-top trade pairs)
-# Keys never logged. Falls back gracefully if either key is absent.
+# Cost-optimised routing — two Gemini tiers:
+#   gemini-2.5-flash         → quality tier  (G20 countries, top trade corridors)
+#   gemini-3.1-flash-lite    → lite tier      (bulk fallback — cheap, fast)
+#   deepseek-chat            → primary bulk   (cheapest, used for most content)
+#
+#   prefer_gemini=True  → Gemini 2.5-flash first, DeepSeek fallback
+#   prefer_gemini=False → DeepSeek first, Gemini lite fallback (NOT 2.5-flash)
+#
+# This keeps 2.5-flash spend limited to ~50 G20 entities; everything else
+# uses DeepSeek or the lite model. Keys never logged.
+# Falls back gracefully if either key is absent.
 
 MAX_SUMMARY_WORKERS = 4  # concurrent threads for bulk AI calls; stays within DB pool
 
@@ -128,8 +134,9 @@ def _strip_markdown(text: str) -> str:
     return text
 
 
-def _call_gemini(prompt: str, min_words: int = 55, max_words: int = 110) -> str | None:
-    """Call Gemini 2.5 Flash. Returns None on any failure."""
+def _call_gemini(prompt: str, min_words: int = 55, max_words: int = 110,
+                 model: str = "gemini-2.5-flash") -> str | None:
+    """Call Gemini. model= selects quality vs lite tier. Returns None on any failure."""
     api_key = os.environ.get("GEMINI_API_KEY", "")
     if not api_key:
         return None
@@ -138,7 +145,7 @@ def _call_gemini(prompt: str, min_words: int = 55, max_words: int = 110) -> str 
         from google.genai import types as genai_types
         client = genai.Client(api_key=api_key)
         r = client.models.generate_content(
-            model="gemini-2.0-flash-lite",
+            model=model,
             contents=prompt,
             config=genai_types.GenerateContentConfig(
                 system_instruction=_SHARED_SYSTEM,
@@ -151,7 +158,7 @@ def _call_gemini(prompt: str, min_words: int = 55, max_words: int = 110) -> str 
             return text
         return None
     except Exception as exc:
-        log.debug("Gemini call failed: %s", exc)
+        log.debug("Gemini call failed (%s): %s", model, exc)
         return None
 
 
@@ -210,16 +217,22 @@ def _call_deepseek(prompt: str, min_words: int = 55, max_words: int = 110) -> st
 def _call_ai(prompt: str, min_words: int = 55, max_words: int = 110,
              prefer_gemini: bool = False) -> str | None:
     """
-    Route to best available AI model.
-    prefer_gemini=True  → Gemini first (G20/top-corridor quality tier).
-    prefer_gemini=False → DeepSeek first (bulk tier — faster, cheaper, concurrent).
-    Falls back to the other model if primary fails or key is absent.
+    Cost-optimised AI routing:
+      prefer_gemini=True  → gemini-2.5-flash first (G20/top-corridor quality tier),
+                            DeepSeek fallback.
+      prefer_gemini=False → DeepSeek first (cheapest, bulk tier),
+                            gemini-3.1-flash-lite fallback (NOT 2.5-flash).
+    Keeps expensive 2.5-flash spend limited to ~50 high-value G20 entities.
     """
     if prefer_gemini:
-        return (_call_gemini(prompt, min_words, max_words)
-                or _call_deepseek(prompt, min_words, max_words))
-    return (_call_deepseek(prompt, min_words, max_words)
-            or _call_gemini(prompt, min_words, max_words))
+        return (
+            _call_gemini(prompt, min_words, max_words, model="gemini-2.5-flash")
+            or _call_deepseek(prompt, min_words, max_words)
+        )
+    return (
+        _call_deepseek(prompt, min_words, max_words)
+        or _call_gemini(prompt, min_words, max_words, model="gemini-3.1-flash-lite-preview")
+    )
 
 
 def _has_ai_key() -> bool:

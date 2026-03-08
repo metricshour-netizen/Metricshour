@@ -79,9 +79,9 @@ app.conf.update(
     enable_utc=True,
     broker_connection_retry_on_startup=True,
     beat_schedule={
-        'crypto-every-1min': {
+        'crypto-every-2min': {
             'task': 'tasks.crypto.fetch_crypto_prices',
-            'schedule': 60.0,
+            'schedule': 120.0,
         },
         'price-alert-checker-every-1min': {
             'task': 'tasks.price_alert_checker.check_price_alerts',
