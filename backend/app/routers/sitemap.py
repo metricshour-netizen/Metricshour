@@ -101,5 +101,8 @@ def sitemap(db: Session = Depends(get_db)):
     return Response(
         content=xml,
         media_type="application/xml",
-        headers={"Cache-Control": "public, max-age=3600, s-maxage=3600"},
+        headers={
+            "Content-Type": "application/xml; charset=utf-8",
+            "Cache-Control": "public, max-age=3600, s-maxage=3600",
+        },
     )
