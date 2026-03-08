@@ -1,9 +1,9 @@
 <template>
-  <article
+  <NuxtLink
     ref="cardEl"
-    class="feed-card relative w-full h-full overflow-hidden select-none cursor-pointer"
+    :to="cardRoute"
+    class="feed-card relative w-full h-full overflow-hidden select-none cursor-pointer block"
     :class="{ 'is-high-importance': isHighImportance }"
-    @click="handleCardClick"
   >
 
     <!-- ── Background ──────────────────────────────────────────────── -->
@@ -287,7 +287,7 @@
       class="absolute inset-0 pointer-events-none"
       :style="pulseRingStyle"
     />
-  </article>
+  </NuxtLink>
 
   <!-- Auth modal — shown when unauthenticated user tries to save -->
   <AuthModal v-model="showAuthModal" />
@@ -765,44 +765,42 @@ function closePanelOutside(e: MouseEvent) {
 onMounted(() => document.addEventListener('click', closePanelOutside))
 onUnmounted(() => document.removeEventListener('click', closePanelOutside))
 
-function handleCardClick() {
+// Computed route — used by NuxtLink so navigation is native <a> tag (works in snap scroll on mobile)
+const cardRoute = computed(() => {
   const data = eventData.value
   const type = eventType.value
 
-  if (type === 'price_move' && data.symbol) {
-    navigateTo(`/stocks/${data.symbol}`)
-  } else if ((type === 'indicator_release' || type === 'macro_release' || type === 'central_bank') && data.country_code) {
-    navigateTo(`/countries/${data.country_code.toLowerCase()}`)
-  } else if (type === 'trade_update' && data.exporter && data.importer) {
-    navigateTo(`/trade/${data.exporter}-${data.importer}`)
-  } else if (type === 'geopolitical') {
-    if (data.exporter && data.importer) navigateTo(`/trade/${data.exporter}-${data.importer}`)
-    else if (data.country_code) navigateTo(`/countries/${data.country_code.toLowerCase()}`)
-    else navigateTo(`/feed/${props.event.id}`)
-  } else if (type === 'commodity' || type === 'commodity_move') {
-    navigateTo('/commodities')
-  } else if (type === 'daily_insight') {
+  if (type === 'price_move' && data.symbol)
+    return `/stocks/${data.symbol}`
+  if ((type === 'indicator_release' || type === 'macro_release' || type === 'central_bank') && data.country_code)
+    return `/countries/${data.country_code.toLowerCase()}`
+  if (type === 'trade_update' && data.exporter && data.importer)
+    return `/trade/${data.exporter}-${data.importer}`
+  if (type === 'geopolitical') {
+    if (data.exporter && data.importer) return `/trade/${data.exporter}-${data.importer}`
+    if (data.country_code) return `/countries/${data.country_code.toLowerCase()}`
+    return `/feed/${props.event.id}`
+  }
+  if (type === 'commodity' || type === 'commodity_move') return '/commodities'
+  if (type === 'daily_insight') {
     const et = (data.entity_type || '').toLowerCase()
-    if (et === 'stock' && data.symbol) navigateTo(`/stocks/${data.symbol}`)
-    else if (et === 'country' && data.country_code) navigateTo(`/countries/${data.country_code.toLowerCase()}`)
-    else if (et === 'trade' && data.exporter && data.importer) navigateTo(`/trade/${data.exporter}-${data.importer}`)
-    else if (et === 'commodity') navigateTo('/commodities')
-    else navigateTo(`/feed/${props.event.id}`)
-  } else if (type === 'blog') {
+    if (et === 'stock' && data.symbol) return `/stocks/${data.symbol}`
+    if (et === 'country' && data.country_code) return `/countries/${data.country_code.toLowerCase()}`
+    if (et === 'trade' && data.exporter && data.importer) return `/trade/${data.exporter}-${data.importer}`
+    if (et === 'commodity') return '/commodities'
+    return `/feed/${props.event.id}`
+  }
+  if (type === 'blog') {
     if (props.event.source_url?.includes('/blog/')) {
       const slug = props.event.source_url.split('/blog/')[1]?.replace(/\/$/, '')
-      navigateTo(slug ? `/blog/${slug}` : `/feed/${props.event.id}`)
-    } else {
-      navigateTo(`/feed/${props.event.id}`)
+      return slug ? `/blog/${slug}` : `/feed/${props.event.id}`
     }
-  } else if (data.symbol) {
-    navigateTo(`/stocks/${data.symbol}`)
-  } else if (data.country_code) {
-    navigateTo(`/countries/${data.country_code.toLowerCase()}`)
-  } else {
-    navigateTo(`/feed/${props.event.id}`)
+    return `/feed/${props.event.id}`
   }
-}
+  if (data.symbol) return `/stocks/${data.symbol}`
+  if (data.country_code) return `/countries/${data.country_code.toLowerCase()}`
+  return `/feed/${props.event.id}`
+})
 
 // ── Actions ───────────────────────────────────────────────────────────────────
 async function _interact(type: string) {
