@@ -29,14 +29,14 @@ BASE = "https://metricshour.com"
 _TODAY = date.today().isoformat()
 
 STATIC_ROUTES = [
-    (f"{BASE}/",             "1.0", "daily",   _TODAY),
-    (f"{BASE}/markets",      "0.9", "daily",   _TODAY),
-    (f"{BASE}/stocks",       "0.9", "daily",   _TODAY),
-    (f"{BASE}/countries",    "0.9", "weekly",  _TODAY),
-    (f"{BASE}/trade",        "0.9", "weekly",  _TODAY),
-    (f"{BASE}/commodities",  "0.8", "daily",   _TODAY),
-    (f"{BASE}/feed",         "0.7", "daily",   _TODAY),
-    (f"{BASE}/pricing",      "0.6", "monthly", None),
+    (f"{BASE}/",              "1.0", "daily",   _TODAY),
+    (f"{BASE}/markets/",      "0.9", "daily",   _TODAY),
+    (f"{BASE}/stocks/",       "0.9", "daily",   _TODAY),
+    (f"{BASE}/countries/",    "0.9", "weekly",  _TODAY),
+    (f"{BASE}/trade/",        "0.9", "weekly",  _TODAY),
+    (f"{BASE}/commodities/",  "0.8", "daily",   _TODAY),
+    (f"{BASE}/pricing/",      "0.7", "monthly", None),
+    (f"{BASE}/about/",        "0.6", "monthly", None),
 ]
 
 
@@ -69,12 +69,12 @@ def sitemap(db: Session = Depends(get_db)):
     for (symbol,) in db.execute(select(Asset.symbol).where(Asset.symbol.isnot(None))):
         # Use the insight timestamp if available, else summary
         lm = lastmod_map.get(("stock_insight", symbol)) or lastmod_map.get(("stock", symbol))
-        entries.append(_url(f"{BASE}/stocks/{symbol}", "0.7", "daily", lm))
+        entries.append(_url(f"{BASE}/stocks/{symbol}/", "0.7", "daily", lm))
 
     # Countries → /countries/{code}
     for (code,) in db.execute(select(Country.code).where(Country.code.isnot(None))):
         lm = lastmod_map.get(("country_insight", code)) or lastmod_map.get(("country", code))
-        entries.append(_url(f"{BASE}/countries/{code.lower()}", "0.7", "weekly", lm))
+        entries.append(_url(f"{BASE}/countries/{code.lower()}/", "0.7", "weekly", lm))
 
     # Trade pairs → /trade/{exp}-{imp}
     Exporter = aliased(Country)
@@ -89,7 +89,7 @@ def sitemap(db: Session = Depends(get_db)):
         if exp_code and imp_code:
             pair_code = f"{exp_code}-{imp_code}"
             lm = lastmod_map.get(("trade_insight", pair_code)) or lastmod_map.get(("trade", pair_code))
-            entries.append(_url(f"{BASE}/trade/{exp_code.lower()}-{imp_code.lower()}", "0.6", "daily", lm))
+            entries.append(_url(f"{BASE}/trade/{exp_code.lower()}-{imp_code.lower()}/", "0.6", "daily", lm))
 
     xml = (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
