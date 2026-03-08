@@ -223,9 +223,36 @@
         <Transition name="share-panel">
           <div
             v-if="showSharePanel"
-            class="share-panel absolute right-14 bottom-0 z-50 bg-[#0f172a] border border-white/10 rounded-2xl p-3 shadow-2xl w-52"
+            class="share-panel absolute right-14 bottom-0 z-50 bg-[#0f172a] border border-white/10 rounded-2xl p-3 shadow-2xl w-56"
             @click.stop
           >
+            <!-- Image share row -->
+            <p class="text-[10px] text-white/30 uppercase tracking-widest mb-2 px-1">Share as image</p>
+            <div class="flex gap-2 mb-3">
+              <button
+                class="flex-1 flex flex-col items-center gap-1.5 py-2 rounded-xl hover:bg-white/10 transition-colors border border-white/10"
+                :disabled="imageGenerating !== null"
+                @click="shareAsImage('story')"
+              >
+                <div class="w-7 h-12 rounded border-2 flex items-center justify-center text-[10px] font-bold transition-colors"
+                  :class="imageGenerating === 'story' ? 'border-emerald-400 text-emerald-400 animate-pulse' : 'border-white/30 text-white/50'">
+                  {{ imageGenerating === 'story' ? '…' : '9:16' }}
+                </div>
+                <span class="text-[9px] text-white/40">Story</span>
+              </button>
+              <button
+                class="flex-1 flex flex-col items-center gap-1.5 py-2 rounded-xl hover:bg-white/10 transition-colors border border-white/10"
+                :disabled="imageGenerating !== null"
+                @click="shareAsImage('post')"
+              >
+                <div class="w-10 h-10 rounded border-2 flex items-center justify-center text-[10px] font-bold transition-colors"
+                  :class="imageGenerating === 'post' ? 'border-emerald-400 text-emerald-400 animate-pulse' : 'border-white/30 text-white/50'">
+                  {{ imageGenerating === 'post' ? '…' : '1:1' }}
+                </div>
+                <span class="text-[9px] text-white/40">Post</span>
+              </button>
+            </div>
+            <div class="border-t border-white/10 mb-2.5" />
             <p class="text-[10px] text-white/30 uppercase tracking-widest mb-2.5 px-1">Share via</p>
             <div class="grid grid-cols-3 gap-2">
               <a :href="`https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(cleanTitle)}`" target="_blank" rel="noopener" class="share-option group flex flex-col items-center gap-1.5 p-2 rounded-xl hover:bg-white/10 transition-colors">
@@ -435,6 +462,231 @@ const r2Base = (r2PublicUrl as string || 'https://api.metricshour.com').replace(
 // Share panel state
 const showSharePanel = ref(false)
 const copied = ref(false)
+const imageGenerating = ref<'story' | 'post' | null>(null)
+
+// ── Canvas image generation ───────────────────────────────────────────────────
+function wrapText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, maxW: number, lineH: number): number {
+  const words = text.split(' ')
+  let line = ''
+  let curY = y
+  for (const word of words) {
+    const test = line ? `${line} ${word}` : word
+    if (ctx.measureText(test).width > maxW && line) {
+      ctx.fillText(line, x, curY)
+      line = word
+      curY += lineH
+    } else {
+      line = test
+    }
+  }
+  if (line) ctx.fillText(line, x, curY)
+  return curY + lineH
+}
+
+async function generateImage(format: 'story' | 'post'): Promise<Blob> {
+  const W = 1080
+  const H = format === 'story' ? 1920 : 1080
+  const canvas = document.createElement('canvas')
+  canvas.width = W
+  canvas.height = H
+  const ctx = canvas.getContext('2d')!
+  const accent = accentColor.value
+  const bg = BG[eventType.value] || '#050505'
+  const importance = props.event.importance_score || 5
+  const type = eventType.value
+  const data = eventData.value
+
+  // Background
+  ctx.fillStyle = bg
+  ctx.fillRect(0, 0, W, H)
+
+  // Radial glow
+  const intensity = Math.max(0.15, Math.min(0.4, importance / 10 * 0.4))
+  const grd = ctx.createRadialGradient(W / 2, H * 0.33, 0, W / 2, H * 0.33, W * 0.75)
+  grd.addColorStop(0, accent + Math.round(intensity * 255).toString(16).padStart(2, '0'))
+  grd.addColorStop(1, 'rgba(0,0,0,0)')
+  ctx.fillStyle = grd
+  ctx.fillRect(0, 0, W, H)
+
+  // Bottom dark gradient
+  const bottomGrad = ctx.createLinearGradient(0, H * 0.42, 0, H)
+  bottomGrad.addColorStop(0, 'rgba(0,0,0,0)')
+  bottomGrad.addColorStop(0.35, 'rgba(0,0,0,0.6)')
+  bottomGrad.addColorStop(1, 'rgba(0,0,0,0.97)')
+  ctx.fillStyle = bottomGrad
+  ctx.fillRect(0, 0, W, H)
+
+  // Top accent bar
+  ctx.fillStyle = accent
+  const barW = Math.round(W * (importance / 10))
+  ctx.fillRect(0, 0, barW, 8)
+
+  // Type badge pill
+  const typeText = (TYPE_LABELS[type] || type.replace(/_/g, ' ').toUpperCase())
+  ctx.font = 'bold 36px -apple-system, BlinkMacSystemFont, sans-serif'
+  const badgeMetrics = ctx.measureText(typeText)
+  const bx = 52, by = 60, bpad = 24, bh = 60
+  const bw = badgeMetrics.width + bpad * 2
+  ctx.beginPath()
+  if (ctx.roundRect) {
+    ctx.roundRect(bx, by, bw, bh, 12)
+  } else {
+    const r = 12
+    ctx.moveTo(bx + r, by)
+    ctx.lineTo(bx + bw - r, by)
+    ctx.arcTo(bx + bw, by, bx + bw, by + r, r)
+    ctx.lineTo(bx + bw, by + bh - r)
+    ctx.arcTo(bx + bw, by + bh, bx + bw - r, by + bh, r)
+    ctx.lineTo(bx + r, by + bh)
+    ctx.arcTo(bx, by + bh, bx, by + bh - r, r)
+    ctx.lineTo(bx, by + r)
+    ctx.arcTo(bx, by, bx + r, by, r)
+    ctx.closePath()
+  }
+  ctx.fillStyle = accent + '25'
+  ctx.fill()
+  ctx.strokeStyle = accent + '50'
+  ctx.lineWidth = 2
+  ctx.stroke()
+  ctx.fillStyle = accent
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'middle'
+  ctx.fillText(typeText, bx + bpad, by + bh / 2)
+
+  // Timestamp top-right
+  ctx.font = '32px -apple-system, sans-serif'
+  ctx.fillStyle = 'rgba(255,255,255,0.5)'
+  ctx.textAlign = 'right'
+  ctx.fillText(relativeTime.value, W - 52, by + bh / 2)
+
+  // Hero content
+  const heroY = H * (format === 'story' ? 0.38 : 0.42)
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'alphabetic'
+
+  if (type === 'price_move') {
+    const pct = Number(data.change_pct) || 0
+    const color = pct >= 0 ? '#10b981' : '#ef4444'
+    const sign = pct >= 0 ? '+' : ''
+    ctx.font = `bold ${format === 'story' ? 220 : 180}px -apple-system, sans-serif`
+    ctx.fillStyle = color
+    ctx.fillText(`${sign}${Math.abs(pct).toFixed(2)}%`, W / 2, heroY)
+    ctx.font = `bold 88px -apple-system, sans-serif`
+    ctx.fillStyle = 'white'
+    ctx.fillText(String(data.symbol || ''), W / 2, heroY + 110)
+    if (data.name) {
+      ctx.font = '44px -apple-system, sans-serif'
+      ctx.fillStyle = 'rgba(255,255,255,0.35)'
+      ctx.fillText(String(data.name).slice(0, 30), W / 2, heroY + 175)
+    }
+    if (data.price) {
+      ctx.font = '52px monospace'
+      ctx.fillStyle = 'rgba(255,255,255,0.3)'
+      ctx.fillText(`$${Number(data.price).toLocaleString(undefined, { maximumFractionDigits: 4 })}`, W / 2, heroY + 250)
+    }
+    // Arrow
+    ctx.font = `bold 120px sans-serif`
+    ctx.fillStyle = color
+    ctx.fillText(pct >= 0 ? '↑' : '↓', W / 2, heroY + 380)
+  } else if (type === 'indicator_release' || type === 'macro_release') {
+    ctx.font = `${format === 'story' ? 200 : 160}px serif`
+    ctx.fillText(countryFlag.value, W / 2, heroY - 20)
+    ctx.font = `bold ${format === 'story' ? 190 : 150}px -apple-system, sans-serif`
+    ctx.fillStyle = 'white'
+    ctx.fillText(formattedValue.value, W / 2, heroY + 200)
+    ctx.font = 'bold 52px -apple-system, sans-serif'
+    ctx.fillStyle = accent
+    ctx.fillText(indicatorLabel.value.toUpperCase(), W / 2, heroY + 285)
+    if (data.country_code) {
+      ctx.font = '40px monospace'
+      ctx.fillStyle = 'rgba(255,255,255,0.25)'
+      ctx.fillText(String(data.country_code), W / 2, heroY + 345)
+    }
+  } else if (type === 'trade_update') {
+    ctx.font = `${format === 'story' ? 180 : 140}px serif`
+    ctx.fillText(`${tradeExporterFlag.value}  ↔  ${tradeImporterFlag.value}`, W / 2, heroY)
+    ctx.font = `bold ${format === 'story' ? 180 : 140}px -apple-system, sans-serif`
+    ctx.fillStyle = 'white'
+    ctx.fillText(`$${tradeValueB.value}B`, W / 2, heroY + 200)
+    ctx.font = 'bold 44px monospace'
+    ctx.fillStyle = 'rgba(255,255,255,0.3)'
+    ctx.fillText(`${data.year || ''} BILATERAL TRADE`, W / 2, heroY + 280)
+  } else {
+    ctx.font = `${format === 'story' ? 200 : 160}px serif`
+    ctx.fillText(blogEmoji.value, W / 2, heroY)
+    ctx.font = 'bold 56px -apple-system, sans-serif'
+    ctx.fillStyle = accent
+    ctx.fillText(typeLabel.value.toUpperCase(), W / 2, heroY + 100)
+  }
+
+  // Title (word-wrapped)
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'alphabetic'
+  const titleY = format === 'story' ? H * 0.72 : H * 0.73
+  ctx.font = `bold ${format === 'story' ? 70 : 62}px -apple-system, BlinkMacSystemFont, Inter, sans-serif`
+  ctx.fillStyle = 'white'
+  wrapText(ctx, cleanTitle.value, W / 2, titleY, W - 130, format === 'story' ? 88 : 78)
+
+  // Meta tags row
+  const metaY = format === 'story' ? H * 0.86 : H * 0.88
+  const tags: string[] = []
+  if (data.country_code) tags.push(`${countryFlag.value} ${data.country_code}`)
+  if (data.symbol) tags.push(String(data.symbol))
+  if (props.event.event_subtype) tags.push(subtypeLabel.value)
+  if (tags.length) {
+    ctx.font = 'bold 36px -apple-system, sans-serif'
+    ctx.fillStyle = 'rgba(255,255,255,0.4)'
+    ctx.fillText(tags.join('  ·  '), W / 2, metaY)
+  }
+
+  // Importance dots
+  const dots = Math.min(5, Math.ceil(importance / 2))
+  ctx.font = '36px sans-serif'
+  ctx.fillStyle = accent
+  ctx.fillText('●'.repeat(dots) + ' ' + importance + '/10', W / 2, metaY + 56)
+
+  // Branding
+  ctx.font = `bold ${format === 'story' ? 44 : 36}px -apple-system, sans-serif`
+  ctx.fillStyle = '#10b981'
+  ctx.fillText('METRICSHOUR', W / 2, H - 72)
+  ctx.font = `${format === 'story' ? 34 : 28}px monospace`
+  ctx.fillStyle = 'rgba(255,255,255,0.2)'
+  ctx.fillText('metricshour.com', W / 2, H - 30)
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('toBlob failed')), 'image/png')
+  })
+}
+
+async function shareAsImage(format: 'story' | 'post') {
+  if (imageGenerating.value) return
+  imageGenerating.value = format
+  try {
+    const blob = await generateImage(format)
+    const file = new File([blob], `metricshour-${format}-${props.event.id}.png`, { type: 'image/png' })
+    // Web Share API with files (mobile) — opens system share sheet with image
+    if (typeof navigator !== 'undefined' && navigator.canShare?.({ files: [file] })) {
+      await navigator.share({
+        files: [file],
+        title: cleanTitle.value,
+        text: `${cleanTitle.value} — metricshour.com/feed/${props.event.id}`,
+      })
+    } else {
+      // Fallback: download the image
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = file.name
+      a.click()
+      URL.revokeObjectURL(url)
+    }
+  } catch (err: any) {
+    if (err?.name !== 'AbortError') console.warn('shareAsImage failed', err)
+  } finally {
+    imageGenerating.value = null
+    showSharePanel.value = false
+  }
+}
 
 async function handleShare() {
   // Native Web Share API — opens system share sheet on mobile (iOS/Android)
