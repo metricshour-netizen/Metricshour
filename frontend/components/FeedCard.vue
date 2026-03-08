@@ -769,64 +769,36 @@ function handleCardClick() {
   const data = eventData.value
   const type = eventType.value
 
-  // price move → stock page
   if (type === 'price_move' && data.symbol) {
     navigateTo(`/stocks/${data.symbol}`)
-
-  // macro / indicator → country page
-  } else if ((type === 'indicator_release' || type === 'macro_release') && data.country_code) {
+  } else if ((type === 'indicator_release' || type === 'macro_release' || type === 'central_bank') && data.country_code) {
     navigateTo(`/countries/${data.country_code.toLowerCase()}`)
-
-  // trade → trade pair page
   } else if (type === 'trade_update' && data.exporter && data.importer) {
     navigateTo(`/trade/${data.exporter}-${data.importer}`)
-
-  // central bank → country page (or markets fallback)
-  } else if (type === 'central_bank') {
-    if (data.country_code) navigateTo(`/countries/${data.country_code.toLowerCase()}`)
-    else navigateTo('/markets')
-
-  // commodity → commodities page (or specific commodity if symbol)
-  } else if (type === 'commodity' || type === 'commodity_move') {
-    if (data.symbol) navigateTo(`/commodities`)
-    else navigateTo('/commodities')
-
-  // geopolitical → country page, or trade pair, or feed detail
   } else if (type === 'geopolitical') {
     if (data.exporter && data.importer) navigateTo(`/trade/${data.exporter}-${data.importer}`)
     else if (data.country_code) navigateTo(`/countries/${data.country_code.toLowerCase()}`)
     else navigateTo(`/feed/${props.event.id}`)
-
-  // daily insight → smart route by entity type
+  } else if (type === 'commodity' || type === 'commodity_move') {
+    navigateTo('/commodities')
   } else if (type === 'daily_insight') {
     const et = (data.entity_type || '').toLowerCase()
     if (et === 'stock' && data.symbol) navigateTo(`/stocks/${data.symbol}`)
     else if (et === 'country' && data.country_code) navigateTo(`/countries/${data.country_code.toLowerCase()}`)
     else if (et === 'trade' && data.exporter && data.importer) navigateTo(`/trade/${data.exporter}-${data.importer}`)
     else if (et === 'commodity') navigateTo('/commodities')
-    else if (props.event.source_url) navigateTo(props.event.source_url)
     else navigateTo(`/feed/${props.event.id}`)
-
-  // blog / article → internal blog or feed detail
   } else if (type === 'blog') {
     if (props.event.source_url?.includes('/blog/')) {
       const slug = props.event.source_url.split('/blog/')[1]?.replace(/\/$/, '')
       navigateTo(slug ? `/blog/${slug}` : `/feed/${props.event.id}`)
-    } else if (props.event.source_url) {
-      navigateTo(props.event.source_url)
     } else {
       navigateTo(`/feed/${props.event.id}`)
     }
-
-  // any event with a symbol → try stocks
   } else if (data.symbol) {
     navigateTo(`/stocks/${data.symbol}`)
-
-  // any event with country_code → try countries
   } else if (data.country_code) {
     navigateTo(`/countries/${data.country_code.toLowerCase()}`)
-
-  // fallback → feed detail page
   } else {
     navigateTo(`/feed/${props.event.id}`)
   }
