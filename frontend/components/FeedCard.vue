@@ -1,11 +1,8 @@
 <template>
   <article
     ref="cardEl"
-    class="feed-card relative w-full h-full overflow-hidden select-none cursor-pointer"
+    class="feed-card relative w-full h-full overflow-hidden select-none"
     :class="{ 'is-high-importance': isHighImportance }"
-    @click="handleCardClick"
-    @touchstart.passive="onTouchStart"
-    @touchend="onTouchEnd"
   >
 
     <!-- ── Background ──────────────────────────────────────────────── -->
@@ -13,6 +10,15 @@
     <div class="absolute inset-0 pointer-events-none" :style="glowStyle" />
     <div class="absolute inset-0 opacity-[0.03] pointer-events-none noise-layer" />
 
+    <!-- Invisible nav overlay — native <a> = reliable tap on all mobile browsers.
+         z-[5] keeps it below the action rail (z-20) so buttons still work. -->
+    <NuxtLink
+      :to="_cardDestination()"
+      class="absolute inset-0 z-[5]"
+      tabindex="-1"
+      aria-label="View insight"
+      @click="onOverlayClick"
+    />
 
     <!-- Gradients for readability -->
     <div class="absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 to-transparent pointer-events-none" />
@@ -27,7 +33,7 @@
     </div>
 
     <!-- ── Main content ──────────────────────────────────────────────── -->
-    <div class="relative h-full flex flex-col z-10">
+    <div class="relative h-full flex flex-col z-10 pointer-events-none">
 
       <!-- ── TOP: source + time ──────────────────────────────────────── -->
       <div class="flex items-start justify-between px-4 pt-4 pb-2 gap-2">
@@ -801,35 +807,12 @@ function _cardDestination(): string {
   return `/feed/${props.event.id}`
 }
 
-// Touch tap detection — snap-scroll containers consume touch events on mobile,
-// so we detect taps via touchend directly instead of relying on click alone.
-let _touchStartX = 0
-let _touchStartY = 0
-let _touchStartTime = 0
-let _tappedByTouch = false
-
-function onTouchStart(e: TouchEvent) {
-  _touchStartX = e.touches[0].clientX
-  _touchStartY = e.touches[0].clientY
-  _touchStartTime = Date.now()
-  _tappedByTouch = false
-}
-
-function onTouchEnd(e: TouchEvent) {
-  const dx = Math.abs(e.changedTouches[0].clientX - _touchStartX)
-  const dy = Math.abs(e.changedTouches[0].clientY - _touchStartY)
-  const dt = Date.now() - _touchStartTime
-  // tap = minimal movement + quick duration
-  if (dx < 12 && dy < 12 && dt < 350) {
-    e.preventDefault() // block the subsequent click so we don't navigate twice
-    _tappedByTouch = true
-    router.push(_cardDestination())
+// Close share panel on card body tap; otherwise NuxtLink overlay handles navigation.
+function onOverlayClick(e: MouseEvent) {
+  if (showSharePanel.value) {
+    e.preventDefault()
+    showSharePanel.value = false
   }
-}
-
-function handleCardClick() {
-  if (_tappedByTouch) { _tappedByTouch = false; return } // already handled by touchend
-  router.push(_cardDestination())
 }
 
 // ── Actions ───────────────────────────────────────────────────────────────────
