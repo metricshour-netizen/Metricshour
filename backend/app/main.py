@@ -53,6 +53,18 @@ async def security_headers(request: Request, call_next) -> Response:
     response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
     # HSTS — only sent over HTTPS (Nginx handles SSL, so this is safe)
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+
+    # Edge cache (Cloudflare s-maxage) for public read-only endpoints.
+    # /api/feed and /api/auth are personalised/authenticated — never cached.
+    path = request.url.path
+    if request.method == "GET" and response.status_code == 200:
+        if any(path.startswith(p) for p in ("/api/countries", "/api/assets", "/api/trade", "/api/search")):
+            # Cloudflare caches for 60s; browser revalidates after 30s
+            response.headers["Cache-Control"] = "public, s-maxage=60, stale-while-revalidate=30"
+        elif path.startswith("/og/"):
+            # OG images change at most once a day
+            response.headers["Cache-Control"] = "public, s-maxage=86400, stale-while-revalidate=3600"
+
     return response
 
 app.include_router(health.router)
