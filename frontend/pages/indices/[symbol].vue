@@ -177,46 +177,133 @@ const config = useRuntimeConfig()
 const r2PublicUrl = config.public.r2PublicUrl || 'https://api.metricshour.com'
 const ogImageUrl = `${r2PublicUrl}/og/indices/${symbol.toLowerCase()}.png`
 
+// ── SEO helpers — inject live price + change ──────────────────────────────────
+const _change = computed(() => {
+  const p = index.value?.price
+  if (!p?.open || !p?.close) return null
+  return ((p.close - p.open) / p.open) * 100
+})
+
+const _seoTitle = computed(() => {
+  if (!index.value) return `${symbol} Index — MetricsHour`
+  const name  = index.value.name
+  const price = index.value.price?.close
+  const chg   = _change.value
+  if (price != null && chg != null) {
+    return `${symbol} Today: ${fmtPrice(price)} (${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%) — ${name} — MetricsHour`
+  }
+  return `${symbol} — ${name} Price & Data — MetricsHour`
+})
+
+const _seoDesc = computed(() => {
+  if (!index.value) return ''
+  const name  = index.value.name
+  const price = index.value.price?.close
+  const chg   = _change.value
+  const base  = indexDescription(symbol).slice(0, 160)
+  if (price != null && chg != null) {
+    return `${name} (${symbol}) at ${fmtPrice(price)} (${chg >= 0 ? '+' : ''}${chg.toFixed(2)}% today). ${base}`
+  }
+  return `${name} (${symbol}) price, chart, and market data. ${base}`
+})
+
 useSeoMeta({
-  title: computed(() => index.value ? `${index.value.symbol} — ${index.value.name} — MetricsHour` : 'Index — MetricsHour'),
-  description: computed(() => index.value ? `${index.value.name} (${index.value.symbol}) live price, performance data, and market analysis. ${indexDescription(symbol).slice(0, 120)}` : ''),
-  ogTitle: computed(() => index.value ? `${index.value.symbol} — ${index.value.name}` : 'Index — MetricsHour'),
-  ogDescription: computed(() => index.value ? `${index.value.name} live price and market data on MetricsHour.` : ''),
+  title: _seoTitle,
+  description: _seoDesc,
+  ogTitle: _seoTitle,
+  ogDescription: _seoDesc,
   ogUrl: `https://metricshour.com/indices/${symbol}`,
   ogType: 'website',
   ogImage: ogImageUrl,
   ogImageWidth: 1200,
   ogImageHeight: 630,
   twitterCard: 'summary_large_image',
-  twitterTitle: computed(() => index.value ? `${index.value.symbol} — ${index.value.name}` : 'Index — MetricsHour'),
-  twitterDescription: computed(() => index.value ? `${index.value.name} live price on MetricsHour.` : ''),
+  twitterTitle: _seoTitle,
+  twitterDescription: _seoDesc,
   twitterImage: ogImageUrl,
 })
 
-useHead({
+useHead(computed(() => ({
   link: [{ rel: 'canonical', href: `https://metricshour.com/indices/${symbol}/` }],
-  script: index.value ? [{
-    type: 'application/ld+json',
-    innerHTML: JSON.stringify({
-      '@context': 'https://schema.org',
-      '@graph': [
-        {
-          '@type': 'WebPage',
-          name: `${index.value.symbol} — ${index.value.name} — MetricsHour`,
-          url: `https://metricshour.com/indices/${symbol}`,
-          description: `${index.value.name} live price, chart, and market data.`,
-          isPartOf: { '@type': 'WebSite', name: 'MetricsHour', url: 'https://metricshour.com' },
-        },
-        {
+  script: index.value ? [
+    {
+      type: 'application/ld+json',
+      innerHTML: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'WebPage',
+        name: _seoTitle.value,
+        url: `https://metricshour.com/indices/${symbol}`,
+        description: _seoDesc.value,
+        breadcrumb: {
           '@type': 'BreadcrumbList',
           itemListElement: [
-            { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://metricshour.com' },
+            { '@type': 'ListItem', position: 1, name: 'Home',    item: 'https://metricshour.com' },
             { '@type': 'ListItem', position: 2, name: 'Markets', item: 'https://metricshour.com/markets' },
-            { '@type': 'ListItem', position: 3, name: index.value.symbol, item: `https://metricshour.com/indices/${symbol}` },
+            { '@type': 'ListItem', position: 3, name: symbol,    item: `https://metricshour.com/indices/${symbol}` },
           ],
         },
-      ],
-    }),
-  }] : [],
-})
+      }),
+    },
+    ...(index.value.price?.close ? [{
+      type: 'application/ld+json',
+      innerHTML: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'Dataset',
+        name: `${index.value.name} (${symbol}) Price Data`,
+        description: `Current and historical price data for ${index.value.name}. Source: Marketstack.`,
+        url: `https://metricshour.com/indices/${symbol}`,
+        creator: { '@type': 'Organization', name: 'MetricsHour', url: 'https://metricshour.com' },
+        keywords: [`${symbol} price today`, `${index.value.name} price`, `${symbol} index value`, `${index.value.name} performance`],
+        variableMeasured: [
+          { '@type': 'PropertyValue', name: `${symbol} Price`,   value: String(index.value.price.close) },
+          { '@type': 'PropertyValue', name: `${symbol} Day Open`, value: String(index.value.price.open) },
+          { '@type': 'PropertyValue', name: `${symbol} Day High`, value: String(index.value.price.high) },
+          { '@type': 'PropertyValue', name: `${symbol} Day Low`,  value: String(index.value.price.low) },
+        ].filter(v => v.value !== 'undefined' && v.value !== 'null'),
+      }),
+    }] : []),
+    {
+      type: 'application/ld+json',
+      innerHTML: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        mainEntity: [
+          {
+            '@type': 'Question',
+            name: `What is the ${index.value.name}?`,
+            acceptedAnswer: { '@type': 'Answer', text: indexDescription(symbol) },
+          },
+          {
+            '@type': 'Question',
+            name: `What is ${symbol}'s current value?`,
+            acceptedAnswer: {
+              '@type': 'Answer',
+              text: index.value.price?.close
+                ? `${index.value.name} (${symbol}) is currently at ${fmtPrice(index.value.price.close)}${_change.value != null ? `, ${_change.value >= 0 ? 'up' : 'down'} ${Math.abs(_change.value).toFixed(2)}% today` : ''}. Prices are updated daily on MetricsHour.`
+                : `${index.value.name} (${symbol}) price data is updated daily on MetricsHour.`,
+            },
+          },
+          {
+            '@type': 'Question',
+            name: `What exchange is ${symbol} listed on?`,
+            acceptedAnswer: {
+              '@type': 'Answer',
+              text: index.value.exchange
+                ? `${index.value.name} is traded on ${index.value.exchange}.`
+                : `${index.value.name} (${symbol}) is a market index tracking a basket of securities.`,
+            },
+          },
+          {
+            '@type': 'Question',
+            name: `How does ${symbol} affect global markets?`,
+            acceptedAnswer: {
+              '@type': 'Answer',
+              text: `${index.value.name} is a benchmark for ${index.value.sector ?? 'regional'} equities. Movements in ${symbol} are closely watched by investors globally as a barometer of economic health and market sentiment.`,
+            },
+          },
+        ],
+      }),
+    },
+  ] : [],
+})))
 </script>
