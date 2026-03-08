@@ -182,14 +182,6 @@
         <span class="text-[10px] text-white/40">Share</span>
       </button>
 
-      <!-- Copy link -->
-      <button class="action-btn flex flex-col items-center gap-1" aria-label="Copy link" @click.stop="handleCopy">
-        <div class="w-11 h-11 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center text-base transition-all hover:bg-white/20">
-          {{ copied ? '✓' : '🔗' }}
-        </div>
-        <span class="text-[10px] text-white/40">{{ copied ? 'Copied!' : 'Copy' }}</span>
-      </button>
-
       <!-- Skip -->
       <button class="action-btn flex flex-col items-center gap-1" @click.stop="handleSkip">
         <div class="w-11 h-11 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center text-lg transition-all">✕</div>
