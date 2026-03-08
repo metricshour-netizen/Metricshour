@@ -135,11 +135,19 @@ def _call_gemini(prompt: str, min_words: int = 55, max_words: int = 110) -> str 
         return None
     try:
         from google import genai
+        from google.genai import types as genai_types
         client = genai.Client(api_key=api_key)
-        r = client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
+        r = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+            config=genai_types.GenerateContentConfig(
+                system_instruction=_SHARED_SYSTEM,
+                temperature=0.1,
+            ),
+        )
         text = _strip_markdown(r.text.strip())
         words = len(text.split())
-        if (min_words - 15) < words < (max_words + 25):
+        if (min_words - 8) <= words <= (max_words + 8):
             return text
         return None
     except Exception as exc:
@@ -147,13 +155,22 @@ def _call_gemini(prompt: str, min_words: int = 55, max_words: int = 110) -> str 
         return None
 
 
-_DS_SYSTEM = (
+_SHARED_SYSTEM = (
     "You are a financial data writer for an institutional terminal. "
     "OUTPUT ONLY the paragraph requested — no greeting, no sign-off, no 'Certainly', "
-    "no meta-commentary, no markdown. "
-    "Every sentence must contain at least one specific number or proper noun from the data. "
-    "Active voice. Zero filler. Hit the word count exactly. Begin writing immediately."
+    "no meta-commentary, no markdown, no ellipsis, no em-dashes as separators. "
+    "Every sentence must contain at least one specific number or proper noun from the data provided. "
+    "Active voice only. Assert — never hedge. Do not use: could, may, might, would likely, "
+    "appears to, seems to, is expected to, is likely to, is poised to. "
+    "Zero filler. Begin writing immediately with the first data point. "
+    "BANNED WORDS (never use): navigates, robust, resilient, notable, significant, landscape, "
+    "remains, amid, complex, dynamic, headwinds, tailwinds, uncertainty, poised, well-positioned, "
+    "strategic, synergies, leverage, ecosystem, stakeholders, underscores, highlights, reflects, "
+    "showcases, demonstrates, continues to, going forward, in conclusion, furthermore, moreover, "
+    "it is worth noting, it should be noted, plays a key role, plays a crucial role, "
+    "boasts, boasting, bolsters, bolstering, underpins, underpinning, spurs, spurring."
 )
+_DS_SYSTEM = _SHARED_SYSTEM
 
 
 def _call_deepseek(prompt: str, min_words: int = 55, max_words: int = 110) -> str | None:
@@ -172,15 +189,17 @@ def _call_deepseek(prompt: str, min_words: int = 55, max_words: int = 110) -> st
                     {"role": "system", "content": _DS_SYSTEM},
                     {"role": "user", "content": prompt},
                 ],
-                "max_tokens": 200,
-                "temperature": 0.35,
+                "max_tokens": 250,
+                "temperature": 0.1,
+                "frequency_penalty": 0.5,
+                "stop": ["\n\n"],
             },
             timeout=30,
         )
         resp.raise_for_status()
         text = _strip_markdown(resp.json()["choices"][0]["message"]["content"].strip())
         words = len(text.split())
-        if (min_words - 10) < words < (max_words + 10):
+        if (min_words - 8) <= words <= (max_words + 5):
             return text
         return None
     except Exception as exc:
@@ -221,7 +240,7 @@ def _country_summary_text(country: Country, db) -> str:
         .filter(CountryIndicator.indicator.in_([
             "gdp_usd", "gdp_growth_pct", "inflation_pct",
             "interest_rate_pct", "unemployment_pct",
-            "current_account_usd", "govt_debt_pct_gdp",
+            "current_account_usd", "government_debt_gdp_pct",
         ]))
         .order_by(CountryIndicator.period_date.desc())
         .limit(30)
@@ -238,7 +257,7 @@ def _country_summary_text(country: Country, db) -> str:
     inflation = ind.get("inflation_pct")
     rate = ind.get("interest_rate_pct")
     unemployment = ind.get("unemployment_pct")
-    debt = ind.get("govt_debt_pct_gdp")
+    debt = ind.get("government_debt_gdp_pct")
 
     groups = [g for g, flag in [
         ("G7", country.is_g7), ("G20", country.is_g20), ("EU", country.is_eu),
@@ -273,12 +292,16 @@ def _country_summary_text(country: Country, db) -> str:
             f"Major exports: {country.major_exports or 'N/A'}\n"
         )
         prompt = (
-            f"Write a 75-100 word macro overview for the {country.name} country page on MetricsHour.\n\n"
+            f"Country overview — {country.name} — 75-100 words. Third-person. No title.\n\n"
             f"Data:\n{facts}\n\n"
-            f"Pack in: GDP size + growth trajectory, inflation + policy rate, one standout characteristic "
-            f"(debt, credit rating, commodity exports, or current account), and bloc memberships that affect trade. "
-            f"FT macro-brief style: third-person, every sentence has a number. "
-            f"No bullet points. No headers. No padding. End with a period."
+            f"4 sentences exactly:\n"
+            f"1. GDP size and most recent growth rate in one sentence.\n"
+            f"2. Inflation rate and central bank policy rate — state both numbers.\n"
+            f"3. The single most extreme characteristic from the data: pick whichever of "
+            f"(debt/GDP, S&P rating, commodity exports, current account) is most distinctive "
+            f"and state its direct investment implication.\n"
+            f"4. Bloc memberships that drive trade or policy, plus the currency name.\n"
+            f"Every sentence has at least one number. No padding. End with a period."
         )
         # G20 countries → Gemini (quality tier); rest → DeepSeek (bulk tier)
         ai = _call_ai(prompt, min_words=65, max_words=110, prefer_gemini=bool(country.is_g20))
@@ -331,8 +354,8 @@ def _country_insight_text(country: Country, db) -> str | None:
         .filter(CountryIndicator.indicator.in_([
             "gdp_usd", "gdp_growth_pct", "inflation_pct",
             "interest_rate_pct", "unemployment_pct",
-            "current_account_usd", "govt_debt_pct_gdp",
-            "current_account_pct_gdp",
+            "current_account_usd", "government_debt_gdp_pct",
+            "current_account_gdp_pct",
         ]))
         .order_by(CountryIndicator.period_date.desc())
         .limit(40)
@@ -367,8 +390,8 @@ def _country_insight_text(country: Country, db) -> str | None:
         f"Country: {country.name} ({country.code}) | Currency: {country.currency_code or 'N/A'}\n"
         f"GDP: {_fmt_gdp(ind.get('gdp_usd'))} | GDP growth: {_f1('gdp_growth_pct')}\n"
         f"Inflation: {_f1('inflation_pct')} | Policy rate: {_f2('interest_rate_pct')} | Real rate: {real_rate}\n"
-        f"Unemployment: {_f1('unemployment_pct')} | Current account: {_f1('current_account_pct_gdp')} of GDP\n"
-        f"Govt debt/GDP: {_f1('govt_debt_pct_gdp')} | S&P: {country.credit_rating_sp or 'N/A'}\n"
+        f"Unemployment: {_f1('unemployment_pct')} | Current account: {_f1('current_account_gdp_pct')} of GDP\n"
+        f"Govt debt/GDP: {_f1('government_debt_gdp_pct')} | S&P: {country.credit_rating_sp or 'N/A'}\n"
         f"Blocs: {', '.join(groups) if groups else 'UN member'}\n"
         f"Date: {date.today().strftime('%B %d, %Y')}\n"
     )
@@ -382,7 +405,7 @@ def _country_insight_text(country: Country, db) -> str | None:
          f"Then say what it implies for the next policy move. Close with the specific data release or CB meeting that will reset this trade."),
         # 1: external balance / FX
         (50, 65,
-         f"Open with {country.name}'s current account ({_f1('current_account_pct_gdp')} of GDP) and what it means for FX and capital flows — "
+         f"Open with {country.name}'s current account ({_f1('current_account_gdp_pct')} of GDP) and what it means for FX and capital flows — "
          f"name the pressure specifically (surplus = currency support, deficit = funding risk). "
          f"Then identify the most acute near-term FX risk. Close with the trade or policy event nearest to today that could reprice it."),
         # 2: growth / labour
@@ -393,7 +416,7 @@ def _country_insight_text(country: Country, db) -> str | None:
          f"Close with the next GDP or labour print to watch."),
         # 3: fiscal / sovereign credit
         (45, 60,
-         f"Open with {country.name}'s debt/GDP ({_f1('govt_debt_pct_gdp')}) and S&P rating ({country.credit_rating_sp or 'N/A'}) — "
+         f"Open with {country.name}'s debt/GDP ({_f1('government_debt_gdp_pct')}) and S&P rating ({country.credit_rating_sp or 'N/A'}) — "
          f"is the fiscal position sustainable at a real rate of {real_rate}? "
          f"State the bond market implication directly. Close with the next budget event, auction, or ratings review."),
     ]
@@ -401,13 +424,12 @@ def _country_insight_text(country: Country, db) -> str | None:
     min_w, max_w, focus = _COUNTRY_ANGLES[angle]
 
     prompt = (
-        f"Daily macro brief for {country.name} — {min_w}–{max_w} words. "
-        f"Audience: FX and EM equity traders who want numbers, not narrative.\n\n"
+        f"Daily macro brief — {country.name} — {min_w}–{max_w} words. "
+        f"Audience: FX and EM equity traders. No narrative — numbers only.\n\n"
         f"Data (World Bank / IMF):\n{facts}\n\n"
         f"{focus}\n\n"
-        f"Rules: active voice, every sentence has a specific number from the data. "
-        f"Banned words: navigates, robust, resilient, notable, landscape, amid, complex, dynamic, "
-        f"headwinds, tailwinds, uncertainty. "
+        f"Rules: opening sentence must name a specific rate, percentage, or dollar figure. "
+        f"Every sentence asserts — no 'could', 'may', 'might'. "
         f"No bullets. No headers. End with a period."
     )
     return _call_ai(prompt, min_words=min_w - 5, max_words=max_w + 10,
@@ -443,14 +465,17 @@ def _stock_summary_text(asset: Asset, db) -> str:
         ) if revs else "  - Geographic breakdown not yet available (SEC EDGAR pending)"
 
         prompt = (
-            f"Write a 75-100 word geographic revenue overview for {asset.name} ({asset.symbol}).\n\n"
+            f"Stock overview — {asset.name} ({asset.symbol}) — 75-100 words. Third-person. No title.\n\n"
             f"Data:\n"
             f"- Sector: {sector} | Industry: {asset.industry or 'N/A'} | HQ: {hq_name} | Cap: {cap_str}\n"
             f"- Geographic revenue (SEC EDGAR 10-K):\n{rev_lines}\n\n"
-            f"Pack in: company business + scale, top 2-3 revenue geographies with exact %, "
-            f"what the concentration means for investors (FX risk / tariff / geopolitical / growth). "
-            f"GS equity note style: third-person, precise, data-driven. "
-            f"No bullets. No headers. Every sentence has a number. End with a period."
+            f"3-4 sentences: "
+            f"(1) Company, sector, and market cap. "
+            f"(2) Top revenue geography with exact %, fiscal year, and what that concentration means "
+            f"(FX risk, tariff exposure, or growth lever — name the specific risk). "
+            f"(3) Second and/or third geography with % — state the diversification or concentration story. "
+            f"(4) One sentence on earnings sensitivity: what a macro shift in the top market means for EPS. "
+            f"GS equity note style. Every sentence has a number. No padding. End with a period."
         )
         ai = _call_ai(prompt, min_words=65, max_words=110, prefer_gemini=False)
         if ai:
@@ -478,8 +503,144 @@ def _stock_summary_text(asset: Asset, db) -> str:
                 f"This exposure links {asset.symbol}'s earnings to {top_c.name}'s GDP trajectory and bilateral trade flows."
             )
     else:
-        parts.append("Geographic revenue data is tracked on MetricsHour using SEC EDGAR 10-K and 10-Q filings.")
+        parts.append("Geographic revenue data is tracked using SEC EDGAR 10-K and 10-Q filings.")
     return " ".join(parts)
+
+
+# ── FX pair summary ────────────────────────────────────────────────────────────
+
+def _fx_summary_text(asset: Asset) -> str:
+    """Stable 75-100 word overview for an FX pair page."""
+    name = asset.name or asset.symbol
+    if _has_ai_key():
+        prompt = (
+            f"FX pair overview — {name} ({asset.symbol}) — 75-100 words. Third-person. No title.\n\n"
+            f"4 sentences:\n"
+            f"(1) Name the base and quote currencies, the exchange where this pair trades, and average daily volume in USD trillions.\n"
+            f"(2) The primary macro driver of this pair — name the specific central bank, interest rate differential, or economic indicator.\n"
+            f"(3) The 2 biggest fundamental factors that historically move this pair — name real events or data releases.\n"
+            f"(4) Which equity sectors or commodity markets are most exposed to moves in this currency pair and why.\n"
+            f"Every sentence has a number or institution name. No padding. End with a period."
+        )
+        ai = _call_ai(prompt, min_words=65, max_words=110, prefer_gemini=False)
+        if ai:
+            return ai
+    return (
+        f"{name} ({asset.symbol}) is a major foreign exchange pair traded on the global FX market. "
+        f"Price movements are driven by interest rate differentials, central bank policy, and macroeconomic data from both economies. "
+        f"Trade flows, bilateral economic links, and equity sector exposure for both currencies are tracked on MetricsHour."
+    )
+
+
+# ── Crypto summary ─────────────────────────────────────────────────────────────
+
+def _crypto_summary_text(asset: Asset) -> str:
+    """Stable 75-100 word overview for a cryptocurrency page."""
+    cap_str = _fmt_cap(asset.market_cap_usd)
+    if _has_ai_key():
+        prompt = (
+            f"Cryptocurrency overview — {asset.name} ({asset.symbol}) — 75-100 words. "
+            f"Third-person. No title.\n\n"
+            f"Market cap: {cap_str}\n\n"
+            f"4 sentences:\n"
+            f"(1) What it is — blockchain type, consensus mechanism, and current market cap.\n"
+            f"(2) Primary use case — DeFi, smart contracts, payments, store of value — name the specific application.\n"
+            f"(3) The 2 dominant price drivers — one on-chain metric, one macro/institutional factor — cite real figures.\n"
+            f"(4) Which listed equity sectors carry the most direct exposure to this asset's price moves.\n"
+            f"Every sentence has a number or proper noun. No padding. End with a period."
+        )
+        ai = _call_ai(prompt, min_words=65, max_words=110, prefer_gemini=False)
+        if ai:
+            return ai
+    cap_desc = f"a {cap_str} market cap" if cap_str != "N/A" else "a top"
+    return (
+        f"{asset.name} ({asset.symbol}) is {cap_desc} cryptocurrency traded on global digital asset exchanges. "
+        f"Price movements are driven by on-chain activity, institutional flows, and broader risk appetite. "
+        f"Macro exposure and correlated equity sectors are tracked alongside price history on MetricsHour."
+    )
+
+
+# ── ETF summary ────────────────────────────────────────────────────────────────
+
+def _etf_summary_text(asset: Asset) -> str:
+    """Stable 75-100 word overview for an ETF page."""
+    cap_str = _fmt_cap(asset.market_cap_usd)
+    sector = asset.sector or "broad market"
+    if _has_ai_key():
+        prompt = (
+            f"ETF overview — {asset.name} ({asset.symbol}) — 75-100 words. Third-person. No title.\n\n"
+            f"AUM: {cap_str} | Category: {sector}\n\n"
+            f"4 sentences:\n"
+            f"(1) What index or benchmark it tracks, AUM, and the issuer (e.g. iShares, Vanguard, SPDR).\n"
+            f"(2) Top 3 sector or geographic exposures with approximate weight percentages.\n"
+            f"(3) The primary macro factor — rate environment, credit spreads, or equity cycle — that drives this ETF's returns.\n"
+            f"(4) Which investors use it and why — e.g. portfolio hedging, core allocation, tactical exposure.\n"
+            f"Every sentence has a number or institution name. No padding. End with a period."
+        )
+        ai = _call_ai(prompt, min_words=65, max_words=110, prefer_gemini=False)
+        if ai:
+            return ai
+    aum_str = f"{cap_str} AUM" if cap_str != "N/A" else "significant AUM"
+    return (
+        f"{asset.name} ({asset.symbol}) is an exchange-traded fund with {aum_str} covering the {sector} market. "
+        f"It provides investors with diversified exposure to its underlying index or benchmark. "
+        f"Price performance, sector weightings, and macro sensitivity are tracked on MetricsHour."
+    )
+
+
+# ── Index summary ──────────────────────────────────────────────────────────────
+
+def _index_summary_text(asset: Asset) -> str:
+    """Stable 75-100 word overview for a market index page."""
+    sector = asset.sector or "broad market"
+    if _has_ai_key():
+        prompt = (
+            f"Market index overview — {asset.name} ({asset.symbol}) — 75-100 words. Third-person. No title.\n\n"
+            f"Category: {sector}\n\n"
+            f"4 sentences:\n"
+            f"(1) What it tracks — country/region, number of constituents, weighting methodology (market cap, price, equal).\n"
+            f"(2) Top 3 sector weights with approximate percentages.\n"
+            f"(3) The single most important macro driver for this index — name the rate, currency, or earnings cycle.\n"
+            f"(4) Which ETFs or futures contracts are the most liquid vehicles for gaining exposure to this index.\n"
+            f"Every sentence has a number or proper noun. No padding. End with a period."
+        )
+        ai = _call_ai(prompt, min_words=65, max_words=110, prefer_gemini=False)
+        if ai:
+            return ai
+    return (
+        f"{asset.name} ({asset.symbol}) is a {sector} market index tracking the performance of its constituent securities. "
+        f"Index movements are driven by earnings growth, interest rate expectations, and macro risk sentiment. "
+        f"Constituent performance, sector weightings, and country exposure are tracked on MetricsHour."
+    )
+
+
+# ── Bond summary ───────────────────────────────────────────────────────────────
+
+def _bond_summary_text(asset: Asset) -> str:
+    """Stable 75-100 word overview for a bond/bond ETF page."""
+    cap_str = _fmt_cap(asset.market_cap_usd)
+    sector = asset.sector or "fixed income"
+    if _has_ai_key():
+        prompt = (
+            f"Bond / fixed income overview — {asset.name} ({asset.symbol}) — 75-100 words. "
+            f"Third-person. No title.\n\n"
+            f"AUM/Value: {cap_str} | Category: {sector}\n\n"
+            f"4 sentences:\n"
+            f"(1) What it is — issuer type (government/corporate/EM), duration, and AUM or notional size.\n"
+            f"(2) The current yield or yield range and what it implies about credit risk or duration risk.\n"
+            f"(3) The primary macro driver — Fed policy, credit spreads, or EM sovereign risk — name a specific rate or spread.\n"
+            f"(4) Which equity sectors or FX markets are most sensitive to moves in this instrument.\n"
+            f"Every sentence has a number or institution name. No padding. End with a period."
+        )
+        ai = _call_ai(prompt, min_words=65, max_words=110, prefer_gemini=False)
+        if ai:
+            return ai
+    aum_str = f"{cap_str}" if cap_str != "N/A" else "large"
+    return (
+        f"{asset.name} ({asset.symbol}) is a {sector} instrument with {aum_str} in assets. "
+        f"Returns are driven by interest rate movements, credit spreads, and central bank policy. "
+        f"Duration risk, credit quality, and macro sensitivity are tracked on MetricsHour."
+    )
 
 
 # ── Stock daily insight ────────────────────────────────────────────────────────
@@ -561,16 +722,15 @@ def _stock_insight_text(asset: Asset, db) -> str | None:
     min_w, max_w, focus = _STOCK_ANGLES[angle]
 
     prompt = (
-        f"Daily stock brief for {asset.name} ({asset.symbol}) — {min_w}–{max_w} words. "
-        f"Audience: portfolio managers who want EPS numbers, not company description.\n\n"
+        f"Daily stock brief — {asset.name} ({asset.symbol}) — {min_w}–{max_w} words. "
+        f"Audience: portfolio managers who want EPS signals, not company description.\n\n"
         f"Stock: {asset.symbol} | {asset.sector or 'N/A'} | Cap: {_fmt_cap(asset.market_cap_usd)} | HQ: {hq.name if hq else 'N/A'}\n"
         f"{f'{hq_macro}' if hq_macro else ''}\n"
         f"Geographic revenue (SEC EDGAR):\n{rev_lines}\n"
         f"Date: {date.today().strftime('%B %d, %Y')}\n\n"
         f"{focus}\n\n"
-        f"Rules: use real percentages, active voice, every sentence has a number. "
-        f"Banned: navigates, robust, resilient, notable, significant, landscape, remains, "
-        f"amid, dynamic, headwinds, tailwinds, uncertainty, poised, well-positioned. "
+        f"Rules: opening sentence names a specific percentage or dollar figure. "
+        f"Every assertion is declarative — no 'could', 'may', 'might'. "
         f"No bullets. No headers. End with a period."
     )
     return _call_ai(prompt, min_words=min_w - 5, max_words=max_w + 10, prefer_gemini=False)
@@ -606,12 +766,17 @@ def _trade_summary_text(exporter: Country, importer: Country, trade: TradePair |
             f"Top export products: {', '.join(products) if products else 'N/A'}\n"
         )
         prompt = (
-            f"Write a 75-100 word overview of the {exporter.name}–{importer.name} trade corridor.\n\n"
+            f"Trade corridor overview — {exporter.name}–{importer.name} — 75-100 words. "
+            f"Third-person. No title.\n\n"
             f"Data:\n{facts}\n\n"
-            f"Pack in: flow scale + direction, trade balance with dollar amount, top export products, "
-            f"what the balance implies (dependency / leverage), one investor takeaway (FX or equity). "
-            f"Reuters/FT trade desk style: factual, every sentence has a number or country name. "
-            f"No bullets. No headers. End with a period."
+            f"3-4 sentences: "
+            f"(1) Export value, year, and trade balance in one sentence — state whether surplus or deficit "
+            f"and name which country holds the leverage. "
+            f"(2) Top 2-3 export products and what they reveal about the structural nature of this relationship "
+            f"(commodity dependence, manufactured goods, intermediate inputs). "
+            f"(3) Trade as % of exporter GDP — state the dependency risk or diversification. "
+            f"(4) One investor takeaway: which listed equity sector or FX pair is most exposed to a disruption. "
+            f"Every sentence has a number. No padding. End with a period."
         )
         # G20×G20 corridors → Gemini; all others → DeepSeek
         top_corridor = bool(exporter.is_g20 and importer.is_g20)
@@ -709,9 +874,9 @@ def _trade_insight_text(exporter: Country, importer: Country, trade: TradePair |
         f"Audience: FX traders and equity investors, not diplomats.\n\n"
         f"Data (UN Comtrade {trade.year}):\n{facts}\n\n"
         f"{focus}\n\n"
-        f"Rules: exact dollar values and percentages from the data, active voice. "
-        f"Banned: navigates, robust, resilient, notable, landscape, amid, complex, dynamic, "
-        f"uncertainty, headwinds, tailwinds, 'bilateral relations', 'strategic partnership'. "
+        f"Rules: opening sentence names a specific dollar value or percentage from the data. "
+        f"Every assertion is declarative — no 'could', 'may', 'might'. "
+        f"Banned phrases: 'bilateral relations', 'strategic partnership'. "
         f"No bullets. No headers. End with a period."
     )
     top_corridor = bool(exporter.is_g20 and importer.is_g20)
@@ -732,12 +897,17 @@ def _commodity_summary_text(asset: Asset) -> str:
 
     if _has_ai_key():
         prompt = (
-            f"Write a 75-100 word overview for {full_name} ({asset.symbol}), priced in {unit}.\n\n"
-            f"Pack in: what it is + global economic role, key producer/consumer regions, "
-            f"primary price drivers (supply + demand), equity sectors most exposed, "
-            f"exchange or benchmark standard. "
-            f"Commodity desk style: third-person, every sentence has a number or proper noun, no fluff. "
-            f"No bullets. No headers. End with a period."
+            f"Commodity overview — {full_name} ({asset.symbol}), priced in {unit} — 75-100 words. "
+            f"Third-person. No title.\n\n"
+            f"4 sentences:\n"
+            f"(1) What it is, where it trades (exchange name), and its global annual production or "
+            f"consumption volume (use a real figure in million tonnes, barrels, or bushels).\n"
+            f"(2) Top 2-3 producer or exporter nations with approximate market share percentages.\n"
+            f"(3) The 2 primary price drivers — one supply-side, one demand-side — name the specific "
+            f"industry sector or country that drives each.\n"
+            f"(4) Which listed equity sectors carry the most direct price exposure "
+            f"(e.g. energy majors, mining stocks, food processors) and why.\n"
+            f"Every sentence has a number or exchange/country name. No padding. End with a period."
         )
         ai = _call_ai(prompt, min_words=65, max_words=110, prefer_gemini=False)
         if ai:
@@ -806,14 +976,14 @@ def _commodity_insight_text(asset: Asset, db=None) -> str | None:
 
     prompt = (
         f"Daily commodity brief — {full_name} ({asset.symbol}) — {min_w}–{max_w} words. "
-        f"Audience: commodity traders tracking real price signals.\n\n"
+        f"Audience: commodity traders who need price signals, not background.\n\n"
         f"{asset.symbol} | {sector} | {unit}\n"
         f"{price_line}"
         f"Date: {date.today().strftime('%B %d, %Y')}\n\n"
         f"{focus}\n\n"
-        f"Rules: use the actual price, active voice, every sentence has a number or place name. "
-        f"Banned: navigates, robust, resilient, notable, landscape, amid, dynamic, "
-        f"uncertainty, headwinds, tailwinds, volatile, volatility (say 'price swings'). "
+        f"Rules: opening sentence names the current price or a specific supply/demand figure. "
+        f"Every assertion is declarative — no 'could', 'may', 'might'. "
+        f"Say 'price swings' not 'volatility'. "
         f"No bullets. No headers. End with a period."
     )
     return _call_ai(prompt, min_words=min_w - 5, max_words=max_w + 10, prefer_gemini=False)
@@ -1019,14 +1189,23 @@ def _upsert_feed_insight(
 
 
 def _insert_insight(db, entity_type: str, entity_code: str, text_: str):
-    """Insert a new insight row — keeps full history, one row per day per entity."""
+    """Upsert insight — one row per entity, updated each run."""
     now = datetime.now(timezone.utc)
-    db.add(PageInsight(
-        entity_type=entity_type,
-        entity_code=entity_code,
-        summary=text_,
-        generated_at=now,
-    ))
+    existing = (
+        db.query(PageInsight)
+        .filter(PageInsight.entity_type == entity_type, PageInsight.entity_code == entity_code)
+        .first()
+    )
+    if existing:
+        existing.summary = text_
+        existing.generated_at = now
+    else:
+        db.add(PageInsight(
+            entity_type=entity_type,
+            entity_code=entity_code,
+            summary=text_,
+            generated_at=now,
+        ))
 
 
 def _upsert_summary(db, entity_type: str, entity_code: str, text_: str):
@@ -1073,6 +1252,21 @@ def _summary_worker(args: dict) -> dict:
             imp = db.query(Country).filter(Country.id == args["imp_id"]).first()
             pair = db.query(TradePair).filter(TradePair.id == args["pair_id"]).first()
             text = _trade_summary_text(exp, imp, pair) if exp and imp else None
+        elif entity_type == "fx":
+            e = db.query(Asset).filter(Asset.id == args["id"]).first()
+            text = _fx_summary_text(e) if e else None
+        elif entity_type == "crypto":
+            e = db.query(Asset).filter(Asset.id == args["id"]).first()
+            text = _crypto_summary_text(e) if e else None
+        elif entity_type == "etf":
+            e = db.query(Asset).filter(Asset.id == args["id"]).first()
+            text = _etf_summary_text(e) if e else None
+        elif entity_type == "index":
+            e = db.query(Asset).filter(Asset.id == args["id"]).first()
+            text = _index_summary_text(e) if e else None
+        elif entity_type == "bond":
+            e = db.query(Asset).filter(Asset.id == args["id"]).first()
+            text = _bond_summary_text(e) if e else None
         else:
             text = None
         return {"entity_type": entity_type, "entity_code": entity_code, "text": text}
@@ -1122,6 +1316,15 @@ def generate_page_summaries(self):
                 work_items.append({"entity_type": "commodity", "entity_code": c.symbol, "id": c.id})
             else:
                 skipped += 1
+
+        # Non-commodity asset types — refresh weekly
+        for asset_type in ("fx", "crypto", "etf", "index", "bond"):
+            for a in db.query(Asset).filter(Asset.asset_type == asset_type).all():
+                existing = existing_map.get((asset_type, a.symbol))
+                if not existing or (datetime.now(timezone.utc) - existing.generated_at).days > 7:
+                    work_items.append({"entity_type": asset_type, "entity_code": a.symbol, "id": a.id})
+                else:
+                    skipped += 1
 
         seen_pairs: set[str] = set()
         for pair in db.query(TradePair).order_by(TradePair.year.desc()).all():
@@ -1529,6 +1732,19 @@ def refresh_entity_summary(self, entity_type: str, entity_code: str):
             ).first()
             if asset:
                 summary = _commodity_summary_text(asset)
+        elif entity_type == "fx":
+            asset = db.query(Asset).filter(Asset.symbol == entity_code.upper()).first()
+            if asset:
+                summary = _fx_summary_text(asset)
+        elif entity_type == "crypto":
+            asset = db.query(Asset).filter(Asset.symbol == entity_code.upper()).first()
+            if asset:
+                summary = _crypto_summary_text(asset)
+        elif entity_type in ("etf", "index", "bond"):
+            asset = db.query(Asset).filter(Asset.symbol == entity_code.upper()).first()
+            if asset:
+                fn = {"etf": _etf_summary_text, "index": _index_summary_text, "bond": _bond_summary_text}[entity_type]
+                summary = fn(asset)
         elif entity_type == "trade":
             codes = entity_code.upper().split("-")
             if len(codes) == 2:
