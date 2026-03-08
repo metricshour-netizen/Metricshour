@@ -4,6 +4,8 @@
     class="feed-card relative w-full h-full overflow-hidden select-none cursor-pointer"
     :class="{ 'is-high-importance': isHighImportance }"
     @click="handleCardClick"
+    @touchstart.passive="onTouchStart"
+    @touchend="onTouchEnd"
   >
 
     <!-- ── Background ──────────────────────────────────────────────── -->
@@ -168,6 +170,7 @@
       class="absolute right-3 z-20 flex flex-col items-center gap-4"
       style="bottom: max(5.5rem, calc(4rem + env(safe-area-inset-bottom)))"
       @click.stop
+      @touchend.stop
     >
       <!-- Save -->
       <button class="action-btn flex flex-col items-center gap-1" @click="handleSave">
@@ -798,7 +801,34 @@ function _cardDestination(): string {
   return `/feed/${props.event.id}`
 }
 
+// Touch tap detection — snap-scroll containers consume touch events on mobile,
+// so we detect taps via touchend directly instead of relying on click alone.
+let _touchStartX = 0
+let _touchStartY = 0
+let _touchStartTime = 0
+let _tappedByTouch = false
+
+function onTouchStart(e: TouchEvent) {
+  _touchStartX = e.touches[0].clientX
+  _touchStartY = e.touches[0].clientY
+  _touchStartTime = Date.now()
+  _tappedByTouch = false
+}
+
+function onTouchEnd(e: TouchEvent) {
+  const dx = Math.abs(e.changedTouches[0].clientX - _touchStartX)
+  const dy = Math.abs(e.changedTouches[0].clientY - _touchStartY)
+  const dt = Date.now() - _touchStartTime
+  // tap = minimal movement + quick duration
+  if (dx < 12 && dy < 12 && dt < 350) {
+    e.preventDefault() // block the subsequent click so we don't navigate twice
+    _tappedByTouch = true
+    router.push(_cardDestination())
+  }
+}
+
 function handleCardClick() {
+  if (_tappedByTouch) { _tappedByTouch = false; return } // already handled by touchend
   router.push(_cardDestination())
 }
 
