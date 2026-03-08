@@ -43,7 +43,7 @@ export default {
       return new Response(null, { status: 204, headers: corsHeaders() })
     }
 
-    // ── /og/* — forward to origin (R2 binding not yet enabled) ──────────────
+    // ── /og/* — forward to origin (R2 Worker binding needs Workers R2 Storage:Edit token)
     if (request.method === 'GET' && url.pathname.startsWith('/og/')) {
       return forwardToOrigin(request, env)
     }

@@ -2,7 +2,7 @@ name = "metricshour-api-cache"
 main = "src/index.js"
 compatibility_date = "2024-11-01"
 
-# KV: hot API response cache
+# KV: globally-consistent hot data (spotlight, feed)
 [[kv_namespaces]]
 binding = "API_CACHE"
 id = "f58822613dbd46e6b044b5ae8d5553aa"
