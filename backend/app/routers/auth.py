@@ -294,10 +294,19 @@ def google_authorize():
 
 
 @router.get("/google/callback")
-def google_callback(code: str, state: str, db: Session = Depends(get_db)):
+def google_callback(
+    db: Session = Depends(get_db),
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
+):
     """Exchange Google code for user info, create/find user, return JWT."""
     if not settings.google_client_id:
         raise HTTPException(status_code=501, detail="Google OAuth not configured")
+
+    # Google returned an error (user cancelled, access denied, etc.)
+    if error or not code or not state:
+        return RedirectResponse(f"{_FRONTEND_URL}/auth/callback?error={error or 'cancelled'}")
 
     # Validate state (CSRF) — delete immediately after reading to prevent replay
     cached = redis_json_get(f"oauth:state:{state}")

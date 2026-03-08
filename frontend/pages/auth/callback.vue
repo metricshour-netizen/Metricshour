@@ -27,6 +27,8 @@ const ERROR_MESSAGES: Record<string, string> = {
   token_exchange_failed: 'Could not connect to Google. Please try again.',
   userinfo_failed: 'Could not retrieve your Google account info.',
   no_email: 'No email address found in your Google account.',
+  cancelled: 'Sign-in was cancelled.',
+  access_denied: 'Access was denied. Please try again.',
 }
 
 onMounted(() => {
