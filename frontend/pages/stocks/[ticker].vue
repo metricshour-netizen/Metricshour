@@ -632,8 +632,8 @@ function buildStockFaqs(s: any) {
   const revs: any[] = s.country_revenues ?? []
   if (revs.length) {
     const topRev = revs[0]
-    push(`What is ${s.symbol}'s largest international market?`, `${s.name}'s largest market by revenue is ${topRev.country?.name ?? 'N/A'}, accounting for ${topRev.pct?.toFixed(1)}% of revenue (FY${topRev.fiscal_year}). Source: SEC EDGAR.`)
-    const countryList = revs.slice(0, 5).map((r: any) => `${r.country?.name} (${r.pct?.toFixed(1)}%)`).join(', ')
+    push(`What is ${s.symbol}'s largest international market?`, `${s.name}'s largest market by revenue is ${topRev.country?.name ?? 'N/A'}, accounting for ${topRev.revenue_pct?.toFixed(1)}% of revenue (FY${topRev.fiscal_year}). Source: SEC EDGAR.`)
+    const countryList = revs.slice(0, 5).map((r: any) => `${r.country?.name} (${r.revenue_pct?.toFixed(1)}%)`).join(', ')
     push(`What countries does ${s.symbol} earn revenue from?`, `${s.name} earns revenue from ${revs.length} tracked countries including: ${countryList}. Full geographic breakdown available on MetricsHour. Source: SEC EDGAR.`)
   }
   if (s.country?.name) {
