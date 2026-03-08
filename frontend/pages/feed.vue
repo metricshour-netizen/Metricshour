@@ -1,5 +1,5 @@
 <template>
-  <div class="feed-viewport fixed inset-0 bg-black" style="top: 48px;">
+  <div class="feed-viewport fixed inset-0 bg-black" style="top: 49px;">
     <h1 class="sr-only">Market Intelligence Feed — MetricsHour</h1>
 
     <!-- METRICSHOUR home tap zone — always accessible on feed -->
@@ -190,8 +190,8 @@ const activeAccent = computed(() => {
 
 // ── Card height ───────────────────────────────────────────────────────────────
 const cardStyle = computed(() => ({
-  height: 'calc(100vh - 48px)',
-  minHeight: 'calc(100vh - 48px)',
+  height: 'calc(100vh - 49px)',
+  minHeight: 'calc(100vh - 49px)',
 }))
 
 // ── Fetch ─────────────────────────────────────────────────────────────────────

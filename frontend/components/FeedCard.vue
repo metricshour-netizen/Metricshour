@@ -1,18 +1,10 @@
 <template>
   <article
     ref="cardEl"
-    class="feed-card relative w-full h-full overflow-hidden select-none"
+    class="feed-card relative w-full h-full overflow-hidden select-none cursor-pointer"
     :class="{ 'is-high-importance': isHighImportance }"
+    @click="handleCardClick"
   >
-    <!-- Full-card tap target — block <a> fills container, no inline gaps -->
-    <NuxtLink
-      :to="cardDest"
-      :external="cardDestIsExternal"
-      :target="cardDestIsExternal ? '_blank' : undefined"
-      :rel="cardDestIsExternal ? 'noopener noreferrer' : undefined"
-      class="card-link absolute inset-0 z-[15] cursor-pointer block"
-      :aria-label="`View ${typeLabel}: ${cleanTitle}`"
-    />
 
     <!-- ── Background ──────────────────────────────────────────────── -->
     <div class="absolute inset-0" :style="bgBase" />
@@ -244,6 +236,15 @@
               @click="shareFormat = 'story'"
             >📱 Story (9:16)</button>
           </div>
+
+          <!-- Share via native apps (iOS/Android) — Instagram, AirDrop, WhatsApp, etc. -->
+          <button
+            class="w-full py-3.5 rounded-xl text-sm font-bold mb-4 flex items-center justify-center gap-2 transition-all share-native-btn"
+            @click="nativeShare"
+          >
+            <span class="text-lg">📲</span>
+            {{ shareGenerating ? 'Generating image…' : 'Share via Apps (Instagram, AirDrop…)' }}
+          </button>
 
           <!-- Platform buttons -->
           <div class="grid grid-cols-2 gap-3 mb-4">
@@ -715,6 +716,9 @@ function _cardDestination(): string {
     if (cc) return `/countries/${cc}`
     if (props.event.source_url) return props.event.source_url  // external article, opens in new tab
   }
+  if (type === 'market_move' && data.symbol)
+    return `/stocks/${data.symbol.toUpperCase()}`
+  if (type === 'market_move') return '/markets'
   if (type === 'commodity' || type === 'commodity_move') return '/commodities'
   if (type === 'daily_insight') {
     const et = (data.entity_type || '').toLowerCase()
@@ -733,11 +737,22 @@ function _cardDestination(): string {
   return '/feed'  // stay on feed rather than 404
 }
 
-const cardDest = computed(() => _cardDestination() || '/feed')
+const cardDest = computed(() => _cardDestination())
 const cardDestIsExternal = computed(() => {
   const d = cardDest.value
   return d.startsWith('http://') || d.startsWith('https://')
 })
+
+// Article click handler — no <a> overlay needed, so no rendering artifacts
+function handleCardClick() {
+  const dest = cardDest.value
+  if (!dest || dest === '/feed') return
+  if (cardDestIsExternal.value) {
+    window.open(dest, '_blank', 'noopener,noreferrer')
+  } else {
+    navigateTo(dest)
+  }
+}
 
 // ── Share panel ───────────────────────────────────────────────────────────────
 const showSharePanel = ref(false)
@@ -817,8 +832,29 @@ async function downloadShareImage() {
   _triggerDownload(blob, `metricshour-${props.event.id}-${shareFormat.value}.png`)
 }
 
-function openShare(url: string) {
-  window.open(url, '_blank', 'noopener,noreferrer')
+// Native share sheet — opens all phone apps (Instagram, AirDrop, WhatsApp, etc.)
+async function nativeShare() {
+  const blob = await _getShareBlob()
+  if (!blob) return
+  const file = new File([blob], `metricshour-${props.event.id}-${shareFormat.value}.png`, { type: 'image/png' })
+  try {
+    const shareData: ShareData = { title: cleanTitle.value, text: cleanTitle.value, url: publicShareUrl }
+    if (navigator.canShare?.({ files: [file] })) {
+      await navigator.share({ ...shareData, files: [file] })
+    } else if (navigator.share) {
+      await navigator.share(shareData)
+    } else {
+      // Fallback: just download
+      _triggerDownload(blob, file.name)
+      _showToast('Image saved!')
+    }
+    showSharePanel.value = false
+  } catch (e) {
+    if ((e as Error).name !== 'AbortError') {
+      _triggerDownload(blob, file.name)
+      _showToast('Image saved — share from your photos!')
+    }
+  }
 }
 
 // ── Actions ───────────────────────────────────────────────────────────────────
@@ -897,15 +933,8 @@ onMounted(() => {
   50%       { opacity: 1; }
 }
 
-/* Prevent <a> default styles from showing as lines between cards */
-.card-link {
-  display: block;
-  text-decoration: none;
-  outline: none;
-  color: transparent;
-  -webkit-tap-highlight-color: transparent;
-}
-.card-link:focus { outline: none; }
+/* Prevent focus ring on article when clicked */
+.feed-card:focus { outline: none; }
 
 /* Share panel */
 .share-panel-overlay { background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); }
@@ -937,6 +966,11 @@ onMounted(() => {
 .share-slide-enter-from .share-panel, .share-slide-leave-to .share-panel { transform: translateY(100%); }
 .share-slide-enter-active .share-panel, .share-slide-leave-active .share-panel { transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
 
-/* action-btn for <a> links */
-a.action-btn { text-decoration: none; }
+.share-native-btn {
+  background: linear-gradient(135deg, rgba(16,185,129,0.2) 0%, rgba(52,211,153,0.1) 100%);
+  border: 1px solid rgba(16,185,129,0.4);
+  color: #34d399;
+}
+.share-native-btn:hover { background: linear-gradient(135deg, rgba(16,185,129,0.3) 0%, rgba(52,211,153,0.2) 100%); }
+.share-native-btn:active { transform: scale(0.98); }
 </style>
