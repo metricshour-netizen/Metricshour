@@ -252,5 +252,9 @@ function fmtDate(iso: string | null): string {
 useSeoMeta({
   title: 'Price Alerts — MetricsHour',
   description: 'Set price alerts on stocks, crypto, and commodities. Get instant Telegram and email notifications when assets hit your targets.',
+  robots: 'noindex, nofollow',
+})
+useHead({
+  link: [{ rel: 'canonical', href: 'https://metricshour.com/alerts/' }],
 })
 </script>

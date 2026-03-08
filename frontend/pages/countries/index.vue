@@ -124,7 +124,7 @@ useSeoMeta({
 })
 
 useHead({
-  link: [{ rel: 'canonical', href: 'https://metricshour.com/countries' }],
+  link: [{ rel: 'canonical', href: 'https://metricshour.com/countries/' }],
   script: [{
     type: 'application/ld+json',
     innerHTML: JSON.stringify({

@@ -54,7 +54,7 @@ useSeoMeta({
   title: 'Reset Password — MetricsHour',
   robots: 'noindex',
 })
-useHead({ link: [{ rel: 'canonical', href: 'https://metricshour.com/auth/reset-password' }] })
+useHead({ link: [{ rel: 'canonical', href: 'https://metricshour.com/auth/reset-password/' }] })
 
 const config = useRuntimeConfig()
 const route = useRoute()

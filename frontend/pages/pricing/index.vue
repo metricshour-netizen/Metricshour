@@ -126,7 +126,7 @@ useSeoMeta({
 })
 
 useHead({
-  link: [{ rel: 'canonical', href: 'https://metricshour.com/pricing' }],
+  link: [{ rel: 'canonical', href: 'https://metricshour.com/pricing/' }],
   script: [{
     type: 'application/ld+json',
     innerHTML: JSON.stringify({

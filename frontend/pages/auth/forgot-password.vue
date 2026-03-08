@@ -44,7 +44,7 @@ useSeoMeta({
   title: 'Forgot Password — MetricsHour',
   robots: 'noindex',
 })
-useHead({ link: [{ rel: 'canonical', href: 'https://metricshour.com/auth/forgot-password' }] })
+useHead({ link: [{ rel: 'canonical', href: 'https://metricshour.com/auth/forgot-password/' }] })
 
 const config = useRuntimeConfig()
 const email = ref('')

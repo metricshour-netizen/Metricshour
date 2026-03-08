@@ -451,7 +451,7 @@ function buildCountryFaqs(c: any) {
 }
 
 useHead(computed(() => ({
-  link: [{ rel: 'canonical', href: `https://metricshour.com/countries/${code}` }],
+  link: [{ rel: 'canonical', href: `https://metricshour.com/countries/${code}/` }],
   script: country.value ? [
     {
       type: 'application/ld+json',

@@ -2,14 +2,14 @@ const BASE = 'https://metricshour.com'
 const API = 'https://api.metricshour.com'
 
 const STATIC_ROUTES = [
-  { loc: `${BASE}/`,           priority: '1.0', changefreq: 'daily' },
-  { loc: `${BASE}/markets`,    priority: '0.9', changefreq: 'daily' },
-  { loc: `${BASE}/stocks`,     priority: '0.9', changefreq: 'daily' },
-  { loc: `${BASE}/countries`,  priority: '0.9', changefreq: 'weekly' },
-  { loc: `${BASE}/trade`,      priority: '0.9', changefreq: 'weekly' },
-  { loc: `${BASE}/commodities`, priority: '0.8', changefreq: 'daily' },
-  { loc: `${BASE}/pricing`,    priority: '0.7', changefreq: 'monthly' },
-  { loc: `${BASE}/feed`,       priority: '0.6', changefreq: 'daily' },
+  { loc: `${BASE}/`,             priority: '1.0', changefreq: 'daily' },
+  { loc: `${BASE}/markets/`,     priority: '0.9', changefreq: 'daily' },
+  { loc: `${BASE}/stocks/`,      priority: '0.9', changefreq: 'daily' },
+  { loc: `${BASE}/countries/`,   priority: '0.9', changefreq: 'weekly' },
+  { loc: `${BASE}/trade/`,       priority: '0.9', changefreq: 'weekly' },
+  { loc: `${BASE}/commodities/`, priority: '0.8', changefreq: 'daily' },
+  { loc: `${BASE}/pricing/`,     priority: '0.7', changefreq: 'monthly' },
+  { loc: `${BASE}/about/`,       priority: '0.6', changefreq: 'monthly' },
 ]
 
 function urlEntry(loc: string, priority: string, changefreq: string): string {
@@ -30,7 +30,7 @@ export default defineEventHandler(async () => {
     if (assets.status === 'fulfilled') {
       for (const a of assets.value) {
         if (a.symbol) {
-          entries.push(urlEntry(`${BASE}/stocks/${a.symbol}`, '0.7', 'daily'))
+          entries.push(urlEntry(`${BASE}/stocks/${a.symbol}/`, '0.7', 'daily'))
         }
       }
     }
@@ -38,7 +38,7 @@ export default defineEventHandler(async () => {
     if (countries.status === 'fulfilled') {
       for (const c of countries.value) {
         if (c.code) {
-          entries.push(urlEntry(`${BASE}/countries/${c.code.toLowerCase()}`, '0.7', 'weekly'))
+          entries.push(urlEntry(`${BASE}/countries/${c.code.toLowerCase()}/`, '0.7', 'weekly'))
         }
       }
     }
@@ -48,7 +48,7 @@ export default defineEventHandler(async () => {
         const exp = t.exporter?.code?.toLowerCase()
         const imp = t.importer?.code?.toLowerCase()
         if (exp && imp) {
-          entries.push(urlEntry(`${BASE}/trade/${exp}-${imp}`, '0.6', 'monthly'))
+          entries.push(urlEntry(`${BASE}/trade/${exp}-${imp}/`, '0.6', 'monthly'))
         }
       }
     }
@@ -56,7 +56,7 @@ export default defineEventHandler(async () => {
     if (blogPosts.status === 'fulfilled' && Array.isArray(blogPosts.value)) {
       for (const p of blogPosts.value) {
         if (p.slug) {
-          entries.push(urlEntry(`${BASE}/blog/${p.slug}`, '0.8', 'weekly'))
+          entries.push(urlEntry(`${BASE}/blog/${p.slug}/`, '0.8', 'weekly'))
         }
       }
     }

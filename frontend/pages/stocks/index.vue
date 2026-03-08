@@ -283,7 +283,7 @@ useSeoMeta({
 })
 
 useHead({
-  link: [{ rel: 'canonical', href: 'https://metricshour.com/stocks' }],
+  link: [{ rel: 'canonical', href: 'https://metricshour.com/stocks/' }],
   script: [{
     type: 'application/ld+json',
     innerHTML: JSON.stringify({

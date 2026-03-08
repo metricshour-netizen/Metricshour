@@ -158,5 +158,9 @@ function fmtAge(ts: string): string {
 useSeoMeta({
   title: 'Watchlist — MetricsHour',
   description: 'Your followed countries and assets — track prices and macro indicators in one place.',
+  robots: 'noindex, nofollow',
+})
+useHead({
+  link: [{ rel: 'canonical', href: 'https://metricshour.com/watchlist/' }],
 })
 </script>

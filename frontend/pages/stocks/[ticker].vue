@@ -603,7 +603,7 @@ function buildStockFaqs(s: any) {
 }
 
 useHead(computed(() => ({
-  link: [{ rel: 'canonical', href: `https://metricshour.com/stocks/${ticker}` }],
+  link: [{ rel: 'canonical', href: `https://metricshour.com/stocks/${ticker}/` }],
   script: stock.value ? [
     {
       type: 'application/ld+json',

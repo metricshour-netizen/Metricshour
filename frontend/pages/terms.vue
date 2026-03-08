@@ -119,6 +119,6 @@ useSeoMeta({
   twitterCard: 'summary_large_image',
 })
 useHead({
-  link: [{ rel: 'canonical', href: 'https://metricshour.com/terms' }],
+  link: [{ rel: 'canonical', href: 'https://metricshour.com/terms/' }],
 })
 </script>

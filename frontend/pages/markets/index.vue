@@ -551,7 +551,7 @@ useSeoMeta({
 })
 
 useHead({
-  link: [{ rel: 'canonical', href: 'https://metricshour.com/markets' }],
+  link: [{ rel: 'canonical', href: 'https://metricshour.com/markets/' }],
   script: [{
     type: 'application/ld+json',
     innerHTML: JSON.stringify({

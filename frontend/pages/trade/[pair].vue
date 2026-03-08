@@ -414,7 +414,7 @@ function buildTradeFaqs(d: any, tdVal: any) {
 }
 
 useHead(computed(() => ({
-  link: [{ rel: 'canonical', href: `https://metricshour.com/trade/${pair}` }],
+  link: [{ rel: 'canonical', href: `https://metricshour.com/trade/${pair}/` }],
   script: data.value ? [
     {
       type: 'application/ld+json',

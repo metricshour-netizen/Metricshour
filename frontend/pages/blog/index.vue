@@ -97,6 +97,6 @@ useSeoMeta({
 })
 
 useHead({
-  link: [{ rel: 'canonical', href: 'https://metricshour.com/blog' }],
+  link: [{ rel: 'canonical', href: 'https://metricshour.com/blog/' }],
 })
 </script>

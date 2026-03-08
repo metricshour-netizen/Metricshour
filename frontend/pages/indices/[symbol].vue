@@ -194,7 +194,7 @@ useSeoMeta({
 })
 
 useHead({
-  link: [{ rel: 'canonical', href: `https://metricshour.com/indices/${symbol}` }],
+  link: [{ rel: 'canonical', href: `https://metricshour.com/indices/${symbol}/` }],
   script: index.value ? [{
     type: 'application/ld+json',
     innerHTML: JSON.stringify({

@@ -313,7 +313,7 @@ useSeoMeta({
 })
 
 useHead({
-  link: [{ rel: 'canonical', href: 'https://metricshour.com/feed' }],
+  link: [{ rel: 'canonical', href: 'https://metricshour.com/feed/' }],
   script: [{
     type: 'application/ld+json',
     innerHTML: JSON.stringify({
