@@ -4,13 +4,13 @@
     class="feed-card relative w-full h-full overflow-hidden select-none"
     :class="{ 'is-high-importance': isHighImportance }"
   >
-    <!-- Full-card tap target — always a real <a> tag, iOS Safari handles natively -->
+    <!-- Full-card tap target — block <a> fills container, no inline gaps -->
     <NuxtLink
       :to="cardDest"
       :external="cardDestIsExternal"
       :target="cardDestIsExternal ? '_blank' : undefined"
       :rel="cardDestIsExternal ? 'noopener noreferrer' : undefined"
-      class="absolute inset-0 z-[15] cursor-pointer"
+      class="card-link absolute inset-0 z-[15] cursor-pointer block"
       :aria-label="`View ${typeLabel}: ${cleanTitle}`"
     />
 
@@ -184,40 +184,10 @@
         <span class="text-[10px] text-white/40">{{ isSaved ? 'Saved' : 'Save' }}</span>
       </button>
 
-      <!-- Share: X / Twitter -->
-      <button
-        class="action-btn flex flex-col items-center gap-1"
-        aria-label="Share on X"
-        @click.stop="openShare(`https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(cleanTitle)}`)"
-      >
-        <div class="w-11 h-11 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center transition-all hover:bg-sky-500/30">
-          <svg class="w-4 h-4 text-sky-400 fill-current" viewBox="0 0 24 24" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-        </div>
-        <span class="text-[10px] text-white/40">X</span>
-      </button>
-
-      <!-- Share: WhatsApp -->
-      <button
-        class="action-btn flex flex-col items-center gap-1"
-        aria-label="Share on WhatsApp"
-        @click.stop="openShare(`https://wa.me/?text=${encodeURIComponent(cleanTitle + ' ' + shareUrl)}`)"
-      >
-        <div class="w-11 h-11 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center transition-all hover:bg-emerald-500/30">
-          <svg class="w-4 h-4 text-emerald-400 fill-current" viewBox="0 0 24 24" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-        </div>
-        <span class="text-[10px] text-white/40">WhatsApp</span>
-      </button>
-
-      <!-- Share: LinkedIn -->
-      <button
-        class="action-btn flex flex-col items-center gap-1"
-        aria-label="Share on LinkedIn"
-        @click.stop="openShare(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`)"
-      >
-        <div class="w-11 h-11 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center transition-all hover:bg-sky-600/30">
-          <svg class="w-4 h-4 text-sky-300 fill-current" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
-        </div>
-        <span class="text-[10px] text-white/40">LinkedIn</span>
+      <!-- Share (opens share panel) -->
+      <button class="action-btn flex flex-col items-center gap-1" aria-label="Share" @click.stop="showSharePanel = true">
+        <div class="w-11 h-11 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center text-lg transition-all hover:bg-white/20">↗</div>
+        <span class="text-[10px] text-white/40">Share</span>
       </button>
 
       <!-- Copy link -->
@@ -245,6 +215,74 @@
 
   <!-- Auth modal — shown when unauthenticated user tries to save -->
   <AuthModal v-model="showAuthModal" />
+
+  <!-- Share panel (bottom sheet) -->
+  <Teleport to="body">
+    <Transition name="share-slide">
+      <div
+        v-if="showSharePanel"
+        class="share-panel-overlay fixed inset-0 z-[200] flex items-end justify-center"
+        @click.self="showSharePanel = false"
+      >
+        <div class="share-panel w-full max-w-lg rounded-t-2xl p-6 pb-8" style="padding-bottom: max(2rem, calc(1.5rem + env(safe-area-inset-bottom)))">
+          <!-- Header -->
+          <div class="flex items-center justify-between mb-5">
+            <h3 class="text-white font-bold text-base">Share Card</h3>
+            <button class="text-white/40 hover:text-white text-xl leading-none" @click="showSharePanel = false">✕</button>
+          </div>
+
+          <!-- Format selector -->
+          <div class="flex gap-3 mb-5">
+            <button
+              class="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all"
+              :class="shareFormat === 'post' ? 'bg-emerald-500 text-white' : 'bg-white/10 text-white/50'"
+              @click="shareFormat = 'post'"
+            >📸 Post (1:1)</button>
+            <button
+              class="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all"
+              :class="shareFormat === 'story' ? 'bg-emerald-500 text-white' : 'bg-white/10 text-white/50'"
+              @click="shareFormat = 'story'"
+            >📱 Story (9:16)</button>
+          </div>
+
+          <!-- Platform buttons -->
+          <div class="grid grid-cols-2 gap-3 mb-4">
+            <button class="share-platform-btn" @click="sharePlatform('twitter')">
+              <svg class="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+              <span>Share on X</span>
+            </button>
+            <button class="share-platform-btn" @click="sharePlatform('whatsapp')">
+              <svg class="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+              <span>WhatsApp</span>
+            </button>
+            <button class="share-platform-btn" @click="sharePlatform('linkedin')">
+              <svg class="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+              <span>LinkedIn</span>
+            </button>
+            <button class="share-platform-btn" @click="downloadShareImage">
+              <span class="text-base shrink-0">⬇</span>
+              <span>{{ shareGenerating ? 'Generating…' : 'Download Image' }}</span>
+            </button>
+          </div>
+
+          <!-- Copy link -->
+          <button
+            class="w-full py-3 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2"
+            :class="copied ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' : 'bg-white/5 text-white/60 border border-white/10'"
+            @click="handleCopy"
+          >
+            {{ copied ? '✓ Link copied!' : '🔗 Copy share link' }}
+          </button>
+
+          <!-- Generating indicator -->
+          <div v-if="shareGenerating" class="flex items-center justify-center gap-2 mt-3 text-xs text-white/30">
+            <div class="w-3 h-3 border border-white/30 border-t-white/70 rounded-full animate-spin" />
+            Generating {{ shareFormat }} image…
+          </div>
+        </div>
+      </div>
+    </Transition>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
@@ -699,6 +737,55 @@ const cardDestIsExternal = computed(() => {
   return d.startsWith('http://') || d.startsWith('https://')
 })
 
+// ── Share panel ───────────────────────────────────────────────────────────────
+const showSharePanel = ref(false)
+const shareFormat = ref<'post' | 'story'>('post')
+const shareGenerating = ref(false)
+
+async function _getShareBlob(): Promise<Blob | null> {
+  shareGenerating.value = true
+  try {
+    return await generateImage(shareFormat.value)
+  } catch {
+    return null
+  } finally {
+    shareGenerating.value = false
+  }
+}
+
+async function sharePlatform(platform: 'twitter' | 'whatsapp' | 'linkedin') {
+  // Try Web Share API with image first (mobile)
+  const blob = await _getShareBlob()
+  if (blob) {
+    const file = new File([blob], `metricshour-${props.event.id}.png`, { type: 'image/png' })
+    if (navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: cleanTitle.value, url: shareUrl.value })
+        showSharePanel.value = false
+        return
+      } catch { /* user cancelled or not supported */ }
+    }
+  }
+  // Fallback: open platform share URL directly
+  const urls: Record<string, string> = {
+    twitter:  `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl.value)}&text=${encodeURIComponent(cleanTitle.value)}`,
+    whatsapp: `https://wa.me/?text=${encodeURIComponent(cleanTitle.value + ' ' + shareUrl.value)}`,
+    linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl.value)}`,
+  }
+  window.open(urls[platform], '_blank', 'noopener,noreferrer')
+  showSharePanel.value = false
+}
+
+async function downloadShareImage() {
+  const blob = await _getShareBlob()
+  if (!blob) return
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = `metricshour-${props.event.id}-${shareFormat.value}.png`
+  a.click()
+  URL.revokeObjectURL(a.href)
+}
+
 function openShare(url: string) {
   window.open(url, '_blank', 'noopener,noreferrer')
 }
@@ -778,6 +865,46 @@ onMounted(() => {
   0%, 100% { opacity: 0; }
   50%       { opacity: 1; }
 }
+
+/* Prevent <a> default styles from showing as lines between cards */
+.card-link {
+  display: block;
+  text-decoration: none;
+  outline: none;
+  color: transparent;
+  -webkit-tap-highlight-color: transparent;
+}
+.card-link:focus { outline: none; }
+
+/* Share panel */
+.share-panel-overlay { background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); }
+.share-panel {
+  background: #111;
+  border-top: 1px solid rgba(255,255,255,0.1);
+}
+
+.share-platform-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+  color: rgba(255,255,255,0.7);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.share-platform-btn:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.2); }
+.share-platform-btn:active { transform: scale(0.97); }
+
+.share-slide-enter-active, .share-slide-leave-active { transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.share-slide-enter-from, .share-slide-leave-to { opacity: 0; }
+.share-slide-enter-from .share-panel, .share-slide-leave-to .share-panel { transform: translateY(100%); }
+.share-slide-enter-active .share-panel, .share-slide-leave-active .share-panel { transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
 
 /* action-btn for <a> links */
 a.action-btn { text-decoration: none; }
