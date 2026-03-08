@@ -138,7 +138,7 @@ def _call_gemini(prompt: str, min_words: int = 55, max_words: int = 110) -> str 
         from google.genai import types as genai_types
         client = genai.Client(api_key=api_key)
         r = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-2.0-flash-lite",
             contents=prompt,
             config=genai_types.GenerateContentConfig(
                 system_instruction=_SHARED_SYSTEM,
