@@ -503,6 +503,30 @@ useHead(computed(() => ({
         mainEntity: buildCountryFaqs(country.value),
       }),
     },
+    {
+      type: 'application/ld+json',
+      innerHTML: JSON.stringify((() => {
+        const ind = (country.value as any).indicators ?? {}
+        const measured: any[] = []
+        if (ind.gdp_usd != null)           measured.push({ '@type': 'PropertyValue', name: 'GDP (USD)', value: String(ind.gdp_usd), unitCode: 'USD' })
+        if (ind.gdp_growth_pct != null)    measured.push({ '@type': 'PropertyValue', name: 'GDP Growth Rate', value: `${ind.gdp_growth_pct}%` })
+        if (ind.inflation_pct != null)     measured.push({ '@type': 'PropertyValue', name: 'Inflation Rate', value: `${ind.inflation_pct}%` })
+        if (ind.interest_rate_pct != null) measured.push({ '@type': 'PropertyValue', name: 'Central Bank Interest Rate', value: `${ind.interest_rate_pct}%` })
+        if (ind.unemployment_pct != null)  measured.push({ '@type': 'PropertyValue', name: 'Unemployment Rate', value: `${ind.unemployment_pct}%` })
+        if (ind.government_debt_gdp_pct != null) measured.push({ '@type': 'PropertyValue', name: 'Government Debt (% GDP)', value: `${ind.government_debt_gdp_pct}%` })
+        return {
+          '@context': 'https://schema.org',
+          '@type': 'Dataset',
+          name: `${country.value.name} Economic Indicators`,
+          description: `GDP, inflation, interest rates and 80+ macro indicators for ${country.value.name}. Source: World Bank, IMF, UN Comtrade.`,
+          url: `https://metricshour.com/countries/${code}`,
+          creator: { '@type': 'Organization', name: 'MetricsHour', url: 'https://metricshour.com' },
+          keywords: [`${country.value.name} GDP`, `${country.value.name} inflation`, `${country.value.name} economy`, `${country.value.name} macro data`],
+          temporalCoverage: '2015/..',
+          variableMeasured: measured,
+        }
+      })()),
+    },
   ] : [],
 })))
 

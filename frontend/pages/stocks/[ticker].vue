@@ -675,6 +675,29 @@ useHead(computed(() => ({
         mainEntity: buildStockFaqs(stock.value),
       }),
     }] : []),
+    ...((stock.value as any).country_revenues?.length ? [{
+      type: 'application/ld+json',
+      innerHTML: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'Dataset',
+        name: `${(stock.value as any).symbol} Geographic Revenue Breakdown`,
+        description: `${(stock.value as any).name} revenue by country from SEC EDGAR 10-K FY${(stock.value as any).country_revenues[0]?.fiscal_year}.`,
+        url: `https://metricshour.com/stocks/${ticker}`,
+        creator: { '@type': 'Organization', name: 'MetricsHour', url: 'https://metricshour.com' },
+        keywords: [
+          `${(stock.value as any).symbol} geographic revenue`,
+          `${(stock.value as any).symbol} revenue by country`,
+          `${(stock.value as any).name} international revenue`,
+          `${(stock.value as any).symbol} China revenue`,
+        ],
+        variableMeasured: ((stock.value as any).country_revenues as any[]).slice(0, 10).map((r: any) => ({
+          '@type': 'PropertyValue',
+          name: `Revenue from ${r.country?.name}`,
+          value: `${(r.revenue_pct as number)?.toFixed(1)}%`,
+          description: `${(stock.value as any).symbol} earns ${(r.revenue_pct as number)?.toFixed(1)}% of revenue from ${r.country?.name} (FY${r.fiscal_year})`,
+        })),
+      }),
+    }] : []),
   ] : [],
 })))
 </script>
