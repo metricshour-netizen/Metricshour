@@ -49,17 +49,17 @@
                 {{ apiMap[c.symbol]?.name ?? c.name }}
               </div>
               <div class="text-[10px] text-gray-600 mb-2">{{ group.name }}</div>
-              <div v-if="apiMap[c.symbol]?.price" class="mt-auto">
-                <div class="text-base font-extrabold text-white tabular-nums">${{ fmtPrice(apiMap[c.symbol].price.close) }}</div>
-                <div class="text-[10px] mt-0.5 flex items-center gap-1"
-                  :class="apiMap[c.symbol].price.timestamp ? 'text-emerald-700' : 'text-gray-600'">
-                  <span class="w-1 h-1 rounded-full inline-block"
-                    :class="apiMap[c.symbol].price.timestamp ? 'bg-emerald-600' : 'bg-gray-600'"></span>
-                  {{ fmtTs(apiMap[c.symbol].price.timestamp) }}
-                </div>
-              </div>
-              <div v-else class="text-xs text-gray-600 mt-2 flex items-center gap-1">
-                <span class="w-1.5 h-1.5 rounded-full bg-yellow-700 inline-block"></span> Pending feed
+              <div class="mt-auto">
+                <template v-if="apiMap[c.symbol]?.price?.close != null">
+                  <div class="text-base font-extrabold text-white tabular-nums">${{ fmtPrice(apiMap[c.symbol].price.close) }}</div>
+                  <div class="text-[10px] mt-0.5 flex items-center gap-1"
+                    :class="apiMap[c.symbol].price.timestamp ? 'text-emerald-700' : 'text-gray-600'">
+                    <span class="w-1 h-1 rounded-full inline-block"
+                      :class="apiMap[c.symbol].price.timestamp ? 'bg-emerald-600' : 'bg-gray-600'"></span>
+                    {{ fmtTs(apiMap[c.symbol].price.timestamp) }}
+                  </div>
+                </template>
+                <div v-else class="text-base font-extrabold text-gray-700 tabular-nums">—</div>
               </div>
             </NuxtLink>
           </div>

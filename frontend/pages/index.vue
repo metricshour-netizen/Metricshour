@@ -310,7 +310,8 @@
               <span class="text-[10px] text-gray-700">{{ s.sector }}</span>
             </div>
             <div class="text-right shrink-0">
-              <div class="text-sm font-semibold text-white tabular-nums font-mono">{{ fmtCap(s.market_cap_usd) }}</div>
+              <div class="text-sm font-semibold tabular-nums font-mono" :class="s.price?.close ? 'text-white' : 'text-gray-600'">{{ s.price?.close ? fmtTickerPrice(s.price.close) : '—' }}</div>
+              <div class="text-[10px] text-gray-600 tabular-nums font-mono mt-0.5">{{ fmtCap(s.market_cap_usd) }}</div>
             </div>
           </NuxtLink>
         </div>
