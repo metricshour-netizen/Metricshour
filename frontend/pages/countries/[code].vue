@@ -309,13 +309,14 @@
 <script setup lang="ts">
 const route = useRoute()
 const { get, post, del } = useApi()
+const { r2Fetch } = useR2Fetch()
 const { isLoggedIn } = useAuth()
 
 const code = (route.params.code as string).toLowerCase()
 
 const { data: country, pending, error } = useAsyncData(
   `country-${code}`,
-  () => get<any>(`/api/countries/${code}`).catch(() => null),
+  () => r2Fetch<any>(`snapshots/countries/${code}.json`, `/api/countries/${code}`).catch(() => null),
 )
 
 // Lazy-load supplementary data (non-blocking)

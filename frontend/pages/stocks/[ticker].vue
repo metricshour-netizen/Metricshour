@@ -317,6 +317,7 @@
 <script setup lang="ts">
 const route = useRoute()
 const { get, post, del } = useApi()
+const { r2Fetch } = useR2Fetch()
 const { isLoggedIn } = useAuth()
 
 const ticker = (route.params.ticker as string).toUpperCase()
@@ -329,7 +330,7 @@ if (INDEX_SYMBOLS.has(ticker)) {
 
 const { data: stock, pending, error } = useAsyncData(
   `stock-${ticker}`,
-  () => get<any>(`/api/assets/${ticker}`).catch(() => null),
+  () => r2Fetch<any>(`snapshots/stocks/${ticker.toLowerCase()}.json`, `/api/assets/${ticker}`).catch(() => null),
 )
 
 // entity type depends on asset_type (commodity vs stock)

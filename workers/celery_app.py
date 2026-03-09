@@ -62,6 +62,7 @@ app = Celery('metricshour', include=[
     'tasks.sitemap_deploy',
     'tasks.central_bank_rates',
     'tasks.backfill',
+    'tasks.r2_snapshots',
 ])
 
 # Upstash Redis uses TLS (rediss://); Celery requires ssl_cert_reqs to be explicit.
@@ -78,6 +79,11 @@ app.conf.update(
     timezone='UTC',
     enable_utc=True,
     broker_connection_retry_on_startup=True,
+    # Ensure tasks are re-queued if worker is killed mid-execution (SIGTERM/OOM)
+    task_acks_late=True,
+    task_reject_on_worker_lost=True,
+    # One task at a time per worker process — prevents pre-fetched tasks from being lost
+    worker_prefetch_multiplier=1,
     beat_schedule={
         'crypto-every-2min': {
             'task': 'tasks.crypto.fetch_crypto_prices',
@@ -111,9 +117,11 @@ app.conf.update(
             'task': 'tasks.sitemap_deploy.trigger_pages_deploy',
             'schedule': crontab(hour=4, minute=0),
         },
-        'page-summaries-daily-2am': {
+        # Summaries only regenerate when underlying data changes (staleness checks inside).
+        # Weekly beat is a safety net — most entities will be skipped by the staleness checks.
+        'page-summaries-weekly-sunday-3am': {
             'task': 'tasks.summaries.generate_page_summaries',
-            'schedule': crontab(hour=2, minute=0),
+            'schedule': crontab(hour=3, minute=0, day_of_week=0),  # Sunday 3am
         },
         # Staggered insight batches — each type runs on its own schedule so page
         # update timestamps are spread throughout the day (not bulk-stamped at once).
@@ -198,6 +206,12 @@ app.conf.update(
         'price-backfill-monthly': {
             'task': 'tasks.backfill.backfill_price_history',
             'schedule': crontab(hour=1, minute=0, day_of_month=2),
+        },
+
+        # R2 JSON snapshots — daily at 7am (after World Bank 6am + ECB 6:30am complete)
+        'r2-snapshots-daily-7am': {
+            'task': 'tasks.r2_snapshots.write_r2_snapshots',
+            'schedule': crontab(hour=7, minute=0),
         },
 
         # WITS trade matrix: full annual refresh — Jan 15 at 2am

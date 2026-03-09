@@ -285,6 +285,7 @@
 <script setup lang="ts">
 const route = useRoute()
 const { get, post } = useApi()
+const { r2Fetch } = useR2Fetch()
 
 const pair = route.params.pair as string
 const parts = pair.split('-')
@@ -293,7 +294,7 @@ const codeB = parts[1] ?? ''
 
 const { data, pending, error } = useAsyncData(
   `trade-${pair}`,
-  () => get<any>(`/api/trade/${codeA}/${codeB}`).catch(() => null),
+  () => r2Fetch<any>(`snapshots/trade/${pair.toLowerCase()}.json`, `/api/trade/${codeA}/${codeB}`).catch(() => null),
 )
 
 const { data: pageSummary } = useAsyncData(
