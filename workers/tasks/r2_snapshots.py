@@ -195,11 +195,75 @@ def _write_country_snapshots(db) -> int:
         if c.is_oecd: groupings.append("OECD")
         if c.is_commonwealth: groupings.append("Commonwealth")
 
+        # Trade partners
+        trade_pairs = db.execute(
+            select(TradePair)
+            .where(or_(TradePair.exporter_id == c.id, TradePair.importer_id == c.id))
+            .order_by(TradePair.trade_value_usd.desc())
+            .limit(20)
+        ).scalars().all()
+        partner_ids = {(p.importer_id if p.exporter_id == c.id else p.exporter_id) for p in trade_pairs}
+        partner_countries: dict[int, Country] = {}
+        if partner_ids:
+            rows = db.execute(select(Country).where(Country.id.in_(partner_ids))).scalars().all()
+            partner_countries = {pc.id: pc for pc in rows}
+        trade_partners = []
+        seen_partners: set[str] = set()
+        for p in trade_pairs:
+            is_exp = p.exporter_id == c.id
+            pid = p.importer_id if is_exp else p.exporter_id
+            pc = partner_countries.get(pid)
+            if not pc or pc.code in seen_partners:
+                continue
+            seen_partners.add(pc.code)
+            exports = p.exports_usd if is_exp else p.imports_usd
+            imports = p.imports_usd if is_exp else p.exports_usd
+            trade_partners.append({
+                "partner": {"code": pc.code, "name": pc.name, "flag": pc.flag_emoji},
+                "exports_usd": exports,
+                "imports_usd": imports,
+                "balance_usd": (exports or 0) - (imports or 0),
+                "trade_value_usd": p.trade_value_usd,
+            })
+
+        # Stocks with revenue from this country
+        rev_rows = db.execute(
+            select(StockCountryRevenue, Asset)
+            .join(Asset, StockCountryRevenue.asset_id == Asset.id)
+            .where(StockCountryRevenue.country_id == c.id)
+            .order_by(StockCountryRevenue.fiscal_year.desc(), StockCountryRevenue.revenue_pct.desc())
+        ).all()
+        seen_assets: set[int] = set()
+        exposed_stocks = []
+        for rev, asset in rev_rows:
+            if asset.id not in seen_assets:
+                seen_assets.add(asset.id)
+                exposed_stocks.append({
+                    "symbol": asset.symbol,
+                    "name": asset.name,
+                    "sector": asset.sector,
+                    "market_cap_usd": asset.market_cap_usd,
+                    "revenue_pct": rev.revenue_pct,
+                    "fiscal_year": rev.fiscal_year,
+                })
+
+        # Stocks headquartered in this country
+        local_stock_rows = db.execute(
+            select(Asset)
+            .where(Asset.country_id == c.id, Asset.asset_type == AssetType.stock, Asset.is_active == True)
+            .order_by(Asset.market_cap_usd.desc().nullslast())
+            .limit(20)
+        ).scalars().all()
+        local_stocks = [{"symbol": a.symbol, "name": a.name, "sector": a.sector, "market_cap_usd": a.market_cap_usd} for a in local_stock_rows]
+
         data = {
             **_country_summary(c),
             "groupings": groupings,
             "indicators": latest,
             "indicator_years": latest_years,
+            "trade_partners": trade_partners,
+            "exposed_stocks": exposed_stocks,
+            "local_stocks": local_stocks,
             "generated_at": datetime.now(timezone.utc).isoformat(),
         }
         _upload(f"snapshots/countries/{c.code.lower()}.json", data)

@@ -5,9 +5,9 @@
     </NuxtLink>
 
     <div v-if="pending" class="text-gray-500 text-sm">Loading...</div>
-    <div v-else-if="error" class="text-red-400 text-sm">Country not found.</div>
+    <div v-else-if="error || !country" class="text-red-400 text-sm">Country not found.</div>
 
-    <template v-else-if="country">
+    <template v-else>
       <!-- Header -->
       <div class="mb-8">
         <div class="flex items-start gap-4 mb-3">
@@ -319,25 +319,20 @@ const { data: country, pending, error } = useAsyncData(
   () => r2Fetch<any>(`snapshots/countries/${code}.json`, `/api/countries/${code}`).catch(() => null),
 )
 
-// Lazy-load supplementary data (non-blocking)
+// Trade partners, exposed stocks, and local stocks are bundled in the R2 snapshot.
+// Use computed to extract them — no separate API call needed.
+const tradePartners = computed(() => country.value?.trade_partners ?? null)
+const tradePartnersLoading = computed(() => pending.value)
+const exposedStocks = computed(() => country.value?.exposed_stocks ?? null)
+const stocksLoading = computed(() => pending.value)
+const localStocks = computed(() => country.value?.local_stocks ?? null)
+const localStocksLoading = computed(() => pending.value)
+
+// Charts load client-side only (large data, not needed for initial render)
 const { data: gdpHistory, pending: gdpLoading } = useAsyncData(
   `gdp-history-${code}`,
-  () => get<any[]>(`/api/countries/${code}/gdp-history`),
-)
-
-const { data: tradePartners, pending: tradePartnersLoading } = useAsyncData(
-  `trade-partners-${code}`,
-  () => get<any[]>(`/api/countries/${code}/trade-partners`),
-)
-
-const { data: exposedStocks, pending: stocksLoading } = useAsyncData(
-  `stocks-${code}`,
-  () => get<any[]>(`/api/countries/${code}/stocks`),
-)
-
-const { data: localStocks, pending: localStocksLoading } = useAsyncData(
-  `local-stocks-${code}`,
-  () => get<any[]>('/api/assets', { type: 'stock', country_code: code.toUpperCase() }).catch(() => []),
+  () => get<any[]>(`/api/countries/${code}/gdp-history`).catch(() => []),
+  { server: false },
 )
 
 const { data: timeseries, pending: timeseriesLoading } = useAsyncData(
@@ -345,6 +340,7 @@ const { data: timeseries, pending: timeseriesLoading } = useAsyncData(
   () => get<Record<string, any[]>>(`/api/countries/${code}/timeseries`, {
     keys: 'gdp_growth_pct,inflation_pct,interest_rate_pct,unemployment_pct',
   }).catch(() => ({})),
+  { server: false },
 )
 
 const { data: pageSummary } = useAsyncData(
