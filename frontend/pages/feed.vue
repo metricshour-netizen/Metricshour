@@ -1,6 +1,11 @@
 <template>
   <div class="feed-viewport fixed inset-0 bg-black z-10" style="top: 48px;">
     <h1 class="sr-only">Market Intelligence Feed — MetricsHour</h1>
+    <div class="sr-only">
+      <p>MetricsHour delivers a real-time market intelligence feed covering global stocks, macro economic events, bilateral trade flows, commodity prices, and central bank decisions. Each card surfaces a data-driven insight drawn from SEC EDGAR filings, World Bank indicators, IMF reports, and UN Comtrade statistics.</p>
+      <p>The feed ranks events by market importance — earnings releases, GDP revisions, inflation prints, interest rate decisions, and geopolitical trade shifts. Registered users receive a personalised For You feed tailored to the countries, stocks, and sectors they follow.</p>
+      <p>Coverage includes G7 and G20 economies, 196 countries, 130 assets across stocks, crypto, commodities, FX pairs, and ETFs. Data refreshes continuously throughout the trading day. Each insight links to the full macro dashboard for the relevant country or stock page.</p>
+    </div>
 
     <!-- METRICSHOUR home tap zone — always accessible on feed -->
     <NuxtLink
