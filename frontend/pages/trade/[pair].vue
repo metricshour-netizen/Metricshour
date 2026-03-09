@@ -265,7 +265,7 @@
           <NuxtLink
             v-for="s in corridorStocks"
             :key="s.symbol"
-            :to="`/stocks/${s.symbol}`"
+            :to="`/stocks/${s.symbol.toLowerCase()}`"
             class="flex items-center gap-2 bg-[#0d1117] border border-[#1f2937] hover:border-emerald-700 rounded-lg px-3 py-2 transition-colors group"
           >
             <span class="text-xs font-mono font-bold text-emerald-400 group-hover:text-emerald-300">{{ s.symbol }}</span>
@@ -417,9 +417,11 @@ useSeoMeta({
   description: _seoDesc,
   ogTitle: _seoTitle,
   ogDescription: _seoDesc,
-  ogUrl: `https://metricshour.com/trade/${pair}`,
+  ogUrl: computed(() => `https://metricshour.com/trade/${data.value?.canonical_pair ?? pair}/`),
   ogType: 'website',
   ogImage: ogImageUrl,
+  ogImageWidth: '1200',
+  ogImageHeight: '630',
   twitterTitle: _seoTitle,
   twitterDescription: _seoDesc,
   twitterImage: ogImageUrl,
@@ -463,7 +465,7 @@ useHead(computed(() => ({
         '@context': 'https://schema.org',
         '@type': 'WebPage',
         name: `${data.value.exporter.name}–${data.value.importer.name} Trade — MetricsHour`,
-        url: `https://metricshour.com/trade/${pair}`,
+        url: `https://metricshour.com/trade/${data.value?.canonical_pair ?? pair}/`,
         description: `${data.value.exporter.name} and ${data.value.importer.name} bilateral trade flows, top products, and GDP dependency. Source: UN Comtrade.`,
         speakable: {
           '@type': 'SpeakableSpecification',
@@ -473,8 +475,8 @@ useHead(computed(() => ({
           '@type': 'BreadcrumbList',
           itemListElement: [
             { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://metricshour.com' },
-            { '@type': 'ListItem', position: 2, name: 'Trade', item: 'https://metricshour.com/trade' },
-            { '@type': 'ListItem', position: 3, name: `${data.value.exporter.name}–${data.value.importer.name}`, item: `https://metricshour.com/trade/${pair}` },
+            { '@type': 'ListItem', position: 2, name: 'Trade', item: 'https://metricshour.com/trade/' },
+            { '@type': 'ListItem', position: 3, name: `${data.value.exporter.name}–${data.value.importer.name}`, item: `https://metricshour.com/trade/${data.value.canonical_pair}/` },
           ],
         },
       }),

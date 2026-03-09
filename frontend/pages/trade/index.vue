@@ -100,19 +100,20 @@ const features = [
 ]
 
 useSeoMeta({
-  title: 'Bilateral Trade — MetricsHour',
+  title: 'Bilateral Trade Flows: 380 Country Pairs — MetricsHour',
   description: 'Trade flows between 380 country pairs. Exports, imports, top products, and GDP dependency ratios sourced from UN Comtrade.',
-  ogTitle: 'Bilateral Trade — MetricsHour',
+  ogTitle: 'Bilateral Trade Flows: 380 Country Pairs — MetricsHour',
   ogDescription: 'Trade flows between 380 country pairs. Exports, imports, top products, and GDP dependency ratios sourced from UN Comtrade.',
-  ogUrl: 'https://metricshour.com/trade',
+  ogUrl: 'https://metricshour.com/trade/',
   ogType: 'website',
   ogImage: 'https://api.metricshour.com/og/section/trade.png',
   ogImageWidth: '1200',
   ogImageHeight: '630',
-  twitterTitle: 'Bilateral Trade — MetricsHour',
+  twitterTitle: 'Bilateral Trade Flows: 380 Country Pairs — MetricsHour',
   twitterDescription: 'Trade flows between 380 country pairs. Exports, imports, top products, and GDP dependency ratios sourced from UN Comtrade.',
   twitterImage: 'https://api.metricshour.com/og/section/trade.png',
   twitterCard: 'summary_large_image',
+  robots: 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1',
 })
 
 useHead({

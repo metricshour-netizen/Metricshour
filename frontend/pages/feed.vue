@@ -297,16 +297,16 @@ watch(isLoggedIn, async (v) => {
 })
 
 useSeoMeta({
-  title: computed(() => isLoggedIn.value ? 'For You — MetricsHour' : 'Feed — MetricsHour'),
+  title: computed(() => isLoggedIn.value ? 'Market Intelligence Feed: Daily Insights for You — MetricsHour' : 'Market Intelligence Feed: Daily Insights — MetricsHour'),
   description: 'Personalised market intelligence feed. Price moves, macro releases, and trade updates ranked for you.',
-  ogTitle: 'Feed — MetricsHour',
+  ogTitle: 'Market Intelligence Feed: Daily Insights — MetricsHour',
   ogDescription: 'Personalised market intelligence feed. Price moves, macro releases, and trade updates ranked for you.',
   ogUrl: 'https://metricshour.com/feed',
   ogType: 'website',
   ogImage: 'https://api.metricshour.com/og/section/feed.png',
   ogImageWidth: '1200',
   ogImageHeight: '630',
-  twitterTitle: 'Feed — MetricsHour',
+  twitterTitle: 'Market Intelligence Feed: Daily Insights — MetricsHour',
   twitterDescription: 'Personalised market intelligence feed. Price moves, macro releases, and trade updates ranked for you.',
   twitterImage: 'https://api.metricshour.com/og/section/feed.png',
   twitterCard: 'summary_large_image',

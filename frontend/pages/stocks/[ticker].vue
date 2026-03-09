@@ -173,15 +173,9 @@
           </p>
         </div>
 
-        <div v-else class="space-y-3.5">
-          <div v-for="(w, i) in [55, 22, 12, 6, 5]" :key="i" class="flex items-center gap-3">
-            <div class="w-32 sm:w-40 h-4 bg-[#1f2937] rounded animate-pulse shrink-0" />
-            <div class="flex-1 bg-[#1f2937] rounded-full h-3 overflow-hidden">
-              <div class="bg-[#374151] h-full rounded-full" :style="{ width: `${w}%` }" />
-            </div>
-            <div class="w-12 h-4 bg-[#1f2937] rounded animate-pulse shrink-0" />
-          </div>
-          <p class="text-xs text-gray-600 mt-3">SEC EDGAR data pending for this stock</p>
+        <div v-else class="py-4 text-sm text-gray-600">
+          SEC EDGAR geographic revenue data not yet available for {{ stock.symbol }}.
+          Revenue breakdown is sourced from annual 10-K filings and may not be available for all companies.
         </div>
       </div>
 
@@ -294,7 +288,7 @@
           <NuxtLink
             v-for="s in relatedStocks"
             :key="s.symbol"
-            :to="`/stocks/${s.symbol}`"
+            :to="`/stocks/${s.symbol.toLowerCase()}`"
             class="flex items-center justify-between py-3 hover:bg-[#1f2937] -mx-2 px-2 rounded-lg transition-colors"
           >
             <div class="flex items-center gap-3">
@@ -601,18 +595,27 @@ const _seoDesc = computed(() => {
   return parts.join('. ') + '.'
 })
 
+// noindex if the stock has no price data AND no revenue data — no content to serve
+const _hasContent = computed(() => {
+  if (!stock.value) return true // still loading — don't noindex prematurely
+  return (stock.value.price?.close != null) || (stock.value.country_revenues?.length > 0)
+})
+
 useSeoMeta({
   title: _seoTitle,
   description: _seoDesc,
   ogTitle: _seoTitle,
   ogDescription: _seoDesc,
-  ogUrl: `https://metricshour.com/stocks/${ticker}`,
+  ogUrl: `https://metricshour.com/stocks/${ticker.toLowerCase()}/`,
   ogType: 'website',
   ogImage: ogImageUrl,
+  ogImageWidth: '1200',
+  ogImageHeight: '630',
   twitterTitle: _seoTitle,
   twitterDescription: _seoDesc,
   twitterImage: ogImageUrl,
   twitterCard: 'summary_large_image',
+  robots: computed(() => _hasContent.value ? 'index, follow' : 'noindex, follow'),
 })
 
 function buildStockFaqs(s: any) {
@@ -643,7 +646,7 @@ function buildStockFaqs(s: any) {
 }
 
 useHead(computed(() => ({
-  link: [{ rel: 'canonical', href: `https://metricshour.com/stocks/${ticker}/` }],
+  link: [{ rel: 'canonical', href: `https://metricshour.com/stocks/${ticker.toLowerCase()}/` }],
   script: stock.value ? [
     {
       type: 'application/ld+json',
@@ -651,7 +654,7 @@ useHead(computed(() => ({
         '@context': 'https://schema.org',
         '@type': 'WebPage',
         name: `${stock.value.symbol} — ${stock.value.name} — MetricsHour`,
-        url: `https://metricshour.com/stocks/${ticker}`,
+        url: `https://metricshour.com/stocks/${ticker.toLowerCase()}/`,
         description: `${stock.value.name} (${stock.value.symbol}) geographic revenue breakdown from SEC EDGAR.`,
         speakable: {
           '@type': 'SpeakableSpecification',
@@ -661,8 +664,8 @@ useHead(computed(() => ({
           '@type': 'BreadcrumbList',
           itemListElement: [
             { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://metricshour.com' },
-            { '@type': 'ListItem', position: 2, name: 'Stocks', item: 'https://metricshour.com/stocks' },
-            { '@type': 'ListItem', position: 3, name: stock.value.symbol, item: `https://metricshour.com/stocks/${ticker}` },
+            { '@type': 'ListItem', position: 2, name: 'Stocks', item: 'https://metricshour.com/stocks/' },
+            { '@type': 'ListItem', position: 3, name: stock.value.symbol, item: `https://metricshour.com/stocks/${ticker.toLowerCase()}/` },
           ],
         },
       }),
@@ -682,7 +685,7 @@ useHead(computed(() => ({
         '@type': 'Dataset',
         name: `${(stock.value as any).symbol} Geographic Revenue Breakdown`,
         description: `${(stock.value as any).name} revenue by country from SEC EDGAR 10-K FY${(stock.value as any).country_revenues[0]?.fiscal_year}.`,
-        url: `https://metricshour.com/stocks/${ticker}`,
+        url: `https://metricshour.com/stocks/${ticker.toLowerCase()}/`,
         creator: { '@type': 'Organization', name: 'MetricsHour', url: 'https://metricshour.com' },
         keywords: [
           `${(stock.value as any).symbol} geographic revenue`,

@@ -183,7 +183,7 @@
                 <td class="py-2.5">
                   <div class="flex items-center gap-2 flex-wrap">
                     <NuxtLink
-                      :to="`/trade/${code.toUpperCase()}-${p.partner.code}`"
+                      :to="`/trade/${code.toLowerCase()}-${p.partner.code.toLowerCase()}`"
                       class="flex items-center gap-2 hover:text-emerald-400 transition-colors"
                     >
                       <span aria-hidden="true">{{ p.partner.flag }}</span>
@@ -218,7 +218,7 @@
           <NuxtLink
             v-for="s in exposedStocks"
             :key="s.symbol"
-            :to="`/stocks/${s.symbol}`"
+            :to="`/stocks/${s.symbol.toLowerCase()}`"
             class="flex items-center gap-3 group hover:bg-[#1f2937] rounded-lg px-2 py-1 -mx-2 transition-colors"
           >
             <span class="w-16 text-xs font-mono font-bold text-emerald-400 group-hover:text-emerald-300 shrink-0">{{ s.symbol }}</span>
@@ -244,7 +244,7 @@
           <NuxtLink
             v-for="(s, i) in localStocks"
             :key="s.symbol"
-            :to="`/stocks/${s.symbol}`"
+            :to="`/stocks/${s.symbol.toLowerCase()}`"
             class="flex items-center gap-3 hover:bg-[#1f2937] rounded-lg px-2 py-2 -mx-2 transition-colors group"
           >
             <span class="text-xs text-gray-600 w-4 shrink-0">{{ i + 1 }}</span>
@@ -282,6 +282,21 @@
             >{{ r }}</span>
           </div>
           <div v-else class="text-xs text-gray-600">Natural resource data pending</div>
+        </div>
+      </div>
+
+      <!-- Compare with top partners -->
+      <div v-if="tradePartners?.length" class="mt-4 mb-2">
+        <p class="text-[11px] text-gray-600 mb-2">Compare with:</p>
+        <div class="flex flex-wrap gap-2">
+          <NuxtLink
+            v-for="p in (tradePartners || []).slice(0, 5)"
+            :key="p.partner.code"
+            :to="`/compare/${[code.toLowerCase(), p.partner.code.toLowerCase()].sort().join('-vs-')}`"
+            class="text-[11px] text-emerald-600 hover:text-emerald-400 bg-[#111827] border border-[#1f2937] px-2 py-1 rounded transition-colors"
+          >
+            {{ p.partner.flag }} vs {{ p.partner.name }}
+          </NuxtLink>
         </div>
       </div>
 
@@ -426,7 +441,7 @@ useSeoMeta({
   description: _seoDesc,
   ogTitle: _seoTitle,
   ogDescription: _seoDesc,
-  ogUrl: `https://metricshour.com/countries/${code}`,
+  ogUrl: `https://metricshour.com/countries/${code}/`,
   ogType: 'website',
   ogImage: ogImageUrl,
   twitterImage: ogImageUrl,
@@ -479,7 +494,7 @@ useHead(computed(() => ({
         '@context': 'https://schema.org',
         '@type': 'WebPage',
         name: `${country.value.name} Economy & Macro Data — MetricsHour`,
-        url: `https://metricshour.com/countries/${code}`,
+        url: `https://metricshour.com/countries/${code}/`,
         description: `GDP, inflation, trade flows, and 80+ macro indicators for ${country.value.name}. Data from World Bank, IMF, and UN Comtrade.`,
         speakable: {
           '@type': 'SpeakableSpecification',
@@ -489,8 +504,8 @@ useHead(computed(() => ({
           '@type': 'BreadcrumbList',
           itemListElement: [
             { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://metricshour.com' },
-            { '@type': 'ListItem', position: 2, name: 'Countries', item: 'https://metricshour.com/countries' },
-            { '@type': 'ListItem', position: 3, name: country.value.name, item: `https://metricshour.com/countries/${code}` },
+            { '@type': 'ListItem', position: 2, name: 'Countries', item: 'https://metricshour.com/countries/' },
+            { '@type': 'ListItem', position: 3, name: country.value.name, item: `https://metricshour.com/countries/${code}/` },
           ],
         },
       }),
@@ -519,7 +534,7 @@ useHead(computed(() => ({
           '@type': 'Dataset',
           name: `${country.value.name} Economic Indicators`,
           description: `GDP, inflation, interest rates and 80+ macro indicators for ${country.value.name}. Source: World Bank, IMF, UN Comtrade.`,
-          url: `https://metricshour.com/countries/${code}`,
+          url: `https://metricshour.com/countries/${code}/`,
           creator: { '@type': 'Organization', name: 'MetricsHour', url: 'https://metricshour.com' },
           keywords: [`${country.value.name} GDP`, `${country.value.name} inflation`, `${country.value.name} economy`, `${country.value.name} macro data`],
           temporalCoverage: '2015/..',

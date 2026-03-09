@@ -108,19 +108,20 @@ const filtered = computed(() => {
 })
 
 useSeoMeta({
-  title: 'Countries — MetricsHour',
+  title: 'Country Economy Data: GDP, Inflation & Trade — MetricsHour',
   description: 'Macro data for 196 countries: GDP, inflation, interest rates, trade balances, debt, and 80+ economic indicators. Filter by G7, G20, EU, NATO, BRICS, OPEC.',
-  ogTitle: 'Countries — MetricsHour',
+  ogTitle: 'Country Economy Data: GDP, Inflation & Trade — MetricsHour',
   ogDescription: 'Macro data for 196 countries: GDP, inflation, interest rates, trade balances, debt, and 80+ economic indicators. Filter by G7, G20, EU, NATO, BRICS, OPEC.',
-  ogUrl: 'https://metricshour.com/countries',
+  ogUrl: 'https://metricshour.com/countries/',
   ogType: 'website',
   ogImage: 'https://api.metricshour.com/og/section/countries.png',
   ogImageWidth: '1200',
   ogImageHeight: '630',
-  twitterTitle: 'Countries — MetricsHour',
+  twitterTitle: 'Country Economy Data: GDP, Inflation & Trade — MetricsHour',
   twitterDescription: 'Macro data for 196 countries: GDP, inflation, interest rates, trade balances, debt, and 80+ economic indicators. Filter by G7, G20, EU, NATO, BRICS, OPEC.',
   twitterImage: 'https://api.metricshour.com/og/section/countries.png',
   twitterCard: 'summary_large_image',
+  robots: 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1',
 })
 
 useHead({

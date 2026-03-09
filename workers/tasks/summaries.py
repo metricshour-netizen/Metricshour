@@ -1088,6 +1088,11 @@ def _has_fresh_data(insight_type: str, entity_code: str, since: datetime, db) ->
         if not asset:
             return False
         return _asset_price_moved(asset.id, since, db, threshold_pct=2.0)
+    if insight_type == "index":
+        asset = db.query(Asset).filter(Asset.symbol == entity_code, Asset.asset_type == "index").first()
+        if not asset:
+            return False
+        return _asset_price_moved(asset.id, since, db, threshold_pct=1.0)
     return False  # trade: annual data, no intra-day signal
 
 
@@ -1200,16 +1205,25 @@ def _upsert_feed_insight(
 
 
 def _insert_insight(db, entity_type: str, entity_code: str, text_: str):
-    """Upsert insight — one row per entity, updated each run."""
+    """Insert daily insight — keeps full history, one row per calendar day per entity."""
+    from datetime import date, timedelta
     now = datetime.now(timezone.utc)
-    existing = (
+    today_start = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
+    tomorrow_start = today_start + timedelta(days=1)
+    # Upsert within today — prevents duplicate rows if task runs more than once
+    existing_today = (
         db.query(PageInsight)
-        .filter(PageInsight.entity_type == entity_type, PageInsight.entity_code == entity_code)
+        .filter(
+            PageInsight.entity_type == entity_type,
+            PageInsight.entity_code == entity_code,
+            PageInsight.generated_at >= today_start,
+            PageInsight.generated_at < tomorrow_start,
+        )
         .first()
     )
-    if existing:
-        existing.summary = text_
-        existing.generated_at = now
+    if existing_today:
+        existing_today.summary = text_
+        existing_today.generated_at = now
     else:
         db.add(PageInsight(
             entity_type=entity_type,
@@ -1227,6 +1241,8 @@ def _upsert_summary(db, entity_type: str, entity_code: str, text_: str):
         .first()
     )
     if existing:
+        if existing.summary == text_:
+            return  # No change — skip write
         existing.summary = text_
         existing.generated_at = now
     else:
@@ -1382,6 +1398,92 @@ def generate_page_summaries(self):
         db.close()
 
 
+# ── Index daily insight ────────────────────────────────────────────────────────
+
+INDEX_META: dict[str, dict] = {
+    "DJI":    {"full_name": "Dow Jones Industrial Average", "region": "US",     "emoji": "🇺🇸"},
+    "SPX":    {"full_name": "S&P 500",                      "region": "US",     "emoji": "🇺🇸"},
+    "NDX":    {"full_name": "Nasdaq 100",                   "region": "US",     "emoji": "🇺🇸"},
+    "RUT":    {"full_name": "Russell 2000",                 "region": "US",     "emoji": "🇺🇸"},
+    "VIX":    {"full_name": "CBOE Volatility Index",        "region": "Global", "emoji": "📊"},
+    "UKX":    {"full_name": "FTSE 100",                     "region": "UK",     "emoji": "🇬🇧"},
+    "DAX":    {"full_name": "DAX 40",                       "region": "Germany","emoji": "🇩🇪"},
+    "CAC":    {"full_name": "CAC 40",                       "region": "France", "emoji": "🇫🇷"},
+    "IBEX":   {"full_name": "IBEX 35",                      "region": "Spain",  "emoji": "🇪🇸"},
+    "SMI":    {"full_name": "Swiss Market Index",           "region": "Switzerland","emoji": "🇨🇭"},
+    "NKY":    {"full_name": "Nikkei 225",                   "region": "Japan",  "emoji": "🇯🇵"},
+    "HSI":    {"full_name": "Hang Seng Index",              "region": "HK",     "emoji": "🇭🇰"},
+    "SHCOMP": {"full_name": "Shanghai Composite",           "region": "China",  "emoji": "🇨🇳"},
+    "SENSEX": {"full_name": "BSE Sensex",                   "region": "India",  "emoji": "🇮🇳"},
+    "KOSPI":  {"full_name": "KOSPI",                        "region": "Korea",  "emoji": "🇰🇷"},
+    "ASX200": {"full_name": "ASX 200",                      "region": "Australia","emoji": "🇦🇺"},
+    "MSCIW":  {"full_name": "MSCI World",                   "region": "Global", "emoji": "🌐"},
+    "MSCIEM": {"full_name": "MSCI Emerging Markets",        "region": "Global", "emoji": "🌍"},
+}
+
+_INDEX_ANGLES = [
+    # 0 — macro driver
+    (50, 70,
+     "Open with the single macro force moving this index today — Fed policy, earnings season, "
+     "or a geopolitical shock. Name the specific catalyst (rate decision date, CPI print, "
+     "corporate earnings release). Close by identifying which sector inside the index is "
+     "absorbing the most pressure or momentum."),
+    # 1 — sector rotation
+    (50, 70,
+     "Open with which sector inside this index is leading or lagging and why. "
+     "Name the specific company or sector weight driving the move. "
+     "Close with the next scheduled event that could extend or reverse the rotation."),
+    # 2 — cross-asset signal
+    (50, 70,
+     "Open with the cross-asset signal most correlated to this index right now — "
+     "bond yields, dollar, oil, or credit spreads. Name the specific level or threshold "
+     "that would shift the index direction. Close with the risk scenario most consensus "
+     "is not pricing in."),
+]
+
+
+def _index_insight_text(asset: Asset, db=None) -> str | None:
+    if not _has_ai_key():
+        return None
+
+    meta = INDEX_META.get(asset.symbol, {})
+    full_name = meta.get("full_name", asset.name)
+    region = meta.get("region", asset.sector or "Global")
+
+    price_line = ""
+    if db:
+        prices = (
+            db.query(Price.close, Price.timestamp)
+            .filter(Price.asset_id == asset.id, Price.interval == "1d")
+            .order_by(Price.timestamp.desc())
+            .limit(2)
+            .all()
+        )
+        if prices:
+            latest = prices[0].close
+            prior = prices[1].close if len(prices) > 1 else None
+            pct = f" ({((latest - prior) / prior * 100):+.1f}% prev session)" if prior else ""
+            price_line = f"Latest close: {latest:,.2f}{pct}\n"
+
+    angle = _daily_angle(asset.symbol, len(_INDEX_ANGLES))
+    min_w, max_w, focus = _INDEX_ANGLES[angle]
+
+    prompt = (
+        f"Daily index brief — {full_name} ({asset.symbol}) — {min_w}–{max_w} words. "
+        f"Audience: equity investors who need a sharp market signal, not background.\n\n"
+        f"{asset.symbol} | {region} equity index\n"
+        f"{price_line}"
+        f"Date: {date.today().strftime('%B %d, %Y')}\n\n"
+        f"{focus}\n\n"
+        f"Rules: opening sentence names the index level or a specific percentage move. "
+        f"Every assertion is declarative — no 'could', 'may', 'might'. "
+        f"No clichés ('navigating', 'landscape', 'headwinds'). "
+        f"Do not mention MetricsHour. Plain text only, no markdown."
+    )
+
+    return _call_ai(prompt, min_words=min_w, max_words=max_w)
+
+
 @app.task(name="tasks.summaries.generate_daily_insights", bind=True, max_retries=2)
 def generate_daily_insights(self):
     """
@@ -1511,6 +1613,33 @@ def generate_daily_insights(self):
         db.commit()
         log.info("Trade insights done: %d", trade_count)
 
+        # Index insights
+        index_count = 0
+        indices = db.query(Asset).filter(Asset.asset_type == "index").all()
+        for idx in indices:
+            try:
+                insight = _index_insight_text(idx, db)
+                if insight:
+                    meta = INDEX_META.get(idx.symbol, {})
+                    _upsert_summary(db, "index_insight", idx.symbol, insight)
+                    _insert_insight(db, "index", idx.symbol, insight)
+                    _upsert_feed_insight(db, now,
+                        title=f"{meta.get('emoji', '📈')} {meta.get('full_name', idx.name)} — Daily Index Insight",
+                        body=insight,
+                        source_url=f"/indices/{idx.symbol.lower()}",
+                        entity_type="index",
+                        entity_name=meta.get("full_name", idx.name),
+                        entity_flag=meta.get("emoji", "📈"),
+                        related_asset_ids=[idx.id],
+                        importance_score=6.5,
+                    )
+                    total += 1
+                    index_count += 1
+            except Exception as e:
+                log.warning("Index insight failed %s: %s", idx.symbol, e)
+        db.commit()
+        log.info("Index insights done: %d", index_count)
+
         log.info("Total daily insights generated: %d", total)
         return {"insights_generated": total}
 
@@ -1523,7 +1652,7 @@ def generate_daily_insights(self):
 
 
 # Batch sizes per run — tuned so all entities cycle once per day across multiple runs
-_INSIGHT_BATCH = {"country": 25, "stock": 6, "commodity": 5, "trade": 25}
+_INSIGHT_BATCH = {"country": 25, "stock": 6, "commodity": 5, "trade": 25, "index": 6}
 
 
 @app.task(name="tasks.summaries.run_insight_batch", bind=True, max_retries=2)
@@ -1566,6 +1695,8 @@ def run_insight_batch(self, insight_type: str):
                     if code not in seen:
                         seen.add(code)
                         all_codes.append(code)
+        elif insight_type == "index":
+            all_codes = [row[0] for row in db.query(Asset.symbol).filter(Asset.asset_type == "index").all()]
         else:
             log.error("run_insight_batch: unknown type %s", insight_type)
             return {"error": "unknown_type"}
@@ -1702,6 +1833,30 @@ def run_insight_batch(self, insight_type: str):
                             entity_flag=exp.flag_emoji or "🌐",
                             related_country_ids=[exp.id, imp.id],
                             importance_score=5.5,
+                        )
+                        count += 1
+
+                elif insight_type == "index":
+                    idx = db.query(Asset).filter(Asset.symbol == entity_code, Asset.asset_type == "index").first()
+                    if not idx:
+                        continue
+                    insight = _index_insight_text(idx, db)
+                    if insight and _insight_is_duplicate(insight, existing_texts.get(entity_code)):
+                        log.debug("Skipping %s — insight too similar to previous", entity_code)
+                        continue
+                    if insight:
+                        meta = INDEX_META.get(entity_code, {})
+                        _upsert_summary(db, summary_type, entity_code, insight)
+                        _insert_insight(db, "index", entity_code, insight)
+                        _upsert_feed_insight(db, now,
+                            title=f"{meta.get('emoji', '📈')} {meta.get('full_name', idx.name)} — Daily Index Insight",
+                            body=insight,
+                            source_url=f"/indices/{entity_code.lower()}",
+                            entity_type="index",
+                            entity_name=meta.get("full_name", idx.name),
+                            entity_flag=meta.get("emoji", "📈"),
+                            related_asset_ids=[idx.id],
+                            importance_score=6.5,
                         )
                         count += 1
 

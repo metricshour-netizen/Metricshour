@@ -74,6 +74,28 @@
         </div>
       </div>
 
+      <!-- Summary + Insights -->
+      <div v-if="pageSummary?.summary" class="bg-[#111827] border border-[#1f2937] rounded-lg p-4 mb-4 text-sm text-gray-400 leading-relaxed">
+        {{ pageSummary.summary }}
+      </div>
+      <div v-if="pageInsights?.length" class="mb-4 space-y-2">
+        <div
+          v-for="(insight, i) in pageInsights"
+          :key="insight.generated_at"
+          class="relative border rounded-lg p-4 overflow-hidden"
+          :class="i === 0 ? 'bg-[#0d1520] border-purple-900/50' : 'bg-[#0b0f1a] border-[#1f2937]'"
+        >
+          <div v-if="i === 0" class="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-purple-500/40 to-transparent"/>
+          <div class="flex items-start gap-3">
+            <span class="text-base mt-0.5 shrink-0" :class="i === 0 ? 'text-purple-400' : 'text-gray-600'">◆</span>
+            <div class="flex-1 min-w-0">
+              <div class="text-xs text-gray-500 mb-1">{{ new Date(insight.generated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) }}</div>
+              <p class="text-sm text-gray-300 leading-relaxed">{{ insight.summary }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Price chart placeholder -->
       <div class="bg-[#111827] border border-[#1f2937] rounded-xl p-6 mb-6">
         <h2 class="text-base font-bold text-white mb-4">Price History</h2>
@@ -120,6 +142,19 @@ const { data: index, pending, error } = useAsyncData(
   `index-${symbol}`,
   () => get<any>(`/api/assets/${symbol}`).catch(() => null),
 )
+
+const { data: pageSummary } = useAsyncData(
+  `summary-index-${symbol}`,
+  () => get<any>(`/api/summaries/index/${symbol}`).catch(() => null),
+  { server: false },
+)
+
+const { data: pageInsightsRaw } = useAsyncData(
+  `insights-index-${symbol}`,
+  () => get<any>(`/api/summaries/index_insight/${symbol}`).catch(() => null),
+  { server: false },
+)
+const pageInsights = computed(() => pageInsightsRaw.value ? [pageInsightsRaw.value] : [])
 
 // ── Chart ─────────────────────────────────────────────────────────────────────
 const chartEl = ref<HTMLElement | null>(null)
@@ -212,7 +247,7 @@ useSeoMeta({
   description: _seoDesc,
   ogTitle: _seoTitle,
   ogDescription: _seoDesc,
-  ogUrl: `https://metricshour.com/indices/${symbol}`,
+  ogUrl: `https://metricshour.com/indices/${symbol.toLowerCase()}/`,
   ogType: 'website',
   ogImage: ogImageUrl,
   ogImageWidth: 1200,
@@ -224,7 +259,7 @@ useSeoMeta({
 })
 
 useHead(computed(() => ({
-  link: [{ rel: 'canonical', href: `https://metricshour.com/indices/${symbol}/` }],
+  link: [{ rel: 'canonical', href: `https://metricshour.com/indices/${symbol.toLowerCase()}/` }],
   script: index.value ? [
     {
       type: 'application/ld+json',

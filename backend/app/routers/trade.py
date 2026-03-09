@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 from app.database import get_db
 from app.limiter import limiter
@@ -15,12 +15,31 @@ router = APIRouter(prefix="/trade", tags=["trade"])
 @limiter.limit("60/minute")
 def list_trade_pairs(
     request: Request,
+    response: Response,
     exporter: str | None = None,
     importer: str | None = None,
     db: Session = Depends(get_db),
 ) -> list[dict]:
+    response.headers["Cache-Control"] = "no-store"
+    # Subquery: latest year per (exporter, importer) pair
+    latest_year_sq = (
+        select(
+            TradePair.exporter_id,
+            TradePair.importer_id,
+            func.max(TradePair.year).label("max_year"),
+        )
+        .group_by(TradePair.exporter_id, TradePair.importer_id)
+        .subquery()
+    )
+
     query = (
         select(TradePair)
+        .join(
+            latest_year_sq,
+            (TradePair.exporter_id == latest_year_sq.c.exporter_id)
+            & (TradePair.importer_id == latest_year_sq.c.importer_id)
+            & (TradePair.year == latest_year_sq.c.max_year),
+        )
         .order_by(TradePair.trade_value_usd.desc())
         .limit(100)
     )
@@ -41,14 +60,24 @@ def list_trade_pairs(
 
     pairs = db.execute(query).scalars().all()
 
+    # Deduplicate: both (A→B) and (B→A) exist in DB — keep only one per relationship.
+    # Use min/max of IDs as the canonical key; first hit wins (already ordered by trade value desc).
+    seen_pairs: set[tuple[int, int]] = set()
+    unique_pairs = []
+    for p in pairs:
+        key = (min(p.exporter_id, p.importer_id), max(p.exporter_id, p.importer_id))
+        if key not in seen_pairs:
+            seen_pairs.add(key)
+            unique_pairs.append(p)
+
     # Batch-load countries
-    country_ids = {p.exporter_id for p in pairs} | {p.importer_id for p in pairs}
+    country_ids = {p.exporter_id for p in unique_pairs} | {p.importer_id for p in unique_pairs}
     countries: dict[int, Country] = {}
     if country_ids:
         rows = db.execute(select(Country).where(Country.id.in_(country_ids))).scalars().all()
         countries = {c.id: c for c in rows}
 
-    return [_pair_summary(p, countries) for p in pairs]
+    return [_pair_summary(p, countries) for p in unique_pairs]
 
 
 @router.get("/{exporter_code}/{importer_code}")
@@ -138,10 +167,18 @@ def get_trade_pair(
             seen.add(key)
             latest[row.country_id][row.indicator] = row.value
 
+    # canonical_pair = the stored DB direction (used by frontend for canonical tag)
+    # When reversed_pair=True, the stored direction is imp→exp, so canonical URL is imp-exp
+    if reversed_pair:
+        canonical_pair = f"{imp.code.lower()}-{exp.code.lower()}"
+    else:
+        canonical_pair = f"{exporter_code.lower()}-{importer_code.lower()}"
+
     result = {
         "exporter": _country_ref(exp, latest.get(exp.id, {})),
         "importer": _country_ref(imp, latest.get(imp.id, {})),
         "trade_data": trade_data,
+        "canonical_pair": canonical_pair,
     }
     # Trade data is annual — cache for 6 hours
     cache_set(cache_key, result, ttl_seconds=21600)

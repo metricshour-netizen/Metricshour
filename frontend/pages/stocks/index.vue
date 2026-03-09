@@ -72,7 +72,7 @@
           <NuxtLink
             v-for="(s, i) in terminalRows"
             :key="s.symbol"
-            :to="`/stocks/${s.symbol}`"
+            :to="`/stocks/${s.symbol.toLowerCase()}`"
             class="grid font-mono text-[11px] px-3 py-[5px] border-b border-emerald-900/10 hover:bg-emerald-950/40 transition-colors"
             style="grid-template-columns: 2rem 5rem 1fr 6rem 5rem 4rem"
           >
@@ -105,7 +105,7 @@
           <NuxtLink
             v-for="(s, i) in filtered"
             :key="s.symbol"
-            :to="`/stocks/${s.symbol}`"
+            :to="`/stocks/${s.symbol.toLowerCase()}`"
             class="block hover:bg-[#1a2235] transition-colors"
           >
             <!-- Mobile row -->
@@ -267,19 +267,20 @@ function fmtCloseDate(ts: string): string {
 }
 
 useSeoMeta({
-  title: 'Stocks — MetricsHour',
+  title: 'Stock Geographic Revenue: Where Companies Earn — MetricsHour',
   description: 'Top global stocks with geographic revenue exposure from SEC EDGAR. See which countries each stock earns from and how trade flows affect your portfolio.',
-  ogTitle: 'Stocks — MetricsHour',
+  ogTitle: 'Stock Geographic Revenue: Where Companies Earn — MetricsHour',
   ogDescription: 'Top global stocks with geographic revenue exposure from SEC EDGAR. See which countries each stock earns from and how trade flows affect your portfolio.',
-  ogUrl: 'https://metricshour.com/stocks',
+  ogUrl: 'https://metricshour.com/stocks/',
   ogType: 'website',
   ogImage: 'https://api.metricshour.com/og/section/stocks.png',
   ogImageWidth: '1200',
   ogImageHeight: '630',
-  twitterTitle: 'Stocks — MetricsHour',
+  twitterTitle: 'Stock Geographic Revenue: Where Companies Earn — MetricsHour',
   twitterDescription: 'Top global stocks with geographic revenue exposure from SEC EDGAR. See which countries each stock earns from and how trade flows affect your portfolio.',
   twitterImage: 'https://api.metricshour.com/og/section/stocks.png',
   twitterCard: 'summary_large_image',
+  robots: 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1',
 })
 
 useHead({

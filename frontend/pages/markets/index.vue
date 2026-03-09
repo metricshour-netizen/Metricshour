@@ -120,7 +120,7 @@
           <NuxtLink
             v-for="a in indexFiltered"
             :key="a.symbol"
-            :to="`/indices/${a.symbol}`"
+            :to="`/indices/${a.symbol.toLowerCase()}`"
             class="bg-[#111827] border border-[#1f2937] hover:border-purple-500/50 rounded-xl p-4 transition-colors group cursor-pointer"
           >
             <div class="flex items-start justify-between mb-2">
@@ -157,7 +157,7 @@
         <div v-for="group in commodityGroups" :key="group.name" class="mb-6">
           <p v-if="group.items.length" class="text-[10px] text-gray-600 uppercase tracking-widest font-bold mb-2">{{ group.name }}</p>
           <div v-if="group.items.length" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-            <NuxtLink v-for="c in group.items" :key="c.symbol" :to="`/stocks/${c.symbol}`" class="bg-[#111827] border border-[#1f2937] hover:border-blue-500/40 rounded-xl p-4 transition-colors group">
+            <NuxtLink v-for="c in group.items" :key="c.symbol" :to="`/stocks/${c.symbol.toLowerCase()}`" class="bg-[#111827] border border-[#1f2937] hover:border-blue-500/40 rounded-xl p-4 transition-colors group">
               <div class="text-xl mb-2">{{ c.icon }}</div>
               <div class="text-sm font-medium text-white group-hover:text-blue-300 transition-colors truncate mb-0.5">{{ apiMap[c.symbol]?.name ?? c.name }}</div>
               <div class="text-xs text-gray-600 mb-2">{{ c.symbol }}</div>
@@ -179,7 +179,7 @@
             <span class="col-span-2 text-right">Exchange</span>
           </div>
           <div class="divide-y divide-[#1f2937]">
-            <NuxtLink v-for="a in etfFiltered" :key="a.symbol" :to="`/stocks/${a.symbol}`" class="block hover:bg-[#1a2235] transition-colors">
+            <NuxtLink v-for="a in etfFiltered" :key="a.symbol" :to="`/stocks/${a.symbol.toLowerCase()}`" class="block hover:bg-[#1a2235] transition-colors">
               <!-- Mobile -->
               <div class="flex items-center justify-between px-4 py-3 sm:hidden">
                 <div class="min-w-0">
@@ -222,7 +222,7 @@
             <span class="col-span-1"></span>
           </div>
           <div class="divide-y divide-[#1f2937]">
-            <NuxtLink v-for="(s, i) in stockFiltered" :key="s.symbol" :to="`/stocks/${s.symbol}`" class="block hover:bg-[#1a2235] transition-colors">
+            <NuxtLink v-for="(s, i) in stockFiltered" :key="s.symbol" :to="`/stocks/${s.symbol.toLowerCase()}`" class="block hover:bg-[#1a2235] transition-colors">
               <!-- Mobile -->
               <div class="flex items-center justify-between px-4 py-3 sm:hidden">
                 <div class="flex items-center gap-2 min-w-0">
@@ -260,7 +260,7 @@
           <NuxtLink
             v-for="a in cryptoFiltered"
             :key="a.symbol"
-            :to="`/stocks/${a.symbol}`"
+            :to="`/stocks/${a.symbol.toLowerCase()}`"
             class="bg-[#111827] border border-[#1f2937] hover:border-amber-500/50 rounded-xl p-4 transition-colors group"
           >
             <div class="flex items-start justify-between mb-2">
@@ -518,13 +518,13 @@ function bondCountryLink(symbol: string): string {
   if (symbol.startsWith('JP')) return '/countries/jp'
   if (symbol.startsWith('CN')) return '/countries/cn'
   if (symbol.startsWith('AU')) return '/countries/au'
-  return `/stocks/${symbol}`
+  return `/stocks/${symbol.toLowerCase()}`
 }
 
 function terminalRowLink(a: any): string | undefined {
-  if (a.asset_type === 'stock' || a.asset_type === 'crypto' || a.asset_type === 'etf') return `/stocks/${a.symbol}`
-  if (a.asset_type === 'index') return `/indices/${a.symbol}`
-  if (a.asset_type === 'commodity') return `/stocks/${a.symbol}`
+  if (a.asset_type === 'stock' || a.asset_type === 'crypto' || a.asset_type === 'etf') return `/stocks/${a.symbol.toLowerCase()}`
+  if (a.asset_type === 'index') return `/indices/${a.symbol.toLowerCase()}`
+  if (a.asset_type === 'commodity') return `/stocks/${a.symbol.toLowerCase()}`
   if (a.asset_type === 'bond') return bondCountryLink(a.symbol)
   return undefined
 }
@@ -535,16 +535,16 @@ function priceColor(a: any): string {
 }
 
 useSeoMeta({
-  title: 'Markets — MetricsHour',
+  title: 'Global Markets: Stocks, Crypto, Commodities & FX — MetricsHour',
   description: 'Search crypto, stocks, ETFs, indices, bonds, commodities and FX. Real-time prices and global market data.',
-  ogTitle: 'Markets — MetricsHour',
+  ogTitle: 'Global Markets: Stocks, Crypto, Commodities & FX — MetricsHour',
   ogDescription: 'Search crypto, stocks, ETFs, indices, bonds, commodities and FX. Real-time prices and global market data.',
   ogUrl: 'https://metricshour.com/markets',
   ogType: 'website',
   ogImage: 'https://api.metricshour.com/og/section/markets.png',
   ogImageWidth: '1200',
   ogImageHeight: '630',
-  twitterTitle: 'Markets — MetricsHour',
+  twitterTitle: 'Global Markets: Stocks, Crypto, Commodities & FX — MetricsHour',
   twitterDescription: 'Search crypto, stocks, ETFs, indices, bonds, commodities and FX. Real-time prices and global market data.',
   twitterImage: 'https://api.metricshour.com/og/section/markets.png',
   twitterCard: 'summary_large_image',

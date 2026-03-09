@@ -56,4 +56,25 @@ export default defineNuxtConfig({
   nitro: {
     preset: 'static',
   },
+
+  hooks: {
+    // Fetch sitemap during build and prerender all trade + compare URLs so
+    // Cloudflare Pages has static HTML for every URL we submit to Google.
+    async 'nitro:config'(nitroConfig) {
+      const api = process.env.NUXT_PUBLIC_API_BASE || 'https://api.metricshour.com'
+      try {
+        const res = await fetch(`${api}/sitemap.xml`)
+        const xml = await res.text()
+        const dynamic = [...xml.matchAll(/<loc>https:\/\/metricshour\.com(\/(?:stocks|countries|commodities|trade|compare)\/[^<]+)<\/loc>/g)]
+          .map(m => m[1])
+        if (dynamic.length) {
+          nitroConfig.prerender = nitroConfig.prerender ?? {}
+          nitroConfig.prerender.routes = [...(nitroConfig.prerender.routes ?? []), ...dynamic]
+          console.log(`[prerender] +${dynamic.length} trade/compare routes from sitemap`)
+        }
+      } catch (e) {
+        console.warn('[prerender] sitemap fetch failed — dynamic routes not added:', e)
+      }
+    },
+  },
 })

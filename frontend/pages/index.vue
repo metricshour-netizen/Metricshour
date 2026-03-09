@@ -11,7 +11,7 @@
         <NuxtLink
           v-for="(item, i) in [...tickerItems, ...tickerItems]"
           :key="`tk-${i}`"
-          :to="`/stocks/${item.symbol}`"
+          :to="`/stocks/${item.symbol.toLowerCase()}`"
           class="inline-flex items-center gap-1.5 px-5 py-2 border-r border-[#1a2332] shrink-0 hover:bg-white/5 transition-colors"
         >
           <span class="text-[11px] font-mono font-bold" :class="item.typeColor">{{ item.symbol }}</span>
@@ -112,7 +112,7 @@
             <NuxtLink
               v-for="(a, i) in searchResults.assets"
               :key="a.symbol"
-              :to="`/stocks/${a.symbol}`"
+              :to="`/stocks/${a.symbol.toLowerCase()}`"
               @click="closeSearch"
               class="flex items-center gap-2.5 px-3 py-2.5 hover:bg-[#1f2937] transition-colors"
               :class="focusedIndex === (searchResults.countries.length + i) ? 'bg-[#1f2937]' : ''"
@@ -298,7 +298,7 @@
           <NuxtLink
             v-for="s in topStocks"
             :key="s.symbol"
-            :to="`/stocks/${s.symbol}`"
+            :to="`/stocks/${s.symbol.toLowerCase()}`"
             class="flex items-center gap-3 bg-[#111827] border border-[#1f2937] hover:border-emerald-500 rounded-lg px-3 py-2.5 transition-colors group"
           >
             <span class="text-lg leading-none shrink-0" aria-hidden="true">{{ s.country?.flag || '🏢' }}</span>
@@ -353,7 +353,7 @@
         <NuxtLink
           v-for="t in topTrades"
           :key="`${t.exporter?.code}-${t.importer?.code}`"
-          :to="`/trade/${t.exporter?.code}-${t.importer?.code}`"
+          :to="`/trade/${t.exporter?.code?.toLowerCase()}-${t.importer?.code?.toLowerCase()}`"
           class="bg-[#111827] border border-[#1f2937] hover:border-emerald-500 rounded-lg p-4 transition-colors group"
         >
           <div class="flex items-center gap-2 mb-2">
@@ -535,7 +535,7 @@ function selectFocused() {
   if (focusedIndex.value < 0) return
   const item = allResults.value[focusedIndex.value]
   if (!item) return
-  item.type === 'country' ? router.push(`/countries/${item.code.toLowerCase()}`) : router.push(`/stocks/${item.symbol}`)
+  item.type === 'country' ? router.push(`/countries/${item.code.toLowerCase()}`) : router.push(`/stocks/${item.symbol.toLowerCase()}`)
   closeSearch()
 }
 

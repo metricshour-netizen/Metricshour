@@ -138,6 +138,11 @@ app.conf.update(
             'schedule': crontab(minute=45, hour='*/2'),  # :45 every 2h  (12x/day × 25 = 300 slots for 253 pairs)
             'kwargs': {'insight_type': 'trade'},
         },
+        'index-insights-every-6h': {
+            'task': 'tasks.summaries.run_insight_batch',
+            'schedule': crontab(minute=0, hour='*/6'),   # :00 every 6h  (4x/day × 6 = 24 slots for 18 indices)
+            'kwargs': {'insight_type': 'index'},
+        },
         'spotlight-refresh-every-3hr': {
             'task': 'tasks.summaries.refresh_spotlight',
             'schedule': crontab(minute=0, hour='*/3'),

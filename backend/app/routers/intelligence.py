@@ -245,6 +245,21 @@ def _commodity_summary(symbol: str, db: Session) -> str | None:
     )
 
 
+def _index_summary(symbol: str, db: Session) -> str | None:
+    asset = db.query(Asset).filter(
+        Asset.symbol == symbol.upper(), Asset.asset_type == "index"
+    ).first()
+    if not asset:
+        return None
+    region = asset.sector or "global"
+    return (
+        f"{asset.name} ({asset.symbol}) is a major {region} stock market index tracked on MetricsHour. "
+        f"It reflects the aggregate performance of its constituent companies and is a key benchmark "
+        f"for institutional and retail investors. Price history, daily changes, and related macro data "
+        f"are updated from market data providers."
+    )
+
+
 def _trade_summary(pair: str, db: Session) -> str | None:
     parts = pair.upper().split("-")
     if len(parts) != 2:
@@ -337,8 +352,8 @@ def get_spotlight(db: Session = Depends(get_db)) -> list[dict]:
     return cards
 
 
-SUMMARY_TYPES = ("country", "stock", "commodity", "trade")
-INSIGHT_TYPES = ("country_insight", "stock_insight", "commodity_insight", "trade_insight")
+SUMMARY_TYPES = ("country", "stock", "commodity", "trade", "index")
+INSIGHT_TYPES = ("country_insight", "stock_insight", "commodity_insight", "trade_insight", "index_insight")
 ALL_ENTITY_TYPES = SUMMARY_TYPES + INSIGHT_TYPES
 
 
@@ -385,6 +400,8 @@ def get_summary(entity_type: str, entity_code: str, db: Session = Depends(get_db
         summary_text = _stock_summary(entity_code, db)
     elif entity_type == "commodity":
         summary_text = _commodity_summary(entity_code, db)
+    elif entity_type == "index":
+        summary_text = _index_summary(entity_code, db)
     elif entity_type == "trade":
         summary_text = _trade_summary(entity_code, db)
 

@@ -35,6 +35,28 @@
       </div>
     </div>
 
+    <!-- Summary + Insights -->
+    <div v-if="pageSummary?.summary" class="bg-[#111827] border border-[#1f2937] rounded-lg p-4 mb-4 text-sm text-gray-400 leading-relaxed">
+      {{ pageSummary.summary }}
+    </div>
+    <div v-if="pageInsights?.length" class="mb-4 space-y-2">
+      <div
+        v-for="(insight, i) in pageInsights"
+        :key="insight.generated_at"
+        class="relative border rounded-lg p-4 overflow-hidden"
+        :class="i === 0 ? 'bg-[#0d1520] border-emerald-900/50' : 'bg-[#0b0f1a] border-[#1f2937]'"
+      >
+        <div v-if="i === 0" class="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent"/>
+        <div class="flex items-start gap-3">
+          <span class="text-base mt-0.5 shrink-0" :class="i === 0 ? 'text-emerald-500' : 'text-gray-600'">◆</span>
+          <div class="flex-1 min-w-0">
+            <div class="text-xs text-gray-500 mb-1">{{ fmtTs(insight.generated_at) }}</div>
+            <p class="text-sm text-gray-300 leading-relaxed">{{ insight.summary }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Price Chart -->
     <div class="bg-[#111827] border border-[#1f2937] rounded-xl p-4 mb-6">
       <div class="flex items-center justify-between mb-3">
@@ -269,6 +291,19 @@ const { data: pricesRaw } = useAsyncData(
   () => get<any[]>(`/api/assets/${symbol.toUpperCase()}/prices?interval=1d&limit=365`).catch(() => []),
 )
 
+const { data: pageSummary } = useAsyncData(
+  `summary-commodity-${symbol}`,
+  () => get<any>(`/api/summaries/commodity/${symbol.toUpperCase()}`).catch(() => null),
+  { server: false },
+)
+
+const { data: pageInsightsRaw } = useAsyncData(
+  `insights-commodity-${symbol}`,
+  () => get<any>(`/api/summaries/commodity_insight/${symbol.toUpperCase()}`).catch(() => null),
+  { server: false },
+)
+const pageInsights = computed(() => pageInsightsRaw.value ? [pageInsightsRaw.value] : [])
+
 // ── Price helpers ─────────────────────────────────────────────────────────────
 const latestPrice = computed(() => {
   const p = pricesRaw.value
@@ -370,9 +405,11 @@ useSeoMeta({
   description: _seoDesc,
   ogTitle: _seoTitle,
   ogDescription: _seoDesc,
-  ogUrl: `https://metricshour.com/commodities/${symbol}`,
+  ogUrl: `https://metricshour.com/commodities/${symbol.toLowerCase()}/`,
   ogType: 'website',
   ogImage: `https://api.metricshour.com/og/section/commodities.png`,
+  ogImageWidth: '1200',
+  ogImageHeight: '630',
   twitterCard: 'summary_large_image',
   twitterTitle: _seoTitle,
   twitterDescription: _seoDesc,
@@ -380,7 +417,7 @@ useSeoMeta({
 })
 
 useHead(computed(() => ({
-  link: [{ rel: 'canonical', href: `https://metricshour.com/commodities/${symbol}/` }],
+  link: [{ rel: 'canonical', href: `https://metricshour.com/commodities/${symbol.toLowerCase()}/` }],
   script: [
     {
       type: 'application/ld+json',
@@ -388,14 +425,14 @@ useHead(computed(() => ({
         '@context': 'https://schema.org',
         '@type': 'WebPage',
         name: _seoTitle.value,
-        url: `https://metricshour.com/commodities/${symbol}`,
+        url: `https://metricshour.com/commodities/${symbol.toLowerCase()}/`,
         description: _seoDesc.value,
         breadcrumb: {
           '@type': 'BreadcrumbList',
           itemListElement: [
             { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://metricshour.com' },
-            { '@type': 'ListItem', position: 2, name: 'Commodities', item: 'https://metricshour.com/commodities' },
-            { '@type': 'ListItem', position: 3, name: meta.value.name, item: `https://metricshour.com/commodities/${symbol}` },
+            { '@type': 'ListItem', position: 2, name: 'Commodities', item: 'https://metricshour.com/commodities/' },
+            { '@type': 'ListItem', position: 3, name: meta.value.name, item: `https://metricshour.com/commodities/${symbol.toLowerCase()}/` },
           ],
         },
       }),
@@ -407,7 +444,7 @@ useHead(computed(() => ({
         '@type': 'Dataset',
         name: `${meta.value.name} Price Data`,
         description: `Historical and current ${meta.value.name} price data in ${meta.value.unit}.`,
-        url: `https://metricshour.com/commodities/${symbol}`,
+        url: `https://metricshour.com/commodities/${symbol.toLowerCase()}/`,
         creator: { '@type': 'Organization', name: 'MetricsHour', url: 'https://metricshour.com' },
         keywords: [`${meta.value.name} price`, `${symbol.toUpperCase()} price today`, `${meta.value.name} spot price`, `${meta.value.name} historical data`],
         variableMeasured: [
