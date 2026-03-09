@@ -92,13 +92,25 @@ def _asset_summary(a: Asset, country: Country | None = None, price: Price | None
         "symbol": a.symbol,
         "name": a.name,
         "asset_type": a.asset_type.value if a.asset_type else None,
-        "sector": a.sector,
-        "market_cap_usd": a.market_cap_usd,
         "exchange": a.exchange,
-        "country_code": country.code if country else None,
-        "country_name": country.name if country else None,
-        "latest_price": price.close if price else None,
-        "latest_price_ts": price.timestamp.isoformat() if price else None,
+        "currency": a.currency,
+        "sector": a.sector,
+        "industry": a.industry,
+        "market_cap_usd": a.market_cap_usd,
+        "base_currency": a.base_currency,
+        "quote_currency": a.quote_currency,
+        "country": {
+            "code": country.code,
+            "name": country.name,
+            "flag": country.flag_emoji,
+        } if country else None,
+        "price": {
+            "close": price.close,
+            "open": price.open,
+            "high": price.high,
+            "low": price.low,
+            "timestamp": price.timestamp.isoformat(),
+        } if price else None,
     }
 
 
@@ -171,8 +183,21 @@ def _write_country_snapshots(db) -> int:
                 latest[row.indicator] = row.value
                 latest_years[row.indicator] = row.period_date.year
 
+        groupings = []
+        if c.is_g7: groupings.append("G7")
+        if c.is_g20: groupings.append("G20")
+        if c.is_eu: groupings.append("EU")
+        if c.is_eurozone: groupings.append("Eurozone")
+        if c.is_nato: groupings.append("NATO")
+        if c.is_opec: groupings.append("OPEC")
+        if c.is_brics: groupings.append("BRICS")
+        if c.is_asean: groupings.append("ASEAN")
+        if c.is_oecd: groupings.append("OECD")
+        if c.is_commonwealth: groupings.append("Commonwealth")
+
         data = {
             **_country_summary(c),
+            "groupings": groupings,
             "indicators": latest,
             "indicator_years": latest_years,
             "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -206,16 +231,19 @@ def _write_stock_snapshots(db) -> int:
             .order_by(StockCountryRevenue.fiscal_year.desc(), StockCountryRevenue.revenue_pct.desc())
         ).all()
 
-        geo_revenues = []
+        country_revenues = []
         seen_countries: set[int] = set()
         for rev, country in rev_rows:
             if country.id not in seen_countries:
                 seen_countries.add(country.id)
-                geo_revenues.append({
-                    "country_code": country.code,
-                    "country_name": country.name,
-                    "flag": country.flag_emoji,
+                country_revenues.append({
+                    "country": {
+                        "code": country.code,
+                        "name": country.name,
+                        "flag": country.flag_emoji,
+                    },
                     "revenue_pct": rev.revenue_pct,
+                    "revenue_usd": rev.revenue_usd,
                     "fiscal_year": rev.fiscal_year,
                 })
 
@@ -225,7 +253,7 @@ def _write_stock_snapshots(db) -> int:
 
         data = {
             **_asset_summary(a, hq_country, price),
-            "geo_revenues": geo_revenues,
+            "country_revenues": country_revenues,
             "generated_at": datetime.now(timezone.utc).isoformat(),
         }
         _upload(f"snapshots/stocks/{a.symbol.lower()}.json", data)
@@ -267,8 +295,8 @@ def _write_trade_snapshots(db) -> int:
         if not exp or not imp:
             continue
 
-        key = f"snapshots/trade/{exp.code.lower()}-{imp.code.lower()}.json"
-        data = {
+        trade_data = {
+            "id": p.id,
             "year": p.year,
             "data_source": p.data_source,
             "exporter": {"code": exp.code, "name": exp.name, "flag": exp.flag_emoji},
@@ -281,6 +309,14 @@ def _write_trade_snapshots(db) -> int:
             "importer_gdp_share_pct": p.importer_gdp_share_pct,
             "top_export_products": p.top_export_products or [],
             "top_import_products": p.top_import_products or [],
+        }
+
+        key = f"snapshots/trade/{exp.code.lower()}-{imp.code.lower()}.json"
+        data = {
+            "exporter": {"code": exp.code, "name": exp.name, "flag": exp.flag_emoji, "currency_code": exp.currency_code, "indicators": {}},
+            "importer": {"code": imp.code, "name": imp.name, "flag": imp.flag_emoji, "currency_code": imp.currency_code, "indicators": {}},
+            "trade_data": trade_data,
+            "canonical_pair": f"{exp.code.lower()}-{imp.code.lower()}",
             "generated_at": datetime.now(timezone.utc).isoformat(),
         }
         _upload(key, data)
