@@ -67,10 +67,19 @@ export default defineNuxtConfig({
         const xml = await res.text()
         const dynamic = [...xml.matchAll(/<loc>https:\/\/metricshour\.com(\/(?:stocks|countries|commodities|trade|compare)\/[^<]+)<\/loc>/g)]
           .map(m => m[1])
-        if (dynamic.length) {
+        // Also pre-render the reverse direction for every trade pair (e.g. ru-us ↔ us-ru)
+        const tradeReversed = dynamic
+          .filter(r => r.startsWith('/trade/'))
+          .map(r => {
+            const [, a, b] = r.match(/^\/trade\/([^-]+)-([^/]+)/) ?? []
+            return a && b ? `/trade/${b}-${a}/` : null
+          })
+          .filter((r): r is string => r !== null && !dynamic.includes(r))
+        const allRoutes = [...dynamic, ...tradeReversed]
+        if (allRoutes.length) {
           nitroConfig.prerender = nitroConfig.prerender ?? {}
-          nitroConfig.prerender.routes = [...(nitroConfig.prerender.routes ?? []), ...dynamic]
-          console.log(`[prerender] +${dynamic.length} trade/compare routes from sitemap`)
+          nitroConfig.prerender.routes = [...(nitroConfig.prerender.routes ?? []), ...allRoutes]
+          console.log(`[prerender] +${dynamic.length} sitemap routes + ${tradeReversed.length} trade reverse pairs`)
         }
       } catch (e) {
         console.warn('[prerender] sitemap fetch failed — dynamic routes not added:', e)

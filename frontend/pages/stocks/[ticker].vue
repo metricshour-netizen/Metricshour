@@ -321,6 +321,12 @@ const { isLoggedIn } = useAuth()
 
 const ticker = (route.params.ticker as string).toUpperCase()
 
+// Index tickers belong on /indices/[symbol] — redirect immediately
+const INDEX_SYMBOLS = new Set(['SPX','NDX','DJI','RUT','VIX','UKX','CAC','DAX','IBEX','SMI','NKY','HSI','SHCOMP','KOSPI','SENSEX','ASX200','MSCIW','MSCIEM'])
+if (INDEX_SYMBOLS.has(ticker)) {
+  await navigateTo(`/indices/${ticker.toLowerCase()}/`, { redirectCode: 301 })
+}
+
 const { data: stock, pending, error } = useAsyncData(
   `stock-${ticker}`,
   () => get<any>(`/api/assets/${ticker}`).catch(() => null),
