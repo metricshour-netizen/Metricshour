@@ -398,40 +398,64 @@ def _country_insight_text(country: Country, db) -> str | None:
     infl = ind.get("inflation_pct")
     real_rate = f"{(rate - infl):.1f}%" if rate is not None and infl is not None else "N/A"
 
-    facts = (
-        f"Country: {country.name} ({country.code}) | Currency: {country.currency_code or 'N/A'}\n"
-        f"GDP: {_fmt_gdp(ind.get('gdp_usd'))} | GDP growth: {_f1('gdp_growth_pct')}\n"
-        f"Inflation: {_f1('inflation_pct')} | Policy rate: {_f2('interest_rate_pct')} | Real rate: {real_rate}\n"
-        f"Unemployment: {_f1('unemployment_pct')} | Current account: {_f1('current_account_gdp_pct')} of GDP\n"
-        f"Govt debt/GDP: {_f1('government_debt_gdp_pct')} | S&P: {country.credit_rating_sp or 'N/A'}\n"
-        f"Blocs: {', '.join(groups) if groups else 'UN member'}\n"
-        f"Date: {date.today().strftime('%B %d, %Y')}\n"
-    )
+    # Build facts block with only available data — omit any field that would show N/A
+    fact_lines = [f"Country: {country.name} ({country.code})"]
+    if country.currency_code:
+        fact_lines[0] += f" | Currency: {country.currency_code}"
+    gdp_str = _fmt_gdp(ind.get('gdp_usd'))
+    gdp_growth = ind.get('gdp_growth_pct')
+    if gdp_str != "N/A" or gdp_growth is not None:
+        parts = []
+        if gdp_str != "N/A": parts.append(f"GDP: {gdp_str}")
+        if gdp_growth is not None: parts.append(f"GDP growth: {gdp_growth:.1f}%")
+        fact_lines.append(" | ".join(parts))
+    if infl is not None or rate is not None:
+        parts = []
+        if infl is not None: parts.append(f"Inflation: {infl:.1f}%")
+        if rate is not None: parts.append(f"Policy rate: {rate:.2f}%")
+        if real_rate != "N/A": parts.append(f"Real rate: {real_rate}")
+        fact_lines.append(" | ".join(parts))
+    if ind.get("unemployment_pct") is not None:
+        fact_lines.append(f"Unemployment: {ind['unemployment_pct']:.1f}%")
+    if ind.get("current_account_gdp_pct") is not None:
+        fact_lines.append(f"Current account: {ind['current_account_gdp_pct']:.1f}% of GDP")
+    if ind.get("government_debt_gdp_pct") is not None:
+        fact_lines.append(f"Govt debt/GDP: {ind['government_debt_gdp_pct']:.1f}%")
+    if country.credit_rating_sp:
+        fact_lines.append(f"S&P rating: {country.credit_rating_sp}")
+    fact_lines.append(f"Blocs: {', '.join(groups) if groups else 'UN member'}")
+    fact_lines.append(f"Date: {date.today().strftime('%B %d, %Y')}")
+    facts = "\n".join(fact_lines) + "\n"
 
-    # Word count and analytical angle both vary by day — prevents structural pattern detection
-    _COUNTRY_ANGLES = [
-        # 0: monetary / real rate
-        (45, 60,
+    # Only offer angles where the key data exists — avoids N/A appearing in AI output
+    _COUNTRY_ANGLES = []
+    if real_rate != "N/A" and rate is not None and infl is not None:
+        _COUNTRY_ANGLES.append((45, 60,
          f"The real rate for {country.name} is {real_rate} (policy {_f2('interest_rate_pct')} minus inflation {_f1('inflation_pct')}). "
          f"Open with what that spread means for the currency and bond market right now, citing the exact numbers. "
-         f"Then say what it implies for the next policy move. Close with the specific data release or CB meeting that will reset this trade."),
-        # 1: external balance / FX
-        (50, 65,
+         f"Then say what it implies for the next policy move. Close with the specific data release or CB meeting that will reset this trade."))
+    if ind.get("current_account_gdp_pct") is not None:
+        _COUNTRY_ANGLES.append((50, 65,
          f"Open with {country.name}'s current account ({_f1('current_account_gdp_pct')} of GDP) and what it means for FX and capital flows — "
          f"name the pressure specifically (surplus = currency support, deficit = funding risk). "
-         f"Then identify the most acute near-term FX risk. Close with the trade or policy event nearest to today that could reprice it."),
-        # 2: growth / labour
-        (55, 70,
+         f"Then identify the most acute near-term FX risk. Close with the trade or policy event nearest to today that could reprice it."))
+    if ind.get("gdp_growth_pct") is not None and ind.get("unemployment_pct") is not None:
+        _COUNTRY_ANGLES.append((55, 70,
          f"Open with the tension between GDP growth ({_f1('gdp_growth_pct')}) and unemployment ({_f1('unemployment_pct')}) "
          f"and what it means for consumer spending and equities — name the sector most exposed. "
          f"Then say whether this is acceleration or deceleration and why it matters now. "
-         f"Close with the next GDP or labour print to watch."),
-        # 3: fiscal / sovereign credit
-        (45, 60,
-         f"Open with {country.name}'s debt/GDP ({_f1('government_debt_gdp_pct')}) and S&P rating ({country.credit_rating_sp or 'N/A'}) — "
-         f"is the fiscal position sustainable at a real rate of {real_rate}? "
-         f"State the bond market implication directly. Close with the next budget event, auction, or ratings review."),
-    ]
+         f"Close with the next GDP or labour print to watch."))
+    if ind.get("government_debt_gdp_pct") is not None and country.credit_rating_sp:
+        _COUNTRY_ANGLES.append((45, 60,
+         f"Open with {country.name}'s debt/GDP ({_f1('government_debt_gdp_pct')}) and S&P rating ({country.credit_rating_sp}) — "
+         f"is the fiscal position sustainable at a real rate of {real_rate if real_rate != 'N/A' else 'current rates'}? "
+         f"State the bond market implication directly. Close with the next budget event, auction, or ratings review."))
+
+    # Skip AI entirely if no angle has sufficient data
+    if not _COUNTRY_ANGLES:
+        log.debug("Skipping AI insight for %s — insufficient data", country.code)
+        return None
+
     angle = _daily_angle(country.code, len(_COUNTRY_ANGLES))
     min_w, max_w, focus = _COUNTRY_ANGLES[angle]
 
