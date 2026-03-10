@@ -130,6 +130,13 @@ def update_imf_data(self):
             time.sleep(0.5)
 
         log.info(f"IMF update complete — {total_upserted} total rows")
+
+        # Fire macro alert check instantly — users get alerted the moment new data lands
+        if total_upserted > 0:
+            from tasks.macro_alert_checker import check_macro_alerts
+            check_macro_alerts.apply_async(countdown=5)
+            log.info("Macro alert check queued after IMF update")
+
         return f"ok: {total_upserted} rows"
 
     except Exception as exc:

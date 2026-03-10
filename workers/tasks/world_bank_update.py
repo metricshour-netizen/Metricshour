@@ -174,6 +174,13 @@ def update_world_bank(self):
             time.sleep(0.3)  # be polite to the WB API
 
         log.info(f"World Bank update complete — {total_upserted} total rows")
+
+        # Fire macro alert check instantly — users get alerted the moment new data lands
+        if total_upserted > 0:
+            from tasks.macro_alert_checker import check_macro_alerts
+            check_macro_alerts.apply_async(countdown=5)
+            log.info("Macro alert check queued after World Bank update")
+
         return f"ok: {total_upserted} rows"
 
     except Exception as exc:
