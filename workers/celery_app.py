@@ -65,6 +65,7 @@ app = Celery('metricshour', include=[
     'tasks.central_bank_rates',
     'tasks.backfill',
     'tasks.r2_snapshots',
+    'tasks.social_content',
 ])
 
 # Upstash Redis uses TLS (rediss://); Celery requires ssl_cert_reqs to be explicit.
@@ -222,6 +223,12 @@ app.conf.update(
         'r2-snapshots-daily-7am': {
             'task': 'tasks.r2_snapshots.write_r2_snapshots',
             'schedule': crontab(hour=7, minute=0),
+        },
+
+        # Social content drafts — daily at 9am UTC → sent to Telegram for approval
+        'social-drafts-daily-9am': {
+            'task': 'tasks.social_content.generate_social_drafts',
+            'schedule': crontab(hour=9, minute=0),
         },
 
         # WITS trade matrix: full annual refresh — Jan 15 at 2am
