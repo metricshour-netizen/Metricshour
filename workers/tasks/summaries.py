@@ -1710,7 +1710,14 @@ def run_insight_batch(self, insight_type: str):
             }
             all_codes = [row[0] for row in db.query(Country.code).all() if row[0] in codes_with_data]
         elif insight_type == "stock":
-            all_codes = [row[0] for row in db.query(Asset.symbol).filter(Asset.asset_type == "stock").all()]
+            # Only stocks with geographic revenue data — _stock_insight_text returns None without it
+            all_codes = [row[0] for row in (
+                db.query(Asset.symbol)
+                .join(StockCountryRevenue, StockCountryRevenue.asset_id == Asset.id)
+                .filter(Asset.asset_type == "stock")
+                .distinct()
+                .all()
+            )]
         elif insight_type == "commodity":
             all_codes = [row[0] for row in db.query(Asset.symbol).filter(Asset.asset_type == "commodity").all()]
         elif insight_type == "trade":
