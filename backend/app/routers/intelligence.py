@@ -33,11 +33,12 @@ SPOTLIGHT_TTL = 10_800  # 3 hours
 # ── Redis helper ───────────────────────────────────────────────────────────────
 
 def _redis():
-    return redis_lib.from_url(
-        settings.redis_url,
-        ssl_cert_reqs=ssl.CERT_NONE,
-        decode_responses=True,
-    )
+    url = settings.redis_url
+    kwargs = {"decode_responses": True}
+    if url.startswith("rediss://"):
+        import ssl as _ssl
+        kwargs["ssl_cert_reqs"] = _ssl.CERT_NONE
+    return redis_lib.from_url(url, **kwargs)
 
 
 # ── Spotlight generation ───────────────────────────────────────────────────────
