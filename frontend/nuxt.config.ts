@@ -54,41 +54,11 @@ export default defineNuxtConfig({
   },
 
   nitro: {
-    preset: 'static',
+    preset: 'node-server',
   },
 
   routeRules: {
     '/sitemap.xml': { redirect: { to: 'https://api.metricshour.com/sitemap.xml', statusCode: 301 } },
-    '/robots.txt': { prerender: true },
-  },
-
-  hooks: {
-    // Fetch sitemap during build and prerender all trade + compare URLs so
-    // Cloudflare Pages has static HTML for every URL we submit to Google.
-    async 'nitro:config'(nitroConfig) {
-      const api = process.env.NUXT_PUBLIC_API_BASE || 'https://api.metricshour.com'
-      try {
-        const res = await fetch(`${api}/sitemap.xml`)
-        const xml = await res.text()
-        const dynamic = [...xml.matchAll(/<loc>https:\/\/metricshour\.com(\/(?:stocks|countries|commodities|trade|compare)\/[^<]+)<\/loc>/g)]
-          .map(m => m[1])
-        // Also pre-render the reverse direction for every trade pair (e.g. ru-us ↔ us-ru)
-        const tradeReversed = dynamic
-          .filter(r => r.startsWith('/trade/'))
-          .map(r => {
-            const [, a, b] = r.match(/^\/trade\/([^-]+)-([^/]+)/) ?? []
-            return a && b ? `/trade/${b}-${a}/` : null
-          })
-          .filter((r): r is string => r !== null && !dynamic.includes(r))
-        const allRoutes = [...dynamic, ...tradeReversed]
-        if (allRoutes.length) {
-          nitroConfig.prerender = nitroConfig.prerender ?? {}
-          nitroConfig.prerender.routes = [...(nitroConfig.prerender.routes ?? []), ...allRoutes]
-          console.log(`[prerender] +${dynamic.length} sitemap routes + ${tradeReversed.length} trade reverse pairs`)
-        }
-      } catch (e) {
-        console.warn('[prerender] sitemap fetch failed — dynamic routes not added:', e)
-      }
-    },
+    '/robots.txt': { redirect: { to: 'https://api.metricshour.com/robots.txt', statusCode: 301 } },
   },
 })
