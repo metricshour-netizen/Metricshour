@@ -125,35 +125,48 @@ async def telegram_webhook(request: Request):
     twitter_text = draft.get("twitter", "")
     linkedin_text = draft.get("linkedin", "")
 
-    from tasks.social_poster import post_via_make, post_to_twitter
+    from tasks.social_poster import post_via_make, post_to_twitter, post_to_linkedin
 
     results = []
 
-    # Route through Make.com if configured (handles LinkedIn + Facebook + Twitter)
-    if os.environ.get("MAKE_WEBHOOK_URL"):
-        platform = action  # twitter | linkedin | both
-        text = twitter_text if action == "twitter" else linkedin_text
-        err = post_via_make(platform, text, draft)
+    # LinkedIn — direct API (preferred, no Make.com dependency)
+    if action in ("linkedin", "both") and linkedin_text:
+        err = post_to_linkedin(linkedin_text)
         if err and "not configured" not in err:
-            results.append(f"Make.com failed: {err}")
-            # Fallback: send to chat
-            _send_message(chat_id, f"📋 <b>Post manually:</b>\n\n{text[:3000]}")
-        else:
-            label = {"twitter": "🐦 Twitter", "linkedin": "💼 LinkedIn + Facebook", "both": "🐦💼 All platforms"}.get(action, action)
-            results.append(f"{label} posted via Make.com ✓")
-    else:
-        # Direct posting fallback
-        if action in ("twitter", "both") and twitter_text:
-            err = post_to_twitter(twitter_text)
-            if err:
-                _send_message(chat_id, f"🐦 <b>Twitter (post manually):</b>\n\n<code>{twitter_text}</code>")
-                results.append("🐦 Sent to chat (configure MAKE_WEBHOOK_URL or Twitter API)")
+            # Fallback: Make.com
+            if os.environ.get("MAKE_WEBHOOK_URL"):
+                err2 = post_via_make("linkedin", linkedin_text, draft)
+                if err2 and "not configured" not in err2:
+                    _send_message(chat_id, f"💼 <b>LinkedIn (post manually):</b>\n\n{linkedin_text[:3000]}")
+                    results.append(f"💼 LinkedIn failed — sent to chat")
+                else:
+                    results.append("💼 LinkedIn posted via Make.com ✓")
             else:
-                results.append("🐦 Posted to Twitter ✓")
+                _send_message(chat_id, f"💼 <b>LinkedIn (post manually):</b>\n\n{linkedin_text[:3000]}")
+                results.append("💼 LinkedIn sent to chat")
+        else:
+            results.append("💼 LinkedIn posted ✓")
 
-        if action in ("linkedin", "both") and linkedin_text:
-            _send_message(chat_id, f"💼 <b>LinkedIn (post manually):</b>\n\n{linkedin_text}")
-            results.append("💼 Sent to chat (add MAKE_WEBHOOK_URL to automate)")
+    # Twitter — direct API or Make.com
+    if action in ("twitter", "both") and twitter_text:
+        err = post_to_twitter(twitter_text)
+        if err and "not configured" not in err:
+            if os.environ.get("MAKE_WEBHOOK_URL"):
+                err2 = post_via_make("twitter", twitter_text, draft)
+                if err2 and "not configured" not in err2:
+                    _send_message(chat_id, f"🐦 <b>Twitter (post manually):</b>\n\n<code>{twitter_text}</code>")
+                    results.append("🐦 Twitter failed — sent to chat")
+                else:
+                    results.append("🐦 Twitter posted via Make.com ✓")
+            else:
+                _send_message(chat_id, f"🐦 <b>Twitter (post manually):</b>\n\n<code>{twitter_text}</code>")
+                results.append("🐦 Twitter not configured — sent to chat")
+        elif err and "not configured" in err:
+            if os.environ.get("MAKE_WEBHOOK_URL"):
+                post_via_make("twitter", twitter_text, draft)
+            else:
+                _send_message(chat_id, f"🐦 <b>Twitter (post manually):</b>\n\n<code>{twitter_text}</code>")
+            results.append("🐦 Twitter sent to chat")
 
     status = "\n".join(results) or "Nothing to post"
     _answer_callback(callback_id, status.replace("✓", "").strip()[:200])

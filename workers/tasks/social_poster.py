@@ -24,6 +24,8 @@ TWITTER_API_KEY = os.environ.get("TWITTER_API_KEY", "")
 TWITTER_API_SECRET = os.environ.get("TWITTER_API_SECRET", "")
 TWITTER_ACCESS_TOKEN = os.environ.get("TWITTER_ACCESS_TOKEN", "")
 TWITTER_ACCESS_TOKEN_SECRET = os.environ.get("TWITTER_ACCESS_TOKEN_SECRET", "")
+LINKEDIN_ACCESS_TOKEN = os.environ.get("LINKEDIN_ACCESS_TOKEN", "")
+LINKEDIN_AUTHOR_URN = os.environ.get("LINKEDIN_AUTHOR_URN", "")
 
 
 def post_via_make(platform: str, text: str, draft: dict) -> str | None:
@@ -49,6 +51,42 @@ def post_via_make(platform: str, text: str, draft: dict) -> str | None:
         return f"Make.com {r.status_code}: {r.text[:200]}"
     except Exception as e:
         log.warning("Make.com webhook failed: %s", e)
+        return str(e)
+
+
+def post_to_linkedin(text: str) -> str | None:
+    """Post directly to LinkedIn company/personal page via API v2."""
+    if not LINKEDIN_ACCESS_TOKEN or not LINKEDIN_AUTHOR_URN:
+        return "not configured"
+    try:
+        payload = {
+            "author": LINKEDIN_AUTHOR_URN,
+            "lifecycleState": "PUBLISHED",
+            "specificContent": {
+                "com.linkedin.ugc.ShareContent": {
+                    "shareCommentary": {"text": text},
+                    "shareMediaCategory": "NONE",
+                }
+            },
+            "visibility": {"com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC"},
+        }
+        r = requests.post(
+            "https://api.linkedin.com/v2/ugcPosts",
+            headers={
+                "Authorization": f"Bearer {LINKEDIN_ACCESS_TOKEN}",
+                "Content-Type": "application/json",
+                "X-Restli-Protocol-Version": "2.0.0",
+            },
+            json=payload,
+            timeout=15,
+        )
+        if r.status_code in (200, 201):
+            post_id = r.headers.get("x-restli-id", "?")
+            log.info("LinkedIn post published: id=%s", post_id)
+            return None
+        return f"LinkedIn {r.status_code}: {r.text[:200]}"
+    except Exception as e:
+        log.warning("LinkedIn post failed: %s", e)
         return str(e)
 
 

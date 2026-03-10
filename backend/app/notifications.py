@@ -11,6 +11,10 @@ logger = logging.getLogger(__name__)
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
 RESEND_FROM_EMAIL = os.environ.get("RESEND_FROM_EMAIL", "alerts@metricshour.com")
+N8N_WELCOME_WEBHOOK = os.environ.get(
+    "N8N_WELCOME_WEBHOOK",
+    "https://n8n.metricshour.com/webhook/welcome-email",
+)
 
 
 def send_telegram(chat_id: str, text: str) -> str | None:
@@ -120,8 +124,26 @@ def build_alert_email(symbol: str, name: str, condition: str, target: float, cur
 """
 
 
-def send_welcome_email(to: str) -> str | None:
-    """Send a welcome email to a new user."""
+def send_welcome_email(to: str, name: str = "") -> str | None:
+    """Send a welcome email to a new user via n8n webhook (tracked in n8n execution history)."""
+    try:
+        r = requests.post(
+            N8N_WELCOME_WEBHOOK,
+            json={"email": to, "name": name or to.split("@")[0]},
+            timeout=10,
+        )
+        if r.status_code not in (200, 201):
+            logger.warning("n8n welcome webhook %s: %s", r.status_code, r.text[:200])
+            # Fall back to direct Resend if n8n is unreachable
+            return _send_welcome_direct(to)
+        return None
+    except Exception:
+        logger.warning("n8n welcome webhook unreachable, falling back to direct send")
+        return _send_welcome_direct(to)
+
+
+def _send_welcome_direct(to: str) -> str | None:
+    """Fallback: send welcome email directly via Resend (bypasses n8n)."""
     html = f"""
 <!DOCTYPE html>
 <html>
@@ -198,6 +220,7 @@ def send_welcome_email(to: str) -> str | None:
 </html>
 """
     return send_email(to, "Welcome to MetricsHour 🌍", html)
+
 
 
 def send_password_reset_email(to: str, token: str) -> str | None:
