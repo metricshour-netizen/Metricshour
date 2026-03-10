@@ -352,12 +352,35 @@ def _write_trade_snapshots(db) -> int:
         rows = db.execute(select(Country).where(Country.id.in_(country_ids))).scalars().all()
         countries = {c.id: c for c in rows}
 
+    # Fetch latest macro indicators for all countries involved
+    MACRO_KEYS = ["gdp_usd", "gdp_growth_pct", "inflation_pct", "gdp_per_capita_usd", "unemployment_pct", "interest_rate_pct"]
+    ind_rows = db.execute(
+        select(CountryIndicator)
+        .where(
+            CountryIndicator.country_id.in_(country_ids),
+            CountryIndicator.indicator.in_(MACRO_KEYS),
+        )
+        .order_by(CountryIndicator.country_id, CountryIndicator.indicator, CountryIndicator.period_date.desc())
+    ).scalars().all()
+
+    # latest value per (country_id, indicator)
+    country_indicators: dict[int, dict[str, float]] = {}
+    for row in ind_rows:
+        cid = row.country_id
+        if cid not in country_indicators:
+            country_indicators[cid] = {}
+        if row.indicator not in country_indicators[cid]:
+            country_indicators[cid][row.indicator] = row.value
+
     written = 0
     for p in pairs:
         exp = countries.get(p.exporter_id)
         imp = countries.get(p.importer_id)
         if not exp or not imp:
             continue
+
+        exp_ind = country_indicators.get(p.exporter_id, {})
+        imp_ind = country_indicators.get(p.importer_id, {})
 
         trade_data = {
             "id": p.id,
@@ -377,8 +400,8 @@ def _write_trade_snapshots(db) -> int:
 
         key = f"snapshots/trade/{exp.code.lower()}-{imp.code.lower()}.json"
         data = {
-            "exporter": {"code": exp.code, "name": exp.name, "flag": exp.flag_emoji, "currency_code": exp.currency_code, "indicators": {}},
-            "importer": {"code": imp.code, "name": imp.name, "flag": imp.flag_emoji, "currency_code": imp.currency_code, "indicators": {}},
+            "exporter": {"code": exp.code, "name": exp.name, "flag": exp.flag_emoji, "currency_code": exp.currency_code, "indicators": exp_ind},
+            "importer": {"code": imp.code, "name": imp.name, "flag": imp.flag_emoji, "currency_code": imp.currency_code, "indicators": imp_ind},
             "trade_data": trade_data,
             "canonical_pair": f"{exp.code.lower()}-{imp.code.lower()}",
             "generated_at": datetime.now(timezone.utc).isoformat(),
