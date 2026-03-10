@@ -11,8 +11,8 @@ def _make_engine():
     return create_engine(
         settings.database_url,
         pool_pre_ping=True,        # reconnect if connection dropped
-        pool_size=2,               # Aiven has strict connection limits; keep pool tiny
-        max_overflow=3,            # max 5 total connections from this process
+        pool_size=10,              # local Postgres, no connection limits
+        max_overflow=10,           # up to 20 total connections per process
         pool_recycle=300,
         connect_args={
             "prepare_threshold": None,  # disable prepared statements (Aiven compatibility)
