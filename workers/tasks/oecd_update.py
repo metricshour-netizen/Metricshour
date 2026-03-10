@@ -116,14 +116,14 @@ QUERIES: list[dict] = [
     },
 ]
 
-def _fetch_oecd_one_country(dataset: str, key_template: str, country3: str) -> list[dict]:
+def _fetch_oecd_all_countries(dataset: str, key_template: str) -> list[dict]:
     """
-    Fetch OECD SDMX-JSON data for ONE country. Returns list of {country_code3, period, value}.
-
-    Uses stats.oecd.org/sdmx-json (SDMX JSON 2.0 format).
-    Fetches one country at a time to keep responses manageable.
+    Fetch OECD SDMX-JSON data for ALL countries in one request.
+    New OECD endpoint returns all countries regardless of country filter.
+    Returns list of {country_code3, period, value}.
     """
-    series_key = key_template.replace("{country}", country3)
+    series_key = key_template.replace("{country}", "")
+    series_key = series_key.replace("..", ".").strip(".")
     url = f"{OECD_BASE}/{dataset}/{series_key}/all"
     params = {"startTime": "2018-01", "endTime": "2099-12"}
 
@@ -226,14 +226,8 @@ def update_oecd_data(self):
         total_upserted = 0
 
         for query in QUERIES:
-            # Fetch all OECD countries for this indicator
-            all_rows: list[dict] = []
-            for country3 in OECD_TO_ISO2:
-                country_rows = _fetch_oecd_one_country(
-                    query["dataset"], query["key"], country3
-                )
-                all_rows.extend(country_rows)
-                time.sleep(0.2)  # polite rate limiting
+            # Fetch all OECD countries in one request
+            all_rows = _fetch_oecd_all_countries(query["dataset"], query["key"])
 
             if not all_rows:
                 log.warning(f"OECD: no data for {query['indicator']}")
