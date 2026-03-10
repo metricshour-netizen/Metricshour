@@ -72,7 +72,7 @@ const tiers = [
     features: [
       'Everything in Free',
       'Real-time stock prices',
-      'AI market insights (Claude)',
+      'AI market insights',
       'CSV data export',
       'Unlimited price alerts',
     ],
