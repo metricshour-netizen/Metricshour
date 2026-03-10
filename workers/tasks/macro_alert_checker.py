@@ -7,12 +7,12 @@ Called by:
   - oecd_update task (after committing)
   - Celery Beat fallback: daily at 6:45am UTC (catches any missed updates)
 
-For each active macro alert, checks the latest indicator value against the
-user's threshold. Fires Telegram + email if condition is met and cooldown
-has elapsed. Macro alerts are RECURRING — they stay active and re-fire
-whenever the condition holds (respecting cooldown_days).
+Smart alerts: when an alert fires, Gemini Flash Lite generates 2-sentence
+context (trend + investor implication) inserted into both Telegram + email.
+Cost: ~$0.00001 per alert fired (only runs when threshold is actually crossed).
 """
 import logging
+import os
 from datetime import datetime, timedelta, timezone
 
 from celery_app import app
@@ -25,9 +25,56 @@ from app.database import SessionLocal
 from app.notifications import (
     send_telegram, send_email,
     build_macro_alert_telegram, build_macro_alert_email,
+    INDICATOR_LABELS, _fmt_macro,
 )
 
 logger = logging.getLogger(__name__)
+
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+
+
+def _generate_smart_context(
+    country_name: str,
+    indicator_label: str,
+    current: float,
+    threshold: float,
+    condition: str,
+    history: list[tuple[int, float]],  # [(year, value), ...] newest first
+) -> str | None:
+    """Call Gemini Flash Lite to produce 2-sentence alert context. Returns None on any failure."""
+    if not GEMINI_API_KEY:
+        return None
+    try:
+        from google import genai
+        from google.genai import types as genai_types
+
+        hist_str = ", ".join(f"{yr}: {val:.2f}" for yr, val in history) if history else "no history"
+        direction = "above" if condition == "above" else "below"
+
+        prompt = (
+            f"{country_name} — {indicator_label}: current value {current:.2f}, "
+            f"crossed {direction} threshold {threshold:.2f}. "
+            f"Recent history ({hist_str}). "
+            f"Write exactly 2 sentences for an investor alert: "
+            f"1) what this trend means in context, "
+            f"2) the key market/portfolio implication. "
+            f"Be specific, data-driven, no filler phrases."
+        )
+
+        client = genai.Client(api_key=GEMINI_API_KEY)
+        r = client.models.generate_content(
+            model="gemini-2.0-flash-lite",
+            contents=prompt,
+            config=genai_types.GenerateContentConfig(
+                max_output_tokens=120,
+                temperature=0.3,
+            ),
+        )
+        text = (r.text or "").strip()
+        return text if len(text) > 20 else None
+    except Exception as e:
+        logger.warning("Gemini context generation failed: %s", e)
+        return None
 
 
 @app.task(name='tasks.macro_alert_checker.check_macro_alerts', bind=True, max_retries=2)
@@ -53,7 +100,7 @@ def _run_checker(db: Session) -> int:
     if not active:
         return 0
 
-    # Build country_code → (country_id, country_name) map once
+    # Build country_code → (id, name) maps once
     countries = db.execute(select(Country.code, Country.id, Country.name)).all()
     code_to_id = {c.code: c.id for c in countries}
     code_to_name = {c.code: c.name for c in countries}
@@ -62,7 +109,7 @@ def _run_checker(db: Session) -> int:
     fired = 0
 
     for alert in active:
-        # Check cooldown
+        # Cooldown check
         if alert.last_triggered_at:
             cooldown_until = alert.last_triggered_at + timedelta(days=alert.cooldown_days)
             if now < cooldown_until:
@@ -89,6 +136,15 @@ def _run_checker(db: Session) -> int:
             continue
 
         country_name = code_to_name.get(alert.country_code, alert.country_code)
+        label, _ = INDICATOR_LABELS.get(alert.indicator_name, (alert.indicator_name, ""))
+
+        # Fetch recent history for smart context (last 5 years, newest first)
+        history = _get_history(db, country_id, alert.indicator_name, limit=5)
+
+        # Generate smart 2-sentence context via Gemini Flash Lite
+        context = _generate_smart_context(
+            country_name, label, current_value, threshold, alert.condition, history
+        )
 
         # Send Telegram
         if user.notify_telegram and user.telegram_chat_id:
@@ -96,6 +152,7 @@ def _run_checker(db: Session) -> int:
                 country_name, alert.country_code,
                 alert.indicator_name, alert.condition,
                 threshold, current_value,
+                context=context,
             )
             err = send_telegram(user.telegram_chat_id, msg)
             if err:
@@ -103,11 +160,12 @@ def _run_checker(db: Session) -> int:
 
         # Send email
         if user.notify_email and user.email:
-            subject = f"📊 Macro Alert: {country_name} — MetricsHour"
+            subject = f"📊 Macro Alert: {country_name} — {label} | MetricsHour"
             html = build_macro_alert_email(
                 country_name, alert.country_code,
                 alert.indicator_name, alert.condition,
                 threshold, current_value,
+                context=context,
             )
             err = send_email(user.email, subject, html)
             if err:
@@ -128,7 +186,6 @@ def _run_checker(db: Session) -> int:
 
 
 def _get_latest_indicator(db: Session, country_id: int, indicator_name: str) -> float | None:
-    """Return the most recent value for this country+indicator."""
     row = db.execute(
         select(CountryIndicator.value)
         .where(
@@ -139,3 +196,19 @@ def _get_latest_indicator(db: Session, country_id: int, indicator_name: str) -> 
         .limit(1)
     ).scalar_one_or_none()
     return float(row) if row is not None else None
+
+
+def _get_history(
+    db: Session, country_id: int, indicator_name: str, limit: int = 5
+) -> list[tuple[int, float]]:
+    """Return last N (year, value) pairs, newest first."""
+    rows = db.execute(
+        select(CountryIndicator.period_date, CountryIndicator.value)
+        .where(
+            CountryIndicator.country_id == country_id,
+            CountryIndicator.indicator == indicator_name,
+        )
+        .order_by(CountryIndicator.period_date.desc())
+        .limit(limit)
+    ).all()
+    return [(r.period_date.year, float(r.value)) for r in rows]

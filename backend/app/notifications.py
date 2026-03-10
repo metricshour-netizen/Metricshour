@@ -287,24 +287,31 @@ def build_macro_alert_telegram(
     country_name: str, country_code: str,
     indicator_name: str, condition: str,
     threshold: float, current: float,
+    context: str | None = None,
 ) -> str:
     label, _ = INDICATOR_LABELS.get(indicator_name, (indicator_name, ""))
     emoji = "🟢" if condition == "above" else "🔴"
     direction = "crossed above ↑" if condition == "above" else "dropped below ↓"
-    return (
-        f"{emoji} <b>Macro Alert — {country_name}</b>\n"
-        f"<b>{label}</b> has {direction} your threshold\n\n"
-        f"<b>Current:</b> <code>{_fmt_macro(indicator_name, current)}</code>\n"
-        f"<b>Threshold:</b> <code>{_fmt_macro(indicator_name, threshold)}</code>\n\n"
-        f"<a href=\"https://metricshour.com/countries/{country_code.lower()}\">"
+    parts = [
+        f"{emoji} <b>Macro Alert — {country_name}</b>",
+        f"<b>{label}</b> has {direction} your threshold\n",
+        f"<b>Current:</b> <code>{_fmt_macro(indicator_name, current)}</code>",
+        f"<b>Threshold:</b> <code>{_fmt_macro(indicator_name, threshold)}</code>",
+    ]
+    if context:
+        parts.append(f"\n💡 {context}")
+    parts.append(
+        f"\n<a href=\"https://metricshour.com/countries/{country_code.lower()}\">"
         f"View {country_name} on MetricsHour →</a>"
     )
+    return "\n".join(parts)
 
 
 def build_macro_alert_email(
     country_name: str, country_code: str,
     indicator_name: str, condition: str,
     threshold: float, current: float,
+    context: str | None = None,
 ) -> str:
     label, _ = INDICATOR_LABELS.get(indicator_name, (indicator_name, ""))
     color = "#10b981" if condition == "above" else "#f87171"
@@ -313,6 +320,13 @@ def build_macro_alert_email(
     cur_fmt = _fmt_macro(indicator_name, current)
     thr_fmt = _fmt_macro(indicator_name, threshold)
     url = f"https://metricshour.com/countries/{country_code.lower()}"
+    context_block = ""
+    if context:
+        context_block = f"""
+        <div style="background:#0d1117;border-left:3px solid #10b981;border-radius:0 8px 8px 0;padding:16px 20px;margin-bottom:24px;">
+          <p style="font-size:11px;font-weight:700;color:#10b981;margin:0 0 8px 0;text-transform:uppercase;letter-spacing:1px;">💡 Analysis</p>
+          <p style="font-size:13px;color:#d1d5db;margin:0;line-height:1.6;">{context}</p>
+        </div>"""
     return f"""<!DOCTYPE html><html><head><meta charset="utf-8"></head>
 <body style="margin:0;padding:0;background:#0a0e1a;font-family:sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0e1a;padding:40px 20px;">
@@ -336,17 +350,14 @@ def build_macro_alert_email(
               </td>
               <td width="50%" style="padding-left:8px;">
                 <div style="background:#0d1117;border:1px solid #1f2937;border-radius:8px;padding:16px;">
-                  <p style="font-size:11px;color:#6b7280;margin:0 0 6px 0;text-transform:uppercase;letter-spacing:1px;">Threshold</p>
+                  <p style="font-size:11px;color:#6b7280;margin:0 0 6px 0;text-transform:uppercase;letter-spacing:1px;">Your Threshold</p>
                   <p style="font-size:22px;font-weight:700;color:#e5e7eb;margin:0;font-family:monospace;">{arrow} {thr_fmt}</p>
                 </div>
               </td>
             </tr>
           </table>
-          <p style="font-size:14px;color:#9ca3af;margin:0 0 24px 0;">
-            <strong style="color:{color};">{country_name}'s {label}</strong> is now
-            <strong style="color:{color};">{direction} your {thr_fmt} threshold</strong>.
-          </p>
-          <a href="{url}" style="display:inline-block;background:#10b981;color:#000000;font-weight:700;font-size:13px;padding:12px 24px;border-radius:8px;text-decoration:none;">View {country_name} →</a>
+          {context_block}
+          <a href="{url}" style="display:inline-block;background:#10b981;color:#000000;font-weight:700;font-size:13px;padding:12px 24px;border-radius:8px;text-decoration:none;">View {country_name} on MetricsHour →</a>
         </td></tr>
         <tr><td style="padding:16px 28px;border-top:1px solid #1f2937;">
           <p style="font-size:11px;color:#374151;margin:0;">You set this macro alert on MetricsHour.
