@@ -68,14 +68,20 @@ app = Celery('metricshour', include=[
     'tasks.social_content',
 ])
 
-# Upstash Redis uses TLS (rediss://); Celery requires ssl_cert_reqs to be explicit.
-_ssl_opts = {'ssl_cert_reqs': ssl.CERT_NONE}
+# Use SSL only for rediss:// URLs (Upstash); skip for local redis:// (DragonflyDB)
+_redis_url = os.environ['REDIS_URL']
+_ssl_opts = {'ssl_cert_reqs': ssl.CERT_NONE} if _redis_url.startswith('rediss://') else None
+
+_conf = dict(
+    broker_url=_redis_url,
+    result_backend=_redis_url,
+)
+if _ssl_opts:
+    _conf['broker_use_ssl'] = _ssl_opts
+    _conf['redis_backend_use_ssl'] = _ssl_opts
 
 app.conf.update(
-    broker_url=os.environ['REDIS_URL'],
-    result_backend=os.environ['REDIS_URL'],
-    broker_use_ssl=_ssl_opts,
-    redis_backend_use_ssl=_ssl_opts,
+    **_conf,
     task_serializer='json',
     result_serializer='json',
     accept_content=['json'],
