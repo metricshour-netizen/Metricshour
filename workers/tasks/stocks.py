@@ -105,7 +105,7 @@ def _fetch_yfinance(symbols: list[str]) -> dict[str, float]:
                         close = df[sym]['Close'].dropna()
                         if not close.empty:
                             result[sym] = float(close.iloc[-1])
-                    except (KeyError, IndexError):
+                    except (KeyError, IndexError, TypeError):
                         pass
         except Exception:
             log.exception(f'yfinance batch {i}-{i+CHUNK_SIZE} failed')

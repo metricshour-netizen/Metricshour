@@ -156,8 +156,8 @@ def fetch_index_etf_prices(self):
                 yf_sym = BOND_YF_MAP[db_sym]
                 yf_to_db[yf_sym] = db_sym
                 yf_symbols.append(yf_sym)
-            elif asset.asset_type in (AssetType.etf, AssetType.bond):
-                # ETFs and bond ETFs use their ticker directly
+            elif asset.asset_type == AssetType.etf:
+                # ETFs use their ticker directly; bonds without a BOND_YF_MAP entry are skipped
                 yf_to_db[db_sym] = db_sym
                 yf_symbols.append(db_sym)
 
