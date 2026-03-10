@@ -21,6 +21,9 @@ from app.models.asset import Asset, AssetType, Price
 log = logging.getLogger(__name__)
 
 MARKETSTACK_KEY = os.environ.get('MARKETSTACK_API_KEY', '')
+
+# Reject any single-period price change > this threshold (bad yfinance/Marketstack ticks)
+MAX_STOCK_SPIKE_PCT = 15.0
 MARKETSTACK_URL = 'http://api.marketstack.com/v1'
 CHUNK_SIZE = 50   # marketstack accepts up to 100 symbols per call; 50 is safe
 
@@ -110,18 +113,35 @@ def _fetch_yfinance(symbols: list[str]) -> dict[str, float]:
 
 
 def _upsert_prices(db, symbol_to_asset: dict, prices: dict[str, float], now: datetime) -> int:
-    rows = [
-        {
-            'asset_id': symbol_to_asset[sym].id,
+    # Fetch last known price per asset for spike guard
+    asset_ids = [symbol_to_asset[s].id for s in prices if s in symbol_to_asset]
+    last_prices: dict[int, float] = {}
+    for aid in asset_ids:
+        last = db.query(Price.close).filter(Price.asset_id == aid).order_by(Price.timestamp.desc()).first()
+        if last:
+            last_prices[aid] = last[0]
+
+    rows = []
+    for sym, price in prices.items():
+        if sym not in symbol_to_asset:
+            continue
+        asset = symbol_to_asset[sym]
+        if asset.id in last_prices and last_prices[asset.id] > 0:
+            chg = abs((price - last_prices[asset.id]) / last_prices[asset.id]) * 100
+            if chg > MAX_STOCK_SPIKE_PCT:
+                log.warning(
+                    'Stock spike rejected: %s new=%.4f prev=%.4f chg=%.1f%%',
+                    sym, price, last_prices[asset.id], chg,
+                )
+                continue
+        rows.append({
+            'asset_id': asset.id,
             'timestamp': now,
             'interval': '1d',
             'open': None, 'high': None, 'low': None,
             'close': price,
             'volume': None,
-        }
-        for sym, price in prices.items()
-        if sym in symbol_to_asset
-    ]
+        })
     if not rows:
         return 0
     stmt = pg_insert(Price).values(rows)

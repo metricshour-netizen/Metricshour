@@ -63,20 +63,58 @@ def _kv_url(key: str) -> str:
     return f"{base}/values/{key}"
 
 
+_KV_TIMEOUT = 3.0  # seconds — fail fast, don't block request workers
+
+# ── Circuit breaker for KV writes ─────────────────────────────────────────────
+# After _CB_THRESHOLD consecutive failures, skip KV writes for _CB_BACKOFF_SEC.
+# Resets on any success. Prevents hammering CF KV when it's degraded.
+import threading as _threading
+
+_cb_lock = _threading.Lock()
+_cb_failures = 0
+_cb_open_until = 0.0  # monotonic time after which we retry
+_CB_THRESHOLD = 5
+_CB_BACKOFF_SEC = 300  # 5 minutes
+
+
+def _cb_is_open() -> bool:
+    """Returns True if circuit is open (skip KV write)."""
+    import time as _t
+    with _cb_lock:
+        return _cb_failures >= _CB_THRESHOLD and _t.monotonic() < _cb_open_until
+
+
+def _cb_record_success() -> None:
+    global _cb_failures, _cb_open_until
+    with _cb_lock:
+        _cb_failures = 0
+        _cb_open_until = 0.0
+
+
+def _cb_record_failure() -> None:
+    global _cb_failures, _cb_open_until
+    import time as _t
+    with _cb_lock:
+        _cb_failures += 1
+        if _cb_failures >= _CB_THRESHOLD:
+            _cb_open_until = _t.monotonic() + _CB_BACKOFF_SEC
+
+
 def kv_set(key: str, value: str, ttl_seconds: int = 300) -> None:
     """Write a string value to KV with optional TTL (default 5 min)."""
-    with httpx.Client() as client:
-        client.put(
+    with httpx.Client(timeout=_KV_TIMEOUT) as client:
+        r = client.put(
             _kv_url(key),
             content=value.encode(),
             headers={**_kv_headers(), "Content-Type": "text/plain"},
             params={"expiration_ttl": ttl_seconds},
         )
+        r.raise_for_status()
 
 
 def kv_get(key: str) -> str | None:
     """Read a value from KV. Returns None if key doesn't exist."""
-    with httpx.Client() as client:
+    with httpx.Client(timeout=_KV_TIMEOUT) as client:
         r = client.get(_kv_url(key), headers=_kv_headers())
         if r.status_code == 404:
             return None
@@ -85,7 +123,7 @@ def kv_get(key: str) -> str | None:
 
 
 def kv_delete(key: str) -> None:
-    with httpx.Client() as client:
+    with httpx.Client(timeout=_KV_TIMEOUT) as client:
         client.delete(_kv_url(key), headers=_kv_headers())
 
 
@@ -154,12 +192,16 @@ def kv_json_get(key: str) -> list | dict | None:
 
 
 def kv_json_set(key: str, value: list | dict, ttl_seconds: int = 3600) -> None:
-    """Write a JSON value to KV. Silently swallows errors."""
+    """Write a JSON value to KV. Silently swallows errors. Circuit-breaker protected."""
     if not (settings.cf_api_token and settings.cf_kv_namespace_id):
         return
+    if _cb_is_open():
+        return  # KV degraded — skip silently, Redis (L1) is still warm
     try:
         kv_set(key, json.dumps(value, default=str), ttl_seconds=ttl_seconds)
+        _cb_record_success()
     except Exception as exc:
+        _cb_record_failure()
         _kv_log.warning("KV set failed for %s: %s", key, exc)
 
 
@@ -204,10 +246,11 @@ def cache_get(key: str) -> list | dict | None:
 
 
 def cache_set(key: str, value: list | dict, ttl_seconds: int = 3600) -> None:
-    """Write to L0 memory, L1 Redis, and L2 KV."""
+    """Write to L0 memory and L1 Redis.
+    L2 edge cache is handled by Cloudflare CDN via Cache-Control headers — no KV writes here.
+    Use kv_json_set() directly from Celery workers for proactive KV pushes."""
     _l0_set(key, value)
     redis_json_set(key, value, ttl_seconds=ttl_seconds)
-    kv_json_set(key, value, ttl_seconds=ttl_seconds)
 
 
 def cache_del(key: str) -> None:

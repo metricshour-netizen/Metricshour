@@ -166,7 +166,7 @@ _SHARED_SYSTEM = (
     "You are a financial data writer for an institutional terminal. "
     "OUTPUT ONLY the paragraph requested — no greeting, no sign-off, no 'Certainly', "
     "no meta-commentary, no markdown, no ellipsis, no em-dashes as separators. "
-    "Every sentence must contain at least one specific number or proper noun from the data provided. "
+    "Use only numbers and facts from the provided data — never invent statistics. "
     "Active voice only. Assert — never hedge. Do not use: could, may, might, would likely, "
     "appears to, seems to, is expected to, is likely to, is poised to. "
     "Zero filler. Begin writing immediately with the first data point. "
@@ -196,10 +196,9 @@ def _call_deepseek(prompt: str, min_words: int = 55, max_words: int = 110) -> st
                     {"role": "system", "content": _DS_SYSTEM},
                     {"role": "user", "content": prompt},
                 ],
-                "max_tokens": 700,
+                "max_tokens": 900,
                 "temperature": 0.1,
-                "frequency_penalty": 0.5,
-                "stop": ["\n\n"],
+                "frequency_penalty": 0.3,
             },
             timeout=30,
         )
@@ -307,16 +306,16 @@ def _country_summary_text(country: Country, db) -> str:
         prompt = (
             f"Country overview — {country.name} — 220-280 words. Third-person. No title. No headings.\n\n"
             f"Data:\n{facts}\n\n"
-            f"Write 5 paragraphs, each 2-3 sentences:\n"
-            f"1. GDP size, growth rate, and economic classification ({dev_status}). Compare scale to a well-known benchmark if helpful.\n"
-            f"2. Monetary policy: inflation rate and central bank policy rate — state both numbers. Say what the rate implies (restrictive, neutral, accommodative). State the real rate (policy minus inflation).\n"
-            f"3. Labour and fiscal: unemployment rate and government debt as % of GDP. State whether the fiscal position is sustainable and what the S&P rating implies about sovereign credit risk.\n"
-            f"4. External position: current account, major commodity or manufactured exports, and which trade partner accounts for the largest share of commerce. Name the dependency directly.\n"
-            f"5. Geopolitical and structural: bloc memberships that shape trade and capital flows, currency name, and the single biggest structural risk or opportunity for investors right now.\n"
-            f"Every sentence has at least one number. No padding. End with a period."
+            f"Write 5 tight paragraphs (2-3 sentences each):\n"
+            f"1. GDP size and growth: classify the economy ({dev_status}), state GDP and growth rate. Compare to a well-known benchmark only if the comparison is meaningful.\n"
+            f"2. Monetary policy: state the inflation rate and central bank policy rate. Describe the stance (restrictive/neutral/accommodative) and the real rate (policy minus inflation).\n"
+            f"3. Labour and fiscal: state unemployment and government debt as % of GDP. Assess fiscal sustainability. State what the S&P rating (or its absence) implies about sovereign credit risk.\n"
+            f"4. External position: major exports and the country's primary trade dependency. Use only data provided — do not invent trade share percentages.\n"
+            f"5. Geopolitical and structural: bloc memberships that shape trade and capital flows, currency, and the single biggest structural risk or opportunity for investors.\n"
+            f"Rules: use provided numbers only — never invent statistics. No filler phrases. No repeated points. Every paragraph must add new information. End with a period."
         )
         # G20 countries → Gemini (quality tier); rest → DeepSeek (bulk tier)
-        ai = _call_ai(prompt, min_words=190, max_words=310, prefer_gemini=bool(country.is_g20))
+        ai = _call_ai(prompt, min_words=200, max_words=320, prefer_gemini=bool(country.is_g20))
         if ai:
             return ai
 
@@ -1178,7 +1177,7 @@ def _commodity_summary_stale(asset: Asset, existing: PageSummary | None, db) -> 
     Refreshes weekly by default, or sooner if price moved >5% since last generation."""
     if not existing:
         return True
-    if (datetime.now(timezone.utc) - existing.generated_at).days > 7:
+    if (datetime.now(timezone.utc) - existing.generated_at).days > 30:
         return True
     return _asset_price_moved(asset.id, existing.generated_at, db, threshold_pct=5.0)
 
@@ -1702,7 +1701,14 @@ def run_insight_batch(self, insight_type: str):
     try:
         # Build full ordered list of entity codes for this type
         if insight_type == "country":
-            all_codes = [row[0] for row in db.query(Country.code).all()]
+            # Only countries with indicator data — skip uninhabited territories (no angles → always None)
+            codes_with_data = {
+                row[0] for row in db.query(Country.code)
+                .join(CountryIndicator, CountryIndicator.country_id == Country.id)
+                .distinct()
+                .all()
+            }
+            all_codes = [row[0] for row in db.query(Country.code).all() if row[0] in codes_with_data]
         elif insight_type == "stock":
             all_codes = [row[0] for row in db.query(Asset.symbol).filter(Asset.asset_type == "stock").all()]
         elif insight_type == "commodity":

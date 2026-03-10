@@ -453,7 +453,9 @@ def generate_feed_og_images() -> dict:
     with Session(engine) as db:
         from app.models.feed import FeedEvent
 
-        events = db.execute(select(FeedEvent).order_by(FeedEvent.id)).scalars().all()
+        events = db.execute(
+            select(FeedEvent).order_by(FeedEvent.id).with_for_update(skip_locked=True)
+        ).scalars().all()
         for ev in events:
             try:
                 r2_key = f"og/feed/{ev.id}.png"

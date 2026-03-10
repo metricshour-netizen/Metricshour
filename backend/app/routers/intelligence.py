@@ -426,7 +426,7 @@ def get_summary(entity_type: str, entity_code: str, db: Session = Depends(get_db
     }
 
 
-INSIGHT_ENTITY_TYPES = ("country", "stock", "commodity", "trade")
+INSIGHT_ENTITY_TYPES = ("country", "stock", "commodity", "trade", "index")
 
 
 @router.get("/insights/{entity_type}/{entity_code}")

@@ -39,7 +39,7 @@ STATIC_ROUTES = [
     (f"{BASE}/feed/",         "0.8", "hourly",  _TODAY),
     (f"{BASE}/blog/",         "0.7", "weekly",  _TODAY),
     (f"{BASE}/pricing/",      "0.7", "monthly", None),
-    (f"{BASE}/about/",        "0.6", "monthly", None),
+    (f"{BASE}/about/",        "0.6", "monthly", _TODAY),
 ]
 
 

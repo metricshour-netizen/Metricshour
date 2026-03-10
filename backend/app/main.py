@@ -54,16 +54,39 @@ async def security_headers(request: Request, call_next) -> Response:
     # HSTS — only sent over HTTPS (Nginx handles SSL, so this is safe)
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
 
-    # Edge cache (Cloudflare s-maxage) for public read-only endpoints.
-    # /api/feed and /api/auth are personalised/authenticated — never cached.
+    # Edge cache (Cloudflare CDN, free — no KV writes).
+    # TTLs match data freshness; auth/feed/alerts are private and never cached.
     path = request.url.path
     if request.method == "GET" and response.status_code == 200:
-        if any(path.startswith(p) for p in ("/api/countries", "/api/assets", "/api/trade", "/api/search")):
-            # Cloudflare caches for 60s; browser revalidates after 30s
-            response.headers["Cache-Control"] = "public, s-maxage=60, stale-while-revalidate=30"
+        if path.startswith("/api/trade/"):
+            # Bilateral trade data is annual — cache 6 hours at edge
+            cc = "public, s-maxage=21600, stale-while-revalidate=3600"
+        elif path.startswith("/api/trade"):
+            # Trade pair list — top 100, changes annually
+            cc = "public, s-maxage=3600, stale-while-revalidate=300"
+        elif path.startswith("/api/countries/") and path.endswith("/trade-partners"):
+            cc = "public, s-maxage=3600, stale-while-revalidate=300"
+        elif path.startswith("/api/countries"):
+            # Country list + detail — changes monthly at most
+            cc = "public, s-maxage=3600, stale-while-revalidate=300"
+        elif path.endswith("/prices"):
+            # Price history — updated by Celery every 15min, don't over-cache
+            cc = "public, s-maxage=60, stale-while-revalidate=30"
+        elif path.startswith("/api/assets/"):
+            # Asset detail — prices update every 15min
+            cc = "public, s-maxage=900, stale-while-revalidate=60"
+        elif path.startswith("/api/assets"):
+            # Asset list — prices update every 15min
+            cc = "public, s-maxage=300, stale-while-revalidate=60"
+        elif path.startswith("/api/search"):
+            cc = "public, s-maxage=300, stale-while-revalidate=60"
         elif path.startswith("/og/"):
             # OG images change at most once a day
-            response.headers["Cache-Control"] = "public, s-maxage=86400, stale-while-revalidate=3600"
+            cc = "public, s-maxage=86400, stale-while-revalidate=3600"
+        else:
+            cc = None
+        if cc:
+            response.headers["Cache-Control"] = cc
 
     return response
 

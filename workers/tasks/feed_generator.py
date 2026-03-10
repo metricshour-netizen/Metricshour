@@ -24,6 +24,7 @@ from app.database import SessionLocal
 from app.models.asset import Asset, AssetType, Price
 from app.models.country import CountryIndicator
 from app.models.feed import FeedEvent
+from tasks.summaries import _call_ai
 
 log = logging.getLogger(__name__)
 
@@ -62,6 +63,18 @@ PRICE_MOVE_THRESHOLD: dict[str, float] = {
     "bond":      0.15,  # bond prices: 0.15% matters for fixed income
 }
 
+# Hard ceiling — moves above these are almost certainly bad source data ticks.
+# Second line of defence after ingestion-level spike guards.
+PRICE_MOVE_MAX_PCT: dict[str, float] = {
+    "crypto":    40.0,
+    "stock":     14.0,
+    "commodity": 11.0,
+    "fx":        3.0,
+    "index":     8.0,
+    "etf":       14.0,
+    "bond":      5.0,
+}
+
 
 @app.task(name='tasks.feed_generator.generate_feed_events', bind=True, max_retries=2)
 def generate_feed_events(self):
@@ -81,6 +94,37 @@ def generate_feed_events(self):
         raise self.retry(exc=exc, countdown=60)
     finally:
         db.close()
+
+
+# ── AI body generation ────────────────────────────────────────────────────────
+
+def _ai_price_body(asset_name: str, symbol: str, change_pct: float, price: float,
+                   currency: str, asset_type: str) -> str | None:
+    """Generate a 2-sentence analyst take on a price move. DeepSeek-first (bulk speed)."""
+    sign = "+" if change_pct > 0 else ""
+    direction = "surged" if change_pct > 0 else "dropped"
+    prompt = (
+        f"Write exactly 2 sentences (30-45 words total) on this market event: "
+        f"{asset_name} ({symbol}) {direction} {sign}{change_pct:.2f}% in the last 15 minutes, "
+        f"now trading at {price:,.4f} {currency}. Asset class: {asset_type}. "
+        f"Sentence 1: state the move and current price. "
+        f"Sentence 2: give one concrete market context or implication (use a real data point or ratio). "
+        f"No filler. No hedging. Active voice."
+    )
+    return _call_ai(prompt, min_words=25, max_words=50, prefer_gemini=False)
+
+
+def _ai_macro_body(country_name: str, indicator_label: str, value_str: str,
+                   period: str, source: str, importance: float) -> str | None:
+    """Generate a 2-sentence macro data take. Gemini for high-importance (>=8), DeepSeek otherwise."""
+    prompt = (
+        f"Write exactly 2 sentences (35-50 words total) on this economic data release: "
+        f"{country_name} {indicator_label} = {value_str} as of {period} (source: {source}). "
+        f"Sentence 1: state the figure and what it measures. "
+        f"Sentence 2: give one direct market or policy implication using a specific number. "
+        f"No filler. Assert, do not hedge. Active voice."
+    )
+    return _call_ai(prompt, min_words=28, max_words=55, prefer_gemini=(importance >= 8))
 
 
 # ── Price move events ─────────────────────────────────────────────────────────
@@ -126,7 +170,14 @@ def _generate_price_moves(db) -> list[tuple[str, str]]:
 
         change_pct = ((latest.close - prev.close) / prev.close) * 100
         threshold = PRICE_MOVE_THRESHOLD.get(asset.asset_type.value, 1.5)
+        max_pct = PRICE_MOVE_MAX_PCT.get(asset.asset_type.value, 20.0)
         if abs(change_pct) < threshold:
+            continue
+        if abs(change_pct) > max_pct:
+            log.warning(
+                'feed_generator: spike ignored %s %.1f%% (max %.1f%%)',
+                asset.symbol, change_pct, max_pct,
+            )
             continue
 
         direction = "up" if change_pct > 0 else "down"
@@ -134,9 +185,14 @@ def _generate_price_moves(db) -> list[tuple[str, str]]:
         importance = min(10.0, abs(change_pct))
 
         title = f"{asset.symbol} {sign}{change_pct:.1f}% — {asset.name}"
-        body = (
+        fallback_body = (
             f"{asset.name} ({asset.symbol}) moved {sign}{change_pct:.2f}% "
             f"in the last 15 minutes, trading at {latest.close:,.4f} {asset.currency}."
+        )
+        body = (
+            _ai_price_body(asset.name, asset.symbol, change_pct, latest.close,
+                           asset.currency, asset.asset_type.value)
+            or fallback_body
         )
         subtype = asset.asset_type.value  # stock, crypto, commodity, fx
 
@@ -210,10 +266,16 @@ def _generate_macro_releases(db) -> list[tuple[str, str]]:
         value_str = f"{indicator_row.value:,.2f}"
 
         title = f"{country.flag_emoji or ''} {country.name}: {label} {value_str}"
-        body = (
+        period_str = indicator_row.period_date.strftime("%B %Y")
+        fallback_body = (
             f"{country.name}'s {label} stands at {value_str} "
-            f"as of {indicator_row.period_date.strftime('%B %Y')}. "
+            f"as of {period_str}. "
             f"Source: {indicator_row.source}."
+        )
+        body = (
+            _ai_macro_body(country.name, label, value_str, period_str,
+                           indicator_row.source, importance)
+            or fallback_body
         )
 
         # Dedup per (country, indicator, period) — not just indicator.

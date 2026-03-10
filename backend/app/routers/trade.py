@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func
 
@@ -15,12 +15,10 @@ router = APIRouter(prefix="/trade", tags=["trade"])
 @limiter.limit("60/minute")
 def list_trade_pairs(
     request: Request,
-    response: Response,
     exporter: str | None = None,
     importer: str | None = None,
     db: Session = Depends(get_db),
 ) -> list[dict]:
-    response.headers["Cache-Control"] = "no-store"
     # Subquery: latest year per (exporter, importer) pair
     latest_year_sq = (
         select(

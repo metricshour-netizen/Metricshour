@@ -149,12 +149,11 @@ const { data: pageSummary } = useAsyncData(
   { server: false },
 )
 
-const { data: pageInsightsRaw } = useAsyncData(
+const { data: pageInsights } = useAsyncData(
   `insights-index-${symbol}`,
-  () => get<any>(`/api/summaries/index_insight/${symbol}`).catch(() => null),
+  () => get<any[]>(`/api/insights/index/${symbol}`).catch(() => []),
   { server: false },
 )
-const pageInsights = computed(() => pageInsightsRaw.value ? [pageInsightsRaw.value] : [])
 
 // ── Chart ─────────────────────────────────────────────────────────────────────
 const chartEl = ref<HTMLElement | null>(null)

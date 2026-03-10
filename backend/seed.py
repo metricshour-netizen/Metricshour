@@ -70,6 +70,11 @@ def run_all() -> None:
             from app.seeders.census_trade import seed_census_trade
             seed_census_trade(db)
 
+        if not only or only == "country_extras":
+            log.info("=== Seeding country extras (income level, resources, exports, S&P rating) ===")
+            from app.seeders.country_extras import seed_country_extras
+            seed_country_extras(db)
+
     finally:
         db.close()
 

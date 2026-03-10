@@ -45,6 +45,7 @@ def handle_task_failure(sender=None, task_id=None, exception=None, args=None,
 app = Celery('metricshour', include=[
     'tasks.crypto',
     'tasks.stocks',
+    'tasks.indices',
     'tasks.commodities',
     'tasks.fx',
     'tasks.backup',
@@ -96,6 +97,10 @@ app.conf.update(
         'stocks-every-15min': {
             'task': 'tasks.stocks.fetch_stock_prices',
             'schedule': 900.0,
+        },
+        'indices-etfs-every-30min': {
+            'task': 'tasks.indices.fetch_index_etf_prices',
+            'schedule': 1800.0,
         },
         'commodities-every-15min': {
             'task': 'tasks.commodities.fetch_commodity_prices',
