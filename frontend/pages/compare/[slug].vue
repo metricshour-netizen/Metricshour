@@ -72,7 +72,11 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="row in indicatorRows" :key="row.key" class="border-b border-[#1f2937]/50 hover:bg-[#111827]/60 transition-colors">
+              <template v-for="row in indicatorRows" :key="row.key">
+                <tr v-if="row.isSection" class="border-b border-[#1f2937]">
+                  <td colspan="3" class="pt-4 pb-1 text-[10px] font-bold text-gray-600 uppercase tracking-widest">{{ row.label }}</td>
+                </tr>
+                <tr v-else class="border-b border-[#1f2937]/50 hover:bg-[#111827]/60 transition-colors">
                 <td class="py-3 pr-4 text-gray-400">{{ row.label }}</td>
                 <td class="py-3 px-4 text-right font-mono">
                   <span :class="row.winnerA ? 'text-white font-bold' : 'text-gray-400'">
@@ -87,6 +91,7 @@
                   <span v-if="row.winnerB" class="ml-1 text-[10px] text-blue-400">▲</span>
                 </td>
               </tr>
+              </template>
             </tbody>
           </table>
         </div>
@@ -118,6 +123,24 @@
             </div>
           </div>
         </div>
+        <!-- Top products -->
+        <div v-if="trade.top_export_products?.length || trade.top_import_products?.length" class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+          <div v-if="trade.top_export_products?.length" class="bg-[#111827] border border-[#1f2937] rounded-xl p-4">
+            <div class="text-[10px] text-emerald-500 font-bold uppercase tracking-wider mb-2">{{ countryA.name }} Top Exports</div>
+            <div v-for="p in trade.top_export_products" :key="p.name" class="flex justify-between items-center py-1 border-b border-[#1f2937]/40 last:border-0">
+              <span class="text-xs text-gray-400 capitalize">{{ p.name }}</span>
+              <span class="text-xs text-white font-mono">{{ fmtUsd(p.value_usd) }}</span>
+            </div>
+          </div>
+          <div v-if="trade.top_import_products?.length" class="bg-[#111827] border border-[#1f2937] rounded-xl p-4">
+            <div class="text-[10px] text-blue-400 font-bold uppercase tracking-wider mb-2">{{ countryA.name }} Top Imports</div>
+            <div v-for="p in trade.top_import_products" :key="p.name" class="flex justify-between items-center py-1 border-b border-[#1f2937]/40 last:border-0">
+              <span class="text-xs text-gray-400 capitalize">{{ p.name }}</span>
+              <span class="text-xs text-white font-mono">{{ fmtUsd(p.value_usd) }}</span>
+            </div>
+          </div>
+        </div>
+
         <NuxtLink
           :to="`/trade/${codeA}-${codeB}`"
           class="inline-flex items-center gap-1 text-xs text-emerald-500 hover:text-emerald-300 mt-3 transition-colors"
@@ -230,49 +253,75 @@ const { data: summaryB } = useAsyncData(
 
 // Normalise trade direction — always show from A's perspective
 const trade = computed(() => {
-  const t = tradeRaw.value
-  if (!t) return null
-  // If the canonical pair has A as exporter, use directly; else flip
-  const expCode = (t.exporter?.code || '').toUpperCase()
-  if (expCode === canonA) return t
+  const raw = tradeRaw.value
+  if (!raw) return null
+  // API returns { exporter, importer, trade_data, canonical_pair }
+  const td = raw.trade_data || raw
+  if (!td || (!td.trade_value_usd && !td.exports_usd && !td.imports_usd)) return null
+  const expCode = (raw.exporter?.code || td.exporter?.code || '').toUpperCase()
+  if (expCode === canonA) return td
+  // Flip direction so A is always the exporter perspective
   return {
-    ...t,
-    exports_usd: t.imports_usd,
-    imports_usd: t.exports_usd,
+    ...td,
+    exports_usd: td.imports_usd,
+    imports_usd: td.exports_usd,
   }
 })
 
 // Indicator rows
-const INDICATORS = [
-  { key: 'gdp_usd',           label: 'GDP (USD)',            fmt: (v: number) => fmtUsd(v),           higher: true  },
-  { key: 'gdp_per_capita_usd',label: 'GDP per Capita',       fmt: (v: number) => '$' + fmtNum(v, 0),  higher: true  },
-  { key: 'gdp_growth_pct',    label: 'GDP Growth (%)',       fmt: (v: number) => v.toFixed(1) + '%',  higher: true  },
-  { key: 'inflation_pct',     label: 'Inflation (%)',        fmt: (v: number) => v.toFixed(1) + '%',  higher: false },
-  { key: 'interest_rate_pct', label: 'Interest Rate (%)',    fmt: (v: number) => v.toFixed(2) + '%',  higher: false },
-  { key: 'unemployment_pct',  label: 'Unemployment (%)',     fmt: (v: number) => v.toFixed(1) + '%',  higher: false },
-  { key: 'govt_debt_pct_gdp', label: 'Govt Debt (% GDP)',   fmt: (v: number) => v.toFixed(1) + '%',  higher: false },
-  { key: 'current_account_pct_gdp', label: 'Current Account (% GDP)', fmt: (v: number) => (v >= 0 ? '+' : '') + v.toFixed(1) + '%', higher: true },
-  { key: 'fdi_inflows_usd',   label: 'FDI Inflows',         fmt: (v: number) => fmtUsd(v),           higher: true  },
-  { key: 'population',        label: 'Population',          fmt: (v: number) => fmtPop(v),           higher: false },
+type IndicatorDef = { section?: string; key: string; label: string; fmt: (v: number) => string; higher: boolean }
+
+const INDICATORS: IndicatorDef[] = [
+  { section: 'Economy',   key: 'gdp_usd',                     label: 'GDP',                      fmt: (v) => fmtUsd(v),                                  higher: true  },
+  {                        key: 'gdp_per_capita_usd',          label: 'GDP per Capita',           fmt: (v) => '$' + fmtNum(v, 0),                         higher: true  },
+  {                        key: 'gdp_per_capita_ppp',          label: 'GDP per Capita (PPP)',     fmt: (v) => '$' + fmtNum(v, 0),                         higher: true  },
+  {                        key: 'gdp_growth_pct',              label: 'GDP Growth (%)',           fmt: (v) => v.toFixed(1) + '%',                         higher: true  },
+  { section: 'Macro',     key: 'inflation_pct',               label: 'Inflation (%)',            fmt: (v) => v.toFixed(1) + '%',                         higher: false },
+  {                        key: 'interest_rate_pct',           label: 'Interest Rate (%)',        fmt: (v) => v.toFixed(2) + '%',                         higher: false },
+  {                        key: 'unemployment_pct',            label: 'Unemployment (%)',         fmt: (v) => v.toFixed(1) + '%',                         higher: false },
+  {                        key: 'youth_unemployment_pct',      label: 'Youth Unemployment (%)',   fmt: (v) => v.toFixed(1) + '%',                         higher: false },
+  { section: 'Fiscal',    key: 'government_debt_gdp_pct',     label: 'Govt Debt (% GDP)',        fmt: (v) => v.toFixed(1) + '%',                         higher: false },
+  {                        key: 'budget_balance_gdp_pct',      label: 'Budget Balance (% GDP)',   fmt: (v) => (v >= 0 ? '+' : '') + v.toFixed(1) + '%',   higher: true  },
+  {                        key: 'tax_revenue_gdp_pct',         label: 'Tax Revenue (% GDP)',      fmt: (v) => v.toFixed(1) + '%',                         higher: false },
+  { section: 'External',  key: 'current_account_gdp_pct',     label: 'Current Account (% GDP)',  fmt: (v) => (v >= 0 ? '+' : '') + v.toFixed(1) + '%',   higher: true  },
+  {                        key: 'exports_usd',                 label: 'Exports',                  fmt: (v) => fmtUsd(v),                                  higher: true  },
+  {                        key: 'imports_usd',                 label: 'Imports',                  fmt: (v) => fmtUsd(v),                                  higher: false },
+  {                        key: 'fdi_inflows_usd',             label: 'FDI Inflows',              fmt: (v) => fmtUsd(v),                                  higher: true  },
+  {                        key: 'foreign_reserves_usd',        label: 'Foreign Reserves',         fmt: (v) => fmtUsd(v),                                  higher: true  },
+  { section: 'Society',   key: 'population',                  label: 'Population',               fmt: (v) => fmtPop(v),                                  higher: false },
+  {                        key: 'life_expectancy',             label: 'Life Expectancy (yrs)',    fmt: (v) => v.toFixed(1),                               higher: true  },
+  {                        key: 'gini_coefficient',            label: 'Gini Inequality',          fmt: (v) => v.toFixed(1),                               higher: false },
+  {                        key: 'healthcare_spending_gdp_pct', label: 'Healthcare (% GDP)',       fmt: (v) => v.toFixed(1) + '%',                         higher: true  },
+  {                        key: 'education_spending_gdp_pct',  label: 'Education (% GDP)',        fmt: (v) => v.toFixed(1) + '%',                         higher: true  },
+  {                        key: 'internet_penetration_pct',    label: 'Internet Penetration',     fmt: (v) => v.toFixed(1) + '%',                         higher: true  },
+  {                        key: 'military_spending_gdp_pct',   label: 'Military (% GDP)',         fmt: (v) => v.toFixed(2) + '%',                         higher: false },
+  {                        key: 'renewable_energy_pct',        label: 'Renewable Energy (%)',     fmt: (v) => v.toFixed(1) + '%',                         higher: true  },
 ]
 
 const indicatorRows = computed(() => {
   const indA = countryA.value?.indicators || {}
   const indB = countryB.value?.indicators || {}
-  return INDICATORS.map(ind => {
+  const rows: any[] = []
+  let lastSection = ''
+  for (const ind of INDICATORS) {
     const vA = indA[ind.key] as number | undefined
     const vB = indB[ind.key] as number | undefined
+    if (vA == null && vB == null) continue
+    if (ind.section && ind.section !== lastSection) {
+      rows.push({ isSection: true, key: `section-${ind.section}`, label: ind.section })
+      lastSection = ind.section
+    }
     const fmtA = vA != null ? ind.fmt(vA) : '—'
     const fmtB = vB != null ? ind.fmt(vB) : '—'
-    // Winner = higher (or lower) is better
     let winnerA = false, winnerB = false
     if (vA != null && vB != null) {
-      const aIsWinner = ind.higher ? vA > vB : vA < vB
-      winnerA = aIsWinner
-      winnerB = !aIsWinner
+      const aWins = ind.higher ? vA > vB : vA < vB
+      winnerA = aWins
+      winnerB = !aWins
     }
-    return { key: ind.key, label: ind.label, fmtA, fmtB, winnerA, winnerB }
-  }).filter(r => r.fmtA !== '—' || r.fmtB !== '—')
+    rows.push({ isSection: false, key: ind.key, label: ind.label, fmtA, fmtB, winnerA, winnerB })
+  }
+  return rows
 })
 
 // ── Formatters ───────────────────────────────────────────────────────────────
