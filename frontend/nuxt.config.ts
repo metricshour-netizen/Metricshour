@@ -44,7 +44,7 @@ export default defineNuxtConfig({
       ],
       script: [
         {
-          src: 'https://cloud.umami.is/script.js',
+          src: 'https://analytics.metricshour.com/script.js',
           defer: true,
           'data-website-id': '3dfdd2ad-bcbd-408f-9739-e6b058b1ce1c',
           'data-cfasync': 'false',
@@ -55,6 +55,11 @@ export default defineNuxtConfig({
 
   nitro: {
     preset: 'static',
+  },
+
+  routeRules: {
+    '/sitemap.xml': { redirect: { to: 'https://api.metricshour.com/sitemap.xml', statusCode: 301 } },
+    '/robots.txt': { prerender: true },
   },
 
   hooks: {
