@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import String, Float, DateTime, ForeignKey, Enum, Boolean, Integer, Text, BigInteger, Index
+from sqlalchemy import String, Float, DateTime, ForeignKey, Enum, Boolean, Integer, Text, BigInteger, Index, Numeric
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
@@ -63,6 +63,26 @@ class AlertDelivery(Base):
     triggered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class MacroAlert(Base):
+    __tablename__ = "macro_alerts"
+    __table_args__ = (
+        Index("ix_macro_alerts_user", "user_id"),
+        Index("ix_macro_alerts_active", "is_active", "country_code", "indicator_name"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    country_code: Mapped[str] = mapped_column(String(3), nullable=False)
+    indicator_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    condition: Mapped[str] = mapped_column(String(5), nullable=False)           # 'above' | 'below'
+    threshold: Mapped[float] = mapped_column(Numeric(15, 4), nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    cooldown_days: Mapped[int] = mapped_column(Integer, default=7, nullable=False)
+    last_triggered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    trigger_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
 # FeedEvent moved to models/feed.py

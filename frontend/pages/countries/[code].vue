@@ -82,18 +82,27 @@
             </div>
           </div>
         </div>
-        <!-- History: compact scrollable log -->
+        <!-- History: compact list, 2 shown by default -->
         <div v-if="pageInsights.length > 1" class="mt-1.5 border border-[#1a2030] rounded-lg overflow-hidden">
-          <div class="px-3 py-1.5 border-b border-[#1a2030] flex items-center gap-2 bg-[#0a0d14]">
-            <span class="text-[10px] uppercase tracking-widest text-gray-600">Previous</span>
-            <span class="text-[10px] text-gray-700">{{ pageInsights.length - 1 }} entries</span>
-          </div>
-          <div class="max-h-48 overflow-y-auto divide-y divide-[#131b27]">
-            <div v-for="insight in pageInsights.slice(1)" :key="insight.generated_at" class="flex items-start gap-3 px-3 py-2 bg-[#0a0d14]">
+          <div class="divide-y divide-[#131b27]">
+            <div
+              v-for="(insight, i) in pageInsights.slice(1)"
+              v-show="showAllInsights || i < 2"
+              :key="insight.generated_at"
+              class="flex items-start gap-3 px-3 py-2 bg-[#0a0d14] cursor-pointer"
+              @click="toggleInsight(insight.generated_at)"
+            >
               <span class="text-[10px] text-gray-600 shrink-0 mt-0.5 w-16">{{ new Date(insight.generated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) }}</span>
-              <p class="text-xs text-gray-500 leading-relaxed line-clamp-2">{{ insight.summary }}</p>
+              <p class="text-xs text-gray-500 leading-relaxed" :class="expandedInsights.has(insight.generated_at) ? '' : 'line-clamp-2'">{{ insight.summary }}</p>
             </div>
           </div>
+          <button
+            v-if="pageInsights.length > 3"
+            class="w-full px-3 py-2 text-[10px] text-gray-600 hover:text-emerald-400 bg-[#0a0d14] border-t border-[#1a2030] transition-colors text-left"
+            @click="showAllInsights = !showAllInsights"
+          >
+            {{ showAllInsights ? '↑ Show less' : `↓ Read more (${pageInsights.length - 3} more insights)` }}
+          </button>
         </div>
       </div>
 
@@ -156,13 +165,78 @@
 
       <!-- Macro indicators -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-        <IndicatorSection title="Economy" :rows="economyRows" />
-        <IndicatorSection title="Monetary" :rows="monetaryRows" />
-        <IndicatorSection title="Trade" :rows="tradeRows" />
-        <IndicatorSection title="Fiscal" :rows="fiscalRows" />
-        <IndicatorSection title="Social" :rows="socialRows" />
-        <IndicatorSection title="Governance" :rows="governanceRows" />
+        <IndicatorSection title="Economy" :rows="economyRows" :alertable="isLoggedIn" @set-alert="openMacroAlert" />
+        <IndicatorSection title="Monetary" :rows="monetaryRows" :alertable="isLoggedIn" @set-alert="openMacroAlert" />
+        <IndicatorSection title="Trade" :rows="tradeRows" :alertable="isLoggedIn" @set-alert="openMacroAlert" />
+        <IndicatorSection title="Fiscal" :rows="fiscalRows" :alertable="isLoggedIn" @set-alert="openMacroAlert" />
+        <IndicatorSection title="Social" :rows="socialRows" :alertable="isLoggedIn" @set-alert="openMacroAlert" />
+        <IndicatorSection title="Governance" :rows="governanceRows" :alertable="isLoggedIn" @set-alert="openMacroAlert" />
       </div>
+
+      <!-- Macro Alert Modal -->
+      <Teleport to="body">
+        <div v-if="macroAlertModal.open" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="macroAlertModal.open = false">
+          <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"/>
+          <div class="relative bg-[#111827] border border-[#1f2937] rounded-xl p-6 w-full max-w-sm shadow-2xl">
+            <button class="absolute top-4 right-4 text-gray-500 hover:text-white" @click="macroAlertModal.open = false">✕</button>
+            <div class="mb-5">
+              <p class="text-[10px] text-emerald-500 font-bold uppercase tracking-widest mb-1">Macro Alert</p>
+              <p class="text-white font-bold text-lg">{{ country?.name }}</p>
+              <p class="text-gray-400 text-sm">{{ macroAlertModal.label }}</p>
+            </div>
+            <!-- Condition toggle -->
+            <div class="flex gap-2 mb-4">
+              <button
+                class="flex-1 py-2 rounded-lg text-sm font-semibold border transition-colors"
+                :class="macroAlertModal.condition === 'above' ? 'bg-emerald-900/40 border-emerald-500 text-emerald-400' : 'bg-[#0d1117] border-[#1f2937] text-gray-500'"
+                @click="macroAlertModal.condition = 'above'"
+              >Goes above ↑</button>
+              <button
+                class="flex-1 py-2 rounded-lg text-sm font-semibold border transition-colors"
+                :class="macroAlertModal.condition === 'below' ? 'bg-red-900/40 border-red-500 text-red-400' : 'bg-[#0d1117] border-[#1f2937] text-gray-500'"
+                @click="macroAlertModal.condition = 'below'"
+              >Drops below ↓</button>
+            </div>
+            <!-- Threshold input -->
+            <div class="mb-4">
+              <label class="text-[10px] text-gray-500 uppercase tracking-widest mb-1.5 block">Threshold</label>
+              <div class="flex items-center gap-2 bg-[#0d1117] border border-[#1f2937] rounded-lg px-3 py-2">
+                <input
+                  v-model.number="macroAlertModal.threshold"
+                  type="number"
+                  step="any"
+                  class="flex-1 bg-transparent text-white text-sm outline-none tabular-nums"
+                  placeholder="Enter value"
+                />
+                <span class="text-gray-500 text-xs shrink-0">{{ macroAlertModal.unit }}</span>
+              </div>
+              <p v-if="macroAlertModal.currentValue != null" class="text-[10px] text-gray-600 mt-1">
+                Current: {{ macroAlertModal.currentValue }}{{ macroAlertModal.unit }}
+              </p>
+            </div>
+            <!-- Cooldown -->
+            <div class="mb-5">
+              <label class="text-[10px] text-gray-500 uppercase tracking-widest mb-1.5 block">Re-alert cooldown</label>
+              <select v-model.number="macroAlertModal.cooldownDays" class="w-full bg-[#0d1117] border border-[#1f2937] rounded-lg px-3 py-2 text-white text-sm outline-none">
+                <option :value="1">Every day (if condition holds)</option>
+                <option :value="7">Once a week</option>
+                <option :value="14">Every 2 weeks</option>
+                <option :value="30">Once a month</option>
+              </select>
+            </div>
+            <!-- Submit -->
+            <button
+              class="w-full py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition-colors disabled:opacity-50"
+              :disabled="macroAlertModal.saving"
+              @click="saveMacroAlert"
+            >
+              {{ macroAlertModal.saving ? 'Saving…' : 'Set Alert' }}
+            </button>
+            <p v-if="macroAlertModal.error" class="text-red-400 text-xs mt-2 text-center">{{ macroAlertModal.error }}</p>
+            <p v-if="macroAlertModal.success" class="text-emerald-400 text-xs mt-2 text-center">Alert saved! You'll be notified via Telegram or email.</p>
+          </div>
+        </div>
+      </Teleport>
 
       <!-- Trade Partners -->
       <div class="bg-[#111827] border border-[#1f2937] rounded-lg p-6 mb-6">
@@ -619,21 +693,24 @@ const keyIndicators = computed(() => {
 
 // ─── Indicator sections ───────────────────────────────────────────────────────
 
+// Helper that also carries indicatorKey for macro alerts
+const irow = (label: string, key: string) => ({ ...row(label, key), indicatorKey: key })
+
 const economyRows = computed(() => [
-  row('GDP', 'gdp_usd'),
-  row('GDP per capita', 'gdp_per_capita_usd'),
-  row('GDP growth', 'gdp_growth_pct'),
-  row('GDP (PPP)', 'gdp_ppp_usd'),
-  row('GDP per capita (PPP)', 'gdp_per_capita_ppp_usd'),
+  irow('GDP', 'gdp_usd'),
+  irow('GDP per capita', 'gdp_per_capita_usd'),
+  irow('GDP growth', 'gdp_growth_pct'),
+  irow('GDP (PPP)', 'gdp_ppp_usd'),
+  irow('GDP per capita (PPP)', 'gdp_per_capita_ppp_usd'),
   row('Population', 'population'),
 ].filter(r => r.raw !== null))
 
 const monetaryRows = computed(() => [
-  row('Inflation', 'inflation_pct'),
-  row('Interest rate', 'interest_rate_pct'),
-  row('Real interest rate', 'real_interest_rate_pct'),
-  row('Foreign reserves', 'foreign_reserves_usd'),
-  row('M2 Supply (% GDP)', 'money_supply_m2_gdp_pct'),
+  irow('Inflation', 'inflation_pct'),
+  irow('Interest rate', 'interest_rate_pct'),
+  irow('Real interest rate', 'real_interest_rate_pct'),
+  irow('Foreign reserves', 'foreign_reserves_usd'),
+  irow('M2 Supply (% GDP)', 'money_supply_m2_gdp_pct'),
 ].filter(r => r.raw !== null))
 
 const tradeRows = computed(() => {
@@ -645,41 +722,110 @@ const tradeRows = computed(() => {
     ? ((ind.exports_usd + ind.imports_usd) / ind.gdp_usd) * 100
     : null
   return [
-    row('Exports', 'exports_usd'),
-    row('Imports', 'imports_usd'),
+    irow('Exports', 'exports_usd'),
+    irow('Imports', 'imports_usd'),
     { label: 'Trade balance', value: fmt('trade_balance_usd', tradeBalance), raw: tradeBalance },
     { label: 'Trade openness', value: fmt('trade_openness_pct', tradeOpenness), raw: tradeOpenness },
-    row('Current account (% GDP)', 'current_account_gdp_pct'),
-    row('FDI inflows', 'fdi_inflows_usd'),
+    irow('Current account (% GDP)', 'current_account_gdp_pct'),
+    irow('FDI inflows', 'fdi_inflows_usd'),
   ].filter(r => r.raw !== null)
 })
 
 const fiscalRows = computed(() => [
-  row('Govt debt (% GDP)', 'government_debt_gdp_pct'),
-  row('Budget balance (% GDP)', 'budget_balance_gdp_pct'),
-  row('Tax revenue (% GDP)', 'tax_revenue_gdp_pct'),
-  row('Military spending (% GDP)', 'military_spending_gdp_pct'),
+  irow('Govt debt (% GDP)', 'government_debt_gdp_pct'),
+  irow('Budget balance (% GDP)', 'budget_balance_gdp_pct'),
+  irow('Tax revenue (% GDP)', 'tax_revenue_gdp_pct'),
+  irow('Military spending (% GDP)', 'military_spending_gdp_pct'),
 ].filter(r => r.raw !== null))
 
 const socialRows = computed(() => [
-  row('Unemployment', 'unemployment_pct'),
-  row('Life expectancy', 'life_expectancy'),
-  row('Gini coefficient', 'gini_coefficient'),
-  row('Internet penetration', 'internet_penetration_pct'),
-  row('Literacy rate', 'literacy_rate_pct'),
+  irow('Unemployment', 'unemployment_pct'),
+  irow('Life expectancy', 'life_expectancy'),
+  irow('Gini coefficient', 'gini_coefficient'),
+  irow('Internet penetration', 'internet_penetration_pct'),
+  irow('Literacy rate', 'literacy_rate_pct'),
   row('Poverty rate', 'poverty_rate_pct'),
   row('Urban population', 'urban_population_pct'),
   row('Infant mortality', 'infant_mortality_per_1000'),
 ].filter(r => r.raw !== null))
 
 const governanceRows = computed(() => [
-  row('Corruption control', 'control_of_corruption_index'),
-  row('Rule of law', 'rule_of_law_index'),
-  row('Political stability', 'political_stability_index'),
-  row('Govt effectiveness', 'government_effectiveness_index'),
-  row('Regulatory quality', 'regulatory_quality_index'),
-  row('Voice & accountability', 'voice_accountability_index'),
+  irow('Corruption control', 'control_of_corruption_index'),
+  irow('Rule of law', 'rule_of_law_index'),
+  irow('Political stability', 'political_stability_index'),
+  irow('Govt effectiveness', 'government_effectiveness_index'),
+  irow('Regulatory quality', 'regulatory_quality_index'),
+  irow('Voice & accountability', 'voice_accountability_index'),
 ].filter(r => r.raw !== null))
+
+// ─── Insight history expansion ───────────────────────────────────────────────
+const expandedInsights = ref<Set<string>>(new Set())
+const toggleInsight = (key: string) => {
+  const s = new Set(expandedInsights.value)
+  s.has(key) ? s.delete(key) : s.add(key)
+  expandedInsights.value = s
+}
+
+// ─── Macro Alert Modal ────────────────────────────────────────────────────────
+const INDICATOR_UNITS: Record<string, string> = {
+  gdp_growth_pct: '%', inflation_pct: '%', unemployment_pct: '%',
+  government_debt_gdp_pct: '%', budget_balance_gdp_pct: '%',
+  current_account_gdp_pct: '%', interest_rate_pct: '%',
+  real_interest_rate_pct: '%', money_supply_m2_gdp_pct: '%',
+  tax_revenue_gdp_pct: '%', military_spending_gdp_pct: '%',
+  literacy_rate_pct: '%', internet_penetration_pct: '%',
+  urban_population_pct: '%', gdp_usd: 'USD', gdp_per_capita_usd: 'USD',
+  exports_usd: 'USD', imports_usd: 'USD', fdi_inflows_usd: 'USD',
+  foreign_reserves_usd: 'USD',
+}
+
+const macroAlertModal = reactive({
+  open: false,
+  indicatorKey: '',
+  label: '',
+  condition: 'above' as 'above' | 'below',
+  threshold: 0,
+  currentValue: null as number | null,
+  unit: '',
+  cooldownDays: 7,
+  saving: false,
+  error: '',
+  success: false,
+})
+
+function openMacroAlert(payload: { indicatorKey: string; label: string; currentValue: number }) {
+  macroAlertModal.indicatorKey = payload.indicatorKey
+  macroAlertModal.label = payload.label
+  macroAlertModal.currentValue = payload.currentValue
+  macroAlertModal.threshold = Math.round(payload.currentValue * 100) / 100
+  macroAlertModal.unit = INDICATOR_UNITS[payload.indicatorKey] ?? ''
+  macroAlertModal.condition = 'above'
+  macroAlertModal.cooldownDays = 7
+  macroAlertModal.error = ''
+  macroAlertModal.success = false
+  macroAlertModal.open = true
+}
+
+async function saveMacroAlert() {
+  macroAlertModal.saving = true
+  macroAlertModal.error = ''
+  macroAlertModal.success = false
+  try {
+    await post('/api/alerts/macro', {
+      country_code: code.toUpperCase(),
+      indicator_name: macroAlertModal.indicatorKey,
+      condition: macroAlertModal.condition,
+      threshold: macroAlertModal.threshold,
+      cooldown_days: macroAlertModal.cooldownDays,
+    })
+    macroAlertModal.success = true
+    setTimeout(() => { macroAlertModal.open = false }, 1500)
+  } catch (e: any) {
+    macroAlertModal.error = e?.data?.detail ?? 'Failed to save alert.'
+  } finally {
+    macroAlertModal.saving = false
+  }
+}
 
 // ─── GDP chart (ECharts) ──────────────────────────────────────────────────────
 

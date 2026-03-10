@@ -23,7 +23,8 @@ from sqlalchemy import select, desc
 
 from app.database import get_db
 from app.limiter import limiter
-from app.models.user import User, PriceAlert, AlertDelivery
+from app.models.user import User, PriceAlert, AlertDelivery, MacroAlert
+from app.notifications import INDICATOR_LABELS
 from app.models.asset import Asset
 from app.routers.auth import get_current_user
 from app.storage import redis_json_set, redis_json_get
@@ -40,6 +41,14 @@ class AlertIn(BaseModel):
     asset_id: int
     condition: str       # 'above' | 'below'
     target_price: float
+
+
+class MacroAlertIn(BaseModel):
+    country_code: str    # ISO2 e.g. 'US'
+    indicator_name: str  # e.g. 'government_debt_gdp_pct'
+    condition: str       # 'above' | 'below'
+    threshold: float
+    cooldown_days: int = 7
 
 
 class PrefsIn(BaseModel):
@@ -289,6 +298,107 @@ async def telegram_webhook(
         f"<a href=\"https://metricshour.com/alerts\">Manage your alerts →</a>"
     ))
     return {"ok": True}
+
+
+# ── Macro Alert routes ────────────────────────────────────────────────────────
+
+def _macro_dict(a: MacroAlert) -> dict:
+    label, unit = INDICATOR_LABELS.get(a.indicator_name, (a.indicator_name, ""))
+    return {
+        "id": a.id,
+        "country_code": a.country_code,
+        "indicator_name": a.indicator_name,
+        "indicator_label": label,
+        "indicator_unit": unit,
+        "condition": a.condition,
+        "threshold": float(a.threshold),
+        "is_active": a.is_active,
+        "cooldown_days": a.cooldown_days,
+        "last_triggered_at": a.last_triggered_at.isoformat() if a.last_triggered_at else None,
+        "trigger_count": a.trigger_count,
+        "created_at": a.created_at.isoformat(),
+    }
+
+
+@router.get("/macro")
+def list_macro_alerts(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[dict]:
+    alerts = db.execute(
+        select(MacroAlert)
+        .where(MacroAlert.user_id == current_user.id)
+        .order_by(desc(MacroAlert.created_at))
+    ).scalars().all()
+    return [_macro_dict(a) for a in alerts]
+
+
+@router.post("/macro", status_code=201)
+def create_macro_alert(
+    body: MacroAlertIn,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    if body.condition not in ("above", "below"):
+        raise HTTPException(status_code=422, detail="condition must be 'above' or 'below'")
+    if body.indicator_name not in INDICATOR_LABELS:
+        raise HTTPException(status_code=422, detail="indicator_name not supported")
+    body.country_code = body.country_code.upper()
+
+    # Free tier: max 3 macro alerts
+    if current_user.tier == "free":
+        active = db.execute(
+            select(MacroAlert).where(
+                MacroAlert.user_id == current_user.id,
+                MacroAlert.is_active == True,
+            )
+        ).scalars().all()
+        if len(active) >= 3:
+            raise HTTPException(
+                status_code=422,
+                detail="Free tier limited to 3 macro alerts. Upgrade to Pro for unlimited."
+            )
+
+    alert = MacroAlert(
+        user_id=current_user.id,
+        country_code=body.country_code,
+        indicator_name=body.indicator_name,
+        condition=body.condition,
+        threshold=body.threshold,
+        cooldown_days=max(1, min(body.cooldown_days, 90)),
+        created_at=datetime.now(timezone.utc),
+    )
+    db.add(alert)
+    db.commit()
+    db.refresh(alert)
+    return _macro_dict(alert)
+
+
+@router.delete("/macro/{alert_id}", status_code=204)
+def delete_macro_alert(
+    alert_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    alert = db.execute(
+        select(MacroAlert).where(
+            MacroAlert.id == alert_id,
+            MacroAlert.user_id == current_user.id,
+        )
+    ).scalar_one_or_none()
+    if not alert:
+        raise HTTPException(status_code=404, detail="Alert not found")
+    db.delete(alert)
+    db.commit()
+
+
+@router.get("/indicators")
+def list_alertable_indicators() -> dict:
+    """Return all indicators that can be used in macro alerts."""
+    return {
+        k: {"label": v[0], "unit": v[1]}
+        for k, v in INDICATOR_LABELS.items()
+    }
 
 
 def _send_telegram_reply(chat_id: str, text: str):

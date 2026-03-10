@@ -96,16 +96,25 @@
         </div>
         <!-- History: compact scrollable log -->
         <div v-if="pageInsights.length > 1" class="mt-1.5 border border-[#1a2030] rounded-lg overflow-hidden">
-          <div class="px-3 py-1.5 border-b border-[#1a2030] flex items-center gap-2 bg-[#0a0d14]">
-            <span class="text-[10px] uppercase tracking-widest text-gray-600">Previous</span>
-            <span class="text-[10px] text-gray-700">{{ pageInsights.length - 1 }} entries</span>
-          </div>
-          <div class="max-h-48 overflow-y-auto divide-y divide-[#131b27]">
-            <div v-for="insight in pageInsights.slice(1)" :key="insight.generated_at" class="flex items-start gap-3 px-3 py-2 bg-[#0a0d14]">
+          <div class="divide-y divide-[#131b27]">
+            <div
+              v-for="(insight, i) in pageInsights.slice(1)"
+              v-show="showAllInsights || i < 2"
+              :key="insight.generated_at"
+              class="flex items-start gap-3 px-3 py-2 bg-[#0a0d14] cursor-pointer"
+              @click="toggleInsight(insight.generated_at)"
+            >
               <span class="text-[10px] text-gray-600 shrink-0 mt-0.5 w-16">{{ new Date(insight.generated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) }}</span>
-              <p class="text-xs text-gray-500 leading-relaxed line-clamp-2">{{ insight.summary }}</p>
+              <p class="text-xs text-gray-500 leading-relaxed" :class="expandedInsights.has(insight.generated_at) ? '' : 'line-clamp-2'">{{ insight.summary }}</p>
             </div>
           </div>
+          <button
+            v-if="pageInsights.length > 3"
+            class="w-full px-3 py-2 text-[10px] text-gray-600 hover:text-purple-400 bg-[#0a0d14] border-t border-[#1a2030] transition-colors text-left"
+            @click="showAllInsights = !showAllInsights"
+          >
+            {{ showAllInsights ? '↑ Show less' : `↓ Read more (${pageInsights.length - 3} more insights)` }}
+          </button>
         </div>
       </div>
 
@@ -353,4 +362,11 @@ useHead(computed(() => ({
     },
   ] : [],
 })))
+const expandedInsights = ref<Set<string>>(new Set())
+const showAllInsights = ref(false)
+const toggleInsight = (key: string) => {
+  const s = new Set(expandedInsights.value)
+  s.has(key) ? s.delete(key) : s.add(key)
+  expandedInsights.value = s
+}
 </script>

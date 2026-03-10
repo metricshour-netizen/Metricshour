@@ -53,6 +53,7 @@ app = Celery('metricshour', include=[
     'tasks.summaries',
     'tasks.og_images',
     'tasks.price_alert_checker',
+    'tasks.macro_alert_checker',
     # Data collection workers
     'tasks.world_bank_update',
     'tasks.ecb_fx_rates',
@@ -93,6 +94,10 @@ app.conf.update(
         'price-alert-checker-every-1min': {
             'task': 'tasks.price_alert_checker.check_price_alerts',
             'schedule': 60.0,
+        },
+        'macro-alert-checker-daily-645am': {
+            'task': 'tasks.macro_alert_checker.check_macro_alerts',
+            'schedule': crontab(hour=6, minute=45),
         },
         'stocks-every-15min': {
             'task': 'tasks.stocks.fetch_stock_prices',
