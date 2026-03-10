@@ -137,12 +137,13 @@ Data: {country.name} — {label}: {_fmt_value(current_val, unit)} ({current_year
 History: {history_str}
 Page: {page_url}
 
-Write TWO posts about this macro data point:
+Write THREE posts about this macro data point:
 
 1. TWITTER (max 260 chars, include the number, end with a punchy hook or question, 1-2 relevant emojis, include the URL)
 2. LINKEDIN (3 short paragraphs: data context, what it means for investors/markets, call to action with URL. Professional but engaging. ~150 words.)
+3. FACEBOOK (conversational, 2-3 sentences + the number + URL. More casual than LinkedIn, more context than Twitter. 1 emoji.)
 
-Return ONLY valid JSON: {{"twitter": "...", "linkedin": "..."}}
+Return ONLY valid JSON: {{"twitter": "...", "linkedin": "...", "facebook": "..."}}
 """
     result = _call_gemini(prompt)
     if not result:
@@ -156,6 +157,7 @@ Return ONLY valid JSON: {{"twitter": "...", "linkedin": "..."}}
         "url": page_url,
         "twitter": result.get("twitter", ""),
         "linkedin": result.get("linkedin", ""),
+        "facebook": result.get("facebook", ""),
     }
 
 
@@ -211,12 +213,13 @@ Data: {name} ({ticker}) earns {intl_pct:.0f}% of revenue outside the US.
 Top international markets: {geo_breakdown}
 Page: {page_url}
 
-Write TWO posts about this stock's geographic revenue exposure and what it means:
+Write THREE posts about this stock's geographic revenue exposure and what it means:
 
 1. TWITTER (max 260 chars, include the %, specific countries, hook about macro risk/opportunity, 1-2 emojis, include URL)
 2. LINKEDIN (3 short paragraphs: the geographic breakdown, macro risk/opportunity for each region, investor takeaway with URL. ~150 words. Professional tone.)
+3. FACEBOOK (conversational, 2-3 sentences about the % and top countries + URL. Casual but informative. 1 emoji.)
 
-Return ONLY valid JSON: {{"twitter": "...", "linkedin": "..."}}
+Return ONLY valid JSON: {{"twitter": "...", "linkedin": "...", "facebook": "..."}}
 """
     result = _call_gemini(prompt)
     if not result:
@@ -230,6 +233,7 @@ Return ONLY valid JSON: {{"twitter": "...", "linkedin": "..."}}
         "url": page_url,
         "twitter": result.get("twitter", ""),
         "linkedin": result.get("linkedin", ""),
+        "facebook": result.get("facebook", ""),
     }
 
 
@@ -263,12 +267,13 @@ Data: {exp.name}–{imp.name} bilateral trade: {val_str}/year ({pair.year})
 Top traded goods: {products}
 Page: {page_url}
 
-Write TWO posts about this trade relationship and why it matters to investors:
+Write THREE posts about this trade relationship and why it matters to investors:
 
 1. TWITTER (max 260 chars, include the dollar figure, key goods, geopolitical/market angle, 1-2 emojis, URL)
 2. LINKEDIN (3 short paragraphs: the trade relationship, what macro/political risks apply, investor implication with URL. ~150 words.)
+3. FACEBOOK (conversational, 2-3 sentences: the trade value, what's traded, why it matters + URL. Casual tone. 1 emoji.)
 
-Return ONLY valid JSON: {{"twitter": "...", "linkedin": "..."}}
+Return ONLY valid JSON: {{"twitter": "...", "linkedin": "...", "facebook": "..."}}
 """
     result = _call_gemini(prompt)
     if not result:
@@ -282,6 +287,7 @@ Return ONLY valid JSON: {{"twitter": "...", "linkedin": "..."}}
         "url": page_url,
         "twitter": result.get("twitter", ""),
         "linkedin": result.get("linkedin", ""),
+        "facebook": result.get("facebook", ""),
     }
 
 
@@ -300,20 +306,26 @@ def _send_draft_to_telegram(draft: dict) -> str | None:
         log.warning("Redis store draft failed: %s", e)
         return None
 
+    fb_text = draft.get("facebook", "")
     text = (
         f"📱 <b>Social Draft — {draft['entity']}</b>\n"
         f"<i>{draft['label']}: {draft['value']}</i>\n\n"
-        f"🐦 <b>Twitter:</b>\n<code>{draft['twitter'][:280]}</code>\n\n"
-        f"💼 <b>LinkedIn:</b>\n{draft['linkedin'][:600]}"
+        f"💼 <b>LinkedIn:</b>\n{draft['linkedin'][:500]}\n\n"
+        + (f"📘 <b>Facebook:</b>\n{fb_text[:300]}\n\n" if fb_text else "")
+        + f"🐦 <b>Twitter:</b>\n<code>{draft['twitter'][:280]}</code>"
     )
 
     keyboard = {
-        "inline_keyboard": [[
-            {"text": "🐦 Twitter", "callback_data": f"social:twitter:{draft_key}"},
-            {"text": "💼 LinkedIn", "callback_data": f"social:linkedin:{draft_key}"},
-            {"text": "✅ Both", "callback_data": f"social:both:{draft_key}"},
-            {"text": "❌ Skip", "callback_data": f"social:skip:{draft_key}"},
-        ]]
+        "inline_keyboard": [
+            [
+                {"text": "💼 LinkedIn", "callback_data": f"social:linkedin:{draft_key}"},
+                {"text": "📘 Facebook", "callback_data": f"social:facebook:{draft_key}"},
+            ],
+            [
+                {"text": "✅ LI + FB", "callback_data": f"social:both:{draft_key}"},
+                {"text": "❌ Skip", "callback_data": f"social:skip:{draft_key}"},
+            ],
+        ]
     }
 
     try:
@@ -348,7 +360,7 @@ def generate_social_drafts(self):
         ]
         sent = 0
         for draft in hooks:
-            if draft and draft.get("twitter") and draft.get("linkedin"):
+            if draft and draft.get("linkedin"):
                 if _send_draft_to_telegram(draft):
                     sent += 1
         log.info("Social drafts generated and sent: %d/3", sent)

@@ -5,7 +5,7 @@ Register once (run from shell):
   curl "https://api.telegram.org/bot{TOKEN}/setWebhook?url=https://api.metricshour.com/api/telegram/webhook"
 
 Callback data format: social:{action}:{draft_key}
-  action: twitter | linkedin | both | skip
+  action: linkedin | facebook | both | skip
 """
 import json
 import logging
@@ -125,30 +125,54 @@ async def telegram_webhook(request: Request):
     twitter_text = draft.get("twitter", "")
     linkedin_text = draft.get("linkedin", "")
 
-    from tasks.social_poster import post_via_make, post_to_twitter, post_to_linkedin
+    from tasks.social_poster import post_via_make, post_to_twitter, post_to_linkedin, post_to_facebook
 
     results = []
+    facebook_text = draft.get("facebook", "") or draft.get("linkedin", "")  # reuse linkedin text if no dedicated fb copy
 
-    # LinkedIn — direct API (preferred, no Make.com dependency)
+    # LinkedIn
     if action in ("linkedin", "both") and linkedin_text:
         err = post_to_linkedin(linkedin_text)
         if err and "not configured" not in err:
-            # Fallback: Make.com
             if os.environ.get("MAKE_WEBHOOK_URL"):
                 err2 = post_via_make("linkedin", linkedin_text, draft)
                 if err2 and "not configured" not in err2:
                     _send_message(chat_id, f"💼 <b>LinkedIn (post manually):</b>\n\n{linkedin_text[:3000]}")
-                    results.append(f"💼 LinkedIn failed — sent to chat")
+                    results.append("💼 LinkedIn failed — sent to chat")
                 else:
                     results.append("💼 LinkedIn posted via Make.com ✓")
             else:
                 _send_message(chat_id, f"💼 <b>LinkedIn (post manually):</b>\n\n{linkedin_text[:3000]}")
                 results.append("💼 LinkedIn sent to chat")
+        elif err and "not configured" in err:
+            _send_message(chat_id, f"💼 <b>LinkedIn (post manually):</b>\n\n{linkedin_text[:3000]}")
+            results.append("💼 LinkedIn not configured — sent to chat")
         else:
             results.append("💼 LinkedIn posted ✓")
 
-    # Twitter — direct API or Make.com
-    if action in ("twitter", "both") and twitter_text:
+    # Facebook
+    if action in ("facebook", "both") and facebook_text:
+        link = draft.get("url", "")
+        err = post_to_facebook(facebook_text, link=link)
+        if err and "not configured" not in err:
+            if os.environ.get("MAKE_WEBHOOK_URL"):
+                err2 = post_via_make("facebook", facebook_text, draft)
+                if err2 and "not configured" not in err2:
+                    _send_message(chat_id, f"📘 <b>Facebook (post manually):</b>\n\n{facebook_text[:3000]}")
+                    results.append("📘 Facebook failed — sent to chat")
+                else:
+                    results.append("📘 Facebook posted via Make.com ✓")
+            else:
+                _send_message(chat_id, f"📘 <b>Facebook (post manually):</b>\n\n{facebook_text[:3000]}")
+                results.append("📘 Facebook sent to chat")
+        elif err and "not configured" in err:
+            _send_message(chat_id, f"📘 <b>Facebook (post manually):</b>\n\n{facebook_text[:3000]}")
+            results.append("📘 Facebook not configured — sent to chat")
+        else:
+            results.append("📘 Facebook posted ✓")
+
+    # Twitter
+    if action in ("twitter",) and twitter_text:
         err = post_to_twitter(twitter_text)
         if err and "not configured" not in err:
             if os.environ.get("MAKE_WEBHOOK_URL"):
@@ -160,12 +184,9 @@ async def telegram_webhook(request: Request):
                     results.append("🐦 Twitter posted via Make.com ✓")
             else:
                 _send_message(chat_id, f"🐦 <b>Twitter (post manually):</b>\n\n<code>{twitter_text}</code>")
-                results.append("🐦 Twitter not configured — sent to chat")
+                results.append("🐦 Twitter sent to chat")
         elif err and "not configured" in err:
-            if os.environ.get("MAKE_WEBHOOK_URL"):
-                post_via_make("twitter", twitter_text, draft)
-            else:
-                _send_message(chat_id, f"🐦 <b>Twitter (post manually):</b>\n\n<code>{twitter_text}</code>")
+            _send_message(chat_id, f"🐦 <b>Twitter (post manually):</b>\n\n<code>{twitter_text}</code>")
             results.append("🐦 Twitter sent to chat")
 
     status = "\n".join(results) or "Nothing to post"

@@ -1,16 +1,16 @@
 """
 Social poster — called by the Telegram webhook when user approves a draft.
 
-Primary: sends to Make.com webhook which handles LinkedIn, Facebook, Twitter.
-Fallback: direct Twitter via tweepy (if TWITTER_API_KEY set).
+Primary: direct API calls (LinkedIn, Facebook).
+Fallback: Make.com webhook.
 Fallback: sends text back to Telegram for manual copy-paste.
 
-Required env vars:
-  MAKE_WEBHOOK_URL   — Make.com webhook URL (handles all platforms)
+Required env vars for Facebook:
+  FACEBOOK_PAGE_ID          — numeric Facebook Page ID
+  FACEBOOK_PAGE_ACCESS_TOKEN — long-lived Page access token (pages_manage_posts scope)
 
-Optional direct posting (if not using Make.com):
-  TWITTER_API_KEY, TWITTER_API_SECRET
-  TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET
+Required env vars for LinkedIn:
+  LINKEDIN_ACCESS_TOKEN, LINKEDIN_AUTHOR_URN
 """
 import logging
 import os
@@ -26,6 +26,8 @@ TWITTER_ACCESS_TOKEN = os.environ.get("TWITTER_ACCESS_TOKEN", "")
 TWITTER_ACCESS_TOKEN_SECRET = os.environ.get("TWITTER_ACCESS_TOKEN_SECRET", "")
 LINKEDIN_ACCESS_TOKEN = os.environ.get("LINKEDIN_ACCESS_TOKEN", "")
 LINKEDIN_AUTHOR_URN = os.environ.get("LINKEDIN_AUTHOR_URN", "")
+FACEBOOK_PAGE_ID = os.environ.get("FACEBOOK_PAGE_ID", "")
+FACEBOOK_PAGE_ACCESS_TOKEN = os.environ.get("FACEBOOK_PAGE_ACCESS_TOKEN", "")
 
 
 def post_via_make(platform: str, text: str, draft: dict) -> str | None:
@@ -87,6 +89,29 @@ def post_to_linkedin(text: str) -> str | None:
         return f"LinkedIn {r.status_code}: {r.text[:200]}"
     except Exception as e:
         log.warning("LinkedIn post failed: %s", e)
+        return str(e)
+
+
+def post_to_facebook(text: str, link: str = "") -> str | None:
+    """Post to a Facebook Page via Graph API."""
+    if not FACEBOOK_PAGE_ID or not FACEBOOK_PAGE_ACCESS_TOKEN:
+        return "not configured"
+    try:
+        payload: dict = {"message": text, "access_token": FACEBOOK_PAGE_ACCESS_TOKEN}
+        if link:
+            payload["link"] = link
+        r = requests.post(
+            f"https://graph.facebook.com/v19.0/{FACEBOOK_PAGE_ID}/feed",
+            json=payload,
+            timeout=15,
+        )
+        if r.status_code == 200:
+            post_id = r.json().get("id", "?")
+            log.info("Facebook post published: id=%s", post_id)
+            return None
+        return f"Facebook {r.status_code}: {r.text[:200]}"
+    except Exception as e:
+        log.warning("Facebook post failed: %s", e)
         return str(e)
 
 
