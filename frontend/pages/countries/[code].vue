@@ -65,26 +65,33 @@
         {{ pageSummary.summary }}
       </div>
 
-      <!-- Daily Insights history -->
+      <!-- Daily Insights -->
       <div v-if="pageInsights?.length" class="mb-6">
-        <div
-          v-for="(insight, i) in pageInsights"
-          :key="insight.generated_at"
-          class="relative border rounded-lg p-4 mb-2 overflow-hidden"
-          :class="[i === 0 ? 'bg-[#0d1520] border-emerald-900/50 page-insight-latest' : 'bg-[#0b0f1a] border-[#1f2937]']"
-        >
-          <div v-if="i === 0" class="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent"/>
+        <!-- Latest: full card -->
+        <div class="relative border rounded-lg p-4 overflow-hidden bg-[#0d1520] border-emerald-900/50 page-insight-latest">
+          <div class="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent"/>
           <div class="flex items-start gap-3">
-            <span class="text-base mt-0.5 shrink-0" :class="i === 0 ? 'text-emerald-500' : 'text-gray-600'">◆</span>
+            <span class="text-base mt-0.5 shrink-0 text-emerald-500">◆</span>
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 mb-1.5 flex-wrap">
-                <span class="text-[10px] font-bold uppercase tracking-widest" :class="i === 0 ? 'text-emerald-500' : 'text-gray-600'">MetricsHour Intelligence</span>
-                <span v-if="i === 0" class="text-[10px] text-gray-600">· Daily analyst take</span>
-                <span class="text-[10px] text-gray-700 ml-auto">
-                  {{ new Date(insight.generated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) }}
-                </span>
+                <span class="text-[10px] font-bold uppercase tracking-widest text-emerald-500">MetricsHour Intelligence</span>
+                <span class="text-[10px] text-gray-600">· Daily analyst take</span>
+                <span class="text-[10px] text-gray-700 ml-auto">{{ new Date(pageInsights[0].generated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) }}</span>
               </div>
-              <p class="text-sm leading-relaxed" :class="i === 0 ? 'text-gray-200' : 'text-gray-500'">{{ insight.summary }}</p>
+              <p class="text-sm leading-relaxed text-gray-200">{{ pageInsights[0].summary }}</p>
+            </div>
+          </div>
+        </div>
+        <!-- History: compact scrollable log -->
+        <div v-if="pageInsights.length > 1" class="mt-1.5 border border-[#1a2030] rounded-lg overflow-hidden">
+          <div class="px-3 py-1.5 border-b border-[#1a2030] flex items-center gap-2 bg-[#0a0d14]">
+            <span class="text-[10px] uppercase tracking-widest text-gray-600">Previous</span>
+            <span class="text-[10px] text-gray-700">{{ pageInsights.length - 1 }} entries</span>
+          </div>
+          <div class="max-h-48 overflow-y-auto divide-y divide-[#131b27]">
+            <div v-for="insight in pageInsights.slice(1)" :key="insight.generated_at" class="flex items-start gap-3 px-3 py-2 bg-[#0a0d14]">
+              <span class="text-[10px] text-gray-600 shrink-0 mt-0.5 w-16">{{ new Date(insight.generated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) }}</span>
+              <p class="text-xs text-gray-500 leading-relaxed line-clamp-2">{{ insight.summary }}</p>
             </div>
           </div>
         </div>

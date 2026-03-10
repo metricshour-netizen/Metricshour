@@ -430,13 +430,20 @@ INSIGHT_ENTITY_TYPES = ("country", "stock", "commodity", "trade", "index")
 
 
 @router.get("/insights/{entity_type}/{entity_code}")
-def get_insights(entity_type: str, entity_code: str, db: Session = Depends(get_db)) -> list:
+def get_insights(
+    entity_type: str,
+    entity_code: str,
+    limit: int = 30,
+    db: Session = Depends(get_db),
+) -> list:
     """
-    Returns full insight history for an entity, most recent first.
-    entity_type: country | stock | commodity
+    Returns most recent insights for an entity, most recent first.
+    Default limit=2 (today + yesterday). Pass limit=N for admin/API use.
+    entity_type: country | stock | commodity | trade | index
     """
     entity_type = entity_type.lower()
     entity_code = entity_code.upper()
+    limit = max(1, min(limit, 90))  # clamp 1–90
 
     if entity_type not in INSIGHT_ENTITY_TYPES:
         raise HTTPException(
@@ -449,7 +456,7 @@ def get_insights(entity_type: str, entity_code: str, db: Session = Depends(get_d
         .filter(PageInsight.entity_type == entity_type)
         .filter(PageInsight.entity_code == entity_code)
         .order_by(PageInsight.generated_at.desc())
-        .limit(30)
+        .limit(limit)
         .all()
     )
     return [{"summary": r.summary, "generated_at": r.generated_at.isoformat()} for r in rows]

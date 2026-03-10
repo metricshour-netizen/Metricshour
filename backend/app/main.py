@@ -1,6 +1,7 @@
 import sentry_sdk
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_fastapi_instrumentator import Instrumentator
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 from sentry_sdk.integrations.starlette import StarletteIntegration
 from slowapi import _rate_limit_exceeded_handler
@@ -106,6 +107,9 @@ app.include_router(og.router)      # /og/feed/{id}.png, /og/countries/{code}.png
 app.include_router(sitemap.router) # /sitemap.xml — no Bot Fight Mode here
 app.include_router(alerts_router.router, prefix="/api")
 app.include_router(track_router)   # POST /api/track — page view analytics
+
+
+Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
 
 
 @app.get("/")
