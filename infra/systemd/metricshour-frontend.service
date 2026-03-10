@@ -1,0 +1,18 @@
+[Unit]
+Description=MetricsHour Nuxt SSR Frontend
+After=network.target metricshour-api.service
+
+[Service]
+User=root
+WorkingDirectory=/root/metricshour/frontend
+Environment="NODE_ENV=production"
+Environment="PORT=3000"
+Environment="HOST=127.0.0.1"
+Environment="NUXT_PUBLIC_API_BASE=https://api.metricshour.com"
+ExecStart=/usr/bin/node .output/server/index.mjs
+Restart=always
+MemoryMax=1G
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

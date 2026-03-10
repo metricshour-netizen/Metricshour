@@ -1,0 +1,15 @@
+[Unit]
+Description=MetricsHour FastAPI
+After=network.target postgresql.service dragonfly.service
+
+[Service]
+User=root
+WorkingDirectory=/root/metricshour/backend
+Environment="PATH=/root/metricshour/workers/venv/bin"
+EnvironmentFile=/root/metricshour/backend/.env
+ExecStart=/root/metricshour/workers/venv/bin/gunicorn app.main:app -w 8 -k uvicorn.workers.UvicornWorker --bind 127.0.0.1:8000 --timeout 120
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

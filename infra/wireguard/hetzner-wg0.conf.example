@@ -1,0 +1,14 @@
+# WireGuard config for Hetzner Finland (10.0.0.2) — /etc/wireguard/wg0.conf
+# Generate keys: wg genkey | tee private.key | wg pubkey > public.key
+
+[Interface]
+PrivateKey = <HETZNER_PRIVATE_KEY>
+Address = 10.0.0.2/24
+ListenPort = 51820
+
+[Peer]
+# Netcup (main server)
+PublicKey = <NETCUP_PUBLIC_KEY>
+AllowedIPs = 10.0.0.1/32
+Endpoint = 159.195.29.136:51820
+PersistentKeepalive = 25
