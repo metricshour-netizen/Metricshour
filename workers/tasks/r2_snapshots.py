@@ -545,6 +545,12 @@ def write_r2_snapshots(self):
         with SessionLocal() as db2:
             slugs = [r[0] for r in db2.execute(select(Country.slug)).all()]
             purge_urls += [f"{base}/snapshots/countries/{s}.json" for s in slugs]
+            pairs = db2.execute(select(TradePair.exporter_id, TradePair.importer_id)).all()
+            slug_map = {c.id: c.slug for c in db2.execute(select(Country)).scalars().all()}
+            purge_urls += [
+                f"{base}/snapshots/trade/{slug_map[e]}--{slug_map[i]}.json"
+                for e, i in pairs if e in slug_map and i in slug_map
+            ]
 
         for i in range(0, len(purge_urls), 30):
             _purge_cf_cache(purge_urls[i:i + 30])
