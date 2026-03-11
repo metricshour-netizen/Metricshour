@@ -66,6 +66,7 @@ app = Celery('metricshour', include=[
     'tasks.backfill',
     'tasks.r2_snapshots',
     'tasks.social_content',
+    'tasks.seo_monitor',
 ])
 
 # Use SSL only for rediss:// URLs (Upstash); skip for local redis:// (DragonflyDB)
@@ -235,6 +236,13 @@ app.conf.update(
         'social-drafts-daily-9am': {
             'task': 'tasks.social_content.generate_social_drafts',
             'schedule': crontab(hour=9, minute=0),
+        },
+
+        # SEO health monitor — weekly Sunday 2am UTC
+        # Checks key pages return 200 + sitemap URL count; Telegram alert on failure
+        'seo-monitor-weekly-sunday-2am': {
+            'task': 'tasks.seo_monitor.run_seo_checks',
+            'schedule': crontab(hour=2, minute=0, day_of_week=0),
         },
 
         # WITS trade matrix: full annual refresh — Jan 15 at 2am
