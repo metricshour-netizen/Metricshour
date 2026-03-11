@@ -168,8 +168,14 @@
         </div>
       </div>
 
+      <!-- No bilateral data notice -->
+      <div v-if="!td" class="bg-[#111827] border border-[#1f2937] rounded-xl p-6 mb-6 text-center">
+        <div class="text-gray-500 text-sm mb-1">No bilateral trade data available for this corridor</div>
+        <div class="text-gray-700 text-xs">Data coverage is limited to major trade flows reported via UN Comtrade. This pair may not report bilateral statistics.</div>
+      </div>
+
       <!-- Top products side by side -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+      <div v-if="td" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <div class="bg-[#111827] border border-[#1f2937] rounded-xl p-5">
           <div class="flex items-center gap-2 mb-4">
             <span class="text-lg" aria-hidden="true">{{ data.exporter.flag }}</span>
@@ -177,9 +183,8 @@
               <div class="text-xs font-bold text-white">{{ data.exporter.name }} exports to</div>
               <div class="text-[10px] text-gray-500">{{ data.importer.name }}</div>
             </div>
-            <span v-if="!td?.top_export_products?.length" class="ml-auto text-[10px] text-yellow-400 bg-yellow-900/20 border border-yellow-900 px-2 py-0.5 rounded">Pending</span>
           </div>
-          <div v-if="td?.top_export_products?.length" class="space-y-3">
+          <div v-if="td.top_export_products?.length" class="space-y-3">
             <div v-for="(p, i) in td.top_export_products" :key="p.name">
               <div class="flex items-center justify-between mb-1">
                 <span class="text-xs text-gray-300 capitalize truncate mr-2">{{ p.name }}</span>
@@ -191,15 +196,7 @@
               </div>
             </div>
           </div>
-          <div v-else class="space-y-3">
-            <div v-for="i in 5" :key="i" class="space-y-1">
-              <div class="flex gap-2">
-                <div class="flex-1 h-3 bg-[#1f2937] rounded animate-pulse" />
-                <div class="w-14 h-3 bg-[#1f2937] rounded animate-pulse" />
-              </div>
-              <div class="h-1.5 bg-[#1f2937] rounded-full animate-pulse" :style="{ width: `${80 - i * 12}%` }"/>
-            </div>
-          </div>
+          <div v-else class="text-xs text-gray-600 py-4 text-center">Product breakdown not available</div>
         </div>
 
         <div class="bg-[#111827] border border-[#1f2937] rounded-xl p-5">
@@ -209,9 +206,8 @@
               <div class="text-xs font-bold text-white">{{ data.importer.name }} exports to</div>
               <div class="text-[10px] text-gray-500">{{ data.exporter.name }}</div>
             </div>
-            <span v-if="!td?.top_import_products?.length" class="ml-auto text-[10px] text-yellow-400 bg-yellow-900/20 border border-yellow-900 px-2 py-0.5 rounded">Pending</span>
           </div>
-          <div v-if="td?.top_import_products?.length" class="space-y-3">
+          <div v-if="td.top_import_products?.length" class="space-y-3">
             <div v-for="(p, i) in td.top_import_products" :key="p.name">
               <div class="flex items-center justify-between mb-1">
                 <span class="text-xs text-gray-300 capitalize truncate mr-2">{{ p.name }}</span>
@@ -223,15 +219,7 @@
               </div>
             </div>
           </div>
-          <div v-else class="space-y-3">
-            <div v-for="i in 5" :key="i" class="space-y-1">
-              <div class="flex gap-2">
-                <div class="flex-1 h-3 bg-[#1f2937] rounded animate-pulse" />
-                <div class="w-14 h-3 bg-[#1f2937] rounded animate-pulse" />
-              </div>
-              <div class="h-1.5 bg-[#1f2937] rounded-full animate-pulse" :style="{ width: `${80 - i * 12}%` }"/>
-            </div>
-          </div>
+          <div v-else class="text-xs text-gray-600 py-4 text-center">Product breakdown not available</div>
         </div>
       </div>
 
@@ -444,6 +432,8 @@ useSeoMeta({
   twitterDescription: _seoDesc,
   twitterImage: ogImageUrl,
   twitterCard: 'summary_large_image',
+  // Prevent indexing of pages with no trade data — thin content
+  robots: computed(() => (!data.value || !td.value) ? 'noindex, follow' : 'index, follow'),
 })
 
 function buildTradeFaqs(d: any, tdVal: any) {

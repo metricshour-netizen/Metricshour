@@ -30,7 +30,7 @@ log = logging.getLogger(__name__)
 WITS_BASE = "https://wits.worldbank.org/API/V1/SDMX/V21/datasource/tradestats-trade"
 COMTRADE_BASE = "https://comtradeapi.un.org/public/v1/preview/C/A/HS"
 YEARS = [2023, 2022, 2021]
-TOP_N_PARTNERS = 15
+TOP_N_PARTNERS = 50
 REQUEST_DELAY = 0.5        # WITS has no strict rate limit
 COMTRADE_DELAY = 1.5       # Comtrade public ~100 req/hr — stay safe
 
@@ -327,5 +327,9 @@ def run(refresh: bool = False) -> None:
     db = SessionLocal()
     try:
         seed_comtrade(db, refresh=refresh)
+        # Second pass: backfill imports_usd for pairs that were seeded before their
+        # partner country was processed (order-dependent gap in the first pass).
+        for year in YEARS:
+            fill_missing_imports(db, year=year)
     finally:
         db.close()

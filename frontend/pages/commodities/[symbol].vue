@@ -400,6 +400,9 @@ const _seoDesc = computed(() => {
   return parts.join('. ') + '.'
 })
 
+const { public: { r2PublicUrl: _r2 } } = useRuntimeConfig()
+const _ogImage = `${_r2}/og/section/commodities.png`
+
 useSeoMeta({
   title: _seoTitle,
   description: _seoDesc,
@@ -407,13 +410,13 @@ useSeoMeta({
   ogDescription: _seoDesc,
   ogUrl: `https://metricshour.com/commodities/${symbol.toLowerCase()}/`,
   ogType: 'website',
-  ogImage: `https://api.metricshour.com/og/section/commodities.png`,
+  ogImage: _ogImage,
   ogImageWidth: '1200',
   ogImageHeight: '630',
   twitterCard: 'summary_large_image',
   twitterTitle: _seoTitle,
   twitterDescription: _seoDesc,
-  twitterImage: `https://api.metricshour.com/og/section/commodities.png`,
+  twitterImage: _ogImage,
 })
 
 useHead(computed(() => ({

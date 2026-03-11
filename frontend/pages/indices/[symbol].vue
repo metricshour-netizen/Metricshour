@@ -288,14 +288,14 @@ useHead(computed(() => ({
         '@context': 'https://schema.org',
         '@type': 'WebPage',
         name: _seoTitle.value,
-        url: `https://metricshour.com/indices/${symbol}`,
+        url: `https://metricshour.com/indices/${symbol.toLowerCase()}/`,
         description: _seoDesc.value,
         breadcrumb: {
           '@type': 'BreadcrumbList',
           itemListElement: [
-            { '@type': 'ListItem', position: 1, name: 'Home',    item: 'https://metricshour.com' },
-            { '@type': 'ListItem', position: 2, name: 'Markets', item: 'https://metricshour.com/markets' },
-            { '@type': 'ListItem', position: 3, name: symbol,    item: `https://metricshour.com/indices/${symbol}` },
+            { '@type': 'ListItem', position: 1, name: 'Home',    item: 'https://metricshour.com/' },
+            { '@type': 'ListItem', position: 2, name: 'Markets', item: 'https://metricshour.com/markets/' },
+            { '@type': 'ListItem', position: 3, name: symbol,    item: `https://metricshour.com/indices/${symbol.toLowerCase()}/` },
           ],
         },
       }),
@@ -307,7 +307,7 @@ useHead(computed(() => ({
         '@type': 'Dataset',
         name: `${index.value.name} (${symbol}) Price Data`,
         description: `Current and historical price data for ${index.value.name}. Source: Marketstack.`,
-        url: `https://metricshour.com/indices/${symbol}`,
+        url: `https://metricshour.com/indices/${symbol.toLowerCase()}/`,
         creator: { '@type': 'Organization', name: 'MetricsHour', url: 'https://metricshour.com' },
         keywords: [`${symbol} price today`, `${index.value.name} price`, `${symbol} index value`, `${index.value.name} performance`],
         variableMeasured: [

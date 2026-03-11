@@ -107,7 +107,8 @@ def sitemap(db: Session = Depends(get_db)):
             Asset.symbol.isnot(None),
         )
     ):
-        entries.append(_url(f"{BASE}/indices/{symbol.lower()}/", "0.6", "daily", _TODAY))
+        lm = lastmod_map.get(("index_insight", symbol)) or lastmod_map.get(("index", symbol)) or _TODAY
+        entries.append(_url(f"{BASE}/indices/{symbol.lower()}/", "0.6", "daily", lm))
 
     # Commodities → /commodities/{symbol}  (only those with actual price data)
     commodity_symbols_with_prices = {
@@ -136,6 +137,7 @@ def sitemap(db: Session = Depends(get_db)):
 
     # Trade pairs → /trade/{exp}-{imp}
     # DB stores both directions (A→B and B→A); include only one per relationship.
+    # Only include pairs with actual bilateral data (exports_usd populated) to avoid thin-content pages.
     Exporter = aliased(Country)
     Importer = aliased(Country)
     seen_trade_pairs: set[tuple[str, str]] = set()
@@ -144,6 +146,7 @@ def sitemap(db: Session = Depends(get_db)):
         .select_from(TradePair)
         .join(Exporter, TradePair.exporter_id == Exporter.id)
         .join(Importer, TradePair.importer_id == Importer.id)
+        .where(TradePair.exports_usd.isnot(None))
         .distinct()
     ):
         if not exp_code or not imp_code:

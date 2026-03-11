@@ -378,7 +378,8 @@ const _seoDesc = computed(() => {
 })
 
 const _canonUrl = computed(() => `https://metricshour.com/compare/${codeA}-vs-${codeB}/`)
-const _ogImage  = `https://api.metricshour.com/og/section/countries.png`
+const { public: { r2PublicUrl: _r2 } } = useRuntimeConfig()
+const _ogImage  = `${_r2}/og/section/countries.png`
 
 useSeoMeta({
   title:            _seoTitle,
@@ -394,7 +395,7 @@ useSeoMeta({
   twitterDescription: _seoDesc,
   twitterImage:     _ogImage,
   twitterCard:      'summary_large_image',
-  robots:           'index, follow',
+  robots:           computed(() => (!countryA.value || !countryB.value) ? 'noindex, follow' : 'index, follow'),
 })
 
 useHead(computed(() => {

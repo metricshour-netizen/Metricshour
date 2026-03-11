@@ -80,6 +80,11 @@ def run_all() -> None:
             from app.seeders.comtrade import fill_missing_imports
             fill_missing_imports(db)
 
+        if only == "fill_products":
+            log.info("=== Filling top_export_products / top_import_products via WITS HS2 ===")
+            from app.seeders.fill_trade_products import run as run_fill_products
+            run_fill_products(refresh="--refresh" in sys.argv)
+
         if not only or only == "country_extras":
             log.info("=== Seeding country extras (income level, resources, exports, S&P rating) ===")
             from app.seeders.country_extras import seed_country_extras
