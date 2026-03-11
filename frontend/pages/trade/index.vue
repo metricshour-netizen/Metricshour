@@ -23,7 +23,7 @@
           <NuxtLink
             v-for="p in pairs"
             :key="p.id"
-            :to="`/trade/${p.exporter?.code?.toLowerCase()}-${p.importer?.code?.toLowerCase()}`"
+            :to="`/trade/${p.exporter?.slug ?? p.exporter?.code?.toLowerCase()}--${p.importer?.slug ?? p.importer?.code?.toLowerCase()}`"
             class="block hover:bg-[#1a2235] transition-colors"
           >
             <!-- Mobile row -->

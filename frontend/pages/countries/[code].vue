@@ -264,7 +264,7 @@
                 <td class="py-2.5">
                   <div class="flex items-center gap-2 flex-wrap">
                     <NuxtLink
-                      :to="`/trade/${code.toLowerCase()}-${p.partner.code.toLowerCase()}`"
+                      :to="`/trade/${code.toLowerCase()}--${p.partner.slug ?? p.partner.code.toLowerCase()}`"
                       class="flex items-center gap-2 hover:text-emerald-400 transition-colors"
                     >
                       <span aria-hidden="true">{{ p.partner.flag }}</span>

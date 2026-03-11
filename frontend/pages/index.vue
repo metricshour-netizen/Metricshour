@@ -354,7 +354,7 @@
         <NuxtLink
           v-for="t in topTrades"
           :key="`${t.exporter?.code}-${t.importer?.code}`"
-          :to="`/trade/${t.exporter?.code?.toLowerCase()}-${t.importer?.code?.toLowerCase()}`"
+          :to="`/trade/${t.exporter?.slug ?? t.exporter?.code?.toLowerCase()}--${t.importer?.slug ?? t.importer?.code?.toLowerCase()}`"
           class="bg-[#111827] border border-[#1f2937] hover:border-emerald-500 rounded-lg p-4 transition-colors group"
         >
           <div class="flex items-center gap-2 mb-2">

@@ -245,7 +245,7 @@ def _write_country_snapshots(db) -> int:
             exports = p.exports_usd if is_exp else p.imports_usd
             imports = p.imports_usd if is_exp else p.exports_usd
             trade_partners.append({
-                "partner": {"code": pc.code, "name": pc.name, "flag": pc.flag_emoji},
+                "partner": {"code": pc.code, "slug": pc.slug, "name": pc.name, "flag": pc.flag_emoji},
                 "exports_usd": exports,
                 "imports_usd": imports,
                 "balance_usd": (exports or 0) - (imports or 0),

@@ -206,6 +206,7 @@ def _pair_summary(pair: TradePair, countries: dict[int, Country]) -> dict:
 def _country_ref(c: Country, indicators: dict | None = None) -> dict:
     return {
         "code": c.code,
+        "slug": c.slug,
         "name": c.name,
         "flag": c.flag_emoji,
         "currency_code": c.currency_code,

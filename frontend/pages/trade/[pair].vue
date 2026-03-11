@@ -13,7 +13,7 @@
           <div class="w-16 h-16 bg-[#1f2937] rounded-xl animate-pulse"/>
         </div>
         <div v-else-if="error || !data" class="text-red-400 text-sm py-4">
-          Invalid country pair. Try <code class="text-gray-400">/trade/us-cn</code>
+          Invalid country pair. Try <code class="text-gray-400">/trade/united-states--china</code>
         </div>
 
         <template v-else>
@@ -304,9 +304,10 @@ const { get, post } = useApi()
 const { r2Fetch } = useR2Fetch()
 
 const pair = route.params.pair as string
-const parts = pair.split('--')
+// Support both slug format (united-states--china) and ISO code format (us-cn)
+const parts = pair.includes('--') ? pair.split('--') : pair.split('-')
 const codeA = parts[0] ?? ''
-const codeB = parts[1] ?? ''
+const codeB = parts[parts.length - 1] ?? ''
 
 const { data, pending, error } = useAsyncData(
   `trade-${pair}`,
