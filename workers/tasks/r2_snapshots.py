@@ -536,10 +536,18 @@ def write_r2_snapshots(self):
         total = sum(stats.values())
         log.info("R2 snapshots complete: %d objects in %.1fs", total, elapsed)
 
-        _purge_cf_cache([
-            "https://cdn.metricshour.com/snapshots/lists/countries.json",
-            "https://cdn.metricshour.com/snapshots/lists/assets.json",
-        ])
+        # Purge list snapshots + all country/stock/trade detail pages from CF cache
+        base = "https://cdn.metricshour.com"
+        purge_urls = [
+            f"{base}/snapshots/lists/countries.json",
+            f"{base}/snapshots/lists/assets.json",
+        ]
+        with SessionLocal() as db2:
+            slugs = [r[0] for r in db2.execute(select(Country.slug)).all()]
+            purge_urls += [f"{base}/snapshots/countries/{s}.json" for s in slugs]
+
+        for i in range(0, len(purge_urls), 30):
+            _purge_cf_cache(purge_urls[i:i + 30])
 
         return {"status": "ok", "elapsed_seconds": elapsed, **stats}
 
