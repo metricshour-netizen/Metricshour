@@ -107,6 +107,8 @@ useSeoMeta({
   ogTitle: 'Privacy Policy — MetricsHour',
   ogUrl: 'https://metricshour.com/privacy/',
   ogImage: 'https://api.metricshour.com/og/section/home.png',
+  ogImageWidth: '1200',
+  ogImageHeight: '630',
   twitterImage: 'https://api.metricshour.com/og/section/home.png',
   twitterCard: 'summary_large_image',
 })

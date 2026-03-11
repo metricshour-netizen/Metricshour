@@ -107,12 +107,15 @@ useSeoMeta({
   description: computed(() => post.value?.excerpt || ''),
   ogTitle: computed(() => post.value ? `${post.value.title} — MetricsHour` : 'Article — MetricsHour'),
   ogDescription: computed(() => post.value?.excerpt || ''),
-  ogUrl: computed(() => `https://metricshour.com/blog/${slug}`),
+  ogUrl: computed(() => `https://metricshour.com/blog/${slug}/`),
   ogType: 'article',
   ogImage: computed(() => post.value?.cover_image_url || 'https://api.metricshour.com/og/section/home.png'),
+  ogImageWidth: '1200',
+  ogImageHeight: '630',
   twitterTitle: computed(() => post.value ? `${post.value.title} — MetricsHour` : 'Article — MetricsHour'),
   twitterDescription: computed(() => post.value?.excerpt || ''),
   twitterImage: computed(() => post.value?.cover_image_url || 'https://api.metricshour.com/og/section/home.png'),
+  twitterCard: 'summary_large_image',
 })
 
 useHead({

@@ -94,6 +94,11 @@ useSeoMeta({
   ogDescription: 'Market intelligence articles, data analysis, and financial commentary.',
   ogUrl: 'https://metricshour.com/blog/',
   ogType: 'website',
+  ogImage: 'https://api.metricshour.com/og/section/home.png',
+  ogImageWidth: '1200',
+  ogImageHeight: '630',
+  twitterCard: 'summary_large_image',
+  twitterImage: 'https://api.metricshour.com/og/section/home.png',
 })
 
 useHead({

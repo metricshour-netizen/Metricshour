@@ -522,6 +522,8 @@ useSeoMeta({
   ogUrl: `https://metricshour.com/countries/${code}/`,
   ogType: 'website',
   ogImage: ogImageUrl,
+  ogImageWidth: '1200',
+  ogImageHeight: '630',
   twitterImage: ogImageUrl,
   twitterTitle: _seoTitle,
   twitterDescription: _seoDesc,

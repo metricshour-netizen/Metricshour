@@ -154,6 +154,8 @@ useSeoMeta({
   ogUrl: cardUrl,
   ogType: 'article',
   ogImage,
+  ogImageWidth: '1200',
+  ogImageHeight: '630',
   twitterCard: 'summary_large_image',
   twitterTitle: computed(() => event.value ? `${event.value.title} — MetricsHour` : 'Market Insight — MetricsHour'),
   twitterDescription: computed(() => event.value?.body || 'Real-time global market intelligence on MetricsHour.'),

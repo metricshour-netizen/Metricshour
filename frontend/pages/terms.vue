@@ -115,6 +115,8 @@ useSeoMeta({
   ogTitle: 'Terms of Service — MetricsHour',
   ogUrl: 'https://metricshour.com/terms/',
   ogImage: 'https://api.metricshour.com/og/section/home.png',
+  ogImageWidth: '1200',
+  ogImageHeight: '630',
   twitterImage: 'https://api.metricshour.com/og/section/home.png',
   twitterCard: 'summary_large_image',
 })
