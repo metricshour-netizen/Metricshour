@@ -122,7 +122,7 @@ app.include_router(share.router)   # /s/{id} — social share OG preview (no pre
 app.include_router(og.router)      # /og/feed/{id}.png, /og/countries/{code}.png, /og/stocks/{symbol}.png
 app.include_router(sitemap.router) # /sitemap.xml — no Bot Fight Mode here
 app.include_router(alerts_router.router, prefix="/api")
-app.include_router(telegram_webhook.router)  # POST /api/telegram/webhook
+app.include_router(telegram_webhook.router)  # social draft helpers (no routes — logic called from alerts webhook)
 app.include_router(track_router)   # POST /api/track — page view analytics
 app.include_router(snapshots.router)  # GET /snapshots/{key} — R2 CDN proxy, CF-cached at edge
 

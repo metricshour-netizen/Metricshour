@@ -248,6 +248,13 @@ async def telegram_webhook(
         body = await request.json()
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid JSON")
+
+    # Route callback_query updates to the social draft handler
+    # (social content drafts send inline buttons; those arrive as callback_query)
+    if body.get("callback_query"):
+        from app.routers.telegram_webhook import _handle_callback_query
+        return _handle_callback_query(body["callback_query"])
+
     message = body.get("message") or body.get("my_chat_member", {}).get("message")
     if not message:
         return {"ok": True}

@@ -183,18 +183,33 @@ def _generate_price_moves(db) -> list[tuple[str, str]]:
         direction = "up" if change_pct > 0 else "down"
         sign = "+" if change_pct > 0 else ""
         importance = min(10.0, abs(change_pct))
+        subtype = asset.asset_type.value  # stock, crypto, commodity, fx
+
+        # Dedup check BEFORE calling AI — skip AI if this event would be dropped anyway
+        dedup_cutoff = now - timedelta(minutes=5)
+        already_exists = db.query(FeedEvent.id).filter(
+            FeedEvent.event_type == "price_move",
+            FeedEvent.event_subtype == subtype,
+            FeedEvent.related_asset_ids == [asset.id],
+            FeedEvent.published_at >= dedup_cutoff,
+        ).first()
+        if already_exists:
+            continue
 
         title = f"{asset.symbol} {sign}{change_pct:.1f}% — {asset.name}"
         fallback_body = (
             f"{asset.name} ({asset.symbol}) moved {sign}{change_pct:.2f}% "
             f"in the last 15 minutes, trading at {latest.close:,.4f} {asset.currency}."
         )
-        body = (
-            _ai_price_body(asset.name, asset.symbol, change_pct, latest.close,
-                           asset.currency, asset.asset_type.value)
-            or fallback_body
-        )
-        subtype = asset.asset_type.value  # stock, crypto, commodity, fx
+        # Only call AI for meaningful moves (≥2%) — use template for small noise moves
+        if abs(change_pct) >= 2.0:
+            body = (
+                _ai_price_body(asset.name, asset.symbol, change_pct, latest.close,
+                               asset.currency, asset.asset_type.value)
+                or fallback_body
+            )
+        else:
+            body = fallback_body
 
         # Upsert: one event per asset per 15-min window (identified by dedup_window)
         _upsert_feed_event(
@@ -272,11 +287,15 @@ def _generate_macro_releases(db) -> list[tuple[str, str]]:
             f"as of {period_str}. "
             f"Source: {indicator_row.source}."
         )
-        body = (
-            _ai_macro_body(country.name, label, value_str, period_str,
-                           indicator_row.source, importance)
-            or fallback_body
-        )
+        # Only call AI for high-importance macro events (≥7) — template is fine for tier-2
+        if importance >= 7.0:
+            body = (
+                _ai_macro_body(country.name, label, value_str, period_str,
+                               indicator_row.source, importance)
+                or fallback_body
+            )
+        else:
+            body = fallback_body
 
         # Dedup per (country, indicator, period) — not just indicator.
         # Each data point published once; only re-published if period_date is new.

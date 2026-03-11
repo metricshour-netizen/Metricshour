@@ -1,8 +1,14 @@
 """
-Telegram webhook — handles inline button callbacks from social content drafts.
+Telegram social draft helpers — _handle_callback_query() is called from
+the unified bot webhook at /api/alerts/telegram/webhook.
 
-Register once (run from shell):
-  curl "https://api.telegram.org/bot{TOKEN}/setWebhook?url=https://api.metricshour.com/api/telegram/webhook"
+The old /api/telegram/webhook route has been removed. The single webhook URL is:
+  https://api.metricshour.com/api/alerts/telegram/webhook
+
+Re-register if needed:
+  curl "https://api.telegram.org/bot{TOKEN}/setWebhook
+        ?url=https://api.metricshour.com/api/alerts/telegram/webhook
+        &secret_token={TELEGRAM_WEBHOOK_SECRET}"
 
 Callback data format: social:{action}:{draft_key}
   action: linkedin | facebook | both | skip
@@ -71,23 +77,8 @@ def _send_message(chat_id: int, text: str) -> None:
         pass
 
 
-@router.post("/api/telegram/webhook")
-async def telegram_webhook(request: Request):
-    # Validate secret token header if set
-    if TELEGRAM_WEBHOOK_SECRET:
-        token = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
-        if token != TELEGRAM_WEBHOOK_SECRET:
-            return {"ok": False}
-
-    try:
-        update = await request.json()
-    except Exception:
-        return {"ok": True}
-
-    callback = update.get("callback_query")
-    if not callback:
-        return {"ok": True}
-
+def _handle_callback_query(callback: dict) -> dict:
+    """Process a Telegram callback_query (inline button press from social drafts)."""
     callback_id = callback["id"]
     chat_id = callback["message"]["chat"]["id"]
     message_id = callback["message"]["message_id"]

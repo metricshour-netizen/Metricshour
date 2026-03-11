@@ -759,6 +759,7 @@ const governanceRows = computed(() => [
 ].filter(r => r.raw !== null))
 
 // ─── Insight history expansion ───────────────────────────────────────────────
+const showAllInsights = ref(false)
 const expandedInsights = ref<Set<string>>(new Set())
 const toggleInsight = (key: string) => {
   const s = new Set(expandedInsights.value)
