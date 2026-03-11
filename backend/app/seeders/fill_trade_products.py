@@ -130,10 +130,16 @@ def fill_trade_products(db: Session, refresh: bool = False) -> None:
             select(TradePair).where(TradePair.exports_usd.isnot(None))
         ).scalars().all()
     else:
+        from sqlalchemy import cast, text as sa_text
+        from sqlalchemy.dialects.postgresql import JSONB
         pairs = db.execute(
             select(TradePair).where(
                 TradePair.exports_usd.isnot(None),
-                TradePair.top_export_products.is_(None),
+                # Match both SQL NULL and JSON null (stored as JSONB 'null')
+                (
+                    TradePair.top_export_products.is_(None)
+                    | (TradePair.top_export_products == cast(sa_text("'null'"), JSONB))
+                ),
             )
         ).scalars().all()
 
