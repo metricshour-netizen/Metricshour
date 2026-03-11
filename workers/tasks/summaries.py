@@ -150,6 +150,7 @@ def _call_gemini(prompt: str, min_words: int = 55, max_words: int = 110,
             config=genai_types.GenerateContentConfig(
                 system_instruction=_SHARED_SYSTEM,
                 temperature=0.1,
+                max_output_tokens=int(max_words * 2.5),  # ~1.5 tok/word + buffer
             ),
         )
         text = _strip_markdown(r.text.strip())

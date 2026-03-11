@@ -4,7 +4,7 @@ Social Content Pipeline — generates post drafts and sends to Telegram for appr
 Flow:
   Celery Beat (9am UTC daily)
     → pull 3 interesting data hooks from DB
-    → Gemini 2.0 Flash Lite generates Twitter + LinkedIn copy
+    → Gemini 2.5 Flash Lite generates Twitter + LinkedIn copy
     → send each to Telegram with inline buttons [Twitter] [LinkedIn] [Both] [Skip]
     → user taps approval → FastAPI webhook → posts to platform
 

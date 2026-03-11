@@ -7,7 +7,7 @@ Called by:
   - oecd_update task (after committing)
   - Celery Beat fallback: daily at 6:45am UTC (catches any missed updates)
 
-Smart alerts: when an alert fires, Gemini Flash Lite generates 2-sentence
+Smart alerts: when an alert fires, Gemini 2.5 Flash Lite generates 2-sentence
 context (trend + investor implication) inserted into both Telegram + email.
 Cost: ~$0.00001 per alert fired (only runs when threshold is actually crossed).
 """
@@ -33,6 +33,15 @@ logger = logging.getLogger(__name__)
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 
 
+_ALERT_SYSTEM = (
+    "You are a quantitative macro analyst writing concise investor alerts. "
+    "Use only the data provided — never invent statistics. "
+    "Active voice only. Assert — never hedge. "
+    "Do not use: could, may, might, would likely, appears to, seems to. "
+    "No filler. No greeting. No sign-off. Begin immediately with the data point."
+)
+
+
 def _generate_smart_context(
     country_name: str,
     indicator_label: str,
@@ -41,7 +50,7 @@ def _generate_smart_context(
     condition: str,
     history: list[tuple[int, float]],  # [(year, value), ...] newest first
 ) -> str | None:
-    """Call Gemini Flash Lite to produce 2-sentence alert context. Returns None on any failure."""
+    """Call Gemini 2.5 Flash Lite to produce 2-sentence alert context. Returns None on any failure."""
     if not GEMINI_API_KEY:
         return None
     try:
@@ -54,11 +63,11 @@ def _generate_smart_context(
         prompt = (
             f"{country_name} — {indicator_label}: current value {current:.2f}, "
             f"crossed {direction} threshold {threshold:.2f}. "
-            f"Recent history ({hist_str}). "
-            f"Write exactly 2 sentences for an investor alert: "
-            f"1) what this trend means in context, "
-            f"2) the key market/portfolio implication. "
-            f"Be specific, data-driven, no filler phrases."
+            f"Recent history: {hist_str}. "
+            f"Write exactly 2 sentences: "
+            f"sentence 1 states what this trend means using the historical context and specific numbers; "
+            f"sentence 2 gives the single most direct market or portfolio implication. "
+            f"Total: 30-50 words."
         )
 
         client = genai.Client(api_key=GEMINI_API_KEY)
@@ -66,8 +75,9 @@ def _generate_smart_context(
             model="gemini-2.5-flash-lite",
             contents=prompt,
             config=genai_types.GenerateContentConfig(
+                system_instruction=_ALERT_SYSTEM,
                 max_output_tokens=120,
-                temperature=0.3,
+                temperature=0.2,
             ),
         )
         text = (r.text or "").strip()
