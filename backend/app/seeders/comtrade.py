@@ -1,13 +1,14 @@
 """
-Seed bilateral trade pairs from UN Comtrade public API (no key required).
+Seed bilateral trade pairs from World Bank WITS API (free, no key required).
 
-Endpoint: https://comtradeapi.un.org/public/v1/preview/C/A/HS
-- Free, no subscription key required
-- Up to 500 records per request
-- Annual data, exports flow per reporter country
+Endpoint: https://wits.worldbank.org/API/V1/SDMX/V21/datasource/tradestats-trade
+- Free, no auth, no rate limiting
+- SDMX XML format — parsed with xml.etree.ElementTree
+- Values in thousands USD (multiplied by 1000 before storing)
+- Annual data, exports + imports per reporter country
 
-Coverage: all countries with UN M49 numeric codes (~200 reporters).
-Data: latest available year (tries 2023, falls back to 2022).
+Coverage: all countries with ISO3 codes in our DB (~200 reporters).
+Data: latest available year (tries 2023, falls back to 2022, then 2021).
 Each reporter → top 15 partners stored.
 
 Run:  python seed.py --only comtrade
@@ -20,6 +21,7 @@ Idempotent — safe to re-run. Skips countries with existing 2022+ data unless
 import logging
 import os
 import time
+import xml.etree.ElementTree as ET
 
 import requests
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -32,38 +34,61 @@ from app.models import Country, TradePair
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 
-BASE_URL = "https://comtradeapi.un.org/public/v1/preview/C/A/HS"
-PREFERRED_YEAR = 2023
-FALLBACK_YEAR = 2022
+WITS_BASE = "https://wits.worldbank.org/API/V1/SDMX/V21/datasource/tradestats-trade"
+YEARS = [2023, 2022, 2021]
 TOP_N_PARTNERS = 15
-REQUEST_DELAY = 3.0  # seconds between calls — public tier is rate-limited
-
-# M49 codes that are regional/world aggregates (not individual countries)
-AGGREGATE_M49 = {0, 472, 473, 568, 577, 636, 637, 697, 728, 837, 838, 839, 849, 899}
+REQUEST_DELAY = 0.5  # WITS has no strict rate limit
 
 
-def _fetch_exports(reporter_m49: int, year: int) -> list[dict]:
-    """Fetch annual export rows for one reporter → all partners."""
-    params = {
-        "reporterCode": reporter_m49,
-        "period": year,
-        "cmdCode": "TOTAL",
-        "flowCode": "X",
-        "includeDesc": "true",
-    }
+def _fetch_bilateral(iso3: str, year: int, flow: str) -> dict[str, float]:
+    """
+    Fetch bilateral trade for one country/year/flow.
+    flow: 'exports' or 'imports'
+    Returns dict of {partner_iso3: value_usd}.
+    """
+    indicator = "XPRT-TRD-VL" if flow == "exports" else "MPRT-TRD-VL"
+    url = (
+        f"{WITS_BASE}/reporter/{iso3}/year/{year}"
+        f"/partner/ALL/product/Total/indicator/{indicator}"
+    )
     try:
-        resp = requests.get(BASE_URL, params=params, timeout=30)
-        if resp.status_code == 404:
-            return []
-        if resp.status_code == 429:
-            log.warning("Rate limited — sleeping 60s then retrying")
-            time.sleep(60)
-            return _fetch_exports(reporter_m49, year)
+        resp = requests.get(url, timeout=30)
+        if resp.status_code in (404, 400):
+            return {}
         resp.raise_for_status()
-        return resp.json().get("data", []) or []
+        return _parse_wits_xml(resp.text)
     except Exception as exc:
-        log.warning("Failed M49=%s year=%s: %s", reporter_m49, year, exc)
-        return []
+        log.warning("WITS failed %s %s %s: %s", iso3, year, flow, exc)
+        return {}
+
+
+def _parse_wits_xml(xml_text: str) -> dict[str, float]:
+    """Parse SDMX XML → {partner_iso3: value_usd}. Values in thousands USD → USD."""
+    result: dict[str, float] = {}
+    try:
+        root = ET.fromstring(xml_text)
+        for series in root.iter():
+            if not series.tag.endswith("}Series") and series.tag != "Series":
+                continue
+            partner = series.attrib.get("PARTNER", "")
+            # Skip non-country partners (aggregates are 3+ chars but not ISO3, or known codes)
+            if not partner or len(partner) != 3 or partner in ("WLD", "ECS", "SSF", "SAS", "EAS", "NAC", "LCN", "MEA", "EUU", "HIC", "LMC", "LIC", "UMC", "MIC", "OHI"):
+                continue
+            for obs in series:
+                if obs.tag.endswith("}Obs") or obs.tag == "Obs":
+                    val = obs.attrib.get("OBS_VALUE")
+                    if val:
+                        try:
+                            usd = float(val) * 1000  # WITS values are in thousands USD
+                            if usd > 0:
+                                # Keep highest value if multiple obs per partner
+                                if partner not in result or usd > result[partner]:
+                                    result[partner] = usd
+                        except ValueError:
+                            pass
+    except ET.ParseError as exc:
+        log.warning("XML parse error: %s", exc)
+    return result
 
 
 def seed_comtrade(db: Session, refresh: bool = False) -> None:
@@ -71,31 +96,19 @@ def seed_comtrade(db: Session, refresh: bool = False) -> None:
     if not countries:
         raise RuntimeError("No countries in DB. Run the country seeder first.")
 
-    # Build lookup maps
-    m49_to_id: dict[int, int] = {}
-    for c in countries:
-        if c.numeric_code:
-            try:
-                m49_to_id[int(c.numeric_code)] = c.id
-            except (ValueError, TypeError):
-                pass
-
+    iso3_to_id: dict[str, int] = {c.code3: c.id for c in countries if c.code3}
     id_to_country: dict[int, Country] = {c.id: c for c in countries}
-    log.info("Loaded %d countries with M49 codes", len(m49_to_id))
+    log.info("Loaded %d countries", len(iso3_to_id))
 
-    # Determine which reporters to process
     if refresh:
-        reporters = [c for c in countries if c.numeric_code]
+        reporters = [c for c in countries if c.code3]
     else:
         existing_exporters = set(
             row[0] for row in db.execute(
-                select(TradePair.exporter_id).where(TradePair.year >= 2022).distinct()
+                select(TradePair.exporter_id).where(TradePair.year >= 2021).distinct()
             ).all()
         )
-        reporters = [
-            c for c in countries
-            if c.numeric_code and c.id not in existing_exporters
-        ]
+        reporters = [c for c in countries if c.code3 and c.id not in existing_exporters]
 
     log.info(
         "Processing %d reporters (skipping %d with existing data)",
@@ -107,49 +120,35 @@ def seed_comtrade(db: Session, refresh: bool = False) -> None:
     export_map: dict[tuple[int, int], tuple[float, int]] = {}
 
     for i, country in enumerate(reporters):
-        m49 = int(country.numeric_code)
-        log.info("[%d/%d] %s (M49=%d)", i + 1, len(reporters), country.name, m49)
+        iso3 = country.code3
+        log.info("[%d/%d] %s (%s)", i + 1, len(reporters), country.name, iso3)
 
-        rows = _fetch_exports(m49, PREFERRED_YEAR)
-        actual_year = PREFERRED_YEAR
-        if not rows:
-            rows = _fetch_exports(m49, FALLBACK_YEAR)
-            actual_year = FALLBACK_YEAR
-
-        if not rows:
-            log.info("  No data — skipping")
+        exports: dict[str, float] = {}
+        actual_year = None
+        for year in YEARS:
+            exports = _fetch_bilateral(iso3, year, "exports")
+            if exports:
+                actual_year = year
+                break
             time.sleep(REQUEST_DELAY)
+
+        if not exports:
+            log.info("  No data — skipping")
             continue
 
-        # Filter out world/region aggregates and self
-        # Note: isAggregate=True means data is mirror-estimated, not a region group
-        filtered = [
-            r for r in rows
-            if r.get("partnerCode") not in AGGREGATE_M49
-            and r.get("partnerCode") != m49
-            and r.get("partnerCode") is not None
-            and r.get("partnerCode") != 0
-            and r.get("primaryValue") is not None
-            and r["primaryValue"] > 0
-        ]
-
-        # Deduplicate: API returns multiple rows per partner (different customs codes)
-        # Keep the row with the highest value per partner
-        best: dict[int, dict] = {}
-        for r in filtered:
-            pc = r["partnerCode"]
-            if pc not in best or r["primaryValue"] > best[pc]["primaryValue"]:
-                best[pc] = r
-        bilateral = sorted(best.values(), key=lambda r: r["primaryValue"], reverse=True)
-        bilateral = bilateral[:TOP_N_PARTNERS]
-
-        for row in bilateral:
-            partner_id = m49_to_id.get(row["partnerCode"])
-            if not partner_id:
+        # Keep top N partners that exist in our DB
+        ranked = sorted(exports.items(), key=lambda x: -x[1])
+        added = 0
+        for partner_iso3, value in ranked:
+            if added >= TOP_N_PARTNERS:
+                break
+            partner_id = iso3_to_id.get(partner_iso3)
+            if not partner_id or partner_id == country.id:
                 continue
-            export_map[(country.id, partner_id)] = (float(row["primaryValue"]), actual_year)
+            export_map[(country.id, partner_id)] = (value, actual_year)
+            added += 1
 
-        log.info("  %d partners", len(bilateral))
+        log.info("  %d partners (year %s)", added, actual_year)
         time.sleep(REQUEST_DELAY)
 
     # Upsert trade_pairs
@@ -157,12 +156,8 @@ def seed_comtrade(db: Session, refresh: bool = False) -> None:
     for (exp_id, imp_id), (exports_usd, year) in export_map.items():
         imports_usd = export_map.get((imp_id, exp_id), (None, None))[0]
 
-        if imports_usd is not None:
-            trade_value = exports_usd + imports_usd
-            balance = exports_usd - imports_usd
-        else:
-            trade_value = exports_usd
-            balance = exports_usd
+        trade_value = (exports_usd or 0) + (imports_usd or 0) if imports_usd else exports_usd
+        balance = (exports_usd or 0) - (imports_usd or 0) if imports_usd else exports_usd
 
         stmt = pg_insert(TradePair).values(
             exporter_id=exp_id,
@@ -196,7 +191,7 @@ def seed_comtrade(db: Session, refresh: bool = False) -> None:
             log.info("Committed %d pairs so far…", pairs_upserted)
 
     db.commit()
-    log.info("Comtrade seed complete — %d trade pairs upserted.", pairs_upserted)
+    log.info("Comtrade/WITS seed complete — %d trade pairs upserted.", pairs_upserted)
 
 
 def run(refresh: bool = False) -> None:
