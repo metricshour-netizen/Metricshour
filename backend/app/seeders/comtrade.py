@@ -1,15 +1,9 @@
 """
-Seed bilateral trade pairs from World Bank WITS API (free, no key required).
+Seed bilateral trade pairs using two free sources:
+  1. World Bank WITS API (primary — no key, no rate limit, ISO3 codes)
+  2. UN Comtrade public preview API (fallback — M49 numeric codes, ~100 req/hr limit)
 
-Endpoint: https://wits.worldbank.org/API/V1/SDMX/V21/datasource/tradestats-trade
-- Free, no auth, no rate limiting
-- SDMX XML format — parsed with xml.etree.ElementTree
-- Values in thousands USD (multiplied by 1000 before storing)
-- Annual data, exports + imports per reporter country
-
-Coverage: all countries with ISO3 codes in our DB (~200 reporters).
-Data: latest available year (tries 2023, falls back to 2022, then 2021).
-Each reporter → top 15 partners stored.
+WITS covers ~180 countries. Comtrade fills the remainder (Serbia, DR Congo, etc.).
 
 Run:  python seed.py --only comtrade
       python seed.py --only comtrade --refresh   (re-fetch all including existing)
@@ -19,7 +13,6 @@ Idempotent — safe to re-run. Skips countries with existing 2022+ data unless
 """
 
 import logging
-import os
 import time
 import xml.etree.ElementTree as ET
 
@@ -35,9 +28,11 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 log = logging.getLogger(__name__)
 
 WITS_BASE = "https://wits.worldbank.org/API/V1/SDMX/V21/datasource/tradestats-trade"
+COMTRADE_BASE = "https://comtradeapi.un.org/public/v1/preview/C/A/HS"
 YEARS = [2023, 2022, 2021]
 TOP_N_PARTNERS = 15
-REQUEST_DELAY = 0.5  # WITS has no strict rate limit
+REQUEST_DELAY = 0.5        # WITS has no strict rate limit
+COMTRADE_DELAY = 1.5       # Comtrade public ~100 req/hr — stay safe
 
 
 def _fetch_bilateral(iso3: str, year: int, flow: str) -> dict[str, float]:
@@ -91,14 +86,48 @@ def _parse_wits_xml(xml_text: str) -> dict[str, float]:
     return result
 
 
+def _fetch_comtrade_api(m49: int, year: int) -> dict[int, float]:
+    """
+    Fallback: UN Comtrade public preview API → {partner_m49: value_usd}.
+    Uses M49 numeric codes. partnerCode=0 is the world total — skip it.
+    """
+    url = (
+        f"{COMTRADE_BASE}?reporterCode={m49}&period={year}"
+        f"&cmdCode=TOTAL&flowCode=X"
+    )
+    try:
+        resp = requests.get(url, timeout=30, headers={"User-Agent": "MetricsHour/1.0"})
+        if resp.status_code in (400, 404, 429):
+            return {}
+        resp.raise_for_status()
+        data = resp.json().get("data", [])
+        result: dict[int, float] = {}
+        for row in data:
+            partner_m49 = row.get("partnerCode")
+            value = row.get("primaryValue")
+            if partner_m49 and partner_m49 != 0 and value and float(value) > 0:
+                m49_int = int(partner_m49)
+                if m49_int not in result or float(value) > result[m49_int]:
+                    result[m49_int] = float(value)
+        return result
+    except Exception as exc:
+        log.warning("Comtrade API failed m49=%s year=%s: %s", m49, year, exc)
+        return {}
+
+
 def seed_comtrade(db: Session, refresh: bool = False) -> None:
     countries = db.query(Country).all()
     if not countries:
         raise RuntimeError("No countries in DB. Run the country seeder first.")
 
     iso3_to_id: dict[str, int] = {c.code3: c.id for c in countries if c.code3}
+    m49_to_id: dict[int, int] = {
+        int(c.numeric_code): c.id
+        for c in countries
+        if c.numeric_code and str(c.numeric_code).isdigit()
+    }
     id_to_country: dict[int, Country] = {c.id: c for c in countries}
-    log.info("Loaded %d countries", len(iso3_to_id))
+    log.info("Loaded %d countries (%d with M49 codes)", len(iso3_to_id), len(m49_to_id))
 
     if refresh:
         reporters = [c for c in countries if c.code3]
@@ -133,7 +162,37 @@ def seed_comtrade(db: Session, refresh: bool = False) -> None:
             time.sleep(REQUEST_DELAY)
 
         if not exports:
-            log.info("  No data — skipping")
+            # WITS has no data — try UN Comtrade API (uses M49 numeric code)
+            m49 = int(country.numeric_code) if country.numeric_code and str(country.numeric_code).isdigit() else None
+            if m49:
+                log.info("  WITS empty — trying UN Comtrade API (M49=%s)", m49)
+                comtrade_exports: dict[int, float] = {}
+                for year in YEARS:
+                    comtrade_exports = _fetch_comtrade_api(m49, year)
+                    if comtrade_exports:
+                        actual_year = year
+                        break
+                    time.sleep(COMTRADE_DELAY)
+
+                if comtrade_exports:
+                    # Convert M49 partner codes to DB ids
+                    ranked_m49 = sorted(comtrade_exports.items(), key=lambda x: -x[1])
+                    added = 0
+                    for partner_m49, value in ranked_m49:
+                        if added >= TOP_N_PARTNERS:
+                            break
+                        partner_id = m49_to_id.get(partner_m49)
+                        if not partner_id or partner_id == country.id:
+                            continue
+                        export_map[(country.id, partner_id)] = (value, actual_year)
+                        added += 1
+                    log.info("  Comtrade: %d partners (year %s)", added, actual_year)
+                    time.sleep(COMTRADE_DELAY)
+                    continue
+                else:
+                    log.info("  No data in Comtrade either — skipping")
+            else:
+                log.info("  No M49 code — skipping")
             continue
 
         # Keep top N partners that exist in our DB
