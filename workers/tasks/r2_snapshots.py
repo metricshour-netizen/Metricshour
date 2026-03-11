@@ -292,6 +292,9 @@ def _write_country_snapshots(db) -> int:
             "generated_at": datetime.now(timezone.utc).isoformat(),
         }
         _upload(f"snapshots/countries/{c.slug}.json", data)
+        # Also write by ISO code so frontend r2Fetch("snapshots/countries/ng.json") works
+        if c.code and c.code.lower() != c.slug:
+            _upload(f"snapshots/countries/{c.code.lower()}.json", data)
         written += 1
 
     return written
@@ -423,7 +426,8 @@ def _write_trade_snapshots(db) -> int:
             "top_import_products": p.top_import_products or [],
         }
 
-        key = f"snapshots/trade/{exp.slug}--{imp.slug}.json"
+        slug_key = f"snapshots/trade/{exp.slug}--{imp.slug}.json"
+        iso_key = f"snapshots/trade/{exp.code.lower()}-{imp.code.lower()}.json"
         data = {
             "exporter": {"code": exp.code, "name": exp.name, "flag": exp.flag_emoji, "currency_code": exp.currency_code, "indicators": exp_ind},
             "importer": {"code": imp.code, "name": imp.name, "flag": imp.flag_emoji, "currency_code": imp.currency_code, "indicators": imp_ind},
@@ -431,7 +435,10 @@ def _write_trade_snapshots(db) -> int:
             "canonical_pair": f"{exp.slug}--{imp.slug}",
             "generated_at": datetime.now(timezone.utc).isoformat(),
         }
-        _upload(key, data)
+        _upload(slug_key, data)
+        # Also write by ISO code format so frontend r2Fetch("snapshots/trade/ng-us.json") works
+        if iso_key != slug_key:
+            _upload(iso_key, data)
         written += 1
 
     return written
@@ -543,14 +550,20 @@ def write_r2_snapshots(self):
             f"{base}/snapshots/lists/assets.json",
         ]
         with SessionLocal() as db2:
-            slugs = [r[0] for r in db2.execute(select(Country.slug)).all()]
-            purge_urls += [f"{base}/snapshots/countries/{s}.json" for s in slugs]
+            all_countries = db2.execute(select(Country)).scalars().all()
+            for c in all_countries:
+                purge_urls.append(f"{base}/snapshots/countries/{c.slug}.json")
+                if c.code and c.code.lower() != c.slug:
+                    purge_urls.append(f"{base}/snapshots/countries/{c.code.lower()}.json")
             pairs = db2.execute(select(TradePair.exporter_id, TradePair.importer_id)).all()
-            slug_map = {c.id: c.slug for c in db2.execute(select(Country)).scalars().all()}
-            purge_urls += [
-                f"{base}/snapshots/trade/{slug_map[e]}--{slug_map[i]}.json"
-                for e, i in pairs if e in slug_map and i in slug_map
-            ]
+            slug_map = {c.id: c.slug for c in all_countries}
+            code_map = {c.id: c.code.lower() for c in all_countries if c.code}
+            for e, i in pairs:
+                if e in slug_map and i in slug_map:
+                    purge_urls.append(f"{base}/snapshots/trade/{slug_map[e]}--{slug_map[i]}.json")
+                if e in code_map and i in code_map:
+                    iso = f"{base}/snapshots/trade/{code_map[e]}-{code_map[i]}.json"
+                    purge_urls.append(iso)
 
         for i in range(0, len(purge_urls), 30):
             _purge_cf_cache(purge_urls[i:i + 30])
