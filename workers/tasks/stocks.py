@@ -92,22 +92,17 @@ def _fetch_yfinance(symbols: list[str]) -> dict[str, float]:
     for i in range(0, len(symbols), CHUNK_SIZE):
         chunk = symbols[i:i + CHUNK_SIZE]
         try:
-            if len(chunk) == 1:
-                df = yf.download(chunk[0], period='2d', interval='1d', progress=False)
-                if not df.empty:
-                    close = df['Close'].dropna()
+            # Force multi-ticker path so df[sym] always returns a clean sub-DataFrame
+            tickers = chunk if len(chunk) > 1 else chunk * 2
+            df = yf.download(tickers, period='2d', interval='1d',
+                             group_by='ticker', progress=False, threads=True)
+            for sym in chunk:
+                try:
+                    close = df[sym]['Close'].dropna()
                     if not close.empty:
-                        result[chunk[0]] = float(close.iloc[-1])
-            else:
-                df = yf.download(chunk, period='2d', interval='1d',
-                                 group_by='ticker', progress=False, threads=True)
-                for sym in chunk:
-                    try:
-                        close = df[sym]['Close'].dropna()
-                        if not close.empty:
-                            result[sym] = float(close.iloc[-1])
-                    except (KeyError, IndexError, TypeError):
-                        pass
+                        result[sym] = float(close.iloc[-1])
+                except (KeyError, IndexError, TypeError):
+                    pass
         except Exception:
             log.exception(f'yfinance batch {i}-{i+CHUNK_SIZE} failed')
     return result

@@ -45,41 +45,25 @@ YFINANCE_MAP: dict[str, str] = {
 }
 
 
-def _extract_close(df, sym: str) -> float | None:
-    """
-    Extract latest close from a yfinance DataFrame.
-    Handles both flat columns ('Close') and multi-level tuples (('Close', 'SYM'))
-    returned by newer yfinance versions.
-    """
-    try:
-        if ('Close', sym) in df.columns:
-            close = df[('Close', sym)].dropna()
-        elif 'Close' in df.columns:
-            close = df['Close'].dropna()
-            if hasattr(close, 'columns'):          # still a DataFrame — squeeze
-                close = close.squeeze()
-        else:
-            return None
-        return float(close.iloc[-1]) if not close.empty else None
-    except (KeyError, IndexError, TypeError):
-        return None
-
-
 def _fetch_commodity_prices(yf_symbols: list[str]) -> dict[str, float]:
     """Returns {yfinance_symbol: latest_close}."""
     result: dict[str, float] = {}
     try:
+        # Always use multi-ticker path so df[sym] gives a clean sub-DataFrame
+        tickers = yf_symbols if len(yf_symbols) > 1 else yf_symbols * 2
         df = yf.download(
-            yf_symbols if len(yf_symbols) > 1 else yf_symbols[0],
-            period='5d', interval='1d',
+            tickers, period='5d', interval='1d',
             group_by='ticker', progress=False, threads=True,
         )
         if df.empty:
             return result
         for sym in yf_symbols:
-            val = _extract_close(df, sym)
-            if val is not None:
-                result[sym] = val
+            try:
+                close = df[sym]['Close'].dropna()
+                if not close.empty:
+                    result[sym] = float(close.iloc[-1])
+            except (KeyError, IndexError):
+                pass
     except Exception:
         log.exception('Commodity yfinance fetch failed')
     return result
