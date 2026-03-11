@@ -20,6 +20,7 @@ Run manually:
 import json
 import logging
 import time
+import urllib.request
 from datetime import datetime, timezone
 
 from celery import shared_task
@@ -54,6 +55,30 @@ def _upload(key: str, data: dict | list) -> None:
         # s-maxage = Cloudflare edge TTL; max-age = browser TTL
         CacheControl="public, s-maxage=3600, max-age=3600, stale-while-revalidate=86400",
     )
+
+
+def _purge_cf_cache(urls: list[str]) -> None:
+    token = getattr(settings, "cf_cache_purge_token", None) or os.environ.get("CF_CACHE_PURGE_TOKEN")
+    zone_id = getattr(settings, "cf_zone_id", None) or os.environ.get("CF_ZONE_ID")
+    if not token or not zone_id:
+        log.warning("CF_CACHE_PURGE_TOKEN or CF_ZONE_ID not set — skipping cache purge")
+        return
+    payload = json.dumps({"files": urls}).encode()
+    req = urllib.request.Request(
+        f"https://api.cloudflare.com/client/v4/zones/{zone_id}/purge_cache",
+        data=payload,
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            result = json.loads(resp.read())
+            if result.get("success"):
+                log.info("CF cache purged: %s", urls)
+            else:
+                log.warning("CF cache purge failed: %s", result.get("errors"))
+    except Exception as exc:
+        log.warning("CF cache purge error: %s", exc)
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
@@ -511,6 +536,12 @@ def write_r2_snapshots(self):
 
         total = sum(stats.values())
         log.info("R2 snapshots complete: %d objects in %.1fs", total, elapsed)
+
+        _purge_cf_cache([
+            "https://cdn.metricshour.com/snapshots/lists/countries.json",
+            "https://cdn.metricshour.com/snapshots/lists/assets.json",
+        ])
+
         return {"status": "ok", "elapsed_seconds": elapsed, **stats}
 
     except Exception as exc:
