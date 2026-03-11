@@ -5,13 +5,12 @@ Coverage: all countries with UN M49 numeric codes (~200 reporters).
 Data: annual export flows for latest available year (tries 2023, falls back to 2022).
 Each reporter fetched separately → top 15 trading partners stored per country.
 
-Rate limit: free tier = 500 calls/day. This seeder uses 1 call per country.
-With ~200 reporters that's done in a single run with 200 calls.
+No API key required for basic access (unlimited calls, up to 500 records/call).
+Optional: register for a free key at https://comtradedeveloper.un.org/ for higher
+record limits (100k/call) and 500 calls/day quota.
 
-Setup:
-    1. Register for a free API key at https://comtradeapi.un.org/
-    2. Add to backend/.env:  COMTRADE_API_KEY=your_key_here
-    3. Run:  python seed.py --only comtrade
+Run:  python seed.py --only comtrade
+      python seed.py --only comtrade --refresh   (re-fetch all, including existing)
 
 Idempotent — safe to re-run. Skips countries with existing 2022+ data unless
 --refresh is passed.
@@ -39,10 +38,12 @@ TOP_N_PARTNERS = 15     # top trading partners to keep per country
 REQUEST_DELAY = 1.2     # seconds between calls — stays well under rate limit
 
 
-def _fetch_exports(reporter_m49: int, year: int, api_key: str) -> list[dict]:
+def _fetch_exports(reporter_m49: int, year: int, api_key: str | None) -> list[dict]:
     """Fetch annual export rows for one reporter → all partners."""
     url = f"{BASE_URL}/{year}/{reporter_m49}"
-    headers = {"Ocp-Apim-Subscription-Key": api_key}
+    headers = {}
+    if api_key:
+        headers["Ocp-Apim-Subscription-Key"] = api_key
     params = {
         "cmdCode": "TOTAL",
         "flowCode": "X",
@@ -50,6 +51,7 @@ def _fetch_exports(reporter_m49: int, year: int, api_key: str) -> list[dict]:
         "customsCode": "C00",
         "motCode": 0,
         "includeDesc": "true",
+        "maxRecords": 500,  # free-tier limit; key holders get 100k
     }
     try:
         resp = requests.get(url, headers=headers, params=params, timeout=30)
@@ -66,7 +68,7 @@ def _fetch_exports(reporter_m49: int, year: int, api_key: str) -> list[dict]:
         return []
 
 
-def seed_comtrade(db: Session, api_key: str, refresh: bool = False) -> None:
+def seed_comtrade(db: Session, api_key: str | None = None, refresh: bool = False) -> None:
     countries = db.query(Country).all()
     if not countries:
         raise RuntimeError("No countries in DB. Run the country seeder first.")
@@ -192,13 +194,11 @@ def seed_comtrade(db: Session, api_key: str, refresh: bool = False) -> None:
 
 def run(api_key: str = None, refresh: bool = False) -> None:
     if not api_key:
-        api_key = os.environ.get("COMTRADE_API_KEY")
-    if not api_key:
-        raise RuntimeError(
-            "COMTRADE_API_KEY not set. "
-            "Register for a free key at https://comtradeapi.un.org/ "
-            "then add COMTRADE_API_KEY=your_key to backend/.env"
-        )
+        api_key = os.environ.get("COMTRADE_API_KEY") or None  # None = no-auth free tier
+    if api_key:
+        log.info("Using COMTRADE_API_KEY (500 calls/day, 100k records/call)")
+    else:
+        log.info("No COMTRADE_API_KEY — using free no-auth tier (unlimited calls, 500 records/call)")
     db = SessionLocal()
     try:
         seed_comtrade(db, api_key=api_key, refresh=refresh)
