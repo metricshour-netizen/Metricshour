@@ -20,6 +20,7 @@ from app.database import get_db
 from app.models.asset import Asset, AssetType, Price, StockCountryRevenue
 from app.models.country import Country, TradePair, CountryIndicator
 from app.models.summary import PageSummary
+from app.models.feed import BlogPost
 
 router = APIRouter()
 
@@ -154,6 +155,16 @@ def sitemap(db: Session = Depends(get_db)):
         pair_code = f"{exp_code}-{imp_code}"
         lm = lastmod_map.get(("trade_insight", pair_code)) or lastmod_map.get(("trade", pair_code))
         entries.append(_url(f"{BASE}/trade/{exp_code.lower()}-{imp_code.lower()}/", "0.6", "daily", lm))
+
+    # Blog posts → /blog/{slug}/
+    blog_posts = db.execute(
+        select(BlogPost.slug, BlogPost.published_at)
+        .where(BlogPost.status == "published")  # BlogStatus.published
+        .order_by(BlogPost.published_at.desc())
+    ).all()
+    for post in blog_posts:
+        lm = post.published_at.date().isoformat() if post.published_at else _TODAY
+        entries.append(_url(f"{BASE}/blog/{post.slug}/", "0.7", "monthly", lm))
 
     # Compare pages → /compare/{a}-vs-{b}
     # Only include pairs where BOTH countries have GDP data (avoids thin content).

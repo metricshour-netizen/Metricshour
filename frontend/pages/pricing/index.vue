@@ -114,7 +114,7 @@ useSeoMeta({
   description: 'Free global financial data. Pro from $9.99/month for real-time prices and AI insights. Institutional-grade intelligence without the Bloomberg Terminal price tag.',
   ogTitle: 'MetricsHour Pricing: Free & Pro Plans — Global Finance Data',
   ogDescription: 'Institutional-grade financial intelligence from $9.99/month. Real-time prices, AI insights, 196 countries and 130+ assets. Free tier always available.',
-  ogUrl: 'https://metricshour.com/pricing',
+  ogUrl: 'https://metricshour.com/pricing/',
   ogType: 'website',
   ogImage: 'https://api.metricshour.com/og/section/pricing.png',
   ogImageWidth: '1200',

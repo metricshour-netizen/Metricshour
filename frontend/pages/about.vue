@@ -89,7 +89,7 @@ useSeoMeta({
   description: 'MetricsHour aggregates World Bank, IMF, UN Comtrade and SEC EDGAR into a macro intelligence platform. Data sources, methodology and coverage explained.',
   ogTitle: 'About MetricsHour — Data Sources & Methodology',
   ogDescription: 'World Bank, IMF, UN Comtrade, SEC EDGAR, and US Census Bureau — aggregated into one macro terminal. Learn how MetricsHour works.',
-  ogUrl: 'https://metricshour.com/about',
+  ogUrl: 'https://metricshour.com/about/',
   ogType: 'website',
   ogImage: 'https://api.metricshour.com/og/section/home.png',
   ogImageWidth: '1200',

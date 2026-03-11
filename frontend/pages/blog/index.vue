@@ -92,7 +92,7 @@ useSeoMeta({
   description: 'Market intelligence articles, data analysis, and financial commentary from the MetricsHour team.',
   ogTitle: 'Blog — MetricsHour',
   ogDescription: 'Market intelligence articles, data analysis, and financial commentary.',
-  ogUrl: 'https://metricshour.com/blog',
+  ogUrl: 'https://metricshour.com/blog/',
   ogType: 'website',
 })
 

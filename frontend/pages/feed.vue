@@ -306,7 +306,7 @@ useSeoMeta({
   description: 'Personalised market intelligence feed. Price moves, macro releases, and trade updates ranked for you.',
   ogTitle: 'Market Intelligence Feed: Daily Insights — MetricsHour',
   ogDescription: 'Personalised market intelligence feed. Price moves, macro releases, and trade updates ranked for you.',
-  ogUrl: 'https://metricshour.com/feed',
+  ogUrl: 'https://metricshour.com/feed/',
   ogType: 'website',
   ogImage: 'https://api.metricshour.com/og/section/feed.png',
   ogImageWidth: '1200',
