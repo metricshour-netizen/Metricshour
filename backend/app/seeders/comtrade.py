@@ -257,6 +257,72 @@ def seed_comtrade(db: Session, refresh: bool = False) -> None:
     log.info("Comtrade/WITS seed complete — %d trade pairs upserted.", pairs_upserted)
 
 
+def fill_missing_imports(db: Session, year: int = 2023) -> None:
+    """
+    Second pass: for trade_pair rows where imports_usd is null, fetch the importer's
+    WITS import data and backfill it. Runs ~1 WITS request per unique importer country.
+    """
+    countries = db.query(Country).all()
+    iso3_to_id: dict[str, int] = {c.code3: c.id for c in countries if c.code3}
+    id_to_iso3: dict[int, str] = {c.id: c.code3 for c in countries if c.code3}
+
+    # All pairs for this year with missing imports_usd
+    null_pairs = db.execute(
+        select(TradePair).where(TradePair.imports_usd.is_(None), TradePair.year == year)
+    ).scalars().all()
+
+    if not null_pairs:
+        log.info("No pairs with null imports_usd for year %d — nothing to do.", year)
+        return
+
+    log.info("Found %d pairs with null imports_usd for %d.", len(null_pairs), year)
+
+    # Group by importer so we make one WITS request per importer country
+    from collections import defaultdict
+    by_importer: dict[int, list[TradePair]] = defaultdict(list)
+    for p in null_pairs:
+        by_importer[p.importer_id].append(p)
+
+    updated = 0
+    for i, (imp_id, pairs) in enumerate(by_importer.items()):
+        iso3 = id_to_iso3.get(imp_id)
+        if not iso3:
+            continue
+
+        log.info("[%d/%d] Fetching imports for %s (%d pairs to fill)", i + 1, len(by_importer), iso3, len(pairs))
+        # "imports of country B" = what B imports from all partners
+        imports_by_partner: dict[str, float] = _fetch_bilateral(iso3, year, "imports")
+        if not imports_by_partner:
+            # Try prior year
+            imports_by_partner = _fetch_bilateral(iso3, year - 1, "imports")
+
+        if not imports_by_partner:
+            log.info("  No WITS import data for %s — skipping", iso3)
+            time.sleep(REQUEST_DELAY)
+            continue
+
+        for p in pairs:
+            exp_iso3 = id_to_iso3.get(p.exporter_id)
+            if not exp_iso3:
+                continue
+            imports_val = imports_by_partner.get(exp_iso3)
+            if imports_val is None:
+                continue
+
+            # Update this pair with the recovered imports_usd
+            balance = (p.exports_usd or 0) - imports_val
+            trade_value = (p.exports_usd or 0) + imports_val
+            p.imports_usd = imports_val
+            p.balance_usd = balance
+            p.trade_value_usd = trade_value
+            updated += 1
+
+        db.commit()
+        time.sleep(REQUEST_DELAY)
+
+    log.info("fill_missing_imports complete — %d pairs updated.", updated)
+
+
 def run(refresh: bool = False) -> None:
     db = SessionLocal()
     try:

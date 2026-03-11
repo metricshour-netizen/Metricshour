@@ -75,6 +75,11 @@ def run_all() -> None:
             from app.seeders.comtrade import run as run_comtrade
             run_comtrade(refresh="--refresh" in sys.argv)
 
+        if only == "fill_imports":
+            log.info("=== Backfilling missing imports_usd via WITS import flow ===")
+            from app.seeders.comtrade import fill_missing_imports
+            fill_missing_imports(db)
+
         if not only or only == "country_extras":
             log.info("=== Seeding country extras (income level, resources, exports, S&P rating) ===")
             from app.seeders.country_extras import seed_country_extras
