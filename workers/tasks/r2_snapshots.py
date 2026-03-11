@@ -59,6 +59,17 @@ def _upload(key: str, data: dict | list) -> None:
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 def _country_summary(c: Country) -> dict:
+    groupings = []
+    if c.is_g7: groupings.append("G7")
+    if c.is_g20: groupings.append("G20")
+    if c.is_eu: groupings.append("EU")
+    if c.is_eurozone: groupings.append("Eurozone")
+    if c.is_nato: groupings.append("NATO")
+    if c.is_opec: groupings.append("OPEC")
+    if c.is_brics: groupings.append("BRICS")
+    if c.is_asean: groupings.append("ASEAN")
+    if c.is_oecd: groupings.append("OECD")
+    if c.is_commonwealth: groupings.append("Commonwealth")
     return {
         "id": c.id,
         "code": c.code,
@@ -84,6 +95,7 @@ def _country_summary(c: Country) -> dict:
         "credit_rating_moodys": c.credit_rating_moodys,
         "major_exports": c.major_exports,
         "natural_resources": c.natural_resources,
+        "groupings": groupings,
     }
 
 
@@ -183,18 +195,6 @@ def _write_country_snapshots(db) -> int:
             if row.indicator not in latest:
                 latest[row.indicator] = row.value
                 latest_years[row.indicator] = row.period_date.year
-
-        groupings = []
-        if c.is_g7: groupings.append("G7")
-        if c.is_g20: groupings.append("G20")
-        if c.is_eu: groupings.append("EU")
-        if c.is_eurozone: groupings.append("Eurozone")
-        if c.is_nato: groupings.append("NATO")
-        if c.is_opec: groupings.append("OPEC")
-        if c.is_brics: groupings.append("BRICS")
-        if c.is_asean: groupings.append("ASEAN")
-        if c.is_oecd: groupings.append("OECD")
-        if c.is_commonwealth: groupings.append("Commonwealth")
 
         # Trade partners
         trade_pairs = db.execute(
