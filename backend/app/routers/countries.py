@@ -42,13 +42,15 @@ def list_countries(
 @router.get("/{code}")
 @limiter.limit("120/minute")
 def get_country(request: Request, code: str, db: Session = Depends(get_db)) -> dict:
-    cache_key = f"api:country:{code.upper()}"
+    cache_key = f"api:country:{code.lower()}"
     cached = cache_get(cache_key)
     if cached is not None:
         return cached
 
     country = db.execute(
-        select(Country).where(Country.code == code.upper())
+        select(Country).where(
+            or_(Country.code == code.upper(), Country.slug == code.lower())
+        )
     ).scalar_one_or_none()
 
     if not country:
@@ -108,7 +110,7 @@ def _country_summary(c: Country) -> dict:
 @limiter.limit("120/minute")
 def get_gdp_history(request: Request, code: str, db: Session = Depends(get_db)) -> list[dict]:
     country = db.execute(
-        select(Country).where(Country.code == code.upper())
+        select(Country).where(or_(Country.code == code.upper(), Country.slug == code.lower()))
     ).scalar_one_or_none()
     if not country:
         raise HTTPException(status_code=404, detail="Country not found")
@@ -134,7 +136,7 @@ def get_country_timeseries(
     Response shape: { key: [{year: int, value: float}] }
     """
     country = db.execute(
-        select(Country).where(Country.code == code.upper())
+        select(Country).where(or_(Country.code == code.upper(), Country.slug == code.lower()))
     ).scalar_one_or_none()
     if not country:
         raise HTTPException(status_code=404, detail="Country not found")
@@ -162,7 +164,7 @@ def get_country_timeseries(
 @limiter.limit("120/minute")
 def get_country_stocks(request: Request, code: str, db: Session = Depends(get_db)) -> list[dict]:
     country = db.execute(
-        select(Country).where(Country.code == code.upper())
+        select(Country).where(or_(Country.code == code.upper(), Country.slug == code.lower()))
     ).scalar_one_or_none()
     if not country:
         raise HTTPException(status_code=404, detail="Country not found")
@@ -199,7 +201,7 @@ def get_trade_partners(request: Request, code: str, db: Session = Depends(get_db
         return cached
 
     country = db.execute(
-        select(Country).where(Country.code == code.upper())
+        select(Country).where(or_(Country.code == code.upper(), Country.slug == code.lower()))
     ).scalar_one_or_none()
     if not country:
         raise HTTPException(status_code=404, detail="Country not found")

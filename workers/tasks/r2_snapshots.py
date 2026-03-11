@@ -5,7 +5,7 @@ Writes processed JSON to Cloudflare R2 daily so pages can be served
 from the edge without hitting FastAPI or Postgres.
 
 R2 key layout:
-  snapshots/countries/{code}.json          — full country overview
+  snapshots/countries/{slug}.json          — full country overview
   snapshots/stocks/{ticker}.json           — stock detail + geo revenues
   snapshots/trade/{exp}-{imp}.json         — bilateral trade pair
   snapshots/lists/countries.json           — full country list
@@ -292,7 +292,7 @@ def _write_country_snapshots(db) -> int:
             "local_stocks": local_stocks,
             "generated_at": datetime.now(timezone.utc).isoformat(),
         }
-        _upload(f"snapshots/countries/{c.code.lower()}.json", data)
+        _upload(f"snapshots/countries/{c.slug}.json", data)
         written += 1
 
     return written
