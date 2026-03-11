@@ -83,7 +83,7 @@ def _call_gemini(prompt: str) -> dict | None:
         from google.genai import types as genai_types
         client = genai.Client(api_key=GEMINI_API_KEY)
         r = client.models.generate_content(
-            model="gemini-2.0-flash-lite",
+            model="gemini-2.5-flash-lite",
             contents=prompt,
             config=genai_types.GenerateContentConfig(
                 max_output_tokens=500,

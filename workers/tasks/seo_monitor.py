@@ -8,7 +8,7 @@ Phase 1 — HTTP health checks:
 Phase 2 — AI SEO audit:
   3. Fetch HTML of sample pages, extract SEO signals (title, meta description,
      H1, canonical, og:image, og:title)
-  4. Gemini (gemini-2.0-flash-lite) analyses signals and returns actionable findings
+  4. Gemini (gemini-2.5-flash-lite) analyses signals and returns actionable findings
   5. Structured weekly report + action buttons sent to Telegram
 """
 import logging

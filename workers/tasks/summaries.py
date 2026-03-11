@@ -216,7 +216,7 @@ def _call_deepseek(prompt: str, min_words: int = 55, max_words: int = 110) -> st
 def _call_ai(prompt: str, min_words: int = 55, max_words: int = 110,
              prefer_gemini: bool = False) -> str | None:
     """
-    Cost-optimised AI routing — both paths use gemini-2.0-flash-lite:
+    Cost-optimised AI routing — both paths use gemini-2.5-flash-lite:
       prefer_gemini=True  → Gemini first, DeepSeek fallback  (G20 / top corridors)
       prefer_gemini=False → DeepSeek first, Gemini fallback  (everything else)
     """
