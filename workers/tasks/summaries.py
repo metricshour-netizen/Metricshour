@@ -678,6 +678,94 @@ def _bond_summary_text(asset: Asset) -> str:
 
 # ── Stock daily insight ────────────────────────────────────────────────────────
 
+def _stock_price_insight_text(asset: Asset, hq, db) -> str | None:
+    """
+    Price-based insight for stocks without SEC EDGAR geographic revenue data.
+    Uses sector, macro context from HQ country, and price momentum.
+    """
+    if not _has_ai_key():
+        return None
+
+    # Latest price
+    price_row = (
+        db.query(Price)
+        .filter(Price.asset_id == asset.id)
+        .order_by(Price.timestamp.desc())
+        .first()
+    )
+
+    price_info = ""
+    if price_row:
+        chg_pct = ((price_row.close - price_row.open) / price_row.open * 100) if price_row.open else None
+        price_info = (
+            f"Latest price: {price_row.close:.2f} {asset.currency or 'USD'}"
+            + (f" ({chg_pct:+.2f}% vs open)" if chg_pct is not None else "")
+        )
+
+    # HQ macro
+    hq_macro = ""
+    if hq:
+        hq_rows = (
+            db.query(CountryIndicator)
+            .filter(CountryIndicator.country_id == hq.id)
+            .filter(CountryIndicator.indicator.in_(["gdp_growth_pct", "inflation_pct", "interest_rate_pct"]))
+            .order_by(CountryIndicator.period_date.desc())
+            .limit(9)
+            .all()
+        )
+        seen_h: set[str] = set()
+        inds: dict[str, float] = {}
+        for r in hq_rows:
+            if r.indicator not in seen_h:
+                inds[r.indicator] = r.value
+                seen_h.add(r.indicator)
+        parts = []
+        if "gdp_growth_pct" in inds:
+            parts.append(f"GDP growth {inds['gdp_growth_pct']:.1f}%")
+        if "inflation_pct" in inds:
+            parts.append(f"inflation {inds['inflation_pct']:.1f}%")
+        if "interest_rate_pct" in inds:
+            parts.append(f"policy rate {inds['interest_rate_pct']:.2f}%")
+        if parts:
+            hq_macro = f"HQ macro ({hq.name}): {', '.join(parts)}"
+
+    _PRICE_ANGLES = [
+        (45, 60,
+         f"Focus on the sector macro cycle. Name how the current rate/inflation environment is "
+         f"hitting the {asset.sector or 'sector'} right now — with a specific number. "
+         f"Close with the nearest macro catalyst that could reprice the sector."),
+        (45, 60,
+         f"Focus on valuation and earnings. Open by stating the market cap and what it implies "
+         f"for the expected growth rate. Name the biggest near-term earnings catalyst or risk. "
+         f"Close with the next data point that reprices this stock."),
+        (45, 60,
+         f"Focus on capital allocation. Comment on how the current rate environment affects "
+         f"this company's cost of capital and shareholder returns. "
+         f"Close with the next Fed/central bank decision date and what it means for this sector."),
+        (45, 60,
+         f"Focus on competitive positioning. Name the macro headwind or tailwind most "
+         f"relevant to this sector right now, with a number. "
+         f"Close with the sector catalyst that will confirm or deny this trend."),
+    ]
+    angle = _daily_angle(asset.symbol, len(_PRICE_ANGLES))
+    min_w, max_w, focus = _PRICE_ANGLES[angle]
+
+    prompt = (
+        f"Daily stock brief — {asset.name} ({asset.symbol}) — {min_w}–{max_w} words. "
+        f"Audience: portfolio managers who want EPS signals.\n\n"
+        f"Stock: {asset.symbol} | Sector: {asset.sector or 'N/A'} | "
+        f"Cap: {_fmt_cap(asset.market_cap_usd)} | HQ: {hq.name if hq else 'N/A'}\n"
+        f"{price_info}\n"
+        f"{hq_macro}\n"
+        f"Date: {date.today().strftime('%B %d, %Y')}\n\n"
+        f"{focus}\n\n"
+        f"Rules: opening sentence names a specific percentage or dollar figure. "
+        f"Every assertion is declarative — no 'could', 'may', 'might'. "
+        f"No bullets. No headers. End with a period."
+    )
+    return _call_ai(prompt, min_words=min_w - 5, max_words=max_w + 10, prefer_gemini=False)
+
+
 def _stock_insight_text(asset: Asset, db) -> str | None:
     """
     Opinionated 60-80 word analyst take for a stock page. Generated daily.
@@ -697,7 +785,8 @@ def _stock_insight_text(asset: Asset, db) -> str | None:
     )
 
     if not revs:
-        return None
+        # Fallback: price-based insight for stocks without geographic revenue data
+        return _stock_price_insight_text(asset, hq, db)
 
     rev_lines = "\n".join(
         f"  - {c.flag_emoji or ''} {c.name}: {r.revenue_pct:.0f}% (FY{r.fiscal_year})"
@@ -1708,12 +1797,10 @@ def run_insight_batch(self, insight_type: str):
             }
             all_codes = [row[0] for row in db.query(Country.code).all() if row[0] in codes_with_data]
         elif insight_type == "stock":
-            # Only stocks with geographic revenue data — _stock_insight_text returns None without it
+            # All active stocks — price-based fallback handles those without revenue data
             all_codes = [row[0] for row in (
                 db.query(Asset.symbol)
-                .join(StockCountryRevenue, StockCountryRevenue.asset_id == Asset.id)
-                .filter(Asset.asset_type == "stock")
-                .distinct()
+                .filter(Asset.asset_type == "stock", Asset.is_active == True)
                 .all()
             )]
         elif insight_type == "commodity":
