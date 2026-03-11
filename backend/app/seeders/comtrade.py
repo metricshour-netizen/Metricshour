@@ -36,9 +36,9 @@ BASE_URL = "https://comtradeapi.un.org/public/v1/preview/C/A/HS"
 PREFERRED_YEAR = 2023
 FALLBACK_YEAR = 2022
 TOP_N_PARTNERS = 15
-REQUEST_DELAY = 1.0  # seconds between calls
+REQUEST_DELAY = 3.0  # seconds between calls — public tier is rate-limited
 
-# M49 aggregate codes to skip (regions, world totals, etc.)
+# M49 codes that are regional/world aggregates (not individual countries)
 AGGREGATE_M49 = {0, 472, 473, 568, 577, 636, 637, 697, 728, 837, 838, 839, 849, 899}
 
 
@@ -49,9 +49,6 @@ def _fetch_exports(reporter_m49: int, year: int) -> list[dict]:
         "period": year,
         "cmdCode": "TOTAL",
         "flowCode": "X",
-        "partner2Code": 0,
-        "customsCode": "C00",
-        "motCode": 0,
         "includeDesc": "true",
     }
     try:
@@ -125,16 +122,25 @@ def seed_comtrade(db: Session, refresh: bool = False) -> None:
             continue
 
         # Filter out world/region aggregates and self
-        bilateral = [
+        # Note: isAggregate=True means data is mirror-estimated, not a region group
+        filtered = [
             r for r in rows
-            if not r.get("isAggregate", True)
-            and r.get("partnerCode") not in AGGREGATE_M49
+            if r.get("partnerCode") not in AGGREGATE_M49
             and r.get("partnerCode") != m49
+            and r.get("partnerCode") is not None
+            and r.get("partnerCode") != 0
             and r.get("primaryValue") is not None
             and r["primaryValue"] > 0
         ]
 
-        bilateral.sort(key=lambda r: r["primaryValue"], reverse=True)
+        # Deduplicate: API returns multiple rows per partner (different customs codes)
+        # Keep the row with the highest value per partner
+        best: dict[int, dict] = {}
+        for r in filtered:
+            pc = r["partnerCode"]
+            if pc not in best or r["primaryValue"] > best[pc]["primaryValue"]:
+                best[pc] = r
+        bilateral = sorted(best.values(), key=lambda r: r["primaryValue"], reverse=True)
         bilateral = bilateral[:TOP_N_PARTNERS]
 
         for row in bilateral:
