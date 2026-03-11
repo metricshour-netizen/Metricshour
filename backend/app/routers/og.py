@@ -236,28 +236,44 @@ def _render_country(flag: str, name: str, gdp: float | None, growth: float | Non
     img = Image.new("RGB", (W, H), BG)
     draw = ImageDraw.Draw(img)
 
-    # Grid
-    for x in range(0, W, 80):
-        draw.line([(x, 0), (x, H)], fill=(255, 255, 255, 6), width=1)
-    for y in range(0, H, 80):
-        draw.line([(0, y), (W, y)], fill=(255, 255, 255, 6), width=1)
+    # Top accent bar
+    draw.rectangle([(0, 0), (W, 5)], fill=GREEN)
 
-    draw.rectangle([(0, 0), (W, 4)], fill=GREEN)
-    draw.text((W - 32, H - 40), "METRICSHOUR", font=_font(18, bold=True), fill=GREEN, anchor="rm")
+    # Branding — top right, clear of content
+    draw.text((W - 50, 42), "METRICSHOUR", font=_font(20, bold=True), fill=GREEN, anchor="rm")
+    draw.text((W - 50, 66), "metricshour.com", font=_font(16), fill=GRAY, anchor="rm")
 
-    # Use ISO code badge instead of emoji (DejaVu has no emoji glyphs)
+    # Vertical divider
+    draw.rectangle([(200, 120), (203, H - 80)], fill=(31, 41, 55))
+
+    # ISO code badge — left column
     if code:
-        draw.rectangle([(60, H // 2 - 100), (220, H // 2 + 20)], fill=GREEN)
-        draw.text((140, H // 2 - 40), code.upper(), font=_font(44, bold=True), fill=BG, anchor="mm")
-    draw.text((260, H // 2 - 50), name, font=_font(64, bold=True), fill=WHITE, anchor="lm")
-    gdp_str = _fmt_large(gdp)
-    draw.text((260, H // 2 + 30), f"GDP  {gdp_str}", font=_font(32), fill=GRAY_LT, anchor="lm")
+        bx, by = 101, H // 2 - 10
+        draw.rectangle([(bx - 70, by - 50), (bx + 70, by + 50)], fill=GREEN)
+        draw.text((bx, by), code.upper(), font=_font(52, bold=True), fill=BG, anchor="mm")
+    draw.text((101, H // 2 + 70), "Country", font=_font(16), fill=GRAY, anchor="mm")
+
+    # Right column — country data
+    rx = 240
+    display_name = name if len(name) <= 22 else name[:20] + "…"
+    draw.text((rx, 150), display_name, font=_font(60, bold=True), fill=WHITE, anchor="lm")
+
+    # GDP row
+    draw.text((rx, 250), "GDP", font=_font(18), fill=GRAY, anchor="lm")
+    draw.text((rx + 70, 250), _fmt_large(gdp), font=_font(36, bold=True), fill=WHITE, anchor="lm")
+
+    # Growth row
     if growth is not None:
         color = GREEN if growth >= 0 else (248, 113, 113)
         sign = "+" if growth >= 0 else ""
-        draw.text((260, H // 2 + 80), f"Growth  {sign}{growth:.1f}%", font=_font(28), fill=color, anchor="lm")
+        draw.text((rx, 310), "Growth", font=_font(18), fill=GRAY, anchor="lm")
+        draw.text((rx + 100, 310), f"{sign}{growth:.1f}%", font=_font(36, bold=True), fill=color, anchor="lm")
 
-    draw.text((80, H - 40), "Economy & Macro Intelligence", font=_font(22), fill=GRAY, anchor="lm")
+    # Divider + tagline at bottom
+    draw.rectangle([(0, H - 70), (W, H - 69)], fill=(31, 41, 55))
+    draw.text((50, H - 40), "Economy & Macro Intelligence · metricshour.com", font=_font(20), fill=GRAY, anchor="lm")
+    draw.rectangle([(0, H - 5), (W, H)], fill=GREEN)
+
     return _to_png_bytes(img)
 
 
@@ -267,23 +283,38 @@ def _render_stock(symbol: str, name: str, price: float | None, market_cap: float
     img = Image.new("RGB", (W, H), BG)
     draw = ImageDraw.Draw(img)
 
-    for x in range(0, W, 80):
-        draw.line([(x, 0), (x, H)], fill=(255, 255, 255, 6), width=1)
-    for y in range(0, H, 80):
-        draw.line([(0, y), (W, y)], fill=(255, 255, 255, 6), width=1)
+    # Top accent bar
+    draw.rectangle([(0, 0), (W, 5)], fill=GREEN)
 
-    draw.rectangle([(0, 0), (W, 4)], fill=GREEN)
-    draw.text((W - 32, H - 40), "METRICSHOUR", font=_font(18, bold=True), fill=GREEN, anchor="rm")
+    # Branding — top right
+    draw.text((W - 50, 42), "METRICSHOUR", font=_font(20, bold=True), fill=GREEN, anchor="rm")
+    draw.text((W - 50, 66), "metricshour.com", font=_font(16), fill=GRAY, anchor="rm")
 
-    draw.text((80, H // 2 - 80), symbol, font=_font(96, bold=True), fill=GREEN, anchor="lm")
-    display_name = name if len(name) <= 30 else name[:28] + "…"
-    draw.text((80, H // 2 + 20), display_name, font=_font(40), fill=WHITE, anchor="lm")
+    # Vertical divider
+    draw.rectangle([(200, 120), (203, H - 80)], fill=(31, 41, 55))
+
+    # Left column — stock label
+    draw.text((101, H // 2 - 10), "STOCK", font=_font(18, bold=True), fill=GREEN, anchor="mm")
+    draw.text((101, H // 2 + 25), "SEC EDGAR", font=_font(14), fill=GRAY, anchor="mm")
+
+    # Right column
+    rx = 240
+    draw.text((rx, 150), symbol, font=_font(90, bold=True), fill=GREEN, anchor="lm")
+    display_name = name if len(name) <= 28 else name[:26] + "…"
+    draw.text((rx, 270), display_name, font=_font(36), fill=WHITE, anchor="lm")
+
     if price is not None:
-        draw.text((80, H // 2 + 90), f"${price:,.2f}", font=_font(32), fill=WHITE, anchor="lm")
+        draw.text((rx, 330), "Price", font=_font(18), fill=GRAY, anchor="lm")
+        draw.text((rx + 70, 330), f"${price:,.2f}", font=_font(36, bold=True), fill=WHITE, anchor="lm")
     if market_cap is not None:
-        draw.text((80, H // 2 + 140), f"Market cap  {_fmt_large(market_cap)}", font=_font(28), fill=GRAY_LT, anchor="lm")
+        draw.text((rx, 385), "Mkt Cap", font=_font(18), fill=GRAY, anchor="lm")
+        draw.text((rx + 110, 385), _fmt_large(market_cap), font=_font(36, bold=True), fill=GRAY_LT, anchor="lm")
 
-    draw.text((80, H - 40), "Geographic Revenue & Market Intelligence", font=_font(22), fill=GRAY, anchor="lm")
+    # Bottom bar
+    draw.rectangle([(0, H - 70), (W, H - 69)], fill=(31, 41, 55))
+    draw.text((50, H - 40), "Geographic Revenue & Market Intelligence · metricshour.com", font=_font(20), fill=GRAY, anchor="lm")
+    draw.rectangle([(0, H - 5), (W, H)], fill=GREEN)
+
     return _to_png_bytes(img)
 
 
@@ -293,44 +324,51 @@ def _render_trade(code_a: str, name_a: str, code_b: str, name_b: str, trade_valu
     img = Image.new("RGB", (W, H), BG)
     draw = ImageDraw.Draw(img)
 
-    for x in range(0, W, 80):
-        draw.line([(x, 0), (x, H)], fill=(255, 255, 255, 6), width=1)
-    for y in range(0, H, 80):
-        draw.line([(0, y), (W, y)], fill=(255, 255, 255, 6), width=1)
-
     AMBER = (245, 158, 11)
-    draw.rectangle([(0, 0), (W, 4)], fill=AMBER)
-    draw.text((W - 32, H - 40), "METRICSHOUR", font=_font(18, bold=True), fill=AMBER, anchor="rm")
 
-    cy = H // 2 - 30
+    # Top accent bar
+    draw.rectangle([(0, 0), (W, 5)], fill=AMBER)
 
-    # Country A (left) — ISO code badge + name
-    draw.rectangle([(60, cy - 55), (200, cy + 15)], fill=AMBER)
-    draw.text((130, cy - 20), code_a.upper(), font=_font(40, bold=True), fill=BG, anchor="mm")
-    a_name = name_a if len(name_a) <= 18 else name_a[:16] + "…"
-    draw.text((220, cy - 20), a_name, font=_font(44, bold=True), fill=WHITE, anchor="lm")
+    # Branding — top right
+    draw.text((W - 50, 42), "METRICSHOUR", font=_font(20, bold=True), fill=AMBER, anchor="rm")
+    draw.text((W - 50, 66), "metricshour.com", font=_font(16), fill=GRAY, anchor="rm")
 
-    # Arrow (centre)
-    draw.text((W // 2, cy + 70), "↔", font=_font(56, bold=True), fill=AMBER, anchor="mm")
+    # Two country blocks centred vertically
+    cy = 280
 
-    # Country B (right) — ISO code badge + name
-    draw.rectangle([(W - 200, cy - 55), (W - 60, cy + 15)], fill=AMBER)
-    draw.text((W - 130, cy - 20), code_b.upper(), font=_font(40, bold=True), fill=BG, anchor="mm")
-    b_name = name_b if len(name_b) <= 18 else name_b[:16] + "…"
-    draw.text((W - 220, cy - 20), b_name, font=_font(44, bold=True), fill=WHITE, anchor="rm")
+    # Country A — left block
+    ax = 220
+    draw.rectangle([(ax - 70, cy - 50), (ax + 70, cy + 50)], fill=AMBER)
+    draw.text((ax, cy), code_a.upper(), font=_font(52, bold=True), fill=BG, anchor="mm")
+    a_name = name_a if len(name_a) <= 20 else name_a[:18] + "…"
+    draw.text((ax, cy + 80), a_name, font=_font(32, bold=True), fill=WHITE, anchor="mm")
 
-    # Trade value
+    # Arrow — centre
+    draw.text((W // 2, cy), "↔", font=_font(60, bold=True), fill=AMBER, anchor="mm")
+
+    # Trade value — below arrow
     if trade_value is not None:
-        val_str: str
         if trade_value >= 1e12:
             val_str = f"${trade_value / 1e12:.1f}T"
         elif trade_value >= 1e9:
             val_str = f"${trade_value / 1e9:.0f}B"
         else:
             val_str = f"${trade_value / 1e6:.0f}M"
-        draw.text((W // 2, H // 2 + 60), f"Trade volume  {val_str}", font=_font(32), fill=GRAY_LT, anchor="mm")
+        draw.text((W // 2, cy + 80), val_str, font=_font(40, bold=True), fill=WHITE, anchor="mm")
+        draw.text((W // 2, cy + 125), "annual trade volume", font=_font(18), fill=GRAY, anchor="mm")
 
-    draw.text((80, H - 40), "Bilateral Trade Intelligence · UN Comtrade", font=_font(22), fill=GRAY, anchor="lm")
+    # Country B — right block
+    bx = W - 220
+    draw.rectangle([(bx - 70, cy - 50), (bx + 70, cy + 50)], fill=AMBER)
+    draw.text((bx, cy), code_b.upper(), font=_font(52, bold=True), fill=BG, anchor="mm")
+    b_name = name_b if len(name_b) <= 20 else name_b[:18] + "…"
+    draw.text((bx, cy + 80), b_name, font=_font(32, bold=True), fill=WHITE, anchor="mm")
+
+    # Bottom bar
+    draw.rectangle([(0, H - 70), (W, H - 69)], fill=(31, 41, 55))
+    draw.text((50, H - 40), "Bilateral Trade Intelligence · UN Comtrade · metricshour.com", font=_font(20), fill=GRAY, anchor="lm")
+    draw.rectangle([(0, H - 5), (W, H)], fill=AMBER)
+
     return _to_png_bytes(img)
 
 
