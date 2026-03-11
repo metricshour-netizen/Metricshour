@@ -13,11 +13,10 @@ export default defineNuxtConfig({
   runtimeConfig: {
     public: {
       apiBase: process.env.NUXT_PUBLIC_API_BASE || 'https://api.metricshour.com',
-      // R2 snapshot base URL. Defaults to API origin so /snapshots/ proxy is used
-      // (Cloudflare caches those responses at the edge, no R2 public domain needed).
-      // Once cdn.metricshour.com is set as a Cloudflare R2 custom domain,
-      // set NUXT_PUBLIC_R2_URL=https://cdn.metricshour.com for direct-from-R2 serving.
-      r2PublicUrl: process.env.NUXT_PUBLIC_R2_URL || 'https://api.metricshour.com',
+      // R2 CDN base URL — cdn.metricshour.com is a Cloudflare R2 custom domain.
+      // Snapshots are served direct from R2 edge (~10ms), no API hop needed.
+      // The /snapshots/ API proxy remains as fallback if R2 is unreachable.
+      r2PublicUrl: process.env.NUXT_PUBLIC_R2_URL || 'https://cdn.metricshour.com',
       telegramBotUsername: process.env.NUXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'MetricshourBot',
     },
   },
