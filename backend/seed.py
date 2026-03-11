@@ -70,6 +70,12 @@ def run_all() -> None:
             from app.seeders.census_trade import seed_census_trade
             seed_census_trade(db)
 
+        if only == "comtrade":
+            log.info("=== Seeding bilateral trade pairs (UN Comtrade API) ===")
+            refresh = "--refresh" in sys.argv
+            from app.seeders.comtrade import run as run_comtrade
+            run_comtrade(refresh=refresh)
+
         if not only or only == "country_extras":
             log.info("=== Seeding country extras (income level, resources, exports, S&P rating) ===")
             from app.seeders.country_extras import seed_country_extras

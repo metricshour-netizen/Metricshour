@@ -37,12 +37,6 @@ def _base_canvas() -> tuple[Image.Image, ImageDraw.ImageDraw]:
     img = Image.new("RGB", (W, H), BG)
     draw = ImageDraw.Draw(img)
 
-    # Subtle grid
-    for x in range(0, W, 80):
-        draw.line([(x, 0), (x, H)], fill=(255, 255, 255, 6), width=1)
-    for y in range(0, H, 80):
-        draw.line([(0, y), (W, y)], fill=(255, 255, 255, 6), width=1)
-
     # Top accent line
     draw.rectangle([(0, 0), (W, 4)], fill=GREEN)
 

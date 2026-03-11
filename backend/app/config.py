@@ -17,6 +17,7 @@ class Settings:
     gemini_api_key: str = os.environ.get("GEMINI_API_KEY", "")
     anthropic_api_key: str = os.environ.get("ANTHROPIC_API_KEY", "")
     marketstack_api_key: str = os.environ.get("MARKETSTACK_API_KEY", "")
+    comtrade_api_key: str = os.environ.get("COMTRADE_API_KEY", "")
     # Cloudflare
     cf_account_id: str = os.environ.get("CF_ACCOUNT_ID", "")
     cf_api_token: str = os.environ.get("CF_API_TOKEN", "")
