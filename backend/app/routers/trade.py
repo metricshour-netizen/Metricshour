@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
-from sqlalchemy import select, func
+from sqlalchemy import select, func, or_
 
 from app.database import get_db
 from app.limiter import limiter
@@ -87,17 +87,17 @@ def get_trade_pair(
     db: Session = Depends(get_db),
 ) -> dict:
     exp = db.execute(
-        select(Country).where(Country.code == exporter_code.upper())
+        select(Country).where(or_(Country.code == exporter_code.upper(), Country.slug == exporter_code.lower()))
     ).scalar_one_or_none()
 
     imp = db.execute(
-        select(Country).where(Country.code == importer_code.upper())
+        select(Country).where(or_(Country.code == importer_code.upper(), Country.slug == importer_code.lower()))
     ).scalar_one_or_none()
 
     if not exp or not imp:
         raise HTTPException(status_code=404, detail="Country not found")
 
-    cache_key = f"api:trade:v2:{exporter_code.upper()}:{importer_code.upper()}"
+    cache_key = f"api:trade:v2:{exp.code}:{imp.code}"
     cached = cache_get(cache_key)
     if cached is not None:
         return cached

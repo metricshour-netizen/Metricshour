@@ -423,12 +423,12 @@ def _write_trade_snapshots(db) -> int:
             "top_import_products": p.top_import_products or [],
         }
 
-        key = f"snapshots/trade/{exp.code.lower()}-{imp.code.lower()}.json"
+        key = f"snapshots/trade/{exp.slug}--{imp.slug}.json"
         data = {
             "exporter": {"code": exp.code, "name": exp.name, "flag": exp.flag_emoji, "currency_code": exp.currency_code, "indicators": exp_ind},
             "importer": {"code": imp.code, "name": imp.name, "flag": imp.flag_emoji, "currency_code": imp.currency_code, "indicators": imp_ind},
             "trade_data": trade_data,
-            "canonical_pair": f"{exp.code.lower()}-{imp.code.lower()}",
+            "canonical_pair": f"{exp.slug}--{imp.slug}",
             "generated_at": datetime.now(timezone.utc).isoformat(),
         }
         _upload(key, data)

@@ -304,7 +304,7 @@ const { get, post } = useApi()
 const { r2Fetch } = useR2Fetch()
 
 const pair = route.params.pair as string
-const parts = pair.split('-')
+const parts = pair.split('--')
 const codeA = parts[0] ?? ''
 const codeB = parts[1] ?? ''
 
