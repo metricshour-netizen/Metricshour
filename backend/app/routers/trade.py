@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
-from sqlalchemy import select, func, or_
+from sqlalchemy import select, func, or_, case
 
 from app.database import get_db
 from app.limiter import limiter
@@ -19,12 +19,16 @@ def list_trade_pairs(
     importer: str | None = None,
     db: Session = Depends(get_db),
 ) -> list[dict]:
-    # Subquery: latest year per (exporter, importer) pair
-    latest_year_sq = (
+    # Subquery: best year per (exporter, importer) pair.
+    # Prefer the most recent year that has imports_usd; fall back to max year overall.
+    best_year_sq = (
         select(
             TradePair.exporter_id,
             TradePair.importer_id,
-            func.max(TradePair.year).label("max_year"),
+            func.coalesce(
+                func.max(case((TradePair.imports_usd.isnot(None), TradePair.year), else_=None)),
+                func.max(TradePair.year),
+            ).label("best_year"),
         )
         .group_by(TradePair.exporter_id, TradePair.importer_id)
         .subquery()
@@ -33,10 +37,10 @@ def list_trade_pairs(
     query = (
         select(TradePair)
         .join(
-            latest_year_sq,
-            (TradePair.exporter_id == latest_year_sq.c.exporter_id)
-            & (TradePair.importer_id == latest_year_sq.c.importer_id)
-            & (TradePair.year == latest_year_sq.c.max_year),
+            best_year_sq,
+            (TradePair.exporter_id == best_year_sq.c.exporter_id)
+            & (TradePair.importer_id == best_year_sq.c.importer_id)
+            & (TradePair.year == best_year_sq.c.best_year),
         )
         .order_by(TradePair.trade_value_usd.desc())
         .limit(100)
@@ -102,20 +106,23 @@ def get_trade_pair(
     if cached is not None:
         return cached
 
+    # Prefer records with both exports+imports populated; fall back to newest year
+    _completeness = case((TradePair.imports_usd.isnot(None), 1), else_=0)
     pair = db.execute(
         select(TradePair)
         .where(TradePair.exporter_id == exp.id, TradePair.importer_id == imp.id)
-        .order_by(TradePair.year.desc())
+        .order_by(_completeness.desc(), TradePair.year.desc())
         .limit(1)
     ).scalar_one_or_none()
 
     reversed_pair = False
     if not pair:
         # UN Comtrade stores flows by reporter — try the reverse direction
+        _completeness_r = case((TradePair.imports_usd.isnot(None), 1), else_=0)
         pair = db.execute(
             select(TradePair)
             .where(TradePair.exporter_id == imp.id, TradePair.importer_id == exp.id)
-            .order_by(TradePair.year.desc())
+            .order_by(_completeness_r.desc(), TradePair.year.desc())
             .limit(1)
         ).scalar_one_or_none()
         if pair:

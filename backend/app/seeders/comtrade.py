@@ -19,7 +19,7 @@ import xml.etree.ElementTree as ET
 import requests
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 from app.database import SessionLocal
 from app.models import Country, TradePair
@@ -237,9 +237,13 @@ def seed_comtrade(db: Session, refresh: bool = False) -> None:
             set_={
                 "trade_value_usd": stmt.excluded.trade_value_usd,
                 "exports_usd": stmt.excluded.exports_usd,
-                "imports_usd": stmt.excluded.imports_usd,
+                # Only overwrite imports_usd if the incoming value is not null
+                "imports_usd": func.coalesce(stmt.excluded.imports_usd, TradePair.imports_usd),
                 "balance_usd": stmt.excluded.balance_usd,
                 "data_source": stmt.excluded.data_source,
+                # Preserve existing products if incoming arrays are empty/null
+                "top_export_products": func.coalesce(stmt.excluded.top_export_products, TradePair.top_export_products),
+                "top_import_products": func.coalesce(stmt.excluded.top_import_products, TradePair.top_import_products),
             },
         )
         db.execute(stmt)
