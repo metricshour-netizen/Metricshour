@@ -51,7 +51,8 @@ def _upload(key: str, data: dict | list) -> None:
         Key=key,
         Body=body,
         ContentType="application/json",
-        CacheControl="public, max-age=3600, stale-while-revalidate=86400",
+        # s-maxage = Cloudflare edge TTL; max-age = browser TTL
+        CacheControl="public, s-maxage=3600, max-age=3600, stale-while-revalidate=86400",
     )
 
 
