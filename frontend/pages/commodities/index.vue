@@ -70,7 +70,7 @@
         No commodities match "{{ search }}"
       </div>
 
-      <p class="text-xs text-gray-700 mt-4">Data: Marketstack · CoinGecko · exchangerate.host</p>
+      <p class="text-xs text-gray-700 mt-4">Data: Marketstack · CoinGecko · CME · NYMEX</p>
     </template>
   </main>
 </template>

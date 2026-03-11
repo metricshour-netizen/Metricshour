@@ -143,7 +143,7 @@
         </div>
       </div>
 
-      <p class="text-xs text-gray-700 text-center">Data: Marketstack · FRED · Yahoo Finance</p>
+      <p class="text-xs text-gray-700 text-center">Data: Marketstack · FRED · NYSE · NASDAQ · CME</p>
     </main>
   </div>
 </template>
