@@ -284,7 +284,6 @@ def _write_country_snapshots(db) -> int:
 
         data = {
             **_country_summary(c),
-            "groupings": groupings,
             "indicators": latest,
             "indicator_years": latest_years,
             "trade_partners": trade_partners,
