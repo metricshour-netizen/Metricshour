@@ -31,21 +31,20 @@ const el = ref<HTMLDivElement | null>(null)
 let chart: ReturnType<typeof init> | null = null
 let ro: ResizeObserver | null = null
 
-// ResizeObserver fires whenever the container changes size (including initial layout).
-// This is more reliable than window resize + nextTick for catching 0-width init issues.
-watch(el, (newEl) => {
-  if (!newEl) return
+onMounted(async () => {
+  await nextTick()
+  if (!el.value) return
 
-  chart = init(newEl, null, { renderer: 'canvas' })
+  chart = init(el.value, null, { renderer: 'canvas' })
   chart.setOption(props.option)
 
-  ro = new ResizeObserver(() => {
-    chart?.resize()
-  })
-  ro.observe(newEl)
-  // Fire one manual resize after the first paint to handle any deferred layout
-  requestAnimationFrame(() => chart?.resize())
-}, { flush: 'post' })
+  ro = new ResizeObserver(() => chart?.resize())
+  ro.observe(el.value)
+
+  // Double-rAF: first frame commits layout, second frame guarantees container
+  // has resolved its final dimensions (critical after SSR hydration).
+  requestAnimationFrame(() => requestAnimationFrame(() => chart?.resize()))
+})
 
 onUnmounted(() => {
   ro?.disconnect()

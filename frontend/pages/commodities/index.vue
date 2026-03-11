@@ -76,11 +76,13 @@
 </template>
 
 <script setup lang="ts">
-const { get } = useApi()
+const { r2ListFetch } = useR2Fetch()
 const search = ref('')
 
 const { data: commodities, pending } = useAsyncData('commodities',
-  () => get<any[]>('/api/assets?type=commodity').catch(() => []),
+  () => r2ListFetch<any>('snapshots/lists/assets.json', '/api/assets?type=commodity')
+    .then(list => list.filter((a: any) => a.asset_type === 'commodity'))
+    .catch(() => []),
 )
 
 const apiMap = computed(() => {

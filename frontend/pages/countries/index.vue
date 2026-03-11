@@ -79,9 +79,9 @@ const filters = [
 const activeFilter = ref<string | null>(null)
 const search = ref('')
 
-const { get } = useApi()
+const { r2ListFetch } = useR2Fetch()
 const { data: countries, pending, error } = useAsyncData('countries-all',
-  () => get('/api/countries').catch(() => []),
+  () => r2ListFetch('snapshots/lists/countries.json', '/api/countries').catch(() => []),
 )
 
 const filtered = computed(() => {

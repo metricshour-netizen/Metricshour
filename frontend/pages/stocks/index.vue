@@ -160,13 +160,16 @@
 </template>
 
 <script setup lang="ts">
-const { get } = useApi()
+const { r2ListFetch } = useR2Fetch()
 const activeSector = ref<string | null>(null)
 const search = ref('')
 const terminalView = ref(false)
 
 const { data: stocks, pending } = useAsyncData('stocks',
-  () => get<any[]>('/api/assets?type=stock').catch(() => []),
+  // R2 list has all asset types — filter to stocks client-side
+  () => r2ListFetch<any>('snapshots/lists/assets.json', '/api/assets?type=stock')
+    .then(list => list.filter((a: any) => a.asset_type === 'stock'))
+    .catch(() => []),
 )
 
 const sectors = computed(() => {

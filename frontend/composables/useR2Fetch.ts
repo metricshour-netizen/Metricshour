@@ -1,44 +1,47 @@
 /**
  * R2-first fetch with API fallback.
  *
- * Tries the Cloudflare R2 CDN snapshot first (~10ms edge latency).
- * Falls back to FastAPI if R2 returns a non-200 or the request fails.
+ * r2Fetch   — for detail snapshots (flat objects): countries, stocks, trade pairs.
+ * r2ListFetch — for list snapshots ({ generated_at, count, data: [...] }) — auto-unwraps to array.
  *
- * Usage:
- *   const data = await r2Fetch<CountryData>(
- *     `snapshots/countries/${code}.json`,
- *     `/api/countries/${code}`,
- *   )
+ * Snapshot origin: GET /snapshots/{key} on api.metricshour.com
+ *   → FastAPI proxies to R2 and returns with Cache-Control headers
+ *   → Cloudflare caches at the edge for 1 hour
+ *   → On cache miss, falls back to the regular API endpoint
+ *
+ * When cdn.metricshour.com is configured as a Cloudflare R2 custom domain,
+ * set NUXT_PUBLIC_R2_URL=https://cdn.metricshour.com to serve direct from R2.
  */
 export function useR2Fetch() {
   const config = useRuntimeConfig()
-  const r2Base = config.public.r2PublicUrl as string
+  // Default: use the API's /snapshots/ proxy — Cloudflare caches responses at edge.
+  // Override with NUXT_PUBLIC_R2_URL once cdn.metricshour.com R2 custom domain is set up.
+  const r2Base = (config.public.r2PublicUrl as string) || (config.public.apiBase as string)
   const apiBase = config.public.apiBase as string
 
   async function r2Fetch<T>(r2Key: string, apiFallback: string): Promise<T> {
-    // Try R2 CDN first
     if (r2Base) {
       try {
         const res = await fetch(`${r2Base.replace(/\/$/, '')}/${r2Key}`, {
-          // 3s timeout — if R2 is slow, fall through to API immediately
           signal: AbortSignal.timeout(3000),
         })
-        if (res.ok) {
-          const json = await res.json()
-          // R2 snapshots wrap list data in { data: [...] } but detail pages are flat objects.
-          // Return as-is — callers handle both shapes.
-          return json as T
-        }
+        if (res.ok) return res.json() as Promise<T>
       } catch {
-        // R2 miss, timeout, or network error — fall through silently
+        // R2 miss, timeout, or network error — fall through to API
       }
     }
 
-    // Fall back to FastAPI
     const res = await fetch(`${apiBase.replace(/\/$/, '')}${apiFallback}`)
     if (!res.ok) throw new Error(`API error: ${res.status}`)
     return res.json() as Promise<T>
   }
 
-  return { r2Fetch }
+  // List snapshots are wrapped: { generated_at, count, data: [...] }
+  // This helper unwraps them so pages receive a plain array (same shape as the API).
+  async function r2ListFetch<T>(r2Key: string, apiFallback: string): Promise<T[]> {
+    const result = await r2Fetch<any>(r2Key, apiFallback)
+    return (Array.isArray(result?.data) ? result.data : result) as T[]
+  }
+
+  return { r2Fetch, r2ListFetch }
 }
