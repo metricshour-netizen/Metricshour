@@ -390,22 +390,26 @@ def _write_stock_snapshots(db) -> int:
 
 
 def _write_trade_snapshots(db) -> int:
-    # Latest year per pair
-    latest_sq = (
+    # Best year per pair: prefer most recent year with imports_usd; fall back to max year overall
+    from sqlalchemy import case as sa_case
+    best_year_sq = (
         select(
             TradePair.exporter_id,
             TradePair.importer_id,
-            func.max(TradePair.year).label("max_year"),
+            func.coalesce(
+                func.max(sa_case((TradePair.imports_usd.isnot(None), TradePair.year), else_=None)),
+                func.max(TradePair.year),
+            ).label("best_year"),
         )
         .group_by(TradePair.exporter_id, TradePair.importer_id)
         .subquery()
     )
     pairs = db.execute(
         select(TradePair).join(
-            latest_sq,
-            (TradePair.exporter_id == latest_sq.c.exporter_id)
-            & (TradePair.importer_id == latest_sq.c.importer_id)
-            & (TradePair.year == latest_sq.c.max_year),
+            best_year_sq,
+            (TradePair.exporter_id == best_year_sq.c.exporter_id)
+            & (TradePair.importer_id == best_year_sq.c.importer_id)
+            & (TradePair.year == best_year_sq.c.best_year),
         )
     ).scalars().all()
 
