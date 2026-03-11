@@ -232,7 +232,7 @@ def _render_feed_event(
 
 # ── Country renderer ───────────────────────────────────────────────────────────
 
-def _render_country(flag: str, name: str, gdp: float | None, growth: float | None) -> bytes:
+def _render_country(flag: str, name: str, gdp: float | None, growth: float | None, code: str = "") -> bytes:
     img = Image.new("RGB", (W, H), BG)
     draw = ImageDraw.Draw(img)
 
@@ -245,7 +245,10 @@ def _render_country(flag: str, name: str, gdp: float | None, growth: float | Non
     draw.rectangle([(0, 0), (W, 4)], fill=GREEN)
     draw.text((W - 32, H - 40), "METRICSHOUR", font=_font(18, bold=True), fill=GREEN, anchor="rm")
 
-    draw.text((80, H // 2 - 60), flag, font=_font(120), fill=WHITE, anchor="lm")
+    # Use ISO code badge instead of emoji (DejaVu has no emoji glyphs)
+    if code:
+        draw.rectangle([(60, H // 2 - 100), (220, H // 2 + 20)], fill=GREEN)
+        draw.text((140, H // 2 - 40), code.upper(), font=_font(44, bold=True), fill=BG, anchor="mm")
     draw.text((260, H // 2 - 50), name, font=_font(64, bold=True), fill=WHITE, anchor="lm")
     gdp_str = _fmt_large(gdp)
     draw.text((260, H // 2 + 30), f"GDP  {gdp_str}", font=_font(32), fill=GRAY_LT, anchor="lm")
@@ -286,7 +289,7 @@ def _render_stock(symbol: str, name: str, price: float | None, market_cap: float
 
 # ── Trade renderer ─────────────────────────────────────────────────────────────
 
-def _render_trade(flag_a: str, name_a: str, flag_b: str, name_b: str, trade_value: float | None) -> bytes:
+def _render_trade(code_a: str, name_a: str, code_b: str, name_b: str, trade_value: float | None) -> bytes:
     img = Image.new("RGB", (W, H), BG)
     draw = ImageDraw.Draw(img)
 
@@ -299,19 +302,22 @@ def _render_trade(flag_a: str, name_a: str, flag_b: str, name_b: str, trade_valu
     draw.rectangle([(0, 0), (W, 4)], fill=AMBER)
     draw.text((W - 32, H - 40), "METRICSHOUR", font=_font(18, bold=True), fill=AMBER, anchor="rm")
 
-    # Country A (left)
-    draw.text((80, H // 2 - 30), flag_a, font=_font(80), fill=WHITE, anchor="lm")
+    cy = H // 2 - 30
+
+    # Country A (left) — ISO code badge + name
+    draw.rectangle([(60, cy - 55), (200, cy + 15)], fill=AMBER)
+    draw.text((130, cy - 20), code_a.upper(), font=_font(40, bold=True), fill=BG, anchor="mm")
     a_name = name_a if len(name_a) <= 18 else name_a[:16] + "…"
-    draw.text((200, H // 2 - 30), a_name, font=_font(44, bold=True), fill=WHITE, anchor="lm")
+    draw.text((220, cy - 20), a_name, font=_font(44, bold=True), fill=WHITE, anchor="lm")
 
     # Arrow (centre)
-    draw.text((W // 2, H // 2 - 30), "↔", font=_font(56, bold=True), fill=AMBER, anchor="mm")
+    draw.text((W // 2, cy + 70), "↔", font=_font(56, bold=True), fill=AMBER, anchor="mm")
 
-    # Country B (right)
-    b_x = W - 80
-    draw.text((b_x, H // 2 - 30), flag_b, font=_font(80), fill=WHITE, anchor="rm")
+    # Country B (right) — ISO code badge + name
+    draw.rectangle([(W - 200, cy - 55), (W - 60, cy + 15)], fill=AMBER)
+    draw.text((W - 130, cy - 20), code_b.upper(), font=_font(40, bold=True), fill=BG, anchor="mm")
     b_name = name_b if len(name_b) <= 18 else name_b[:16] + "…"
-    draw.text((b_x - 130, H // 2 - 30), b_name, font=_font(44, bold=True), fill=WHITE, anchor="rm")
+    draw.text((W - 220, cy - 20), b_name, font=_font(44, bold=True), fill=WHITE, anchor="rm")
 
     # Trade value
     if trade_value is not None:
@@ -515,6 +521,7 @@ def og_country(code: str, db: Session = Depends(get_db)):
             country.name,
             gdp_row.value if gdp_row else None,
             growth_row.value if growth_row else None,
+            code=country.code,
         )
         _fire_r2_upload(f"og/countries/{code.lower()}.png", png)
         return Response(content=png, media_type="image/png", headers=_PNG_HEADERS)
@@ -554,9 +561,9 @@ def og_trade(pair: str, db: Session = Depends(get_db)):
 
     try:
         png = _render_trade(
-            exp.flag_emoji or "",
+            exp.code,
             exp.name,
-            imp.flag_emoji or "",
+            imp.code,
             imp.name,
             trade_row.trade_value_usd if trade_row else None,
         )
