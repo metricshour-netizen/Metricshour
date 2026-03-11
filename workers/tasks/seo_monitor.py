@@ -63,7 +63,7 @@ AUDIT_PAGES = [
 
 SITEMAP_MIN_URLS = 600
 HTTP_TIMEOUT = 15
-GEMINI_MODEL = "gemini-2.0-flash-lite"
+GEMINI_MODEL = "gemini-2.5-flash"
 GEMINI_API_URL = (
     f"https://generativelanguage.googleapis.com/v1beta/models/"
     f"{GEMINI_MODEL}:generateContent"
