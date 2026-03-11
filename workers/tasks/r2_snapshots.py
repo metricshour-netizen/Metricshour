@@ -21,6 +21,7 @@ import json
 import logging
 import time
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 
 from celery import shared_task
@@ -205,37 +206,60 @@ def _write_asset_list(db) -> int:
 
 def _write_country_snapshots(db) -> int:
     countries = db.execute(select(Country)).scalars().all()
-    written = 0
 
-    for c in countries:
-        indicators_rows = db.execute(
-            select(CountryIndicator)
-            .where(CountryIndicator.country_id == c.id)
-            .order_by(CountryIndicator.indicator, CountryIndicator.period_date.desc())
-        ).scalars().all()
+    # Pre-load all indicators, trade pairs, revenues in bulk to avoid N+1 queries
+    all_indicators = db.execute(
+        select(CountryIndicator)
+        .order_by(CountryIndicator.country_id, CountryIndicator.indicator, CountryIndicator.period_date.desc())
+    ).scalars().all()
+    indicators_by_country: dict[int, dict[str, float]] = {}
+    years_by_country: dict[int, dict[str, int]] = {}
+    for row in all_indicators:
+        cid = row.country_id
+        if cid not in indicators_by_country:
+            indicators_by_country[cid] = {}
+            years_by_country[cid] = {}
+        if row.indicator not in indicators_by_country[cid]:
+            indicators_by_country[cid][row.indicator] = row.value
+            years_by_country[cid][row.indicator] = row.period_date.year
 
-        latest: dict[str, float] = {}
-        latest_years: dict[str, int] = {}
-        for row in indicators_rows:
-            if row.indicator not in latest:
-                latest[row.indicator] = row.value
-                latest_years[row.indicator] = row.period_date.year
+    all_pairs = db.execute(
+        select(TradePair).order_by(TradePair.trade_value_usd.desc())
+    ).scalars().all()
+    pairs_by_country: dict[int, list] = {}
+    for p in all_pairs:
+        pairs_by_country.setdefault(p.exporter_id, []).append(p)
+        pairs_by_country.setdefault(p.importer_id, []).append(p)
 
-        # Trade partners
-        trade_pairs = db.execute(
-            select(TradePair)
-            .where(or_(TradePair.exporter_id == c.id, TradePair.importer_id == c.id))
-            .order_by(TradePair.trade_value_usd.desc())
-            .limit(20)
-        ).scalars().all()
-        partner_ids = {(p.importer_id if p.exporter_id == c.id else p.exporter_id) for p in trade_pairs}
-        partner_countries: dict[int, Country] = {}
-        if partner_ids:
-            rows = db.execute(select(Country).where(Country.id.in_(partner_ids))).scalars().all()
-            partner_countries = {pc.id: pc for pc in rows}
+    all_revs = db.execute(
+        select(StockCountryRevenue, Asset)
+        .join(Asset, StockCountryRevenue.asset_id == Asset.id)
+        .order_by(StockCountryRevenue.fiscal_year.desc(), StockCountryRevenue.revenue_pct.desc())
+    ).all()
+    revs_by_country: dict[int, list] = {}
+    for rev, asset in all_revs:
+        revs_by_country.setdefault(rev.country_id, []).append((rev, asset))
+
+    local_stocks_by_country: dict[int, list] = {}
+    for a in db.execute(
+        select(Asset).where(Asset.asset_type == AssetType.stock, Asset.is_active == True)
+        .order_by(Asset.market_cap_usd.desc().nullslast())
+    ).scalars().all():
+        if a.country_id:
+            local_stocks_by_country.setdefault(a.country_id, []).append(a)
+
+    country_map = {c.id: c for c in countries}
+
+    def _build_payload(c: Country) -> tuple[str, dict]:
+        latest = indicators_by_country.get(c.id, {})
+        latest_years = years_by_country.get(c.id, {})
+
+        trade_pairs_for_c = pairs_by_country.get(c.id, [])[:20]
+        partner_ids = {(p.importer_id if p.exporter_id == c.id else p.exporter_id) for p in trade_pairs_for_c}
+        partner_countries = {pid: country_map[pid] for pid in partner_ids if pid in country_map}
         trade_partners = []
         seen_partners: set[str] = set()
-        for p in trade_pairs:
+        for p in trade_pairs_for_c:
             is_exp = p.exporter_id == c.id
             pid = p.importer_id if is_exp else p.exporter_id
             pc = partner_countries.get(pid)
@@ -252,35 +276,21 @@ def _write_country_snapshots(db) -> int:
                 "trade_value_usd": p.trade_value_usd,
             })
 
-        # Stocks with revenue from this country
-        rev_rows = db.execute(
-            select(StockCountryRevenue, Asset)
-            .join(Asset, StockCountryRevenue.asset_id == Asset.id)
-            .where(StockCountryRevenue.country_id == c.id)
-            .order_by(StockCountryRevenue.fiscal_year.desc(), StockCountryRevenue.revenue_pct.desc())
-        ).all()
         seen_assets: set[int] = set()
         exposed_stocks = []
-        for rev, asset in rev_rows:
+        for rev, asset in revs_by_country.get(c.id, []):
             if asset.id not in seen_assets:
                 seen_assets.add(asset.id)
                 exposed_stocks.append({
-                    "symbol": asset.symbol,
-                    "name": asset.name,
-                    "sector": asset.sector,
-                    "market_cap_usd": asset.market_cap_usd,
-                    "revenue_pct": rev.revenue_pct,
+                    "symbol": asset.symbol, "name": asset.name, "sector": asset.sector,
+                    "market_cap_usd": asset.market_cap_usd, "revenue_pct": rev.revenue_pct,
                     "fiscal_year": rev.fiscal_year,
                 })
 
-        # Stocks headquartered in this country
-        local_stock_rows = db.execute(
-            select(Asset)
-            .where(Asset.country_id == c.id, Asset.asset_type == AssetType.stock, Asset.is_active == True)
-            .order_by(Asset.market_cap_usd.desc().nullslast())
-            .limit(20)
-        ).scalars().all()
-        local_stocks = [{"symbol": a.symbol, "name": a.name, "sector": a.sector, "market_cap_usd": a.market_cap_usd} for a in local_stock_rows]
+        local_stocks = [
+            {"symbol": a.symbol, "name": a.name, "sector": a.sector, "market_cap_usd": a.market_cap_usd}
+            for a in local_stocks_by_country.get(c.id, [])[:20]
+        ]
 
         data = {
             **_country_summary(c),
@@ -291,13 +301,27 @@ def _write_country_snapshots(db) -> int:
             "local_stocks": local_stocks,
             "generated_at": datetime.now(timezone.utc).isoformat(),
         }
-        _upload(f"snapshots/countries/{c.slug}.json", data)
-        # Also write by ISO code so frontend r2Fetch("snapshots/countries/ng.json") works
-        if c.code and c.code.lower() != c.slug:
-            _upload(f"snapshots/countries/{c.code.lower()}.json", data)
-        written += 1
+        return c.slug, data
 
-    return written
+    # Build all payloads then upload in parallel
+    payloads: list[tuple[str, str, dict]] = []  # (slug_key, iso_key_or_None, data)
+    for c in countries:
+        slug, data = _build_payload(c)
+        iso = c.code.lower() if c.code and c.code.lower() != slug else None
+        payloads.append((f"snapshots/countries/{slug}.json", iso and f"snapshots/countries/{iso}.json", data))
+
+    def _upload_pair(args):
+        slug_key, iso_key, data = args
+        _upload(slug_key, data)
+        if iso_key:
+            _upload(iso_key, data)
+
+    with ThreadPoolExecutor(max_workers=20) as pool:
+        futures = [pool.submit(_upload_pair, p) for p in payloads]
+        for f in as_completed(futures):
+            f.result()  # re-raise any exceptions
+
+    return len(payloads)
 
 
 def _write_stock_snapshots(db) -> int:
@@ -305,53 +329,64 @@ def _write_stock_snapshots(db) -> int:
         select(Asset).where(Asset.asset_type == AssetType.stock, Asset.is_active == True)
     ).scalars().all()
 
-    written = 0
-    for a in stocks:
-        # Latest price
-        price = db.execute(
-            select(Price)
-            .where(Price.asset_id == a.id)
-            .order_by(Price.timestamp.desc())
-            .limit(1)
-        ).scalar_one_or_none()
+    asset_ids = [a.id for a in stocks]
 
-        # Geographic revenue
-        rev_rows = db.execute(
-            select(StockCountryRevenue, Country)
-            .join(Country, StockCountryRevenue.country_id == Country.id)
-            .where(StockCountryRevenue.asset_id == a.id)
-            .order_by(StockCountryRevenue.fiscal_year.desc(), StockCountryRevenue.revenue_pct.desc())
-        ).all()
+    # Bulk load latest prices
+    latest_sq = (
+        select(Price.asset_id, func.max(Price.timestamp).label("max_ts"))
+        .where(Price.asset_id.in_(asset_ids))
+        .group_by(Price.asset_id)
+        .subquery()
+    )
+    prices = {
+        p.asset_id: p for p in db.execute(
+            select(Price).join(latest_sq,
+                (Price.asset_id == latest_sq.c.asset_id) &
+                (Price.timestamp == latest_sq.c.max_ts))
+        ).scalars().all()
+    }
 
+    # Bulk load revenues
+    revs_by_asset: dict[int, list] = {}
+    for rev, country in db.execute(
+        select(StockCountryRevenue, Country)
+        .join(Country, StockCountryRevenue.country_id == Country.id)
+        .where(StockCountryRevenue.asset_id.in_(asset_ids))
+        .order_by(StockCountryRevenue.fiscal_year.desc(), StockCountryRevenue.revenue_pct.desc())
+    ).all():
+        revs_by_asset.setdefault(rev.asset_id, []).append((rev, country))
+
+    # Bulk load HQ countries
+    country_ids = {a.country_id for a in stocks if a.country_id}
+    hq_countries = {c.id: c for c in db.execute(
+        select(Country).where(Country.id.in_(country_ids))
+    ).scalars().all()} if country_ids else {}
+
+    def _build_stock(a: Asset) -> tuple[str, dict]:
         country_revenues = []
-        seen_countries: set[int] = set()
-        for rev, country in rev_rows:
-            if country.id not in seen_countries:
-                seen_countries.add(country.id)
+        seen: set[int] = set()
+        for rev, country in revs_by_asset.get(a.id, []):
+            if country.id not in seen:
+                seen.add(country.id)
                 country_revenues.append({
-                    "country": {
-                        "code": country.code,
-                        "name": country.name,
-                        "flag": country.flag_emoji,
-                    },
-                    "revenue_pct": rev.revenue_pct,
-                    "revenue_usd": rev.revenue_usd,
+                    "country": {"code": country.code, "name": country.name, "flag": country.flag_emoji},
+                    "revenue_pct": rev.revenue_pct, "revenue_usd": rev.revenue_usd,
                     "fiscal_year": rev.fiscal_year,
                 })
-
-        hq_country = None
-        if a.country_id:
-            hq_country = db.execute(select(Country).where(Country.id == a.country_id)).scalar_one_or_none()
-
         data = {
-            **_asset_summary(a, hq_country, price),
+            **_asset_summary(a, hq_countries.get(a.country_id), prices.get(a.id)),
             "country_revenues": country_revenues,
             "generated_at": datetime.now(timezone.utc).isoformat(),
         }
-        _upload(f"snapshots/stocks/{a.symbol.lower()}.json", data)
-        written += 1
+        return f"snapshots/stocks/{a.symbol.lower()}.json", data
 
-    return written
+    payloads = [_build_stock(a) for a in stocks]
+    with ThreadPoolExecutor(max_workers=20) as pool:
+        futures = [pool.submit(lambda kv: _upload(kv[0], kv[1]), p) for p in payloads]
+        for f in as_completed(futures):
+            f.result()
+
+    return len(payloads)
 
 
 def _write_trade_snapshots(db) -> int:
@@ -400,32 +435,25 @@ def _write_trade_snapshots(db) -> int:
         if row.indicator not in country_indicators[cid]:
             country_indicators[cid][row.indicator] = row.value
 
-    written = 0
+    trade_payloads = []
     for p in pairs:
         exp = countries.get(p.exporter_id)
         imp = countries.get(p.importer_id)
         if not exp or not imp:
             continue
-
         exp_ind = country_indicators.get(p.exporter_id, {})
         imp_ind = country_indicators.get(p.importer_id, {})
-
         trade_data = {
-            "id": p.id,
-            "year": p.year,
-            "data_source": p.data_source,
+            "id": p.id, "year": p.year, "data_source": p.data_source,
             "exporter": {"code": exp.code, "name": exp.name, "flag": exp.flag_emoji},
             "importer": {"code": imp.code, "name": imp.name, "flag": imp.flag_emoji},
-            "trade_value_usd": p.trade_value_usd,
-            "exports_usd": p.exports_usd,
-            "imports_usd": p.imports_usd,
-            "balance_usd": p.balance_usd,
+            "trade_value_usd": p.trade_value_usd, "exports_usd": p.exports_usd,
+            "imports_usd": p.imports_usd, "balance_usd": p.balance_usd,
             "exporter_gdp_share_pct": p.exporter_gdp_share_pct,
             "importer_gdp_share_pct": p.importer_gdp_share_pct,
             "top_export_products": p.top_export_products or [],
             "top_import_products": p.top_import_products or [],
         }
-
         slug_key = f"snapshots/trade/{exp.slug}--{imp.slug}.json"
         iso_key = f"snapshots/trade/{exp.code.lower()}-{imp.code.lower()}.json"
         data = {
@@ -435,13 +463,20 @@ def _write_trade_snapshots(db) -> int:
             "canonical_pair": f"{exp.slug}--{imp.slug}",
             "generated_at": datetime.now(timezone.utc).isoformat(),
         }
-        _upload(slug_key, data)
-        # Also write by ISO code format so frontend r2Fetch("snapshots/trade/ng-us.json") works
-        if iso_key != slug_key:
-            _upload(iso_key, data)
-        written += 1
+        trade_payloads.append((slug_key, iso_key if iso_key != slug_key else None, data))
 
-    return written
+    def _upload_trade(args):
+        slug_key, iso_key, data = args
+        _upload(slug_key, data)
+        if iso_key:
+            _upload(iso_key, data)
+
+    with ThreadPoolExecutor(max_workers=20) as pool:
+        futures = [pool.submit(_upload_trade, p) for p in trade_payloads]
+        for f in as_completed(futures):
+            f.result()
+
+    return len(trade_payloads)
 
 
 def _write_stability_rankings(db) -> int:
