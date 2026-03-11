@@ -18,6 +18,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from celery_app import app
 from app.database import SessionLocal
 from app.models.asset import Asset, AssetType, Price
+from tasks.market_hours import is_trading_day
 
 log = logging.getLogger(__name__)
 
@@ -130,6 +131,11 @@ def fetch_index_etf_prices(self):
     """Fetch prices for indices, ETFs, and bond yields."""
     db = SessionLocal()
     try:
+        now = datetime.now(timezone.utc).replace(second=0, microsecond=0)
+        if not is_trading_day(now):
+            log.debug('Index/ETF fetch skipped — weekend')
+            return
+
         assets = (
             db.query(Asset)
             .filter(
@@ -139,7 +145,6 @@ def fetch_index_etf_prices(self):
             .all()
         )
         symbol_to_asset = {a.symbol: a for a in assets}
-        now = datetime.now(timezone.utc).replace(second=0, microsecond=0)
 
         # Build yfinance symbol → DB symbol reverse map
         # For ETFs and bond ETFs (HYG, LQD, EMB etc.) the symbol is the same

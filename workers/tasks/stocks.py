@@ -17,6 +17,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from celery_app import app
 from app.database import SessionLocal
 from app.models.asset import Asset, AssetType, Price
+from tasks.market_hours import is_trading_day, should_call_marketstack_eod
 
 log = logging.getLogger(__name__)
 
@@ -170,24 +171,36 @@ def fetch_stock_prices(self):
 
         now = datetime.now(timezone.utc).replace(second=0, microsecond=0)
 
+        # Skip entirely on weekends — no exchange has settled EOD data
+        if not is_trading_day(now):
+            log.debug('Stock fetch skipped — weekend')
+            return
+
         # Probe Marketstack key on first run — disables globally if invalid
         if not _marketstack_disabled and MARKETSTACK_KEY:
             _check_marketstack_key()
 
-        # Primary: Marketstack (skipped silently if key invalid)
-        prices = _fetch_marketstack(symbols)
+        # Primary: Marketstack — only call after US close (21:00 UTC) when EOD
+        # data is fresh. During market hours /eod/latest returns yesterday's close,
+        # so calling it every 15 min is pure waste.
+        ms_prices: dict[str, float] = {}
+        if should_call_marketstack_eod(now):
+            ms_prices = _fetch_marketstack(symbols)
 
-        # Fallback: yfinance for anything Marketstack missed
-        missed = [s for s in symbols if s not in prices]
+        # Fallback / intraday: yfinance covers anything Marketstack missed and
+        # keeps prices updating throughout the trading day.
+        missed = [s for s in symbols if s not in ms_prices]
+        yf_prices: dict[str, float] = {}
         if missed:
-            fallback = _fetch_yfinance(missed)
-            prices.update(fallback)
+            yf_prices = _fetch_yfinance(missed)
 
+        prices = {**ms_prices, **yf_prices}
         count = _upsert_prices(db, symbol_to_asset, prices, now)
         db.commit()
-        ms_count = len(symbols) - len(missed)
-        yf_count = len(prices) - ms_count
-        log.info(f'Stocks: upserted {count}/{len(symbols)} prices (marketstack={ms_count}, yfinance={yf_count})')
+        log.info(
+            'Stocks: upserted %d/%d prices (marketstack=%d, yfinance=%d)',
+            count, len(symbols), len(ms_prices), len(yf_prices),
+        )
 
     except Exception as exc:
         db.rollback()

@@ -12,6 +12,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from celery_app import app
 from app.database import SessionLocal
 from app.models.asset import Asset, AssetType, Price
+from tasks.market_hours import is_commodity_market_open
 
 # Max single-run price change before a tick is rejected as bad source data.
 # yfinance futures occasionally return stale weekend prices or bad ticks.
@@ -30,6 +31,7 @@ YFINANCE_MAP: dict[str, str] = {
     'XPTUSD':   'PL=F',
     'HG':       'HG=F',
     'ALI':      'ALI=F',
+    'ZNC':      'ZNC=F',   # Zinc futures (CME)
     'ZW':       'ZW=F',
     'ZC':       'ZC=F',
     'ZS':       'ZS=F',
@@ -38,32 +40,46 @@ YFINANCE_MAP: dict[str, str] = {
     'CT':       'CT=F',
     'CC':       'CC=F',
     'LE':       'LE=F',
-    # COAL, ZNC (Zinc), NI (Nickel) not reliably available on Yahoo Finance
+    'PALM':     'ZL=F',    # Soybean oil futures (CBOT) — closest liquid proxy for palm oil
+    # COAL, NI (Nickel): no reliable CME/NYMEX futures on Yahoo Finance (LME-only)
 }
+
+
+def _extract_close(df, sym: str) -> float | None:
+    """
+    Extract latest close from a yfinance DataFrame.
+    Handles both flat columns ('Close') and multi-level tuples (('Close', 'SYM'))
+    returned by newer yfinance versions.
+    """
+    try:
+        if ('Close', sym) in df.columns:
+            close = df[('Close', sym)].dropna()
+        elif 'Close' in df.columns:
+            close = df['Close'].dropna()
+            if hasattr(close, 'columns'):          # still a DataFrame — squeeze
+                close = close.squeeze()
+        else:
+            return None
+        return float(close.iloc[-1]) if not close.empty else None
+    except (KeyError, IndexError, TypeError):
+        return None
 
 
 def _fetch_commodity_prices(yf_symbols: list[str]) -> dict[str, float]:
     """Returns {yfinance_symbol: latest_close}."""
     result: dict[str, float] = {}
     try:
-        if len(yf_symbols) == 1:
-            df = yf.download(yf_symbols[0], period='5d', interval='1d', progress=False)
-            if not df.empty:
-                close = df['Close'].dropna()
-                if not close.empty:
-                    result[yf_symbols[0]] = float(close.iloc[-1])
-        else:
-            df = yf.download(
-                yf_symbols, period='5d', interval='1d',
-                group_by='ticker', progress=False, threads=True,
-            )
-            for sym in yf_symbols:
-                try:
-                    close = df[sym]['Close'].dropna()
-                    if not close.empty:
-                        result[sym] = float(close.iloc[-1])
-                except (KeyError, IndexError):
-                    pass
+        df = yf.download(
+            yf_symbols if len(yf_symbols) > 1 else yf_symbols[0],
+            period='5d', interval='1d',
+            group_by='ticker', progress=False, threads=True,
+        )
+        if df.empty:
+            return result
+        for sym in yf_symbols:
+            val = _extract_close(df, sym)
+            if val is not None:
+                result[sym] = val
     except Exception:
         log.exception('Commodity yfinance fetch failed')
     return result
@@ -73,6 +89,11 @@ def _fetch_commodity_prices(yf_symbols: list[str]) -> dict[str, float]:
 def fetch_commodity_prices(self):
     db = SessionLocal()
     try:
+        now_utc = datetime.now(timezone.utc)
+        if not is_commodity_market_open(now_utc):
+            log.debug('Commodity fetch skipped — futures market closed')
+            return
+
         assets = (
             db.query(Asset)
             .filter(Asset.asset_type == AssetType.commodity, Asset.is_active == True)
