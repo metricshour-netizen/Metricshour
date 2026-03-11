@@ -1,16 +1,17 @@
 """
-Seed bilateral trade pairs from UN Comtrade API (comtradeapi.un.org).
+Seed bilateral trade pairs from UN Comtrade public API (no key required).
+
+Endpoint: https://comtradeapi.un.org/public/v1/preview/C/A/HS
+- Free, no subscription key required
+- Up to 500 records per request
+- Annual data, exports flow per reporter country
 
 Coverage: all countries with UN M49 numeric codes (~200 reporters).
-Data: annual export flows for latest available year (tries 2023, falls back to 2022).
-Each reporter fetched separately → top 15 trading partners stored per country.
-
-No API key required for basic access (unlimited calls, up to 500 records/call).
-Optional: register for a free key at https://comtradedeveloper.un.org/ for higher
-record limits (100k/call) and 500 calls/day quota.
+Data: latest available year (tries 2023, falls back to 2022).
+Each reporter → top 15 partners stored.
 
 Run:  python seed.py --only comtrade
-      python seed.py --only comtrade --refresh   (re-fetch all, including existing)
+      python seed.py --only comtrade --refresh   (re-fetch all including existing)
 
 Idempotent — safe to re-run. Skips countries with existing 2022+ data unless
 --refresh is passed.
@@ -31,36 +32,36 @@ from app.models import Country, TradePair
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 
-BASE_URL = "https://comtradeapi.un.org/data/v1/get/C/A/HS"
+BASE_URL = "https://comtradeapi.un.org/public/v1/preview/C/A/HS"
 PREFERRED_YEAR = 2023
 FALLBACK_YEAR = 2022
-TOP_N_PARTNERS = 15     # top trading partners to keep per country
-REQUEST_DELAY = 1.2     # seconds between calls — stays well under rate limit
+TOP_N_PARTNERS = 15
+REQUEST_DELAY = 1.0  # seconds between calls
+
+# M49 aggregate codes to skip (regions, world totals, etc.)
+AGGREGATE_M49 = {0, 472, 473, 568, 577, 636, 637, 697, 728, 837, 838, 839, 849, 899}
 
 
-def _fetch_exports(reporter_m49: int, year: int, api_key: str | None) -> list[dict]:
+def _fetch_exports(reporter_m49: int, year: int) -> list[dict]:
     """Fetch annual export rows for one reporter → all partners."""
-    url = f"{BASE_URL}/{year}/{reporter_m49}"
-    headers = {}
-    if api_key:
-        headers["Ocp-Apim-Subscription-Key"] = api_key
     params = {
+        "reporterCode": reporter_m49,
+        "period": year,
         "cmdCode": "TOTAL",
         "flowCode": "X",
         "partner2Code": 0,
         "customsCode": "C00",
         "motCode": 0,
         "includeDesc": "true",
-        "maxRecords": 500,  # free-tier limit; key holders get 100k
     }
     try:
-        resp = requests.get(url, headers=headers, params=params, timeout=30)
+        resp = requests.get(BASE_URL, params=params, timeout=30)
         if resp.status_code == 404:
             return []
         if resp.status_code == 429:
             log.warning("Rate limited — sleeping 60s then retrying")
             time.sleep(60)
-            return _fetch_exports(reporter_m49, year, api_key)
+            return _fetch_exports(reporter_m49, year)
         resp.raise_for_status()
         return resp.json().get("data", []) or []
     except Exception as exc:
@@ -68,12 +69,12 @@ def _fetch_exports(reporter_m49: int, year: int, api_key: str | None) -> list[di
         return []
 
 
-def seed_comtrade(db: Session, api_key: str | None = None, refresh: bool = False) -> None:
+def seed_comtrade(db: Session, refresh: bool = False) -> None:
     countries = db.query(Country).all()
     if not countries:
         raise RuntimeError("No countries in DB. Run the country seeder first.")
 
-    # M49 numeric code → internal country id
+    # Build lookup maps
     m49_to_id: dict[int, int] = {}
     for c in countries:
         if c.numeric_code:
@@ -112,10 +113,10 @@ def seed_comtrade(db: Session, api_key: str | None = None, refresh: bool = False
         m49 = int(country.numeric_code)
         log.info("[%d/%d] %s (M49=%d)", i + 1, len(reporters), country.name, m49)
 
-        rows = _fetch_exports(m49, PREFERRED_YEAR, api_key)
+        rows = _fetch_exports(m49, PREFERRED_YEAR)
         actual_year = PREFERRED_YEAR
         if not rows:
-            rows = _fetch_exports(m49, FALLBACK_YEAR, api_key)
+            rows = _fetch_exports(m49, FALLBACK_YEAR)
             actual_year = FALLBACK_YEAR
 
         if not rows:
@@ -123,11 +124,11 @@ def seed_comtrade(db: Session, api_key: str | None = None, refresh: bool = False
             time.sleep(REQUEST_DELAY)
             continue
 
-        # Strip world aggregates (partnerCode 0, 837, 838, 839, 849, 899) and self
-        AGGREGATE_CODES = {0, 837, 838, 839, 849, 899, 472, 473, 568, 577, 636, 637, 697, 728}
+        # Filter out world/region aggregates and self
         bilateral = [
             r for r in rows
-            if r.get("partnerCode") not in AGGREGATE_CODES
+            if not r.get("isAggregate", True)
+            and r.get("partnerCode") not in AGGREGATE_M49
             and r.get("partnerCode") != m49
             and r.get("primaryValue") is not None
             and r["primaryValue"] > 0
@@ -192,15 +193,9 @@ def seed_comtrade(db: Session, api_key: str | None = None, refresh: bool = False
     log.info("Comtrade seed complete — %d trade pairs upserted.", pairs_upserted)
 
 
-def run(api_key: str = None, refresh: bool = False) -> None:
-    if not api_key:
-        api_key = os.environ.get("COMTRADE_API_KEY") or None  # None = no-auth free tier
-    if api_key:
-        log.info("Using COMTRADE_API_KEY (500 calls/day, 100k records/call)")
-    else:
-        log.info("No COMTRADE_API_KEY — using free no-auth tier (unlimited calls, 500 records/call)")
+def run(refresh: bool = False) -> None:
     db = SessionLocal()
     try:
-        seed_comtrade(db, api_key=api_key, refresh=refresh)
+        seed_comtrade(db, refresh=refresh)
     finally:
         db.close()
