@@ -423,7 +423,7 @@ useSeoMeta({
   description: _seoDesc,
   ogTitle: _seoTitle,
   ogDescription: _seoDesc,
-  ogUrl: computed(() => `https://metricshour.com/trade/${data.value?.canonical_pair ?? pair}/`),
+  ogUrl: computed(() => `https://metricshour.com/trade/${data.value?.canonical_pair ?? pair}`),
   ogType: 'website',
   ogImage: ogImageUrl,
   ogImageWidth: '1200',
@@ -466,7 +466,7 @@ function buildTradeFaqs(d: any, tdVal: any) {
 }
 
 useHead(computed(() => ({
-  link: [{ rel: 'canonical', href: `https://metricshour.com/trade/${data.value?.canonical_pair ?? pair}/` }],
+  link: [{ rel: 'canonical', href: `https://metricshour.com/trade/${data.value?.canonical_pair ?? pair}` }],
   script: data.value ? [
     {
       type: 'application/ld+json',

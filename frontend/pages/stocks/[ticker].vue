@@ -629,7 +629,7 @@ useSeoMeta({
   description: _seoDesc,
   ogTitle: _seoTitle,
   ogDescription: _seoDesc,
-  ogUrl: `https://metricshour.com/stocks/${ticker.toLowerCase()}/`,
+  ogUrl: `https://metricshour.com/stocks/${ticker.toLowerCase()}`,
   ogType: 'website',
   ogImage: ogImageUrl,
   ogImageWidth: '1200',
@@ -669,7 +669,7 @@ function buildStockFaqs(s: any) {
 }
 
 useHead(computed(() => ({
-  link: [{ rel: 'canonical', href: `https://metricshour.com/stocks/${ticker.toLowerCase()}/` }],
+  link: [{ rel: 'canonical', href: `https://metricshour.com/stocks/${ticker.toLowerCase()}` }],
   script: stock.value ? [
     {
       type: 'application/ld+json',

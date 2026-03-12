@@ -519,7 +519,7 @@ useSeoMeta({
   description: _seoDesc,
   ogTitle: _seoTitle,
   ogDescription: _seoDesc,
-  ogUrl: `https://metricshour.com/countries/${code}/`,
+  ogUrl: `https://metricshour.com/countries/${code}`,
   ogType: 'website',
   ogImage: ogImageUrl,
   ogImageWidth: '1200',
@@ -567,7 +567,7 @@ function buildCountryFaqs(c: any) {
 }
 
 useHead(computed(() => ({
-  link: [{ rel: 'canonical', href: `https://metricshour.com/countries/${code}/` }],
+  link: [{ rel: 'canonical', href: `https://metricshour.com/countries/${code}` }],
   script: country.value ? [
     {
       type: 'application/ld+json',

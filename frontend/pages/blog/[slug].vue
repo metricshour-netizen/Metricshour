@@ -107,7 +107,7 @@ useSeoMeta({
   description: computed(() => post.value?.excerpt || ''),
   ogTitle: computed(() => post.value ? `${post.value.title} — MetricsHour` : 'Article — MetricsHour'),
   ogDescription: computed(() => post.value?.excerpt || ''),
-  ogUrl: computed(() => `https://metricshour.com/blog/${slug}/`),
+  ogUrl: computed(() => `https://metricshour.com/blog/${slug}`),
   ogType: 'article',
   ogImage: computed(() => post.value?.cover_image_url || 'https://api.metricshour.com/og/section/home.png'),
   ogImageWidth: '1200',
@@ -119,7 +119,7 @@ useSeoMeta({
 })
 
 useHead({
-  link: [{ rel: 'canonical', href: `https://metricshour.com/blog/${slug}/` }],
+  link: [{ rel: 'canonical', href: `https://metricshour.com/blog/${slug}` }],
   script: [{
     type: 'application/ld+json',
     innerHTML: computed(() => post.value ? JSON.stringify({
