@@ -49,7 +49,7 @@ export default defineNuxtConfig({
         {
           src: 'https://analytics.metricshour.com/script.js',
           defer: true,
-          'data-website-id': '3dfdd2ad-bcbd-408f-9739-e6b058b1ce1c',
+          'data-website-id': '89f67ce6-dc4e-46e2-aebe-2673b2d360a7',
           'data-cfasync': 'false',
         },
       ],
