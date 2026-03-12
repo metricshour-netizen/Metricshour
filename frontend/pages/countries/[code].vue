@@ -528,6 +528,7 @@ useSeoMeta({
   twitterTitle: _seoTitle,
   twitterDescription: _seoDesc,
   twitterCard: 'summary_large_image',
+  robots: computed(() => (error.value && !country.value) ? 'noindex, follow' : 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1'),
 })
 
 function buildCountryFaqs(c: any) {

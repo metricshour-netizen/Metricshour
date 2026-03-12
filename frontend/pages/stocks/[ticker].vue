@@ -618,10 +618,10 @@ const _seoDesc = computed(() => {
   return parts.join('. ') + '.'
 })
 
-// noindex if the stock has no price data AND no revenue data — no content to serve
+// noindex only if the entire stock record failed to load — name/sector/country is still indexable content
 const _hasContent = computed(() => {
   if (!stock.value) return true // still loading — don't noindex prematurely
-  return (stock.value.price?.close != null) || (stock.value.country_revenues?.length > 0)
+  return !!stock.value // any loaded stock has at least name, symbol, sector
 })
 
 useSeoMeta({

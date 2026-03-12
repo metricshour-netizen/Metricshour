@@ -433,7 +433,8 @@ useSeoMeta({
   twitterImage: ogImageUrl,
   twitterCard: 'summary_large_image',
   // Prevent indexing of pages with no trade data — thin content
-  robots: computed(() => (!data.value || !td.value) ? 'noindex, follow' : 'index, follow'),
+  // noindex only if the whole page failed to load — even without bilateral data, country context is valuable
+  robots: computed(() => !data.value ? 'noindex, follow' : 'index, follow'),
 })
 
 function buildTradeFaqs(d: any, tdVal: any) {

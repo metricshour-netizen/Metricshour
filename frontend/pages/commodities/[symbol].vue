@@ -445,6 +445,7 @@ useSeoMeta({
   twitterTitle: _seoTitle,
   twitterDescription: _seoDesc,
   twitterImage: _ogImage,
+  robots: 'index, follow',
 })
 
 useHead(computed(() => ({
