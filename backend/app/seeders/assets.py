@@ -384,6 +384,7 @@ def seed_assets(db: Session) -> int:
     NO_DATA_SOURCE = [
         "COAL",   # No CME/NYMEX futures on yfinance (ICE/SGX only)
         "NI",     # Nickel LME-only, no yfinance ticker
+        "PALM",   # FCPO=F (Bursa Malaysia) not available via yfinance from this server
         "DE10Y",  # No accessible free source from server
         "GB10Y",  # No accessible free source from server
         "FR10Y",  # No accessible free source from server
@@ -402,6 +403,9 @@ def seed_assets(db: Session) -> int:
     # Only the canonical exchange should remain active per symbol.
     CANONICAL_EXCHANGE: dict[str, str] = {
         "US02Y": "FRED",  # Treasury.gov source; CBOT/Treasury labels were transitional
+        "ALI":   "CME",   # LME label was incorrect; CME is the yfinance source
+        "ZNC":   "CME",   # LME label was incorrect; CME is the yfinance source
+        "PALM":  "BMD",   # MDEX label was old; BMD is correct (all deactivated anyway)
     }
     for sym, keep_exchange in CANONICAL_EXCHANGE.items():
         db.execute(

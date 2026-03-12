@@ -40,7 +40,7 @@ YFINANCE_MAP: dict[str, str] = {
     'CT':       'CT=F',
     'CC':       'CC=F',
     'LE':       'LE=F',
-    'PALM':     'FCPO=F',  # Bursa Malaysia Crude Palm Oil futures (MYR/MT) — actual palm oil
+    # PALM: FCPO=F (Bursa Malaysia) not available via yfinance — asset disabled in seeder
     # COAL: no CME/NYMEX futures on yfinance (ICE/SGX-only) — asset disabled in seeder
     # NI (Nickel): LME-only, no yfinance ticker — asset disabled in seeder
 }
