@@ -19,7 +19,6 @@ import os
 import random
 from datetime import date, timedelta
 
-import redis as redis_lib
 import requests
 from celery_app import app
 from sqlalchemy import select, func
@@ -29,12 +28,13 @@ from app.models.country import Country, CountryIndicator
 from app.models.asset import Asset, StockCountryRevenue
 from sqlalchemy.orm import aliased
 
+from app.storage import get_redis
+
 log = logging.getLogger(__name__)
 
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-REDIS_URL = os.environ.get("REDIS_URL", "")
 
 DRAFT_TTL = 60 * 60 * 48  # 48h — drafts expire if not acted on
 
@@ -57,10 +57,6 @@ G20_CODES = [
     "AR", "AU", "BR", "CA", "CN", "FR", "DE", "IN", "ID", "IT",
     "JP", "MX", "RU", "SA", "ZA", "KR", "TR", "GB", "US",
 ]
-
-
-def _redis() -> redis_lib.Redis:
-    return redis_lib.from_url(REDIS_URL, decode_responses=True, socket_connect_timeout=3)
 
 
 def _fmt_value(value: float, unit: str) -> str:
@@ -326,7 +322,7 @@ def _send_draft_to_telegram(draft: dict) -> str | None:
 
     # Store draft in Redis for webhook to retrieve
     try:
-        r = _redis()
+        r = get_redis()
         r.setex(draft_key, DRAFT_TTL, json.dumps(draft))
     except Exception as e:
         log.warning("Redis store draft failed: %s", e)

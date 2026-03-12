@@ -7,11 +7,9 @@ POST /api/summaries/refresh  — internal: trigger summary regeneration (admin o
 """
 import json
 import logging
-import ssl
 from datetime import datetime, timezone
 from typing import Any
 
-import redis as redis_lib
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -22,23 +20,13 @@ from app.models.asset import Asset, StockCountryRevenue
 from app.models.country import Country, CountryIndicator, TradePair
 from app.models.summary import PageSummary, PageInsight
 from app.routers.auth import get_admin_user
+from app.storage import get_redis
 
 log = logging.getLogger(__name__)
 router = APIRouter()
 
 SPOTLIGHT_KEY = "intelligence:spotlight:v1"
 SPOTLIGHT_TTL = 10_800  # 3 hours
-
-
-# ── Redis helper ───────────────────────────────────────────────────────────────
-
-def _redis():
-    url = settings.redis_url
-    kwargs = {"decode_responses": True}
-    if url.startswith("rediss://"):
-        import ssl as _ssl
-        kwargs["ssl_cert_reqs"] = _ssl.CERT_NONE
-    return redis_lib.from_url(url, **kwargs)
 
 
 # ── Spotlight generation ───────────────────────────────────────────────────────
@@ -335,7 +323,7 @@ def get_spotlight(db: Session = Depends(get_db)) -> list[dict]:
     Falls back to live DB generation if Redis unavailable.
     """
     try:
-        r = _redis()
+        r = get_redis()
         cached = r.get(SPOTLIGHT_KEY)
         if cached:
             return json.loads(cached)
@@ -345,7 +333,7 @@ def get_spotlight(db: Session = Depends(get_db)) -> list[dict]:
     cards = _build_spotlight(db)
 
     try:
-        r = _redis()
+        r = get_redis()
         r.setex(SPOTLIGHT_KEY, SPOTLIGHT_TTL, json.dumps(cards))
     except Exception:
         log.warning("Redis unavailable for spotlight write")
@@ -477,7 +465,7 @@ def refresh_summaries(
     db.commit()
 
     try:
-        _redis().delete(SPOTLIGHT_KEY)
+        get_redis().delete(SPOTLIGHT_KEY)
     except Exception:
         pass
 

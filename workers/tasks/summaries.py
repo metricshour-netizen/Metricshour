@@ -19,15 +19,14 @@ import hashlib
 import json
 import logging
 import os
-import ssl
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone, date, timedelta
 
-import redis as redis_lib
 from sqlalchemy import text
 
 from celery_app import app
 from app.database import SessionLocal
+from app.storage import get_redis
 from app.models.country import Country, CountryIndicator, TradePair
 from app.models.asset import Asset, StockCountryRevenue, Price
 from app.models.feed import FeedEvent
@@ -62,16 +61,6 @@ COMMODITY_META: dict[str, dict] = {
     "LE":      {"sector": "Agriculture", "full_name": "Live Cattle", "unit": "USD/lb (CME)"},
     "PALM":    {"sector": "Agriculture", "full_name": "Crude Palm Oil (CPO)", "unit": "USD/metric ton (BMD)"},
 }
-
-
-def _get_redis():
-    from app.config import settings
-    url = settings.redis_url
-    kwargs = {"decode_responses": True}
-    if url.startswith("rediss://"):
-        import ssl as _ssl
-        kwargs["ssl_cert_reqs"] = _ssl.CERT_NONE
-    return redis_lib.from_url(url, **kwargs)
 
 
 # ── Format helpers ─────────────────────────────────────────────────────────────
@@ -2110,7 +2099,7 @@ def refresh_spotlight(self):
             if len(cards) >= 8:
                 break
 
-        r = _get_redis()
+        r = get_redis()
         r.setex(SPOTLIGHT_KEY, SPOTLIGHT_TTL, json.dumps(cards))
         log.info("Spotlight refreshed: %d cards cached for 3hr", len(cards))
         return {"cards": len(cards)}

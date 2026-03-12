@@ -18,23 +18,19 @@ import logging
 import os
 import sys
 
-import redis as redis_lib
 import requests
 from fastapi import APIRouter, Request
 
 # Workers path for social_poster
 sys.path.insert(0, '/root/metricshour/workers')
 
+from app.storage import get_redis
+
 router = APIRouter()
 log = logging.getLogger(__name__)
 
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_WEBHOOK_SECRET = os.environ.get("TELEGRAM_WEBHOOK_SECRET", "")
-REDIS_URL = os.environ.get("REDIS_URL", "")
-
-
-def _redis() -> redis_lib.Redis:
-    return redis_lib.from_url(REDIS_URL, decode_responses=True, socket_connect_timeout=3)
 
 
 def _answer_callback(callback_query_id: str, text: str) -> None:
@@ -101,7 +97,7 @@ def _handle_callback_query(callback: dict) -> dict:
 
     # Retrieve draft from Redis
     try:
-        raw = _redis().get(draft_key)
+        raw = get_redis().get(draft_key)
     except Exception as e:
         _answer_callback(callback_id, "Redis error")
         log.warning("Redis get draft failed: %s", e)

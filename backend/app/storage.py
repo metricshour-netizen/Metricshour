@@ -141,8 +141,14 @@ _kv_log = logging.getLogger(__name__)
 # ── Redis (L1 — app-level, ~10ms) ─────────────────────────────────────────────
 
 @lru_cache(maxsize=1)
-def _get_redis() -> redis_lib.Redis:
-    return redis_lib.from_url(settings.redis_url, decode_responses=True, socket_connect_timeout=2)
+def get_redis() -> redis_lib.Redis:
+    """Singleton Redis connection. SSL only for rediss:// (Upstash); plain tcp for redis:// (DragonflyDB)."""
+    url = settings.redis_url
+    kwargs: dict = {"decode_responses": True, "socket_connect_timeout": 2}
+    if url.startswith("rediss://"):
+        import ssl as _ssl
+        kwargs["ssl_cert_reqs"] = _ssl.CERT_NONE
+    return redis_lib.from_url(url, **kwargs)
 
 
 def redis_json_get(key: str) -> list | dict | None:
@@ -150,7 +156,7 @@ def redis_json_get(key: str) -> list | dict | None:
     if not settings.redis_url:
         return None
     try:
-        raw = _get_redis().get(key)
+        raw = get_redis().get(key)
         return json.loads(raw) if raw is not None else None
     except Exception as exc:
         _kv_log.warning("Redis get failed for %s: %s", key, exc)
@@ -162,7 +168,7 @@ def redis_json_set(key: str, value: list | dict, ttl_seconds: int = 3600) -> Non
     if not settings.redis_url:
         return
     try:
-        _get_redis().setex(key, ttl_seconds, json.dumps(value, default=str))
+        get_redis().setex(key, ttl_seconds, json.dumps(value, default=str))
     except Exception as exc:
         _kv_log.warning("Redis set failed for %s: %s", key, exc)
 
@@ -172,7 +178,7 @@ def redis_json_del(key: str) -> None:
     if not settings.redis_url:
         return
     try:
-        _get_redis().delete(key)
+        get_redis().delete(key)
     except Exception as exc:
         _kv_log.warning("Redis del failed for %s: %s", key, exc)
 
