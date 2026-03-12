@@ -166,7 +166,7 @@ def _hook_stock_exposure(db) -> dict | None:
     # Get stocks with meaningful geo revenue data
     rows = db.execute(
         select(
-            Asset.ticker, Asset.name,
+            Asset.symbol, Asset.name,
             func.sum(StockCountryRevenue.revenue_pct).label("intl_pct"),
         )
         .join(StockCountryRevenue, StockCountryRevenue.asset_id == Asset.id)
@@ -174,7 +174,7 @@ def _hook_stock_exposure(db) -> dict | None:
             StockCountryRevenue.country_code != "US",
             StockCountryRevenue.revenue_pct > 5,
         )
-        .group_by(Asset.id, Asset.ticker, Asset.name)
+        .group_by(Asset.id, Asset.symbol, Asset.name)
         .order_by(func.sum(StockCountryRevenue.revenue_pct).desc())
         .limit(20)
     ).all()
@@ -182,7 +182,7 @@ def _hook_stock_exposure(db) -> dict | None:
         return None
 
     pick = random.choice(rows[:10])
-    ticker = pick.ticker
+    ticker = pick.symbol
     name = pick.name
     intl_pct = float(pick.intl_pct)
 
@@ -194,7 +194,7 @@ def _hook_stock_exposure(db) -> dict | None:
         )
         .join(Asset, Asset.id == StockCountryRevenue.asset_id)
         .where(
-            Asset.ticker == ticker,
+            Asset.symbol == ticker,
             StockCountryRevenue.country_code != "US",
         )
         .order_by(StockCountryRevenue.revenue_pct.desc())
