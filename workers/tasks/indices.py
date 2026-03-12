@@ -46,9 +46,9 @@ INDEX_YF_MAP: dict[str, str] = {
 }
 
 # US Treasury yield symbols on Yahoo Finance
-# ^TNX = 10Y, ^FVX = 5Y, ^TYX = 30Y, ^IRX = 13-week T-bill
+# ^TNX = 10Y, ^FVX = 5Y, ^TYX = 30Y
+# Note: no reliable 2-year or European bond yields on yfinance — those assets stay inactive
 BOND_YF_MAP: dict[str, str] = {
-    'US02Y':  '^IRX',   # closest proxy (3m T-bill, not exact but directionally correct)
     'US05Y':  '^FVX',
     'US10Y':  '^TNX',
     'US30Y':  '^TYX',

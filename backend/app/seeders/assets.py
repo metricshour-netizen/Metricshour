@@ -136,15 +136,15 @@ COMMODITIES: list[tuple] = [
     ("BRENT",    "Crude Oil (Brent)",  "ICE",   "Energy"),
     ("NG",       "Natural Gas",        "NYMEX", "Energy"),
     ("GASOLINE", "Gasoline",           "NYMEX", "Energy"),
-    ("COAL",     "Coal",               "CME",   "Energy"),
+    # ("COAL",     "Coal",               "CME",   "Energy"),   # No CME/NYMEX futures on yfinance — disabled
     # Metals
     ("XAUUSD",   "Gold",               "COMEX", "Metals"),
     ("XAGUSD",   "Silver",             "COMEX", "Metals"),
     ("XPTUSD",   "Platinum",           "NYMEX", "Metals"),
     ("HG",       "Copper",             "COMEX", "Metals"),
-    ("ALI",      "Aluminum",           "LME",   "Metals"),
-    ("ZNC",      "Zinc",               "LME",   "Metals"),
-    ("NI",       "Nickel",             "LME",   "Metals"),
+    ("ALI",      "Aluminum",           "CME",   "Metals"),    # ALI=F is CME contract (not LME)
+    ("ZNC",      "Zinc",               "CME",   "Metals"),    # ZNC=F is CME contract
+    # ("NI",       "Nickel",             "LME",   "Metals"),  # LME-only, no yfinance ticker — disabled
     # Agriculture
     ("ZW",       "Wheat",              "CBOT",  "Agriculture"),
     ("ZC",       "Corn",               "CBOT",  "Agriculture"),
@@ -154,7 +154,7 @@ COMMODITIES: list[tuple] = [
     ("CT",       "Cotton",             "ICE",   "Agriculture"),
     ("CC",       "Cocoa",              "ICE",   "Agriculture"),
     ("LE",       "Live Cattle",        "CME",   "Agriculture"),
-    ("PALM",     "Palm Oil",           "MDEX",  "Agriculture"),
+    ("PALM",     "Palm Oil",           "BMD",   "Agriculture"),   # Bursa Malaysia Derivatives (MYR/MT)
 ]
 
 # (symbol, name, market_cap_usd)
@@ -229,18 +229,18 @@ ETFS: list[tuple] = [
 
 # (symbol, name, exchange, maturity, yield_pct)
 BONDS: list[tuple] = [
-    # US Treasuries
-    ("US02Y",  "US Treasury 2-Year Note",       "CBOT",   "2Y",   None),
+    # US Treasuries — yfinance: ^FVX/^TNX/^TYX; FRED: DGS2/DGS5/DGS10/DGS30
+    ("US02Y",  "US Treasury 2-Year Note",       "FRED",   "2Y",   None),
     ("US05Y",  "US Treasury 5-Year Note",       "CBOT",   "5Y",   None),
     ("US10Y",  "US Treasury 10-Year Note",      "CBOT",   "10Y",  None),
     ("US30Y",  "US Treasury 30-Year Bond",      "CBOT",   "30Y",  None),
-    # European Sovereigns
-    ("DE10Y",  "Germany Bund 10-Year",          "EUREX",  "10Y",  None),
-    ("GB10Y",  "UK Gilt 10-Year",               "LSE",    "10Y",  None),
-    ("FR10Y",  "France OAT 10-Year",            "EURONEXT","10Y", None),
-    ("IT10Y",  "Italy BTP 10-Year",             "EURONEXT","10Y", None),
-    ("JP10Y",  "Japan JGB 10-Year",             "TSE",    "10Y",  None),
-    # Corporate / EM
+    # European/Japanese sovereign 10Y yields — FRED series (daily)
+    ("DE10Y",  "Germany Bund 10-Year",          "FRED",   "10Y",  None),
+    ("GB10Y",  "UK Gilt 10-Year",               "FRED",   "10Y",  None),
+    ("FR10Y",  "France OAT 10-Year",            "FRED",   "10Y",  None),
+    ("IT10Y",  "Italy BTP 10-Year",             "FRED",   "10Y",  None),
+    ("JP10Y",  "Japan JGB 10-Year",             "FRED",   "10Y",  None),
+    # Corporate / EM bond ETFs — yfinance uses ticker directly
     ("HYG",   "US High Yield Corporate Bond",   "NYSE",   "ETF",  None),
     ("LQD",   "Investment Grade Corp Bond",     "NYSE",   "ETF",  None),
     ("EMB",   "Emerging Markets Bond",          "NYSE",   "ETF",  None),
@@ -285,13 +285,14 @@ def seed_assets(db: Session) -> int:
             "is_active": True,
         })
 
+    COMMODITY_CURRENCY = {"PALM": "MYR"}  # Bursa Malaysia futures quoted in MYR
     for symbol, name, exchange, _category in COMMODITIES:
         rows.append({
             "symbol": symbol,
             "name": name,
             "asset_type": AssetType.commodity,
             "exchange": exchange,
-            "currency": "USD",
+            "currency": COMMODITY_CURRENCY.get(symbol, "USD"),
             "sector": None,
             "industry": None,
             "country_id": None,
@@ -377,6 +378,21 @@ def seed_assets(db: Session) -> int:
         set_={col: stmt.excluded[col] for col in rows[0].keys() if col not in ("symbol", "exchange")},
     )
     db.execute(stmt)
+
+    # Explicitly deactivate assets with no live data source.
+    # These remain in DB for history but are hidden from API/frontend (is_active=False).
+    NO_DATA_SOURCE = [
+        "COAL",  # No CME/NYMEX futures on yfinance (ICE/SGX only)
+        "NI",    # Nickel LME-only, no yfinance ticker
+    ]
+    for sym in NO_DATA_SOURCE:
+        db.execute(
+            Asset.__table__.update()
+            .where(Asset.symbol == sym)
+            .values(is_active=False)
+        )
+        log.info(f"Deactivated asset with no data source: {sym}")
+
     db.commit()
 
     log.info(f"Upserted {len(rows)} assets ({len(STOCKS)} stocks, {len(COMMODITIES)} commodities, {len(CRYPTO)} crypto, {len(FX)} FX, {len(INDICES)} indices, {len(ETFS)} ETFs, {len(BONDS)} bonds)")

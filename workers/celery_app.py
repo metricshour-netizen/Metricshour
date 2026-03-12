@@ -46,6 +46,7 @@ app = Celery('metricshour', include=[
     'tasks.crypto',
     'tasks.stocks',
     'tasks.indices',
+    'tasks.bond_yields',
     'tasks.commodities',
     'tasks.fx',
     'tasks.backup',
@@ -218,6 +219,12 @@ app.conf.update(
         'central-bank-rates-daily': {
             'task': 'tasks.central_bank_rates.fetch_central_bank_rates',
             'schedule': crontab(hour=6, minute=15),
+        },
+
+        # Government bond yields — FRED (US 2Y, DE/GB/FR/IT/JP 10Y) — daily 6:30am
+        'bond-yields-daily-630am': {
+            'task': 'tasks.bond_yields.fetch_bond_yields',
+            'schedule': crontab(hour=6, minute=30),
         },
 
         # Price history backfill — 5yr daily OHLCV, monthly on 2nd at 1am

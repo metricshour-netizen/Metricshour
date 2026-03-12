@@ -292,8 +292,8 @@ const COMMODITY_META: Record<string, any> = {
     related: [{ symbol: 'HG', label: 'Copper', path: '/commodities/hg' }, { symbol: 'ALI', label: 'Aluminum', path: '/commodities/ali' }, { symbol: 'NI', label: 'Nickel', path: '/commodities/ni' }],
   },
   PALM: {
-    icon: '🌴', name: 'Palm Oil', category: 'Agriculture', unit: 'USD/MT',
-    description: 'Palm oil is the world\'s most widely consumed vegetable oil, used in food, cosmetics, and biofuels. Indonesia and Malaysia together produce over 85% of global palm oil supply. Prices are influenced by weather (El Niño), competing soybean oil prices, biodiesel mandates, and demand from India and China. Palm oil is a key trade commodity for Southeast Asian economies.',
+    icon: '🌴', name: 'Palm Oil', category: 'Agriculture', unit: 'MYR/MT',
+    description: 'Palm oil is the world\'s most widely consumed vegetable oil, used in food, cosmetics, and biofuels. Indonesia and Malaysia together produce over 85% of global palm oil supply. Prices are sourced from Bursa Malaysia Crude Palm Oil futures (FCPO), quoted in Malaysian Ringgit per metric tonne. Prices are influenced by weather (El Niño), biodiesel mandates, and demand from India and China.',
     producers: [{ code: 'ID', name: 'Indonesia', flag: '🇮🇩' }, { code: 'MY', name: 'Malaysia', flag: '🇲🇾' }, { code: 'TH', name: 'Thailand', flag: '🇹🇭' }],
     tradeFlows: [{ pair: 'id-cn', label: 'Indonesia ↔ China' }, { pair: 'my-in', label: 'Malaysia ↔ India' }, { pair: 'id-in', label: 'Indonesia ↔ India' }],
     related: [{ symbol: 'ZS', label: 'Soybeans', path: '/commodities/zs' }, { symbol: 'KC', label: 'Coffee', path: '/commodities/kc' }],

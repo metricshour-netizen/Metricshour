@@ -11,7 +11,7 @@
         <NuxtLink
           v-for="(item, i) in [...tickerItems, ...tickerItems]"
           :key="`tk-${i}`"
-          :to="`/stocks/${item.symbol.toLowerCase()}`"
+          :to="assetLink(item.symbol, item.assetType)"
           class="inline-flex items-center gap-1.5 px-5 py-2 border-r border-[#1a2332] shrink-0 hover:bg-white/5 transition-colors"
         >
           <span class="text-[11px] font-mono font-bold" :class="item.typeColor">{{ item.symbol }}</span>
@@ -112,7 +112,7 @@
             <NuxtLink
               v-for="(a, i) in searchResults.assets"
               :key="a.symbol"
-              :to="`/stocks/${a.symbol.toLowerCase()}`"
+              :to="assetLink(a.symbol, a.asset_type)"
               @click="closeSearch"
               class="flex items-center gap-2.5 px-3 py-2.5 hover:bg-[#1f2937] transition-colors"
               :class="focusedIndex === (searchResults.countries.length + i) ? 'bg-[#1f2937]' : ''"
@@ -536,7 +536,9 @@ function selectFocused() {
   if (focusedIndex.value < 0) return
   const item = allResults.value[focusedIndex.value]
   if (!item) return
-  item.type === 'country' ? router.push(`/countries/${item.code.toLowerCase()}`) : router.push(`/stocks/${item.symbol.toLowerCase()}`)
+  item.type === 'country'
+    ? router.push(`/countries/${item.code.toLowerCase()}`)
+    : router.push(assetLink(item.symbol, item.asset_type))
   closeSearch()
 }
 
@@ -596,6 +598,13 @@ const { data: tickerRaw } = useAsyncData('ticker',
   { server: false },
 )
 
+function assetLink(symbol: string, assetType: string): string {
+  const sym = symbol.toLowerCase()
+  if (assetType === 'commodity') return `/commodities/${sym}`
+  if (assetType === 'index') return `/indices/${sym}`
+  return `/stocks/${sym}`
+}
+
 function tickerTypeColor(type: string): string {
   const map: Record<string, string> = {
     crypto: 'text-amber-400', stock: 'text-emerald-400', etf: 'text-sky-400',
@@ -621,7 +630,7 @@ const tickerItems = computed(() => {
       const open = p.open || p.close
       const dir = p.close >= open ? 1 : -1
       const pct = open > 0 ? Math.abs((p.close - open) / open * 100) : 0
-      return { symbol: a.symbol, priceStr: fmtTickerPrice(p.close), changePct: pct.toFixed(2) + '%', dir, typeColor: tickerTypeColor(a.asset_type) }
+      return { symbol: a.symbol, assetType: a.asset_type, priceStr: fmtTickerPrice(p.close), changePct: pct.toFixed(2) + '%', dir, typeColor: tickerTypeColor(a.asset_type) }
     })
     .filter(Boolean) as { symbol: string; priceStr: string; changePct: string; dir: number; typeColor: string }[]
 })

@@ -102,7 +102,7 @@
           <div v-for="a in activeAlerts" :key="a.id" class="flex items-center gap-4 px-5 py-3.5">
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2">
-                <NuxtLink :to="`/stocks/${a.asset?.symbol}`" class="text-sm font-bold text-emerald-400 hover:text-emerald-300 font-mono">{{ a.asset?.symbol }}</NuxtLink>
+                <NuxtLink :to="assetLink(a.asset)" class="text-sm font-bold text-emerald-400 hover:text-emerald-300 font-mono">{{ a.asset?.symbol }}</NuxtLink>
                 <span class="text-[10px] px-1.5 py-0.5 rounded font-semibold"
                   :class="a.condition === 'above' ? 'bg-emerald-900/40 text-emerald-400' : 'bg-red-900/40 text-red-400'">
                   {{ a.condition === 'above' ? '↑ Above' : '↓ Below' }} ${{ a.target_price.toLocaleString() }}
@@ -159,6 +159,14 @@
 <script setup lang="ts">
 const { get, post, del } = useApi()
 const { isLoggedIn, user } = useAuth()
+
+function assetLink(asset: any): string {
+  if (!asset) return '/markets'
+  const sym = asset.symbol?.toLowerCase()
+  if (asset.asset_type === 'commodity') return `/commodities/${sym}`
+  if (asset.asset_type === 'index') return `/indices/${sym}`
+  return `/stocks/${sym}`
+}
 
 const showAuth = ref(false)
 const alertsLoading = ref(true)

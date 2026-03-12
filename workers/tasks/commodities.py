@@ -40,8 +40,9 @@ YFINANCE_MAP: dict[str, str] = {
     'CT':       'CT=F',
     'CC':       'CC=F',
     'LE':       'LE=F',
-    'PALM':     'ZL=F',    # Soybean oil futures (CBOT) — closest liquid proxy for palm oil
-    # COAL, NI (Nickel): no reliable CME/NYMEX futures on Yahoo Finance (LME-only)
+    'PALM':     'FCPO=F',  # Bursa Malaysia Crude Palm Oil futures (MYR/MT) — actual palm oil
+    # COAL: no CME/NYMEX futures on yfinance (ICE/SGX-only) — asset disabled in seeder
+    # NI (Nickel): LME-only, no yfinance ticker — asset disabled in seeder
 }
 
 

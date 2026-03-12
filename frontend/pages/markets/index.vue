@@ -157,7 +157,7 @@
         <div v-for="group in commodityGroups" :key="group.name" class="mb-6">
           <p v-if="group.items.length" class="text-[10px] text-gray-600 uppercase tracking-widest font-bold mb-2">{{ group.name }}</p>
           <div v-if="group.items.length" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-            <NuxtLink v-for="c in group.items" :key="c.symbol" :to="`/stocks/${c.symbol.toLowerCase()}`" class="bg-[#111827] border border-[#1f2937] hover:border-blue-500/40 rounded-xl p-4 transition-colors group">
+            <NuxtLink v-for="c in group.items" :key="c.symbol" :to="`/commodities/${c.symbol.toLowerCase()}`" class="bg-[#111827] border border-[#1f2937] hover:border-blue-500/40 rounded-xl p-4 transition-colors group">
               <div class="text-xl mb-2">{{ c.icon }}</div>
               <div class="text-sm font-medium text-white group-hover:text-blue-300 transition-colors truncate mb-0.5">{{ apiMap[c.symbol]?.name ?? c.name }}</div>
               <div class="text-xs text-gray-600 mb-2">{{ c.symbol }}</div>
@@ -524,7 +524,7 @@ function bondCountryLink(symbol: string): string {
 function terminalRowLink(a: any): string | undefined {
   if (a.asset_type === 'stock' || a.asset_type === 'crypto' || a.asset_type === 'etf') return `/stocks/${a.symbol.toLowerCase()}`
   if (a.asset_type === 'index') return `/indices/${a.symbol.toLowerCase()}`
-  if (a.asset_type === 'commodity') return `/stocks/${a.symbol.toLowerCase()}`
+  if (a.asset_type === 'commodity') return `/commodities/${a.symbol.toLowerCase()}`
   if (a.asset_type === 'bond') return bondCountryLink(a.symbol)
   return undefined
 }

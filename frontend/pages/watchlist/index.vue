@@ -44,7 +44,7 @@
             <div class="divide-y divide-[#1f2937]">
               <div v-for="item in stocks" :key="item.follow_id" class="flex items-center justify-between sm:grid px-4 py-3 hover:bg-[#1a2235] transition-colors"
                    style="grid-template-columns: 1fr 7rem 6rem 6rem 1.5rem">
-                <NuxtLink :to="`/stocks/${item.symbol}`" class="flex items-center gap-2 min-w-0 pr-2 group">
+                <NuxtLink :to="assetLink(item)" class="flex items-center gap-2 min-w-0 pr-2 group">
                   <div class="min-w-0">
                     <div class="text-sm font-bold text-white group-hover:text-emerald-400 transition-colors">{{ item.symbol }}</div>
                     <div class="text-xs text-gray-500 truncate">{{ item.name }}</div>
@@ -123,6 +123,13 @@ async function unfollow(type: string, id: number) {
     await del(`/api/feed/follows/${type}/${id}`)
     await refresh()
   } catch { /* ignore */ }
+}
+
+function assetLink(item: any): string {
+  const sym = item.symbol?.toLowerCase()
+  if (item.asset_type === 'commodity') return `/commodities/${sym}`
+  if (item.asset_type === 'index') return `/indices/${sym}`
+  return `/stocks/${sym}`
 }
 
 function fmtPrice(v: number): string {
