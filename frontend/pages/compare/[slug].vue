@@ -7,36 +7,39 @@
           ← Countries
         </NuxtLink>
 
-        <div v-if="pending" class="flex items-center gap-6 h-20">
+        <div v-if="pending && !countryA && !countryB" class="flex items-center gap-6 h-20">
           <div class="w-16 h-16 bg-[#1f2937] rounded-xl animate-pulse"/>
           <div class="w-12 h-8 bg-[#1f2937] rounded animate-pulse"/>
           <div class="w-16 h-16 bg-[#1f2937] rounded-xl animate-pulse"/>
         </div>
-        <div v-else-if="error || !countryA || !countryB" class="text-red-400 text-sm py-4">
-          Invalid comparison. Try <code class="text-gray-400">/compare/us-vs-cn</code>
-        </div>
+
+        <template v-if="!pending && error && !countryA && !countryB">
+          <div class="text-red-400 text-sm py-4">
+            Invalid comparison. Try <code class="text-gray-400">/compare/us-vs-cn</code>
+          </div>
+        </template>
 
         <template v-else>
           <h1 class="text-xl sm:text-2xl font-extrabold text-white mb-4">
-            {{ countryA.name }} vs {{ countryB.name }} Economy
+            {{ nameA }} vs {{ nameB }} Economy
           </h1>
           <div class="flex items-center gap-6 flex-wrap">
             <div class="flex items-center gap-3">
               <div class="w-14 h-14 rounded-xl bg-[#1f2937] border border-[#374151] flex items-center justify-center text-3xl">
-                {{ countryA.flag }}
+                {{ countryA?.flag || '🏳' }}
               </div>
               <div>
-                <div class="text-base font-bold text-white">{{ countryA.name }}</div>
+                <div class="text-base font-bold text-white">{{ countryA?.name || codeA.toUpperCase() }}</div>
                 <div class="text-xs text-emerald-400 font-mono">{{ codeA.toUpperCase() }}</div>
               </div>
             </div>
             <div class="text-2xl text-gray-500">vs</div>
             <div class="flex items-center gap-3">
               <div class="w-14 h-14 rounded-xl bg-[#1f2937] border border-[#374151] flex items-center justify-center text-3xl">
-                {{ countryB.flag }}
+                {{ countryB?.flag || '🏳' }}
               </div>
               <div>
-                <div class="text-base font-bold text-white">{{ countryB.name }}</div>
+                <div class="text-base font-bold text-white">{{ countryB?.name || codeB.toUpperCase() }}</div>
                 <div class="text-xs text-emerald-400 font-mono">{{ codeB.toUpperCase() }}</div>
               </div>
             </div>
@@ -353,9 +356,8 @@ const nameA = computed(() => countryA.value?.name || canonA)
 const nameB = computed(() => countryB.value?.name || canonB)
 
 const _seoTitle = computed(() => {
-  if (!countryA.value || !countryB.value) return `${canonA} vs ${canonB} Economy Comparison — MetricsHour`
-  const gdpA = countryA.value.indicators?.gdp_usd
-  const gdpB = countryB.value.indicators?.gdp_usd
+  const gdpA = countryA.value?.indicators?.gdp_usd
+  const gdpB = countryB.value?.indicators?.gdp_usd
   if (gdpA && gdpB) {
     return `${nameA.value} vs ${nameB.value} GDP: ${fmtUsd(gdpA)} vs ${fmtUsd(gdpB)} — MetricsHour`
   }
@@ -363,13 +365,10 @@ const _seoTitle = computed(() => {
 })
 
 const _seoDesc = computed(() => {
-  if (!countryA.value || !countryB.value) {
-    return `Compare ${nameA.value} and ${nameB.value} side-by-side: GDP, inflation, interest rates, unemployment, and bilateral trade data.`
-  }
-  const gdpA = countryA.value.indicators?.gdp_usd
-  const gdpB = countryB.value.indicators?.gdp_usd
-  const gA   = countryA.value.indicators?.gdp_growth_pct
-  const gB   = countryB.value.indicators?.gdp_growth_pct
+  const gdpA = countryA.value?.indicators?.gdp_usd
+  const gdpB = countryB.value?.indicators?.gdp_usd
+  const gA   = countryA.value?.indicators?.gdp_growth_pct
+  const gB   = countryB.value?.indicators?.gdp_growth_pct
   const parts: string[] = []
   if (gdpA && gdpB) parts.push(`GDP: ${fmtUsd(gdpA)} vs ${fmtUsd(gdpB)}`)
   if (gA != null && gB != null) parts.push(`growth: ${gA.toFixed(1)}% vs ${gB.toFixed(1)}%`)
@@ -395,7 +394,7 @@ useSeoMeta({
   twitterDescription: _seoDesc,
   twitterImage:     _ogImage,
   twitterCard:      'summary_large_image',
-  robots:           computed(() => (!countryA.value || !countryB.value) ? 'noindex, follow' : 'index, follow'),
+  robots:           computed(() => (codeA.length === 2 && codeB.length === 2) ? 'index, follow' : 'noindex, follow'),
 })
 
 useHead(computed(() => {
