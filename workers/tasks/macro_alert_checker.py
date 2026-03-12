@@ -23,9 +23,8 @@ from app.models.user import User, MacroAlert
 from app.models.country import Country, CountryIndicator
 from app.database import SessionLocal
 from app.notifications import (
-    send_telegram, send_email,
-    build_macro_alert_telegram, build_macro_alert_email,
-    INDICATOR_LABELS, _fmt_macro,
+    send_macro_alert_via_n8n,
+    INDICATOR_LABELS,
 )
 
 logger = logging.getLogger(__name__)
@@ -156,30 +155,27 @@ def _run_checker(db: Session) -> int:
             country_name, label, current_value, threshold, alert.condition, history
         )
 
-        # Send Telegram
-        if user.notify_telegram and user.telegram_chat_id:
-            msg = build_macro_alert_telegram(
-                country_name, alert.country_code,
-                alert.indicator_name, alert.condition,
-                threshold, current_value,
-                context=context,
+        # Dispatch via n8n (with direct fallback if n8n is unreachable)
+        err = send_macro_alert_via_n8n(
+            user_email=user.email,
+            telegram_chat_id=user.telegram_chat_id,
+            notify_telegram=user.notify_telegram,
+            notify_email=user.notify_email,
+            country_name=country_name,
+            country_code=alert.country_code,
+            indicator_name=alert.indicator_name,
+            condition=alert.condition,
+            threshold=threshold,
+            current_value=current_value,
+            context=context,
+        )
+        if err:
+            # All channels failed — don't start cooldown, retry next run
+            logger.error(
+                "Macro alert NOT delivered uid=%s country=%s indicator=%s: %s",
+                user.id, alert.country_code, alert.indicator_name, err,
             )
-            err = send_telegram(user.telegram_chat_id, msg)
-            if err:
-                logger.warning("Telegram failed uid=%s: %s", user.id, err)
-
-        # Send email
-        if user.notify_email and user.email:
-            subject = f"📊 Macro Alert: {country_name} — {label} | MetricsHour"
-            html = build_macro_alert_email(
-                country_name, alert.country_code,
-                alert.indicator_name, alert.condition,
-                threshold, current_value,
-                context=context,
-            )
-            err = send_email(user.email, subject, html)
-            if err:
-                logger.warning("Email failed uid=%s: %s", user.id, err)
+            continue
 
         alert.last_triggered_at = now
         alert.trigger_count += 1

@@ -15,6 +15,10 @@ N8N_WELCOME_WEBHOOK = os.environ.get(
     "N8N_WELCOME_WEBHOOK",
     "https://n8n.metricshour.com/webhook/welcome-email",
 )
+N8N_MACRO_ALERT_WEBHOOK = os.environ.get(
+    "N8N_MACRO_ALERT_WEBHOOK",
+    "https://n8n.metricshour.com/webhook/macro-alert",
+)
 
 
 def send_telegram(chat_id: str, text: str) -> str | None:
@@ -140,6 +144,102 @@ def send_welcome_email(to: str, name: str = "") -> str | None:
     except Exception:
         logger.warning("n8n welcome webhook unreachable, falling back to direct send")
         return _send_welcome_direct(to)
+
+
+def send_macro_alert_via_n8n(
+    user_email: str,
+    telegram_chat_id: str | None,
+    notify_telegram: bool,
+    notify_email: bool,
+    country_name: str,
+    country_code: str,
+    indicator_name: str,
+    condition: str,
+    threshold: float,
+    current_value: float,
+    context: str | None = None,
+) -> str | None:
+    """
+    Send macro alert via n8n webhook (full execution history + retry built-in).
+    n8n handles Telegram + email delivery.
+    Falls back to direct delivery if n8n is unreachable.
+    Returns None on success, error string on total failure.
+    """
+    label, _ = INDICATOR_LABELS.get(indicator_name, (indicator_name, ""))
+    payload = {
+        "user_email": user_email,
+        "telegram_chat_id": telegram_chat_id,
+        "notify_telegram": notify_telegram,
+        "notify_email": notify_email,
+        "country_name": country_name,
+        "country_code": country_code,
+        "indicator_name": indicator_name,
+        "indicator_label": label,
+        "condition": condition,
+        "threshold": threshold,
+        "threshold_fmt": _fmt_macro(indicator_name, threshold),
+        "current_value": current_value,
+        "current_fmt": _fmt_macro(indicator_name, current_value),
+        "context": context or "",
+        "country_url": f"https://metricshour.com/countries/{country_code.lower()}",
+    }
+    try:
+        r = requests.post(N8N_MACRO_ALERT_WEBHOOK, json=payload, timeout=10)
+        if r.status_code not in (200, 201):
+            logger.error("n8n macro alert webhook %s: %s", r.status_code, r.text[:200])
+            return _send_macro_alert_direct(
+                user_email, telegram_chat_id, notify_telegram, notify_email,
+                country_name, country_code, indicator_name, condition,
+                threshold, current_value, context,
+            )
+        return None
+    except Exception as e:
+        logger.error("n8n macro alert webhook unreachable: %s — falling back to direct", e)
+        return _send_macro_alert_direct(
+            user_email, telegram_chat_id, notify_telegram, notify_email,
+            country_name, country_code, indicator_name, condition,
+            threshold, current_value, context,
+        )
+
+
+def _send_macro_alert_direct(
+    user_email: str,
+    telegram_chat_id: str | None,
+    notify_telegram: bool,
+    notify_email: bool,
+    country_name: str,
+    country_code: str,
+    indicator_name: str,
+    condition: str,
+    threshold: float,
+    current_value: float,
+    context: str | None = None,
+) -> str | None:
+    """Direct fallback — sends Telegram + email without n8n."""
+    delivered = False
+    if notify_telegram and telegram_chat_id:
+        msg = build_macro_alert_telegram(
+            country_name, country_code, indicator_name, condition,
+            threshold, current_value, context=context,
+        )
+        err = send_telegram(telegram_chat_id, msg)
+        if err:
+            logger.error("Direct Telegram fallback failed: %s", err)
+        else:
+            delivered = True
+    if notify_email and user_email:
+        label, _ = INDICATOR_LABELS.get(indicator_name, (indicator_name, ""))
+        subject = f"📊 Macro Alert: {country_name} — {label} | MetricsHour"
+        html = build_macro_alert_email(
+            country_name, country_code, indicator_name, condition,
+            threshold, current_value, context=context,
+        )
+        err = send_email(user_email, subject, html)
+        if err:
+            logger.error("Direct email fallback failed: %s", err)
+        else:
+            delivered = True
+    return None if delivered else "all delivery channels failed"
 
 
 def _send_welcome_direct(to: str) -> str | None:
