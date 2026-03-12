@@ -87,7 +87,7 @@ def _call_gemini(prompt: str) -> dict | None:
             model="gemini-2.5-flash-lite",
             contents=prompt,
             config=genai_types.GenerateContentConfig(
-                max_output_tokens=500,
+                max_output_tokens=2000,
                 temperature=0.7,
                 response_mime_type="application/json",
             ),
