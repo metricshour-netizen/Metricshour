@@ -262,7 +262,7 @@ def _hook_trade_insight(db) -> dict | None:
 
     val = pair.trade_value_usd
     val_str = f"${val / 1e9:.0f}B" if val >= 1e9 else f"${val / 1e6:.0f}M"
-    products = pair.top_products or ""
+    products = ", ".join((pair.top_export_products or [])[:3]) or ""
     page_url = f"{SITE_URL}/trade/{exp.code.lower()}-{imp.code.lower()}"
 
     prompt = f"""
