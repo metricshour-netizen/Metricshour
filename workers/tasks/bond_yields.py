@@ -30,8 +30,9 @@ TREASURY_URL = (
 TIMEOUT = 20
 HEADERS = {"User-Agent": "MetricsHour/1.0"}
 
-# Namespace used in Treasury XML
+# Namespaces used in Treasury XML
 _NS = "http://schemas.microsoft.com/ado/2007/08/dataservices"
+_NS_M = "http://schemas.microsoft.com/ado/2007/08/dataservices/metadata"
 
 
 def _fetch_us02y() -> float | None:
@@ -49,10 +50,9 @@ def _fetch_us02y() -> float | None:
         resp.raise_for_status()
         root = ET.fromstring(resp.content)
         latest: float | None = None
-        # Entries are ordered oldest→newest; iterate all and keep last valid value
-        for props in root.iter(f"{{{_NS}}}properties"):
-            el = props.find(f"{{{_NS}}}BC_2YEAR")
-            if el is not None and el.text:
+        # Entries are ordered oldest→newest; iterate all BC_2YEAR elements, keep last
+        for el in root.iter(f"{{{_NS}}}BC_2YEAR"):
+            if el.text:
                 try:
                     latest = float(el.text)
                 except ValueError:
