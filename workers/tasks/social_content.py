@@ -250,7 +250,7 @@ def _hook_trade_insight(db) -> dict | None:
         .where(TradePair.trade_value_usd != None)
         .order_by(TradePair.trade_value_usd.desc())
         .limit(30)
-    ).all()
+    ).scalars().all()
     if not rows:
         return None
 
