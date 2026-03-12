@@ -230,7 +230,7 @@ ETFS: list[tuple] = [
 # (symbol, name, exchange, maturity, yield_pct)
 BONDS: list[tuple] = [
     # US Treasuries — yfinance: ^FVX/^TNX/^TYX; FRED: DGS2/DGS5/DGS10/DGS30
-    ("US02Y",  "US Treasury 2-Year Note",       "Treasury","2Y",  None),
+    ("US02Y",  "US Treasury 2-Year Note",       "FRED",   "2Y",   None),
     ("US05Y",  "US Treasury 5-Year Note",       "CBOT",   "5Y",   None),
     ("US10Y",  "US Treasury 10-Year Note",      "CBOT",   "10Y",  None),
     ("US30Y",  "US Treasury 30-Year Bond",      "CBOT",   "30Y",  None),
@@ -397,6 +397,18 @@ def seed_assets(db: Session) -> int:
             .values(is_active=False)
         )
         log.info(f"Deactivated asset with no data source: {sym}")
+
+    # Deactivate orphan duplicates created when exchange labels changed between runs.
+    # Only the canonical exchange should remain active per symbol.
+    CANONICAL_EXCHANGE: dict[str, str] = {
+        "US02Y": "FRED",  # Treasury.gov source; CBOT/Treasury labels were transitional
+    }
+    for sym, keep_exchange in CANONICAL_EXCHANGE.items():
+        db.execute(
+            Asset.__table__.update()
+            .where(Asset.symbol == sym, Asset.exchange != keep_exchange)
+            .values(is_active=False)
+        )
 
     db.commit()
 
