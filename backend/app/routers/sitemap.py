@@ -212,3 +212,36 @@ def sitemap(db: Session = Depends(get_db)):
             "Cache-Control": "public, max-age=3600, s-maxage=3600",
         },
     )
+
+
+@router.get("/robots.txt")
+def robots_txt() -> Response:
+    """Serve robots.txt from the API so Sitemap directive isn't overridden by Cloudflare managed content."""
+    content = (
+        "User-agent: *\n"
+        "Allow: /\n"
+        "Disallow: /admin/\n"
+        "\n"
+        "# AI scrapers — no training, no generative AI input\n"
+        "User-agent: GPTBot\n"
+        "Disallow: /\n"
+        "\n"
+        "User-agent: ClaudeBot\n"
+        "Disallow: /\n"
+        "\n"
+        "User-agent: Google-Extended\n"
+        "Disallow: /\n"
+        "\n"
+        "User-agent: CCBot\n"
+        "Disallow: /\n"
+        "\n"
+        "User-agent: Bytespider\n"
+        "Disallow: /\n"
+        "\n"
+        f"Sitemap: https://api.metricshour.com/sitemap.xml\n"
+    )
+    return Response(
+        content=content,
+        media_type="text/plain",
+        headers={"Cache-Control": "public, max-age=86400"},
+    )
