@@ -1,22 +1,18 @@
 """
-Government bond yield ingestion — FRED CSV API (no API key required).
+Government bond yield ingestion — US Treasury XML API (no API key required).
 Runs daily at 6:30am UTC, after markets close.
 
-FRED series used:
-  US02Y  → DGS2         (US Treasury 2-Year Constant Maturity, daily)
-  DE10Y  → IRLTLT01DEM156N  (Germany Long-Term Govt Bond Yields, monthly)
-  GB10Y  → IRLTLT01GBM156N  (UK Long-Term Govt Bond Yields, monthly)
-  FR10Y  → IRLTLT01FRM156N  (France Long-Term Govt Bond Yields, monthly)
-  IT10Y  → IRLTLT01ITM156N  (Italy Long-Term Govt Bond Yields, monthly)
-  JP10Y  → IRLTLT01JPM156N  (Japan Long-Term Govt Bond Yields, monthly)
+Sources:
+  US02Y  → home.treasury.gov DailyTreasuryYieldCurveRateData (BC_2YEAR field)
 
-US 5Y/10Y/30Y are already handled by yfinance in indices.py (^FVX/^TNX/^TYX).
+US 5Y/10Y/30Y are handled by yfinance in indices.py (^FVX/^TNX/^TYX).
+EU/JP sovereign bonds (DE10Y, GB10Y, FR10Y, IT10Y, JP10Y) are inactive —
+no accessible free data source is available from the server.
 """
 
-import csv
 import logging
+import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
-from io import StringIO
 
 import requests
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -27,77 +23,82 @@ from app.models.asset import Asset, AssetType, Price
 
 log = logging.getLogger(__name__)
 
-FRED_BASE = "https://fred.stlouisfed.org/graph/fredgraph.csv"
-
-# Maps our DB symbol → FRED series ID
-FRED_BOND_MAP: dict[str, str] = {
-    "US02Y": "DGS2",
-    "DE10Y": "IRLTLT01DEM156N",
-    "GB10Y": "IRLTLT01GBM156N",
-    "FR10Y": "IRLTLT01FRM156N",
-    "IT10Y": "IRLTLT01ITM156N",
-    "JP10Y": "IRLTLT01JPM156N",
-}
-
-TIMEOUT = 30
+TREASURY_URL = (
+    "https://home.treasury.gov/resource-center/data-chart-center/"
+    "interest-rates/pages/xml"
+)
+TIMEOUT = 20
 HEADERS = {"User-Agent": "MetricsHour/1.0"}
 
+# Namespace used in Treasury XML
+_NS = "http://schemas.microsoft.com/ado/2007/08/dataservices"
 
-def _fetch_latest_yield(fred_series: str) -> float | None:
-    """Fetch the most recent non-null value from a FRED CSV series."""
+
+def _fetch_us02y() -> float | None:
+    """Fetch the most recent US 2-Year Treasury yield from Treasury.gov XML."""
+    from datetime import date
+
+    ym = date.today().strftime("%Y%m")
     try:
         resp = requests.get(
-            FRED_BASE, params={"id": fred_series}, timeout=TIMEOUT, headers=HEADERS
+            TREASURY_URL,
+            params={"data": "daily_treasury_yield_curve", "field_tdr_date_value_month": ym},
+            timeout=TIMEOUT,
+            headers=HEADERS,
         )
         resp.raise_for_status()
-        reader = csv.reader(StringIO(resp.text))
-        next(reader)  # skip header row
+        root = ET.fromstring(resp.content)
         latest: float | None = None
-        for row in reader:
-            if len(row) < 2:
-                continue
-            val = row[1].strip()
-            if val and val != ".":  # FRED uses "." for missing values
+        # Entries are ordered oldest→newest; iterate all and keep last valid value
+        for props in root.iter(f"{{{_NS}}}properties"):
+            el = props.find(f"{{{_NS}}}BC_2YEAR")
+            if el is not None and el.text:
                 try:
-                    latest = float(val)
+                    latest = float(el.text)
                 except ValueError:
                     pass
         return latest
     except Exception:
-        log.exception("FRED fetch failed for %s", fred_series)
+        log.exception("Treasury.gov fetch failed for US02Y")
         return None
+
+
+# Maps our DB symbol → fetch function
+BOND_FETCHERS: dict[str, callable] = {
+    "US02Y": _fetch_us02y,
+}
 
 
 @app.task(name="tasks.bond_yields.fetch_bond_yields", bind=True, max_retries=3)
 def fetch_bond_yields(self):
-    """Fetch government bond yields from FRED and upsert into prices table."""
+    """Fetch government bond yields from official sources and upsert into prices table."""
     db = SessionLocal()
     try:
         assets = (
             db.query(Asset)
             .filter(
                 Asset.asset_type == AssetType.bond,
-                Asset.symbol.in_(list(FRED_BOND_MAP.keys())),
+                Asset.symbol.in_(list(BOND_FETCHERS.keys())),
                 Asset.is_active == True,
             )
             .all()
         )
         if not assets:
-            log.info("No FRED bond assets active — skipping")
+            log.info("No bond assets active for yield fetching — skipping")
             return
 
         symbol_to_asset = {a.symbol: a for a in assets}
         now = datetime.now(timezone.utc).replace(second=0, microsecond=0)
         rows = []
 
-        for db_sym, fred_series in FRED_BOND_MAP.items():
-            if db_sym not in symbol_to_asset:
+        for sym, fetch_fn in BOND_FETCHERS.items():
+            if sym not in symbol_to_asset:
                 continue
-            yield_pct = _fetch_latest_yield(fred_series)
+            yield_pct = fetch_fn()
             if yield_pct is None:
-                log.warning("No FRED data returned for %s (%s)", db_sym, fred_series)
+                log.warning("No yield data returned for %s", sym)
                 continue
-            asset = symbol_to_asset[db_sym]
+            asset = symbol_to_asset[sym]
             rows.append({
                 "asset_id": asset.id,
                 "timestamp": now,
@@ -108,7 +109,7 @@ def fetch_bond_yields(self):
                 "close": yield_pct,
                 "volume": None,
             })
-            log.info("Bond yield: %s = %.4f%% (FRED:%s)", db_sym, yield_pct, fred_series)
+            log.info("Bond yield: %s = %.4f%%", sym, yield_pct)
 
         if rows:
             stmt = pg_insert(Price).values(rows)

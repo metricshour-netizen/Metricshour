@@ -230,16 +230,16 @@ ETFS: list[tuple] = [
 # (symbol, name, exchange, maturity, yield_pct)
 BONDS: list[tuple] = [
     # US Treasuries — yfinance: ^FVX/^TNX/^TYX; FRED: DGS2/DGS5/DGS10/DGS30
-    ("US02Y",  "US Treasury 2-Year Note",       "FRED",   "2Y",   None),
+    ("US02Y",  "US Treasury 2-Year Note",       "Treasury","2Y",  None),
     ("US05Y",  "US Treasury 5-Year Note",       "CBOT",   "5Y",   None),
     ("US10Y",  "US Treasury 10-Year Note",      "CBOT",   "10Y",  None),
     ("US30Y",  "US Treasury 30-Year Bond",      "CBOT",   "30Y",  None),
-    # European/Japanese sovereign 10Y yields — FRED series (daily)
-    ("DE10Y",  "Germany Bund 10-Year",          "FRED",   "10Y",  None),
-    ("GB10Y",  "UK Gilt 10-Year",               "FRED",   "10Y",  None),
-    ("FR10Y",  "France OAT 10-Year",            "FRED",   "10Y",  None),
-    ("IT10Y",  "Italy BTP 10-Year",             "FRED",   "10Y",  None),
-    ("JP10Y",  "Japan JGB 10-Year",             "FRED",   "10Y",  None),
+    # European/Japanese sovereign 10Y yields — no accessible free source from server (inactive)
+    ("DE10Y",  "Germany Bund 10-Year",          "ECB",    "10Y",  None),
+    ("GB10Y",  "UK Gilt 10-Year",               "BoE",    "10Y",  None),
+    ("FR10Y",  "France OAT 10-Year",            "ECB",    "10Y",  None),
+    ("IT10Y",  "Italy BTP 10-Year",             "ECB",    "10Y",  None),
+    ("JP10Y",  "Japan JGB 10-Year",             "BoJ",    "10Y",  None),
     # Corporate / EM bond ETFs — yfinance uses ticker directly
     ("HYG",   "US High Yield Corporate Bond",   "NYSE",   "ETF",  None),
     ("LQD",   "Investment Grade Corp Bond",     "NYSE",   "ETF",  None),
@@ -382,8 +382,13 @@ def seed_assets(db: Session) -> int:
     # Explicitly deactivate assets with no live data source.
     # These remain in DB for history but are hidden from API/frontend (is_active=False).
     NO_DATA_SOURCE = [
-        "COAL",  # No CME/NYMEX futures on yfinance (ICE/SGX only)
-        "NI",    # Nickel LME-only, no yfinance ticker
+        "COAL",   # No CME/NYMEX futures on yfinance (ICE/SGX only)
+        "NI",     # Nickel LME-only, no yfinance ticker
+        "DE10Y",  # No accessible free source from server
+        "GB10Y",  # No accessible free source from server
+        "FR10Y",  # No accessible free source from server
+        "IT10Y",  # No accessible free source from server
+        "JP10Y",  # No accessible free source from server
     ]
     for sym in NO_DATA_SOURCE:
         db.execute(
