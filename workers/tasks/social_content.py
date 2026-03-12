@@ -27,6 +27,7 @@ from sqlalchemy import select, func
 from app.database import SessionLocal
 from app.models.country import Country, CountryIndicator
 from app.models.asset import Asset, StockCountryRevenue
+from sqlalchemy.orm import aliased
 
 log = logging.getLogger(__name__)
 
@@ -164,14 +165,16 @@ Return ONLY valid JSON: {{"twitter": "...", "linkedin": "...", "facebook": "..."
 def _hook_stock_exposure(db) -> dict | None:
     """Pick a well-known stock with highest international revenue exposure."""
     # Get stocks with meaningful geo revenue data
+    RevCountry = aliased(Country)
     rows = db.execute(
         select(
             Asset.symbol, Asset.name,
             func.sum(StockCountryRevenue.revenue_pct).label("intl_pct"),
         )
         .join(StockCountryRevenue, StockCountryRevenue.asset_id == Asset.id)
+        .join(RevCountry, RevCountry.id == StockCountryRevenue.country_id)
         .where(
-            StockCountryRevenue.country_code != "US",
+            RevCountry.code != "US",
             StockCountryRevenue.revenue_pct > 5,
         )
         .group_by(Asset.id, Asset.symbol, Asset.name)
@@ -187,22 +190,24 @@ def _hook_stock_exposure(db) -> dict | None:
     intl_pct = float(pick.intl_pct)
 
     # Get top 3 revenue countries
+    RevCountry2 = aliased(Country)
     top_countries = db.execute(
         select(
-            StockCountryRevenue.country_code,
+            RevCountry2.code,
             StockCountryRevenue.revenue_pct,
         )
         .join(Asset, Asset.id == StockCountryRevenue.asset_id)
+        .join(RevCountry2, RevCountry2.id == StockCountryRevenue.country_id)
         .where(
             Asset.symbol == ticker,
-            StockCountryRevenue.country_code != "US",
+            RevCountry2.code != "US",
         )
         .order_by(StockCountryRevenue.revenue_pct.desc())
         .limit(3)
     ).all()
 
     geo_breakdown = ", ".join(
-        f"{r.country_code} {float(r.revenue_pct):.0f}%" for r in top_countries
+        f"{r.code} {float(r.revenue_pct):.0f}%" for r in top_countries
     )
     page_url = f"{SITE_URL}/stocks/{ticker.lower()}"
 
