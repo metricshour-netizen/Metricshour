@@ -39,13 +39,16 @@ FRED_BOND_MAP: dict[str, str] = {
     "JP10Y": "IRLTLT01JPM156N",
 }
 
-TIMEOUT = 15
+TIMEOUT = 30
+HEADERS = {"User-Agent": "MetricsHour/1.0"}
 
 
 def _fetch_latest_yield(fred_series: str) -> float | None:
     """Fetch the most recent non-null value from a FRED CSV series."""
     try:
-        resp = requests.get(FRED_BASE, params={"id": fred_series}, timeout=TIMEOUT)
+        resp = requests.get(
+            FRED_BASE, params={"id": fred_series}, timeout=TIMEOUT, headers=HEADERS
+        )
         resp.raise_for_status()
         reader = csv.reader(StringIO(resp.text))
         next(reader)  # skip header row
