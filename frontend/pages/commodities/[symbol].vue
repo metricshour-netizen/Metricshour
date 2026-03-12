@@ -270,6 +270,34 @@ const COMMODITY_META: Record<string, any> = {
     tradeFlows: [{ pair: 'us-jp', label: 'US ↔ Japan' }, { pair: 'au-cn', label: 'Australia ↔ China' }, { pair: 'br-cn', label: 'Brazil ↔ China' }],
     related: [{ symbol: 'ZC', label: 'Corn', path: '/commodities/zc' }, { symbol: 'ZS', label: 'Soybeans', path: '/commodities/zs' }],
   },
+  COAL: {
+    icon: '⬛', name: 'Coal', category: 'Energy', unit: 'USD/MT',
+    description: 'Thermal coal is a key fossil fuel used in power generation and steel production. Australia and Indonesia are the world\'s largest coal exporters. China and India are the largest consumers. Coal prices are influenced by energy demand, natural gas prices, and carbon emission regulations. The global energy transition is gradually reducing coal\'s share in electricity generation.',
+    producers: [{ code: 'CN', name: 'China', flag: '🇨🇳' }, { code: 'AU', name: 'Australia', flag: '🇦🇺' }, { code: 'ID', name: 'Indonesia', flag: '🇮🇩' }, { code: 'IN', name: 'India', flag: '🇮🇳' }, { code: 'RU', name: 'Russia', flag: '🇷🇺' }],
+    tradeFlows: [{ pair: 'au-cn', label: 'Australia ↔ China' }, { pair: 'id-cn', label: 'Indonesia ↔ China' }, { pair: 'au-jp', label: 'Australia ↔ Japan' }],
+    related: [{ symbol: 'NG', label: 'Natural Gas', path: '/commodities/ng' }, { symbol: 'WTI', label: 'Crude Oil', path: '/commodities/wti' }],
+  },
+  NI: {
+    icon: '🔘', name: 'Nickel', category: 'Base Metal', unit: 'USD/MT',
+    description: 'Nickel is an essential metal used in stainless steel production and, increasingly, in electric vehicle batteries (NMC lithium-ion cells). Indonesia is the world\'s largest nickel producer. Prices are driven by stainless steel demand in China, EV battery demand growth, and supply developments in Indonesia and the Philippines.',
+    producers: [{ code: 'ID', name: 'Indonesia', flag: '🇮🇩' }, { code: 'PH', name: 'Philippines', flag: '🇵🇭' }, { code: 'RU', name: 'Russia', flag: '🇷🇺' }, { code: 'CA', name: 'Canada', flag: '🇨🇦' }],
+    tradeFlows: [{ pair: 'id-cn', label: 'Indonesia ↔ China' }, { pair: 'ru-eu', label: 'Russia → Europe' }],
+    related: [{ symbol: 'HG', label: 'Copper', path: '/commodities/hg' }, { symbol: 'ALI', label: 'Aluminum', path: '/commodities/ali' }, { symbol: 'ZNC', label: 'Zinc', path: '/commodities/znc' }],
+  },
+  ZNC: {
+    icon: '🔷', name: 'Zinc', category: 'Base Metal', unit: 'USD/MT',
+    description: 'Zinc is primarily used to galvanize steel (anti-corrosion coating) and in die-casting alloys. China is both the largest producer and consumer of zinc. Prices respond to construction activity (the largest end-use sector), mining supply disruptions, and LME inventory levels. Zinc is mined as a co-product alongside lead, silver, and copper.',
+    producers: [{ code: 'CN', name: 'China', flag: '🇨🇳' }, { code: 'AU', name: 'Australia', flag: '🇦🇺' }, { code: 'PE', name: 'Peru', flag: '🇵🇪' }, { code: 'IN', name: 'India', flag: '🇮🇳' }],
+    tradeFlows: [{ pair: 'au-cn', label: 'Australia ↔ China' }, { pair: 'pe-cn', label: 'Peru ↔ China' }],
+    related: [{ symbol: 'HG', label: 'Copper', path: '/commodities/hg' }, { symbol: 'ALI', label: 'Aluminum', path: '/commodities/ali' }, { symbol: 'NI', label: 'Nickel', path: '/commodities/ni' }],
+  },
+  PALM: {
+    icon: '🌴', name: 'Palm Oil', category: 'Agriculture', unit: 'USD/MT',
+    description: 'Palm oil is the world\'s most widely consumed vegetable oil, used in food, cosmetics, and biofuels. Indonesia and Malaysia together produce over 85% of global palm oil supply. Prices are influenced by weather (El Niño), competing soybean oil prices, biodiesel mandates, and demand from India and China. Palm oil is a key trade commodity for Southeast Asian economies.',
+    producers: [{ code: 'ID', name: 'Indonesia', flag: '🇮🇩' }, { code: 'MY', name: 'Malaysia', flag: '🇲🇾' }, { code: 'TH', name: 'Thailand', flag: '🇹🇭' }],
+    tradeFlows: [{ pair: 'id-cn', label: 'Indonesia ↔ China' }, { pair: 'my-in', label: 'Malaysia ↔ India' }, { pair: 'id-in', label: 'Indonesia ↔ India' }],
+    related: [{ symbol: 'ZS', label: 'Soybeans', path: '/commodities/zs' }, { symbol: 'KC', label: 'Coffee', path: '/commodities/kc' }],
+  },
 }
 
 const DEFAULT_META = {

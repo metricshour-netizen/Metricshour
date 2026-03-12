@@ -464,7 +464,7 @@ def _write_trade_snapshots(db) -> int:
             "exporter": {"code": exp.code, "name": exp.name, "flag": exp.flag_emoji, "currency_code": exp.currency_code, "indicators": exp_ind},
             "importer": {"code": imp.code, "name": imp.name, "flag": imp.flag_emoji, "currency_code": imp.currency_code, "indicators": imp_ind},
             "trade_data": trade_data,
-            "canonical_pair": f"{exp.slug}--{imp.slug}",
+            "canonical_pair": f"{exp.code.lower()}-{imp.code.lower()}",
             "generated_at": datetime.now(timezone.utc).isoformat(),
         }
         trade_payloads.append((slug_key, iso_key if iso_key != slug_key else None, data))
