@@ -180,16 +180,11 @@ def sitemap(db: Session = Depends(get_db)):
             .distinct()
         )
     }
-    # Emit G20 × G20 pairs only (380 pairs max) — broad enough for long-tail, tight enough to avoid spam
-    g20_with_gdp = [
-        code for (code,) in db.execute(
-            select(Country.code).where(Country.is_g20 == True, Country.code.isnot(None))
-        )
-        if code in countries_with_gdp
-    ]
+    # Emit all pairs where BOTH countries have GDP data — covers ~150 countries, ~11k pairs
+    all_with_gdp = sorted(countries_with_gdp)
     seen_compare: set[tuple[str, str]] = set()
-    for i, ca in enumerate(sorted(g20_with_gdp)):
-        for cb in sorted(g20_with_gdp)[i + 1:]:
+    for i, ca in enumerate(all_with_gdp):
+        for cb in all_with_gdp[i + 1:]:
             key = (min(ca, cb), max(ca, cb))
             if key in seen_compare:
                 continue
