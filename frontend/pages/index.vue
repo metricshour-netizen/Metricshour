@@ -42,15 +42,17 @@
         <NuxtLink
           v-if="activeSpotlight"
           :to="activeSpotlight.link"
-          class="inline-flex items-center gap-1.5 bg-[#111827] border border-emerald-900 text-xs text-emerald-400 px-3 py-1.5 rounded-full font-medium hover:border-emerald-600 transition-colors"
+          class="inline-flex items-center gap-1.5 bg-[#111827] border text-xs px-3 py-1.5 rounded-full font-medium transition-colors"
+          :class="[spotlightColors.text, spotlightColors.border, spotlightColors.hover]"
           :title="activeSpotlight.subtext"
         >
-          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block"></span>
+          <span class="w-1.5 h-1.5 rounded-full animate-pulse inline-block" :class="spotlightColors.dot"></span>
+          <span v-if="activeSpotlight.tag" class="opacity-50 font-normal text-[10px] uppercase tracking-wider">{{ activeSpotlight.tag }} ·</span>
           {{ activeSpotlight.text }}
         </NuxtLink>
         <span v-else class="inline-flex items-center gap-1.5 bg-[#111827] border border-emerald-900 text-xs text-emerald-400 px-3 py-1.5 rounded-full font-medium">
           <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block"></span>
-          Loading market intelligence...
+          Loading intelligence...
         </span>
       </div>
 
@@ -581,8 +583,38 @@ function fmtUsd(v: number | null | undefined): string {
 }
 
 // ── Adaptive Spotlight ────────────────────────────────────────────────────────
-const { data: spotlightData } = useAsyncData('spotlight',
-  () => get<any[]>('/api/intelligence/spotlight').catch(() => []),
+// Map card type → Tailwind colour classes (explicit names so Tailwind JIT keeps them)
+const CARD_COLORS: Record<string, { text: string; border: string; dot: string; hover: string }> = {
+  stock_insight:     { text: 'text-emerald-400', border: 'border-emerald-900', dot: 'bg-emerald-400', hover: 'hover:border-emerald-600' },
+  geo_revenue:       { text: 'text-sky-400',     border: 'border-sky-900',     dot: 'bg-sky-400',     hover: 'hover:border-sky-600' },
+  country_insight:   { text: 'text-amber-400',   border: 'border-amber-900',   dot: 'bg-amber-400',   hover: 'hover:border-amber-600' },
+  trade_insight:     { text: 'text-violet-400',  border: 'border-violet-900',  dot: 'bg-violet-400',  hover: 'hover:border-violet-600' },
+  macro:              { text: 'text-orange-400',  border: 'border-orange-900',  dot: 'bg-orange-400',  hover: 'hover:border-orange-600' },
+  commodity_insight: { text: 'text-rose-400',    border: 'border-rose-900',    dot: 'bg-rose-400',    hover: 'hover:border-rose-600' },
+}
+const spotlightColors = computed(() =>
+  CARD_COLORS[activeSpotlight.value?.type ?? ''] ?? CARD_COLORS.stock_insight
+)
+
+// Infer country from timezone (privacy-safe — no network call, no storage)
+function _tzToCountry(): string {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+    const region = tz.split('/')[0]
+    const map: Record<string, string> = {
+      America: 'US', Europe: 'GB', Asia: 'CN', Australia: 'AU',
+      Pacific: 'AU', Africa: 'ZA', Indian: 'IN',
+    }
+    return map[region] ?? ''
+  } catch { return '' }
+}
+
+const userCountry = ref('')
+const { data: spotlightData, refresh: refreshSpotlight } = useAsyncData('spotlight',
+  () => {
+    const c = userCountry.value
+    return get<any[]>(`/api/intelligence/spotlight${c ? '?country=' + c : ''}`).catch(() => [])
+  },
   { server: false },
 )
 const spotlightIndex = ref(0)
@@ -590,10 +622,12 @@ const activeSpotlight = computed(() => (spotlightData.value ?? [])[spotlightInde
 
 let spotlightTimer: ReturnType<typeof setInterval> | null = null
 onMounted(() => {
+  const country = _tzToCountry()
+  if (country) { userCountry.value = country; refreshSpotlight() }
   spotlightTimer = setInterval(() => {
     const len = (spotlightData.value ?? []).length
     if (len > 1) spotlightIndex.value = (spotlightIndex.value + 1) % len
-  }, 5000)
+  }, 6000)
 })
 onUnmounted(() => { if (spotlightTimer) clearInterval(spotlightTimer) })
 

@@ -25,64 +25,191 @@ from app.storage import get_redis
 log = logging.getLogger(__name__)
 router = APIRouter()
 
-SPOTLIGHT_KEY = "intelligence:spotlight:v1"
-SPOTLIGHT_TTL = 10_800  # 3 hours
+SPOTLIGHT_KEY_TPL = "intelligence:spotlight:v2:{hour}"
+SPOTLIGHT_TTL = 4_200  # 70 min
 
 
 # ── Spotlight generation ───────────────────────────────────────────────────────
 
+SPOTLIGHT_KEY = "intelligence:spotlight:v2:{hour}"
+SPOTLIGHT_TTL = 4_200  # 70 min — covers hour boundary cleanly
+
+
 def _build_spotlight(db: Session) -> list[dict[str, Any]]:
     """
-    Build adaptive spotlight cards from live DB data.
-    Returns up to 8 cards ordered by revenue_pct DESC.
+    Build adaptive spotlight cards from multiple data sources.
+    Hour-seeded shuffle ensures different ordering each hour.
     """
-    rows = (
-        db.execute(
-            text("""
-                SELECT
-                    a.symbol, a.name, a.sector, a.market_cap_usd,
-                    r.revenue_pct, r.fiscal_year,
-                    hq.flag_emoji AS hq_flag, hq.code AS hq_code,
-                    c.name AS country_name, c.flag_emoji AS country_flag, c.code AS country_code
-                FROM stock_country_revenues r
-                JOIN assets a ON r.asset_id = a.id
-                JOIN countries c ON r.country_id = c.id
-                LEFT JOIN countries hq ON a.country_id = hq.id
-                WHERE r.revenue_pct >= 5.0
-                  AND a.asset_type = 'stock'
-                ORDER BY r.revenue_pct DESC
-                LIMIT 40
-            """)
-        ).fetchall()
-    )
+    import random as _rnd
+    now = datetime.now(timezone.utc)
+    hour_seed = int(now.strftime('%Y%m%d%H'))
+    rng = _rnd.Random(hour_seed)
 
-    seen: set[str] = set()
-    cards = []
-    for row in rows:
-        key = f"{row.symbol}-{row.country_code}"
-        if key in seen:
+    cards: list[dict[str, Any]] = []
+
+    # ── 1. AI insights from page_insights ─────────────────────────────────
+    insight_rows = db.execute(text("""
+        SELECT pi.entity_type, pi.entity_code, pi.summary, pi.generated_at,
+               COALESCE(a.market_cap_usd, 0) AS market_cap,
+               COALESCE(c.is_g20, FALSE) AS is_g20
+        FROM page_insights pi
+        LEFT JOIN assets a ON pi.entity_type = 'stock'
+                           AND a.symbol = pi.entity_code
+                           AND a.asset_type = 'stock'
+        LEFT JOIN countries c ON pi.entity_type = 'country'
+                              AND c.code = pi.entity_code
+        WHERE pi.generated_at >= NOW() - INTERVAL '72 hours'
+          AND pi.entity_type IN ('stock', 'country', 'trade', 'commodity')
+          AND pi.summary IS NOT NULL
+        ORDER BY pi.generated_at DESC
+        LIMIT 400
+    """)).fetchall()
+
+    by_type: dict[str, list] = {}
+    for row in insight_rows:
+        by_type.setdefault(row.entity_type, []).append(row)
+
+    def _first_sentence(text: str, max_len: int = 130) -> str:
+        import re as _re
+        m = _re.search(r'\. [A-Z]', text)
+        s = (text[:m.start() + 1] if m else text.split('\n')[0]).strip()
+        return s[:max_len - 3] + '...' if len(s) > max_len else s
+
+    def _insight_card(row: Any) -> dict:
+        s = _first_sentence(row.summary or '')
+        if row.entity_type == 'stock':
+            return {'id': f'ins-stock-{row.entity_code.lower()}',
+                    'type': 'stock_insight', 'tag': row.entity_code,
+                    'dot': '#10b981', 'border': '#064e3b',
+                    'text': s, 'subtext': 'AI · Stock Analysis',
+                    'link': f'/stocks/{row.entity_code.lower()}',
+                    'generated_at': row.generated_at.isoformat()}
+        if row.entity_type == 'country':
+            return {'id': f'ins-country-{row.entity_code.lower()}',
+                    'type': 'country_insight', 'tag': row.entity_code,
+                    'dot': '#60a5fa', 'border': '#1e3a5f',
+                    'text': s, 'subtext': 'AI · Macro Analysis',
+                    'link': f'/countries/{row.entity_code.lower()}',
+                    'generated_at': row.generated_at.isoformat()}
+        if row.entity_type == 'trade':
+            parts = row.entity_code.split('-')
+            slug = row.entity_code.lower()
+            tag = f'{parts[0]}↔{parts[1]}' if len(parts) == 2 else row.entity_code
+            return {'id': f'ins-trade-{slug}',
+                    'type': 'trade_insight', 'tag': tag,
+                    'dot': '#f59e0b', 'border': '#78350f',
+                    'text': s, 'subtext': 'AI · Trade Analysis',
+                    'link': f'/trade/{slug}',
+                    'generated_at': row.generated_at.isoformat()}
+        if row.entity_type == 'commodity':
+            return {'id': f'ins-comm-{row.entity_code.lower()}',
+                    'type': 'commodity_insight', 'tag': row.entity_code,
+                    'dot': '#a78bfa', 'border': '#4c1d95',
+                    'text': s, 'subtext': 'AI · Commodity Analysis',
+                    'link': f'/commodities/{row.entity_code.lower()}',
+                    'generated_at': row.generated_at.isoformat()}
+        return {}
+
+    type_quotas = {'stock': 6, 'country': 6, 'trade': 6, 'commodity': 3}
+    for t, quota in type_quotas.items():
+        pool = by_type.get(t, [])
+        if t == 'stock':
+            pool = sorted(pool, key=lambda r: r.market_cap or 0, reverse=True)[:40]
+        elif t == 'country':
+            g20 = [r for r in pool if r.is_g20]
+            rest = [r for r in pool if not r.is_g20]
+            pool = g20[:30] + rest[:10]
+        else:
+            pool = pool[:60]
+        if pool:
+            picked = rng.sample(pool, min(quota, len(pool)))
+            cards.extend([c for c in (_insight_card(r) for r in picked) if c])
+
+    # ── 2. Geo revenue cards ───────────────────────────────────────────────
+    geo_rows = db.execute(text("""
+        SELECT a.symbol, r.revenue_pct, r.fiscal_year,
+               hq.flag_emoji AS hq_flag,
+               c.name AS country_name, c.flag_emoji AS country_flag,
+               c.code AS country_code
+        FROM stock_country_revenues r
+        JOIN assets a ON r.asset_id = a.id
+        JOIN countries c ON r.country_id = c.id
+        LEFT JOIN countries hq ON a.country_id = hq.id
+        WHERE r.revenue_pct >= 8.0
+          AND a.asset_type = 'stock'
+          AND a.market_cap_usd >= 5e9
+        ORDER BY a.market_cap_usd DESC
+        LIMIT 80
+    """)).fetchall()
+
+    seen_geo: set[str] = set()
+    geo_pool: list[dict] = []
+    for row in geo_rows:
+        key = f'{row.symbol}-{row.country_code}'
+        if key in seen_geo:
             continue
-        seen.add(key)
-
-        cards.append({
-            "id": f"geo-{row.symbol.lower()}-{row.country_code.lower()}",
-            "type": "geo_revenue",
-            "text": f"{row.symbol} earns {row.revenue_pct:.0f}% revenue from {row.country_flag or ''} {row.country_name}",
-            "subtext": f"FY{row.fiscal_year} · SEC EDGAR",
-            "flag_hq": row.hq_flag or "🌐",
-            "flag_country": row.country_flag or "",
-            "symbol": row.symbol,
-            "country_code": row.country_code.lower(),
-            "revenue_pct": round(row.revenue_pct, 1),
-            "link": f"/stocks/{row.symbol}",
-            "link_country": f"/countries/{row.country_code.lower()}",
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+        seen_geo.add(key)
+        geo_pool.append({
+            'id': f'geo-{row.symbol.lower()}-{row.country_code.lower()}',
+            'type': 'geo_revenue', 'tag': row.symbol,
+            'dot': '#10b981', 'border': '#064e3b',
+            'text': f'{row.symbol} earns {row.revenue_pct:.0f}% revenue from {row.country_flag or ""} {row.country_name}',
+            'subtext': f'FY{row.fiscal_year} · SEC EDGAR',
+            'link': f'/stocks/{row.symbol.lower()}',
+            'generated_at': datetime.now(timezone.utc).isoformat(),
         })
+    if geo_pool:
+        cards.extend(rng.sample(geo_pool, min(4, len(geo_pool))))
 
-        if len(cards) >= 8:
-            break
+    # ── 3. Macro signals ───────────────────────────────────────────────────
+    macro_rows = db.execute(text("""
+        SELECT DISTINCT ON (c.code, ci.indicator)
+               c.name, c.flag_emoji, c.code,
+               ci.indicator, ci.value, ci.period_date
+        FROM country_indicators ci
+        JOIN countries c ON ci.country_id = c.id
+        WHERE c.is_g20 = true
+          AND ci.indicator IN ('gdp_growth_pct', 'inflation_pct', 'interest_rate_pct')
+          AND ci.value IS NOT NULL
+        ORDER BY c.code, ci.indicator, ci.period_date DESC
+    """)).fetchall()
 
-    return cards
+    macro_pool: list[dict] = []
+    for row in macro_rows:
+        if row.indicator == 'gdp_growth_pct':
+            if abs(row.value) < 1.0:
+                continue
+            text_str = f'{row.flag_emoji or ""} {row.name} GDP growth {row.value:+.1f}%'
+            dot, border = '#10b981', '#064e3b'
+        elif row.indicator == 'inflation_pct':
+            if row.value < 3.5:
+                continue
+            text_str = f'{row.flag_emoji or ""} {row.name} inflation {row.value:.1f}%'
+            dot, border = '#f59e0b', '#78350f'
+        elif row.indicator == 'interest_rate_pct':
+            if row.value < 4.0:
+                continue
+            text_str = f'{row.flag_emoji or ""} {row.name} rate {row.value:.2f}%'
+            dot, border = '#60a5fa', '#1e3a5f'
+        else:
+            continue
+        macro_pool.append({
+            'id': f'macro-{row.code.lower()}-{row.indicator}',
+            'type': 'macro', 'tag': row.code,
+            'dot': dot, 'border': border,
+            'text': text_str,
+            'subtext': f'World Bank · {row.period_date.year if row.period_date else "latest"}',
+            'link': f'/countries/{row.code.lower()}',
+            'generated_at': datetime.now(timezone.utc).isoformat(),
+        })
+    if macro_pool:
+        cards.extend(rng.sample(macro_pool, min(3, len(macro_pool))))
+
+    # ── Final shuffle + cap ────────────────────────────────────────────────
+    rng.shuffle(cards)
+    return cards[:24]
+
+
 
 
 # ── Summary generation ─────────────────────────────────────────────────────────
@@ -317,14 +444,25 @@ def _trade_summary(pair: str, db: Session) -> str | None:
 # ── API endpoints ──────────────────────────────────────────────────────────────
 
 @router.get("/intelligence/spotlight")
-def get_spotlight(db: Session = Depends(get_db)) -> list[dict]:
+def get_spotlight(
+    db: Session = Depends(get_db),
+    country: str | None = None,  # ISO2 code hint from frontend (e.g. "US")
+) -> list[dict]:
     """
-    Returns adaptive insight cards. Cached in Redis for 3 hours.
+    Returns adaptive insight cards — cached per hour, personalised by visitor country.
     Falls back to live DB generation if Redis unavailable.
     """
+    import random as _rnd
+
+    now = datetime.now(timezone.utc)
+    hour = now.strftime('%Y%m%d%H')
+    # Country suffix makes cache per-region (top 10 countries; rest share "default")
+    country_key = (country or '').upper()[:2] or 'default'
+    cache_key = SPOTLIGHT_KEY_TPL.format(hour=hour) + f':{country_key}'
+
     try:
         r = get_redis()
-        cached = r.get(SPOTLIGHT_KEY)
+        cached = r.get(cache_key)
         if cached:
             return json.loads(cached)
     except Exception:
@@ -332,9 +470,40 @@ def get_spotlight(db: Session = Depends(get_db)) -> list[dict]:
 
     cards = _build_spotlight(db)
 
+    # ── Location personalisation ─────────────────────────────────────────────
+    # Boost cards related to the visitor's country to the front
+    if country_key not in ('', 'default'):
+        cc = country_key.lower()
+        related = [c for c in cards if
+                   cc in c.get('id', '') or
+                   cc in c.get('link', '') or
+                   cc in c.get('tag', '').lower()]
+        rest = [c for c in cards if c not in related]
+        cards = related[:4] + rest  # put up to 4 local cards first
+
+    # ── Time-of-day weighting ────────────────────────────────────────────────
+    # During US market hours (13–21 UTC) boost stock insights to front
+    # During Asian hours (00–08 UTC) boost APAC country/trade cards
+    hour_int = now.hour
+    if 13 <= hour_int <= 21:
+        # US market hours — push stock_insight and geo_revenue forward
+        stock_cards = [c for c in cards if c.get('type') in ('stock_insight', 'geo_revenue')]
+        other = [c for c in cards if c not in stock_cards]
+        rng2 = _rnd.Random(int(hour) + 1)
+        rng2.shuffle(other)
+        cards = stock_cards[:6] + other
+    elif 0 <= hour_int <= 8:
+        # Asian hours — push APAC country/trade cards forward
+        apac = {'CN', 'JP', 'KR', 'AU', 'IN', 'SG', 'HK', 'TW', 'ID', 'TH'}
+        apac_cards = [c for c in cards if any(cc in c.get('id', '').upper() for cc in apac)]
+        other = [c for c in cards if c not in apac_cards]
+        rng2 = _rnd.Random(int(hour) + 2)
+        rng2.shuffle(other)
+        cards = apac_cards[:5] + other
+
     try:
         r = get_redis()
-        r.setex(SPOTLIGHT_KEY, SPOTLIGHT_TTL, json.dumps(cards))
+        r.setex(cache_key, SPOTLIGHT_TTL, json.dumps(cards))
     except Exception:
         log.warning("Redis unavailable for spotlight write")
 
@@ -465,7 +634,9 @@ def refresh_summaries(
     db.commit()
 
     try:
-        get_redis().delete(SPOTLIGHT_KEY)
+        # Clear all v2 spotlight keys (hour-based)
+        for key in get_redis().scan_iter("intelligence:spotlight:v2:*"):
+            get_redis().delete(key)
     except Exception:
         pass
 
