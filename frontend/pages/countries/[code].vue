@@ -382,6 +382,14 @@
       </div>
 
       <p class="text-xs text-gray-600">Data: World Bank · REST Countries · IMF · UN Comtrade · SEC EDGAR</p>
+
+      <!-- Newsletter -->
+      <div class="mt-8 border border-gray-800 rounded-xl p-6 bg-gray-900/40">
+        <p class="text-xs font-mono text-emerald-500 uppercase tracking-widest mb-1">Weekly Briefing</p>
+        <p class="text-sm font-semibold text-white mb-1">Get macro moves explained every week.</p>
+        <p class="text-xs text-gray-500 mb-4">GDP shifts, trade flows, central bank decisions — free.</p>
+        <NewsletterCapture :source="`country_page_${code}`" button-text="Subscribe free" />
+      </div>
     </template>
   </main>
   <AuthModal v-model="showAuthModal" />

@@ -381,6 +381,14 @@
       </div>
     </section>
 
+    <!-- ── Newsletter capture ─────────────────────────────────────────────── -->
+    <section class="max-w-xl mx-auto px-4 py-10 text-center">
+      <p class="text-xs font-mono text-emerald-500 uppercase tracking-widest mb-2">Weekly Briefing</p>
+      <h2 class="text-xl font-bold text-white mb-2">The macro moves that matter, explained.</h2>
+      <p class="text-sm text-gray-400 mb-5">GDP shifts, trade flows, central bank decisions — plain language, every week. Free.</p>
+      <NewsletterCapture source="homepage" button-text="Subscribe free" class="max-w-sm mx-auto" />
+    </section>
+
     <!-- ── Data sources ───────────────────────────────────────────────────── -->
     <p class="text-center text-[11px] text-gray-700 pb-6">
       Data: World Bank · SEC EDGAR · UN Comtrade · REST Countries · IMF · CoinGecko

@@ -132,8 +132,9 @@ app.conf.update(
             'task': 'tasks.feed_generator.generate_feed_events',
             'schedule': 180.0,
         },
-        'sitemap-redeploy-daily-4am': {
-            'task': 'tasks.sitemap_deploy.trigger_pages_deploy',
+        'sitemap-indexnow-daily-4am': {
+            # CF Pages no longer serves traffic — skip the deploy hook, just ping IndexNow + Bing
+            'task': 'tasks.sitemap_deploy.ping_only',
             'schedule': crontab(hour=4, minute=0),
         },
         # Summaries only regenerate when underlying data changes (staleness checks inside).

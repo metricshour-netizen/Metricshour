@@ -116,3 +116,15 @@ class PageView(Base):
     entity_code: Mapped[str] = mapped_column(String(50), nullable=False)
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+
+
+class NewsletterSubscriber(Base):
+    __tablename__ = "newsletter_subscribers"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
+    source: Mapped[str] = mapped_column(String(50), nullable=False, default="unknown")  # 'homepage' | 'country_page' | 'stock_page' | etc.
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    token: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)  # unsubscribe token
+    subscribed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    unsubscribed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

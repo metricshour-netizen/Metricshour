@@ -607,6 +607,14 @@ def write_r2_snapshots(self):
         for i in range(0, len(purge_urls), 30):
             _purge_cf_cache(purge_urls[i:i + 30])
 
+        # Ping IndexNow after snapshots are written — content is fresh, crawlers should see it now
+        try:
+            from tasks.sitemap_deploy import ping_only
+            ping_only.delay()
+            log.info("IndexNow ping queued after R2 snapshot write")
+        except Exception as ping_exc:
+            log.warning("Failed to queue IndexNow ping: %s", ping_exc)
+
         return {"status": "ok", "elapsed_seconds": elapsed, **stats}
 
     except Exception as exc:

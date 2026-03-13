@@ -15,6 +15,7 @@ from app.routers import telegram_webhook
 from app.routers.admin import public_router as blog_router, track_router
 from app.routers import intelligence
 from app.routers import feedback
+from app.routers import newsletter
 
 if settings.sentry_dsn:
     sentry_sdk.init(
@@ -125,6 +126,7 @@ app.include_router(alerts_router.router, prefix="/api")
 app.include_router(telegram_webhook.router)  # social draft helpers (no routes — logic called from alerts webhook)
 app.include_router(track_router)   # POST /api/track — page view analytics
 app.include_router(snapshots.router)  # GET /snapshots/{key} — R2 CDN proxy, CF-cached at edge
+app.include_router(newsletter.router, prefix="/api")  # POST /api/newsletter/subscribe, GET /api/newsletter/unsubscribe
 
 
 Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)

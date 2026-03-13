@@ -19,6 +19,10 @@ N8N_MACRO_ALERT_WEBHOOK = os.environ.get(
     "N8N_MACRO_ALERT_WEBHOOK",
     "https://n8n.metricshour.com/webhook/macro-alert",
 )
+N8N_NEWSLETTER_WEBHOOK = os.environ.get(
+    "N8N_NEWSLETTER_WEBHOOK",
+    "https://n8n.metricshour.com/webhook/newsletter-subscribe",
+)
 
 
 def send_telegram(chat_id: str, text: str) -> str | None:
@@ -321,6 +325,107 @@ def _send_welcome_direct(to: str) -> str | None:
 """
     return send_email(to, "Welcome to MetricsHour 🌍", html)
 
+
+
+def send_newsletter_welcome(to: str, unsubscribe_token: str) -> str | None:
+    """Send welcome email to new newsletter subscriber.
+
+    Tries n8n webhook first (for automation/sequences); falls back to direct
+    Resend if n8n is unreachable. Never silently fails — always returns None
+    on success or an error string on failure.
+    """
+    unsubscribe_url = f"https://api.metricshour.com/api/newsletter/unsubscribe?token={unsubscribe_token}"
+
+    # Try n8n first — lets us run welcome sequences, tagging, list management, etc.
+    try:
+        r = requests.post(
+            N8N_NEWSLETTER_WEBHOOK,
+            json={"email": to, "unsubscribe_url": unsubscribe_url, "unsubscribe_token": unsubscribe_token},
+            timeout=8,
+        )
+        if r.status_code in (200, 201, 202):
+            logger.info("Newsletter welcome sent via n8n for %s", to)
+            return None
+        logger.warning("n8n newsletter webhook returned %s — falling back to Resend", r.status_code)
+    except Exception as exc:
+        logger.warning("n8n newsletter webhook unreachable (%s) — falling back to Resend", exc)
+
+    # Direct Resend fallback
+    html = f"""
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#0a0e1a;font-family:sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0e1a;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="520" cellpadding="0" cellspacing="0" style="background:#111827;border:1px solid #1f2937;border-radius:12px;overflow:hidden;">
+        <tr>
+          <td style="background:#0d1117;padding:24px 28px;border-bottom:1px solid #1f2937;">
+            <span style="font-size:20px;font-weight:800;color:#10b981;letter-spacing:1px;">METRICSHOUR</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:32px 28px;">
+            <p style="font-size:22px;font-weight:700;color:#ffffff;margin:0 0 8px 0;">You're in. Weekly macro intelligence incoming.</p>
+            <p style="font-size:14px;color:#9ca3af;margin:0 0 24px 0;">Every week we send the most important macro moves — GDP shifts, trade flows, central bank decisions — explained in plain language.</p>
+
+            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
+              <tr>
+                <td style="padding:0 6px 12px 0;" width="50%">
+                  <div style="background:#0d1117;border:1px solid #1f2937;border-radius:8px;padding:16px;">
+                    <p style="font-size:18px;margin:0 0 6px 0;">🌍</p>
+                    <p style="font-size:13px;font-weight:700;color:#ffffff;margin:0 0 4px 0;">196 Countries</p>
+                    <p style="font-size:11px;color:#6b7280;margin:0;">GDP, inflation, trade — 80+ indicators each</p>
+                  </div>
+                </td>
+                <td style="padding:0 0 12px 6px;" width="50%">
+                  <div style="background:#0d1117;border:1px solid #1f2937;border-radius:8px;padding:16px;">
+                    <p style="font-size:18px;margin:0 0 6px 0;">📊</p>
+                    <p style="font-size:13px;font-weight:700;color:#ffffff;margin:0 0 4px 0;">3,000+ Trade Pairs</p>
+                    <p style="font-size:11px;color:#6b7280;margin:0;">Bilateral flows between every major economy</p>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:0 6px 0 0;" width="50%">
+                  <div style="background:#0d1117;border:1px solid #1f2937;border-radius:8px;padding:16px;">
+                    <p style="font-size:18px;margin:0 0 6px 0;">📈</p>
+                    <p style="font-size:13px;font-weight:700;color:#ffffff;margin:0 0 4px 0;">Stock Exposure</p>
+                    <p style="font-size:11px;color:#6b7280;margin:0;">Which countries drive every stock's revenue</p>
+                  </div>
+                </td>
+                <td style="padding:0 0 0 6px;" width="50%">
+                  <div style="background:#0d1117;border:1px solid #1f2937;border-radius:8px;padding:16px;">
+                    <p style="font-size:18px;margin:0 0 6px 0;">⚡</p>
+                    <p style="font-size:13px;font-weight:700;color:#ffffff;margin:0 0 4px 0;">Live Feed</p>
+                    <p style="font-size:11px;color:#6b7280;margin:0;">Market-moving events as they happen</p>
+                  </div>
+                </td>
+              </tr>
+            </table>
+
+            <a href="https://metricshour.com" style="display:inline-block;background:#10b981;color:#000000;font-weight:700;font-size:14px;padding:14px 28px;border-radius:8px;text-decoration:none;margin-bottom:24px;">Explore MetricsHour →</a>
+
+            <p style="font-size:13px;color:#6b7280;margin:0;">
+              Questions or story tips? Just reply — I read every one.<br>
+              <span style="color:#4b5563;">— The MetricsHour team</span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:16px 28px;border-top:1px solid #1f2937;">
+            <p style="font-size:11px;color:#374151;margin:0;">
+              You subscribed at metricshour.com.
+              <a href="{unsubscribe_url}" style="color:#4b5563;">Unsubscribe</a>
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>"""
+    return send_email(to, "You're subscribed to MetricsHour Weekly", html)
 
 
 def send_password_reset_email(to: str, token: str) -> str | None:

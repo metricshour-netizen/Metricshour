@@ -1,0 +1,152 @@
+{
+  "name": "Macro Alert — Telegram + Email",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "macro-alert",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "macro-alert"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "tg-check",
+              "leftValue": "={{ $json.body.notify_telegram }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equals" }
+            },
+            {
+              "id": "tg-chat-check",
+              "leftValue": "={{ $json.body.telegram_chat_id }}",
+              "rightValue": "",
+              "operator": { "type": "string", "operation": "notEmpty" }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if-telegram",
+      "name": "Has Telegram?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [460, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "email-check",
+              "leftValue": "={{ $json.body.notify_email }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if-email",
+      "name": "Has Email?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [460, 420]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"chat_id\": \"{{ $('Webhook').item.json.body.telegram_chat_id }}\",\n  \"parse_mode\": \"HTML\",\n  \"text\": \"{{ $('Webhook').item.json.body.condition === 'above' ? '🟢' : '🔴' }} <b>Macro Alert — {{ $('Webhook').item.json.body.country_name }}</b>\\n<b>{{ $('Webhook').item.json.body.indicator_label }}</b> has {{ $('Webhook').item.json.body.condition === 'above' ? 'crossed above ↑' : 'dropped below ↓' }} your threshold\\n\\n<b>Current:</b> <code>{{ $('Webhook').item.json.body.current_fmt }}</code>\\n<b>Threshold:</b> <code>{{ $('Webhook').item.json.body.threshold_fmt }}</code>{{ $('Webhook').item.json.body.context ? '\\n\\n💡 ' + $('Webhook').item.json.body.context : '' }}\\n\\n<a href=\\\"{{ $('Webhook').item.json.body.country_url }}\\\">View {{ $('Webhook').item.json.body.country_name }} on MetricsHour →</a>\"\n}",
+        "options": {}
+      },
+      "id": "send-telegram",
+      "name": "Send Telegram",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [700, 100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.resend.com/emails",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.RESEND_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"from\": \"alerts@metricshour.com\",\n  \"to\": \"{{ $('Webhook').item.json.body.user_email }}\",\n  \"subject\": \"📊 Macro Alert: {{ $('Webhook').item.json.body.country_name }} — {{ $('Webhook').item.json.body.indicator_label }} | MetricsHour\",\n  \"html\": \"<p>{{ $('Webhook').item.json.body.country_name }} — {{ $('Webhook').item.json.body.indicator_label }} has {{ $('Webhook').item.json.body.condition === 'above' ? 'crossed above' : 'dropped below' }} your threshold of {{ $('Webhook').item.json.body.threshold_fmt }}. Current value: {{ $('Webhook').item.json.body.current_fmt }}.{{ $('Webhook').item.json.body.context ? ' ' + $('Webhook').item.json.body.context : '' }}<br><br><a href=\\\"{{ $('Webhook').item.json.body.country_url }}\\\">View on MetricsHour →</a></p>\"\n}",
+        "options": {}
+      },
+      "id": "send-email",
+      "name": "Send Email (Resend)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [700, 460]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"ok\": true }",
+        "options": {}
+      },
+      "id": "respond",
+      "name": "Respond 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [940, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          { "node": "Has Telegram?", "type": "main", "index": 0 },
+          { "node": "Has Email?", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Has Telegram?": {
+      "main": [
+        [{ "node": "Send Telegram", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Has Email?": {
+      "main": [
+        [{ "node": "Send Email (Resend)", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Send Telegram": {
+      "main": [[{ "node": "Respond 200", "type": "main", "index": 0 }]]
+    },
+    "Send Email (Resend)": {
+      "main": [[{ "node": "Respond 200", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2026-03-12T00:00:00.000Z",
+  "versionId": "1"
+}
