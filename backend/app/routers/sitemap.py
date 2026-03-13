@@ -98,7 +98,7 @@ def sitemap(db: Session = Depends(get_db)):
     ):
         if symbol not in stocks_with_content:
             continue  # skip stocks with no price + no revenue data — thin content
-        lm = lastmod_map.get(("stock_insight", symbol)) or lastmod_map.get(("stock", symbol))
+        lm = lastmod_map.get(("stock_insight", symbol)) or lastmod_map.get(("stock", symbol)) or today
         entries.append(_url(f"{BASE}/stocks/{symbol.lower()}/", "0.7", "daily", lm))
 
     # Indices → /indices/{symbol}  (all active index assets)
@@ -135,7 +135,7 @@ def sitemap(db: Session = Depends(get_db)):
 
     # Countries → /countries/{code}
     for (code,) in db.execute(select(Country.code).where(Country.code.isnot(None))):
-        lm = lastmod_map.get(("country_insight", code)) or lastmod_map.get(("country", code))
+        lm = lastmod_map.get(("country_insight", code)) or lastmod_map.get(("country", code)) or today
         entries.append(_url(f"{BASE}/countries/{code.lower()}/", "0.7", "weekly", lm))
 
     # Trade pairs → /trade/{exp}-{imp}
@@ -159,7 +159,10 @@ def sitemap(db: Session = Depends(get_db)):
             continue
         seen_trade_pairs.add(canonical_key)
         pair_code = f"{exp_code}-{imp_code}"
-        lm = lastmod_map.get(("trade_insight", pair_code)) or lastmod_map.get(("trade", pair_code))
+        rev_code = f"{imp_code}-{exp_code}"
+        lm = (lastmod_map.get(("trade_insight", pair_code)) or lastmod_map.get(("trade", pair_code))
+              or lastmod_map.get(("trade_insight", rev_code)) or lastmod_map.get(("trade", rev_code))
+              or today)
         entries.append(_url(f"{BASE}/trade/{exp_code.lower()}-{imp_code.lower()}/", "0.6", "daily", lm))
 
     # Blog posts → /blog/{slug}/
