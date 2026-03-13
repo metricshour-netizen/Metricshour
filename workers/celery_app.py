@@ -264,5 +264,12 @@ app.conf.update(
             'task': 'tasks.trade_update.update_trade_data_quarterly',
             'schedule': crontab(hour=3, minute=0, day_of_month=1, month_of_year='4,7,10'),
         },
+
+        # Data quality monitor — daily 9am UTC
+        'data-quality-monitor-daily-9am': {
+            'task': 'tasks.data_quality_monitor.check_data_quality',
+            'schedule': crontab(hour=9, minute=0),
+            'args': (),
+        },
     },
 )
