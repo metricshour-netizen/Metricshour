@@ -137,7 +137,11 @@ def _generate_price_moves(db) -> list[tuple[str, str]]:
     Returns list of (entity_type, entity_code) tuples for significant events.
     """
     now = datetime.now(timezone.utc)
-    window_start = now - timedelta(minutes=5)   # compare last 5-min price
+    # Wide windows to survive late/missed fetches: latest = last 22 min,
+    # prev = 22–45 min ago. Matches 15-min price fetch cadence.
+    latest_cutoff = now - timedelta(minutes=22)
+    prev_end      = latest_cutoff
+    prev_start    = now - timedelta(minutes=45)
 
     assets = db.query(Asset).filter(Asset.is_active == True).all()
     triggered: list[tuple[str, str]] = []
@@ -146,7 +150,7 @@ def _generate_price_moves(db) -> list[tuple[str, str]]:
         # Latest price
         latest = (
             db.query(Price)
-            .filter(Price.asset_id == asset.id, Price.timestamp >= window_start)
+            .filter(Price.asset_id == asset.id, Price.timestamp >= latest_cutoff)
             .order_by(Price.timestamp.desc())
             .first()
         )
@@ -158,8 +162,8 @@ def _generate_price_moves(db) -> list[tuple[str, str]]:
             db.query(Price)
             .filter(
                 Price.asset_id == asset.id,
-                Price.timestamp < window_start,
-                Price.timestamp >= window_start - timedelta(minutes=15),
+                Price.timestamp < prev_end,
+                Price.timestamp >= prev_start,
             )
             .order_by(Price.timestamp.desc())
             .first()
@@ -185,7 +189,7 @@ def _generate_price_moves(db) -> list[tuple[str, str]]:
         subtype = asset.asset_type.value  # stock, crypto, commodity, fx
 
         # Dedup check BEFORE calling AI — skip AI if this event would be dropped anyway
-        dedup_cutoff = now - timedelta(minutes=5)
+        dedup_cutoff = now - timedelta(minutes=15)
         already_exists = db.query(FeedEvent.id).filter(
             FeedEvent.event_type == "price_move",
             FeedEvent.event_subtype == subtype,
@@ -346,7 +350,7 @@ def _upsert_feed_event(
     Window: 15 min for price_move, 6 hours for macro/indicator.
     """
     if event_type == 'price_move':
-        dedup_minutes = 5    # one card per asset per 5 min — high-frequency feed
+        dedup_minutes = 15   # one card per asset per 15 min — matches fetch cadence
     else:
         # macro/indicator: one card per (country, indicator, period) — never re-publish.
         # subtype encodes the period (e.g. "gdp_growth_pct:2024-01") so the same
