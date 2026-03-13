@@ -26,9 +26,11 @@ from fastapi.responses import Response
 from PIL import Image, ImageDraw, ImageFont
 from sqlalchemy.orm import Session
 
+from sqlalchemy import select, or_
+
 from app.database import get_db
 from app.models.feed import FeedEvent
-from app.models.country import Country, CountryIndicator
+from app.models.country import Country, CountryIndicator, TradePair
 from app.models.asset import Asset, AssetType, Price
 
 log = logging.getLogger(__name__)
@@ -537,7 +539,6 @@ def og_feed(event_id: int, db: Session = Depends(get_db)):
 
 @router.get("/og/countries/{code}.png", include_in_schema=False)
 def og_country(code: str, db: Session = Depends(get_db)):
-    from sqlalchemy import select
     country = db.query(Country).filter(Country.code == code.upper()).first()
     if country is None:
         raise HTTPException(status_code=404, detail="Country not found")
@@ -571,8 +572,6 @@ def og_country(code: str, db: Session = Depends(get_db)):
 @router.get("/og/trade/{pair}.png", include_in_schema=False)
 def og_trade(pair: str, db: Session = Depends(get_db)):
     """On-demand OG image for /trade/{pair} pages (e.g. 'us-cn')."""
-    from sqlalchemy import select, or_
-    from app.models.country import TradePair
     # pair = "us-cn" — split on first hyphen; country codes have no hyphens
     parts = pair.lower().split("-", 1)
     if len(parts) != 2:
@@ -645,7 +644,6 @@ def og_index(symbol: str):
 
 @router.get("/og/stocks/{symbol}.png", include_in_schema=False)
 def og_stock(symbol: str, db: Session = Depends(get_db)):
-    from sqlalchemy import select
     asset = db.query(Asset).filter(
         Asset.symbol == symbol.upper(), Asset.asset_type == AssetType.stock
     ).first()
