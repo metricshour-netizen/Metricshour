@@ -75,6 +75,27 @@ def fetch_fx_rates(self):
         except Exception:
             log.exception('FX yfinance fetch failed')
 
+        # Fallback: retry any symbol that got no 15m data using daily interval.
+        # Some EM pairs (CNY, INR, BRL) have sparse intraday coverage on yfinance.
+        missing = [s for s in yf_symbols if s not in prices]
+        if missing:
+            try:
+                tickers = missing if len(missing) > 1 else missing * 2
+                df_daily = yf.download(
+                    tickers, period='5d', interval='1d',
+                    group_by='ticker', progress=False, threads=True,
+                )
+                for yf_sym in missing:
+                    try:
+                        close = df_daily[yf_sym]['Close'].dropna()
+                        if not close.empty:
+                            prices[yf_sym] = float(close.iloc[-1])
+                            log.info('FX daily fallback OK: %s', yf_sym)
+                    except (KeyError, IndexError, TypeError):
+                        log.warning('FX no data (15m+1d): %s', yf_sym)
+            except Exception:
+                log.exception('FX daily fallback fetch failed')
+
         now = datetime.now(timezone.utc).replace(second=0, microsecond=0)
         rows = [
             {

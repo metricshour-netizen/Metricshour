@@ -137,8 +137,9 @@ def _generate_price_moves(db) -> list[tuple[str, str]]:
     Returns list of (entity_type, entity_code) tuples for significant events.
     """
     now = datetime.now(timezone.utc)
-    # Wide windows to survive late/missed fetches: latest = last 22 min,
-    # prev = 22–45 min ago. Matches 15-min price fetch cadence.
+    # Prices are fetched every 15 min — use a 22-min window so a price
+    # fetched up to one full cycle ago is still eligible as "latest".
+    # Prev window goes back a further 20 min (one full fetch cycle before that).
     latest_cutoff = now - timedelta(minutes=22)
     prev_end      = latest_cutoff
     prev_start    = now - timedelta(minutes=45)
@@ -147,7 +148,7 @@ def _generate_price_moves(db) -> list[tuple[str, str]]:
     triggered: list[tuple[str, str]] = []
 
     for asset in assets:
-        # Latest price
+        # Latest price — most recent within the last 22 min
         latest = (
             db.query(Price)
             .filter(Price.asset_id == asset.id, Price.timestamp >= latest_cutoff)
@@ -157,7 +158,7 @@ def _generate_price_moves(db) -> list[tuple[str, str]]:
         if latest is None:
             continue
 
-        # Price from ~15 min ago
+        # Previous price — the fetch one cycle earlier (22–45 min ago)
         prev = (
             db.query(Price)
             .filter(
