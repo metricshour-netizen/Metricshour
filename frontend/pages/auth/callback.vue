@@ -31,7 +31,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   access_denied: 'Access was denied. Please try again.',
 }
 
-onMounted(() => {
+onMounted(async () => {
   const token = route.query.token as string
   const err = route.query.error as string
 
@@ -47,8 +47,7 @@ onMounted(() => {
     return
   }
 
-  const tier = (route.query.tier as string) || 'free'
-  loginWithToken(token, tier)
+  await loginWithToken(token)
   navigateTo('/')
 })
 </script>

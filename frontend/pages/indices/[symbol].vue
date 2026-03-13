@@ -224,8 +224,6 @@ const chartOption = computed(() => {
   }
 })
 
-onUnmounted(() => {})
-
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function fmtPrice(v: number): string {
   if (v >= 10000) return v.toLocaleString(undefined, { maximumFractionDigits: 0 })

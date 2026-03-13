@@ -13,7 +13,11 @@ import secrets
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
 
+import logging
+
 import requests as http_requests
+
+log = logging.getLogger(__name__)
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -159,8 +163,8 @@ def register(request: Request, body: RegisterIn, db: Session = Depends(get_db)):
     # Welcome email — fire and forget (don't fail registration if email fails)
     try:
         send_welcome_email(user.email)
-    except Exception:
-        pass
+    except Exception as exc:
+        log.warning("welcome email failed for %s: %s", user.email, exc)
 
     return TokenOut(access_token=_make_token(user.id, user.tier, user.is_admin), tier=user.tier)
 
@@ -233,8 +237,8 @@ def forgot_password(request: Request, body: ForgotIn, db: Session = Depends(get_
         from app.notifications import send_password_reset_email
         try:
             send_password_reset_email(user.email, token)
-        except Exception:
-            pass
+        except Exception as exc:
+            log.warning("password reset email failed for %s: %s", user.email, exc)
 
 
 @router.post("/reset-password", status_code=status.HTTP_204_NO_CONTENT)
@@ -360,8 +364,8 @@ def google_callback(
         db.refresh(user)
         try:
             send_welcome_email(user.email)
-        except Exception:
-            pass
+        except Exception as exc:
+            log.warning("welcome email failed for %s: %s", user.email, exc)
 
     now = datetime.now(timezone.utc)
     user.last_login_at = now
