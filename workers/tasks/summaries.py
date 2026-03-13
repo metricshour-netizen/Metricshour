@@ -98,13 +98,14 @@ def _fmt_cap(v) -> str:
 
 # ── AI helpers ────────────────────────────────────────────────────────────────
 # Cost-optimised routing:
-#   gemini-2.5-flash-lite    → single Gemini model for all calls (cheap, fast)
+#   gemini-2.5-flash      → long-form content (G20, quality matters)
+#   gemini-2.5-flash-lite → short insights (fast, cheap)
 #   deepseek-chat            → primary bulk (cheapest; Gemini is fallback only)
 #
 #   prefer_gemini=True  → Gemini first, DeepSeek fallback  (used for G20 only)
 #   prefer_gemini=False → DeepSeek first, Gemini fallback  (all other entities)
 #
-# Both paths use the same gemini-2.5-flash-lite — no expensive premium tier.
+# Long-form (>150w): gemini-2.5-flash. Short insights: flash-lite via caller override.
 # Keys never logged.
 # Falls back gracefully if either key is absent.
 
@@ -124,8 +125,8 @@ def _strip_markdown(text: str) -> str:
 
 
 def _call_gemini(prompt: str, min_words: int = 55, max_words: int = 110,
-                 model: str = "gemini-2.5-flash-lite") -> str | None:
-    """Call Gemini 2.5 Flash Lite. Returns None on any failure."""
+                 model: str = "gemini-2.5-flash") -> str | None:
+    """Call Gemini AI model. Returns None on any failure."""
     api_key = os.environ.get("GEMINI_API_KEY", "")
     if not api_key:
         return None
