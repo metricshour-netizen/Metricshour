@@ -256,7 +256,11 @@
 
       <!-- Country macro comparison -->
       <div class="bg-[#111827] border border-[#1f2937] rounded-xl p-6 mb-6">
-        <h2 class="text-base font-bold text-white mb-5">Country Comparison</h2>
+        <h2 class="text-base font-bold text-white mb-1">Country Comparison</h2>
+        <p class="text-xs text-gray-500 mb-5">
+          Key macroeconomic indicators for both countries — context for understanding the trade relationship.
+          GDP size determines trade capacity; growth and inflation shape exchange rate and purchasing power dynamics.
+        </p>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div v-for="c in [{ country: data.exporter, code: codeA }, { country: data.importer, code: codeB }]" :key="c.code">
             <div class="flex items-center gap-3 mb-3">
@@ -333,13 +337,24 @@
             :to="`/countries/${codeA}`"
             class="flex items-center gap-2 text-xs text-gray-500 hover:text-gray-300 bg-[#0d1117] border border-[#1f2937] px-3 py-2 rounded-lg transition-colors"
           >
+            <span aria-hidden="true">{{ data.exporter.flag }}</span>
             {{ data.exporter.name }} macro data →
           </NuxtLink>
           <NuxtLink
             :to="`/countries/${codeB}`"
             class="flex items-center gap-2 text-xs text-gray-500 hover:text-gray-300 bg-[#0d1117] border border-[#1f2937] px-3 py-2 rounded-lg transition-colors"
           >
+            <span aria-hidden="true">{{ data.importer.flag }}</span>
             {{ data.importer.name }} macro data →
+          </NuxtLink>
+          <NuxtLink
+            :to="`/compare/${[codeA, codeB].sort().join('-vs-')}`"
+            class="flex items-center gap-2 text-xs text-gray-500 hover:text-emerald-400 bg-[#0d1117] border border-[#1f2937] hover:border-emerald-800 px-3 py-2 rounded-lg transition-colors"
+          >
+            <span aria-hidden="true">{{ data.exporter.flag }}</span>
+            <span class="text-gray-600">vs</span>
+            <span aria-hidden="true">{{ data.importer.flag }}</span>
+            Compare economies →
           </NuxtLink>
         </div>
       </div>

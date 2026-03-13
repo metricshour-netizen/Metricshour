@@ -1,6 +1,11 @@
 <template>
   <ClientOnly>
-    <div ref="el" :style="{ height: height, width: '100%' }" />
+    <div
+      ref="el"
+      :style="{ height: height, width: '100%' }"
+      role="img"
+      :aria-label="ariaLabel || 'Chart'"
+    />
     <template #fallback>
       <div :style="{ height: height }" class="bg-[#0d1117] rounded-lg animate-pulse" />
     </template>
@@ -23,6 +28,7 @@ use([LineChart, TooltipComponent, GridComponent, DataZoomComponent, LegendCompon
 const props = withDefaults(defineProps<{
   option: Record<string, any>
   height?: string
+  ariaLabel?: string
 }>(), {
   height: '200px',
 })

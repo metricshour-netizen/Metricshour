@@ -148,7 +148,12 @@
         <div v-if="!gdpHistory?.length" class="h-36 flex items-center justify-center text-gray-600 text-xs">
           No GDP history data available
         </div>
-        <EChartLine v-else :option="gdpChartOption" height="160px" />
+        <EChartLine
+          v-else
+          :option="gdpChartOption"
+          height="160px"
+          :aria-label="`${country?.name} GDP history chart`"
+        />
       </div>
 
       <!-- Macro indicators chart -->
@@ -161,7 +166,12 @@
         <div v-else-if="!hasTimeseries" class="h-44 flex items-center justify-center text-gray-600 text-xs">
           Indicator history not available
         </div>
-        <EChartLine v-else :option="macroChartOption" height="176px" />
+        <EChartLine
+          v-else
+          :option="macroChartOption"
+          height="176px"
+          :aria-label="`${country?.name} GDP growth, inflation, interest rate and unemployment over time`"
+        />
       </div>
 
       <!-- Macro indicators -->
@@ -309,7 +319,11 @@
       <!-- Global stocks exposed -->
       <div class="bg-[#111827] border border-[#1f2937] rounded-lg p-6 mb-4">
         <h2 class="text-sm font-bold text-white mb-1">Global stocks exposed to {{ country.name }}</h2>
-        <p class="text-xs text-gray-500 mb-4">Companies worldwide with significant revenue from this country — SEC EDGAR 10-K</p>
+        <p class="text-xs text-gray-500 mb-4">
+          Companies worldwide with significant revenue from {{ country.name }} — ranked by revenue share.
+          Each bar shows what percentage of that company's total annual revenue comes from {{ country.name }}.
+          Source: SEC EDGAR 10-K.
+        </p>
         <div v-if="stocksLoading" class="space-y-2">
           <div v-for="i in 5" :key="i" class="h-6 bg-[#1f2937] rounded animate-pulse"/>
         </div>
@@ -323,7 +337,14 @@
           >
             <span class="w-16 text-xs font-mono font-bold text-emerald-400 group-hover:text-emerald-300 shrink-0">{{ s.symbol }}</span>
             <span class="text-xs text-gray-400 flex-1 truncate group-hover:text-gray-200 transition-colors">{{ s.name }}</span>
-            <div class="w-24 bg-[#1f2937] rounded-full h-1.5 shrink-0">
+            <div
+              class="w-24 bg-[#1f2937] rounded-full h-1.5 shrink-0"
+              role="progressbar"
+              :aria-valuenow="s.revenue_pct"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              :aria-label="`${s.symbol} earns ${s.revenue_pct.toFixed(1)}% of revenue from ${country.name}`"
+            >
               <div class="bg-emerald-500 h-full rounded-full" :style="{ width: `${Math.min(s.revenue_pct, 100)}%` }"/>
             </div>
             <span class="text-xs text-white tabular-nums w-10 text-right shrink-0">{{ s.revenue_pct.toFixed(1) }}%</span>

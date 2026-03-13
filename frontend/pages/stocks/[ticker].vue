@@ -224,7 +224,12 @@
           <span class="text-gray-700 text-2xl">📈</span>
           <span class="text-gray-600 text-xs">Price feed warming up — check back shortly</span>
         </div>
-        <EChartLine v-else :option="priceChartOption" height="200px" />
+        <EChartLine
+          v-else
+          :option="priceChartOption"
+          height="200px"
+          :aria-label="`${stock.symbol} price chart — ${priceRangeLabel}`"
+        />
 
         <div v-if="visiblePrices.length" class="flex items-center justify-between mt-2">
           <span class="text-[10px] text-gray-600">{{ priceRangeLabel }}</span>
@@ -318,6 +323,7 @@
         </div>
         <p class="text-xs text-gray-500 mb-4">
           {{ stock.sector }} sector peers — compare geographic revenue exposure and market cap across similar companies.
+          Click any stock to see its full geographic revenue breakdown from SEC EDGAR.
         </p>
         <div v-if="relatedLoading" class="space-y-2">
           <div v-for="i in 4" :key="i" class="h-10 bg-[#1f2937] rounded-lg animate-pulse"/>
@@ -338,6 +344,15 @@
               </div>
             </div>
             <span class="text-sm font-semibold text-white tabular-nums">{{ fmtCap(s.market_cap_usd) }}</span>
+          </NuxtLink>
+        </div>
+        <!-- Compare link for first peer -->
+        <div v-if="relatedStocks?.length" class="mt-4 pt-4 border-t border-[#1f2937]">
+          <NuxtLink
+            :to="`/compare/${[stock.country?.code?.toLowerCase() ?? 'us', relatedStocks[0].country?.code?.toLowerCase() ?? 'us'].sort().join('-vs-')}`"
+            class="text-xs text-emerald-600 hover:text-emerald-400 transition-colors"
+          >
+            Compare {{ stock.country?.name || 'HQ country' }} vs {{ relatedStocks[0].country?.name || 'peer country' }} economy →
           </NuxtLink>
         </div>
       </div>

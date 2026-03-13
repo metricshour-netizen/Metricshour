@@ -26,23 +26,20 @@ router = APIRouter()
 
 BASE = "https://metricshour.com"
 
-# lastmod = today for pages that update frequently, None for static pages
-_TODAY = date.today().isoformat()
-
-STATIC_ROUTES = [
-    (f"{BASE}/",              "1.0", "daily",   _TODAY),
-    (f"{BASE}/markets/",      "0.9", "daily",   _TODAY),
-    (f"{BASE}/stocks/",       "0.9", "daily",   _TODAY),
-    (f"{BASE}/countries/",    "0.9", "weekly",  _TODAY),
-    (f"{BASE}/compare/",      "0.7", "weekly",  _TODAY),
-    (f"{BASE}/trade/",        "0.9", "weekly",  _TODAY),
-    (f"{BASE}/commodities/",  "0.8", "daily",   _TODAY),
-    (f"{BASE}/feed/",         "0.8", "hourly",  _TODAY),
-    (f"{BASE}/blog/",         "0.7", "weekly",  _TODAY),
-    (f"{BASE}/pricing/",      "0.7", "monthly", _TODAY),
-    (f"{BASE}/about/",        "0.6", "monthly", _TODAY),
-    (f"{BASE}/privacy/",      "0.3", "yearly",  _TODAY),
-    (f"{BASE}/terms/",        "0.3", "yearly",  _TODAY),
+STATIC_ROUTE_TEMPLATES = [
+    (f"{BASE}/",              "1.0", "daily"),
+    (f"{BASE}/markets/",      "0.9", "daily"),
+    (f"{BASE}/stocks/",       "0.9", "daily"),
+    (f"{BASE}/countries/",    "0.9", "weekly"),
+    (f"{BASE}/compare/",      "0.7", "weekly"),
+    (f"{BASE}/trade/",        "0.9", "weekly"),
+    (f"{BASE}/commodities/",  "0.8", "daily"),
+    (f"{BASE}/feed/",         "0.8", "hourly"),
+    (f"{BASE}/blog/",         "0.7", "weekly"),
+    (f"{BASE}/pricing/",      "0.7", "monthly"),
+    (f"{BASE}/about/",        "0.6", "monthly"),
+    (f"{BASE}/privacy/",      "0.3", "yearly"),
+    (f"{BASE}/terms/",        "0.3", "yearly"),
 ]
 
 
@@ -60,6 +57,9 @@ def _url(loc: str, priority: str, changefreq: str, lastmod: str | None = None) -
 
 @router.get("/sitemap.xml", include_in_schema=False)
 def sitemap(db: Session = Depends(get_db)):
+    # Compute today's date fresh per request so lastmod is never stale
+    today = date.today().isoformat()
+
     # Pull actual last-updated timestamps from page_summaries so Google sees
     # accurate lastmod per URL instead of a bulk-same timestamp.
     # Key: (entity_type, entity_code) → "YYYY-MM-DD"
@@ -69,7 +69,7 @@ def sitemap(db: Session = Depends(get_db)):
     ):
         lastmod_map[(row.entity_type, row.entity_code)] = row.generated_at.strftime("%Y-%m-%d")
 
-    entries: list[str] = [_url(loc, pri, freq, lm) for loc, pri, freq, lm in STATIC_ROUTES]
+    entries: list[str] = [_url(loc, pri, freq, today) for loc, pri, freq in STATIC_ROUTE_TEMPLATES]
 
     # Stocks → /stocks/{symbol} — only stocks with price OR revenue data (avoid thin content)
     stocks_with_prices = {
@@ -109,7 +109,7 @@ def sitemap(db: Session = Depends(get_db)):
             Asset.symbol.isnot(None),
         )
     ):
-        lm = lastmod_map.get(("index_insight", symbol)) or lastmod_map.get(("index", symbol)) or _TODAY
+        lm = lastmod_map.get(("index_insight", symbol)) or lastmod_map.get(("index", symbol)) or today
         entries.append(_url(f"{BASE}/indices/{symbol.lower()}/", "0.6", "daily", lm))
 
     # Commodities → /commodities/{symbol}  (only those with actual price data)
@@ -130,7 +130,7 @@ def sitemap(db: Session = Depends(get_db)):
     ):
         if symbol not in commodity_symbols_with_prices:
             continue  # skip commodities with no price data — thin content penalty risk
-        lm = lastmod_map.get(("commodity_insight", symbol)) or lastmod_map.get(("commodity", symbol)) or _TODAY
+        lm = lastmod_map.get(("commodity_insight", symbol)) or lastmod_map.get(("commodity", symbol)) or today
         entries.append(_url(f"{BASE}/commodities/{symbol.lower()}/", "0.7", "daily", lm))
 
     # Countries → /countries/{code}
@@ -169,7 +169,7 @@ def sitemap(db: Session = Depends(get_db)):
         .order_by(BlogPost.published_at.desc())
     ).all()
     for post in blog_posts:
-        lm = post.published_at.date().isoformat() if post.published_at else _TODAY
+        lm = post.published_at.date().isoformat() if post.published_at else today
         entries.append(_url(f"{BASE}/blog/{post.slug}/", "0.7", "monthly", lm))
 
     # Compare pages → /compare/{a}-vs-{b}
@@ -198,7 +198,7 @@ def sitemap(db: Session = Depends(get_db)):
                 continue
             seen_compare.add(key)
             a_lower, b_lower = key[0].lower(), key[1].lower()
-            entries.append(_url(f"{BASE}/compare/{a_lower}-vs-{b_lower}/", "0.5", "weekly", _TODAY))
+            entries.append(_url(f"{BASE}/compare/{a_lower}-vs-{b_lower}/", "0.5", "weekly", today))
 
     xml = (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
@@ -212,7 +212,7 @@ def sitemap(db: Session = Depends(get_db)):
         media_type="application/xml",
         headers={
             "Content-Type": "application/xml; charset=utf-8",
-            "Cache-Control": "public, max-age=3600, s-maxage=3600",
+            "Cache-Control": "public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400",
         },
     )
 
