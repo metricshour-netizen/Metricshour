@@ -68,6 +68,7 @@ app = Celery('metricshour', include=[
     'tasks.r2_snapshots',
     'tasks.social_content',
     'tasks.seo_monitor',
+    'tasks.security_monitor',
 ])
 
 # Use SSL only for rediss:// URLs (Upstash); skip for local redis:// (DragonflyDB)
@@ -270,6 +271,12 @@ app.conf.update(
             'task': 'tasks.data_quality_monitor.check_data_quality',
             'schedule': crontab(hour=9, minute=0),
             'args': (),
+        },
+
+        # Security monitor — hourly: SSH brute-force, nginx spikes, fail2ban, UFW, open ports
+        'security-monitor-hourly': {
+            'task': 'tasks.security_monitor.run_security_checks',
+            'schedule': 3600.0,
         },
     },
 )
