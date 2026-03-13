@@ -41,6 +41,8 @@ STATIC_ROUTES = [
     (f"{BASE}/blog/",         "0.7", "weekly",  _TODAY),
     (f"{BASE}/pricing/",      "0.7", "monthly", _TODAY),
     (f"{BASE}/about/",        "0.6", "monthly", _TODAY),
+    (f"{BASE}/privacy/",      "0.3", "yearly",  _TODAY),
+    (f"{BASE}/terms/",        "0.3", "yearly",  _TODAY),
 ]
 
 
@@ -128,7 +130,8 @@ def sitemap(db: Session = Depends(get_db)):
     ):
         if symbol not in commodity_symbols_with_prices:
             continue  # skip commodities with no price data — thin content penalty risk
-        entries.append(_url(f"{BASE}/commodities/{symbol.lower()}/", "0.7", "daily", _TODAY))
+        lm = lastmod_map.get(("commodity_insight", symbol)) or lastmod_map.get(("commodity", symbol)) or _TODAY
+        entries.append(_url(f"{BASE}/commodities/{symbol.lower()}/", "0.7", "daily", lm))
 
     # Countries → /countries/{code}
     for (code,) in db.execute(select(Country.code).where(Country.code.isnot(None))):

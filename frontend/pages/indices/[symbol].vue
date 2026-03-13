@@ -301,7 +301,7 @@ useSeoMeta({
   description: _seoDesc,
   ogTitle: _seoTitle,
   ogDescription: _seoDesc,
-  ogUrl: `https://metricshour.com/indices/${symbol.toLowerCase()}`,
+  ogUrl: `https://metricshour.com/indices/${symbol.toLowerCase()}/`,
   ogType: 'website',
   ogImage: ogImageUrl,
   ogImageWidth: '1200',
@@ -313,7 +313,7 @@ useSeoMeta({
 })
 
 useHead(computed(() => ({
-  link: [{ rel: 'canonical', href: `https://metricshour.com/indices/${symbol.toLowerCase()}` }],
+  link: [{ rel: 'canonical', href: `https://metricshour.com/indices/${symbol.toLowerCase()}/` }],
   script: index.value ? [
     {
       type: 'application/ld+json',

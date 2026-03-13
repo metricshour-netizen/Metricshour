@@ -436,7 +436,7 @@ useSeoMeta({
   description: _seoDesc,
   ogTitle: _seoTitle,
   ogDescription: _seoDesc,
-  ogUrl: `https://metricshour.com/commodities/${symbol.toLowerCase()}`,
+  ogUrl: `https://metricshour.com/commodities/${symbol.toLowerCase()}/`,
   ogType: 'website',
   ogImage: _ogImage,
   ogImageWidth: '1200',
@@ -449,7 +449,7 @@ useSeoMeta({
 })
 
 useHead(computed(() => ({
-  link: [{ rel: 'canonical', href: `https://metricshour.com/commodities/${symbol.toLowerCase()}` }],
+  link: [{ rel: 'canonical', href: `https://metricshour.com/commodities/${symbol.toLowerCase()}/` }],
   script: [
     {
       type: 'application/ld+json',
