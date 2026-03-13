@@ -654,7 +654,7 @@ async function generateImage(format: 'story' | 'post'): Promise<Blob> {
 }
 
 async function handleCopy() {
-  const text = publicShareUrl
+  const text = publicShareUrl.value
   try {
     await navigator.clipboard.writeText(text)
   } catch {
@@ -765,8 +765,8 @@ const shareFormat = ref<'post' | 'story'>('post')
 const shareGenerating = ref(false)
 const shareToast = ref('')
 
-// Clean public URL — no api. subdomain shown to users
-const publicShareUrl = 'https://metricshour.com'
+// Per-event share URL — routes through /s/:id for correct OG meta on social crawlers
+const publicShareUrl = computed(() => shareUrl.value)
 
 async function _getShareBlob(): Promise<Blob | null> {
   shareGenerating.value = true
@@ -807,7 +807,7 @@ async function sharePlatform(platform: 'twitter' | 'whatsapp' | 'linkedin') {
         title: cleanTitle.value,
         text: cleanTitle.value,
         // Note: some platforms (iOS) show url below the image
-        url: publicShareUrl,
+        url: publicShareUrl.value,
       })
       showSharePanel.value = false
       return
@@ -822,7 +822,7 @@ async function sharePlatform(platform: 'twitter' | 'whatsapp' | 'linkedin') {
   _showToast('Image saved — attach it to your post!')
 
   const text = encodeURIComponent(cleanTitle.value)
-  const link = encodeURIComponent(publicShareUrl)
+  const link = encodeURIComponent(publicShareUrl.value)
   const platformUrls: Record<string, string> = {
     twitter:  `https://twitter.com/intent/tweet?text=${text}&url=${link}`,
     whatsapp: `https://wa.me/?text=${text}%20${link}`,
@@ -843,7 +843,7 @@ async function nativeShare() {
   if (!blob) return
   const file = new File([blob], `metricshour-${props.event.id}-${shareFormat.value}.png`, { type: 'image/png' })
   try {
-    const shareData: ShareData = { title: cleanTitle.value, text: cleanTitle.value, url: publicShareUrl }
+    const shareData: ShareData = { title: cleanTitle.value, text: cleanTitle.value, url: publicShareUrl.value }
     if (navigator.canShare?.({ files: [file] })) {
       await navigator.share({ ...shareData, files: [file] })
     } else if (navigator.share) {

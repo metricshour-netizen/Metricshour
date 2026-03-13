@@ -138,7 +138,6 @@ def _generate_price_moves(db) -> list[tuple[str, str]]:
     """
     now = datetime.now(timezone.utc)
     window_start = now - timedelta(minutes=5)   # compare last 5-min price
-    dedup_window = now - timedelta(minutes=6)   # slightly wider for query safety
 
     assets = db.query(Asset).filter(Asset.is_active == True).all()
     triggered: list[tuple[str, str]] = []
@@ -349,10 +348,10 @@ def _upsert_feed_event(
     if event_type == 'price_move':
         dedup_minutes = 5    # one card per asset per 5 min — high-frequency feed
     else:
-        # macro/indicator: one card per (country, indicator, period) per 30 days
-        # subtype now encodes the period (e.g. "gdp_growth_pct:2024-01") so the
-        # same data point is never duplicated even if the worker re-runs.
-        dedup_minutes = 43200  # 30 days
+        # macro/indicator: one card per (country, indicator, period) — never re-publish.
+        # subtype encodes the period (e.g. "gdp_growth_pct:2024-01") so the same
+        # data point is permanent. 1-year window handles any edge-case clock skew.
+        dedup_minutes = 525960  # 1 year
 
     dedup_cutoff = published_at - timedelta(minutes=dedup_minutes)
 

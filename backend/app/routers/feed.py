@@ -64,8 +64,6 @@ def _require_user(
     db: Session = Depends(get_db),
 ) -> User:
     """Return the authenticated User or raise 401."""
-    user = _optional_user.__wrapped__(token, db) if hasattr(_optional_user, "__wrapped__") else None
-    # Inline the logic cleanly
     if token is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
     try:
