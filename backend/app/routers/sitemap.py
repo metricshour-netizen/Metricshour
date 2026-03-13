@@ -55,7 +55,7 @@ def _url(loc: str, priority: str, changefreq: str, lastmod: str | None = None) -
     )
 
 
-@router.get("/sitemap.xml", include_in_schema=False)
+@router.api_route("/sitemap.xml", methods=["GET", "HEAD"], include_in_schema=False)
 def sitemap(db: Session = Depends(get_db)):
     # Compute today's date fresh per request so lastmod is never stale
     today = date.today().isoformat()
@@ -220,7 +220,7 @@ def sitemap(db: Session = Depends(get_db)):
     )
 
 
-@router.get("/robots.txt")
+@router.api_route("/robots.txt", methods=["GET", "HEAD"])
 def robots_txt() -> Response:
     """Serve robots.txt from the API so Sitemap directive isn't overridden by Cloudflare managed content."""
     content = (
