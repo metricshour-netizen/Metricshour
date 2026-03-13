@@ -33,8 +33,8 @@
                 </div>
               </div>
               <div class="flex flex-col items-center gap-1 px-2">
-                <div class="text-2xl text-gray-500">↔</div>
-                <div class="text-[10px] text-gray-600 uppercase tracking-wider">bilateral</div>
+                <div class="text-2xl text-gray-500" aria-hidden="true">↔</div>
+                <div class="text-[10px] text-gray-600 uppercase tracking-wider" aria-hidden="true">bilateral</div>
               </div>
               <div class="flex items-center gap-3">
                 <div class="w-14 h-14 rounded-xl bg-[#1f2937] border border-[#374151] flex items-center justify-center text-3xl" aria-hidden="true">
@@ -46,6 +46,13 @@
                 </div>
               </div>
             </div>
+            <!-- Static SEO intro — SSR-rendered, always visible to crawlers -->
+            <p v-if="data" class="text-xs text-gray-500 leading-relaxed mt-1 max-w-xl">
+              Bilateral trade corridor — {{ data.exporter.name }} and {{ data.importer.name }}.
+              <template v-if="td">Total goods trade: {{ fmtUsd(td.trade_value_usd) }}<template v-if="td.year"> ({{ td.year }})</template>. </template>
+              Exports, imports, trade balance, top products, and macro context.
+              <template v-if="td?.data_source">Source: {{ td.data_source }}.</template>
+            </p>
             <!-- Balance callout -->
             <div v-if="td" class="sm:text-right">
               <div class="text-xs text-gray-500 uppercase tracking-wider mb-1">Trade Balance</div>
@@ -110,7 +117,7 @@
         <div class="relative border rounded-lg p-4 overflow-hidden bg-[#0d1520] border-emerald-900/50 page-insight-latest">
           <div class="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent"/>
           <div class="flex items-start gap-3">
-            <span class="text-base mt-0.5 shrink-0 text-emerald-500">◆</span>
+            <span class="text-base mt-0.5 shrink-0 text-emerald-500" aria-hidden="true">◆</span>
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 mb-1.5 flex-wrap">
                 <span class="text-[10px] font-bold uppercase tracking-widest text-emerald-500">MetricsHour Intelligence</span>

@@ -35,6 +35,10 @@
                     }">{{ geoRisk }} GEO RISK</span>
                 </div>
                 <p class="text-gray-300 font-medium">{{ stock.name }}</p>
+                <p class="text-xs text-gray-500 leading-relaxed mt-1 max-w-lg">
+                  {{ stock.sector }} company{{ stock.country ? ` headquartered in ${stock.country.name}` : '' }}.
+                  Geographic revenue tracked across {{ stock.country_revenues?.length || 'multiple' }} markets — source: SEC EDGAR 10-K.
+                </p>
                 <p v-if="stock.country" class="text-gray-600 text-xs mt-0.5">{{ stock.country.name }} · {{ stock.industry || stock.sector }}</p>
               </div>
             </div>
@@ -102,7 +106,7 @@
         <div class="relative border rounded-lg p-4 overflow-hidden bg-[#0d1520] border-emerald-900/50 page-insight-latest">
           <div class="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent"/>
           <div class="flex items-start gap-3">
-            <span class="text-base mt-0.5 shrink-0 text-emerald-500">◆</span>
+            <span class="text-base mt-0.5 shrink-0 text-emerald-500" aria-hidden="true">◆</span>
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 mb-1.5 flex-wrap">
                 <span class="text-[10px] font-bold uppercase tracking-widest text-emerald-500">MetricsHour Intelligence</span>

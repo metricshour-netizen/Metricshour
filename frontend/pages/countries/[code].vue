@@ -18,6 +18,12 @@
             <p class="text-gray-500 text-sm">{{ country.region }} · {{ country.subregion }}</p>
           </div>
         </div>
+        <!-- Static SEO intro — SSR-rendered before pageSummary loads -->
+        <p class="text-xs text-gray-500 leading-relaxed mt-3 max-w-2xl">
+          {{ country.name }} economy dashboard — GDP, inflation, trade, and 80+ macroeconomic indicators.
+          {{ country.region }}{{ country.income_level ? ' · ' + country.income_level.replace(/_/g, ' ') + ' economy' : '' }}.
+          Top trade partners, global stock exposure, and monetary policy data from World Bank, IMF, and UN Comtrade.
+        </p>
         <!-- Hero stats -->
         <div class="flex gap-6 mt-4 flex-wrap">
           <div>
@@ -71,7 +77,7 @@
         <div class="relative border rounded-lg p-4 overflow-hidden bg-[#0d1520] border-emerald-900/50 page-insight-latest">
           <div class="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent"/>
           <div class="flex items-start gap-3">
-            <span class="text-base mt-0.5 shrink-0 text-emerald-500">◆</span>
+            <span class="text-base mt-0.5 shrink-0 text-emerald-500" aria-hidden="true">◆</span>
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 mb-1.5 flex-wrap">
                 <span class="text-[10px] font-bold uppercase tracking-widest text-emerald-500">MetricsHour Intelligence</span>
@@ -406,17 +412,23 @@
         </div>
       </div>
 
-      <!-- Compare with top partners -->
-      <div v-if="tradePartners?.length" class="mt-4 mb-2">
-        <p class="text-[11px] text-gray-600 mb-2">Compare with:</p>
+      <!-- Compare economies with top trade partners -->
+      <div v-if="tradePartners?.length" class="bg-[#111827] border border-[#1f2937] rounded-lg p-5 mb-6">
+        <h2 class="text-sm font-bold text-white mb-1">Compare {{ country.name }} economy</h2>
+        <p class="text-xs text-gray-500 mb-3">
+          Side-by-side GDP, inflation, and trade comparison with {{ country.name }}'s top trading partners.
+        </p>
         <div class="flex flex-wrap gap-2">
           <NuxtLink
-            v-for="p in (tradePartners || []).slice(0, 5)"
+            v-for="p in (tradePartners || []).slice(0, 6)"
             :key="p.partner.code"
             :to="`/compare/${[code.toLowerCase(), p.partner.code.toLowerCase()].sort().join('-vs-')}`"
-            class="text-[11px] text-emerald-600 hover:text-emerald-400 bg-[#111827] border border-[#1f2937] px-2 py-1 rounded transition-colors"
+            class="flex items-center gap-1.5 text-xs text-emerald-600 hover:text-emerald-400 bg-[#0d1117] border border-[#1f2937] hover:border-emerald-800 px-3 py-2 rounded-lg transition-colors"
           >
-            {{ p.partner.flag }} vs {{ p.partner.name }}
+            <span aria-hidden="true">{{ country.flag }}</span>
+            <span class="text-gray-600 text-[10px]">vs</span>
+            <span aria-hidden="true">{{ p.partner.flag }}</span>
+            {{ country.name }} vs {{ p.partner.name }} →
           </NuxtLink>
         </div>
       </div>
