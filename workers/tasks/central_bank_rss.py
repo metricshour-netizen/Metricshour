@@ -47,7 +47,7 @@ FEEDS = [
     {
         "name": "Bank of Japan",
         "country_code": "JP",
-        "url": "https://www.boj.or.jp/en/rss/index.htm",
+        "url": "https://www.boj.or.jp/en/rss/whatsnew.xml",
         "rate_keywords": ["policy interest rate", "short-term interest rate", "yield curve",
                           "monetary policy", "rate decision", "basis points"],
     },
