@@ -165,7 +165,14 @@
               <span class="text-base shrink-0" aria-hidden="true">{{ r.country.flag }}</span>
               <span class="text-xs text-gray-300 group-hover:text-emerald-400 truncate flex-1 transition-colors">{{ r.country.name }}</span>
             </NuxtLink>
-            <div class="flex-1 bg-[#1f2937] rounded-full h-3 overflow-hidden">
+            <div
+              class="flex-1 bg-[#1f2937] rounded-full h-3 overflow-hidden"
+              role="progressbar"
+              :aria-valuenow="r.revenue_pct"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              :aria-label="`${r.country.name}: ${r.revenue_pct.toFixed(1)}% of ${stock.symbol} revenue`"
+            >
               <div
                 class="h-full rounded-full transition-all"
                 :class="i === 0 ? 'bg-emerald-400' : i === 1 ? 'bg-emerald-500' : i === 2 ? 'bg-emerald-600' : 'bg-[#374151]'"
@@ -260,6 +267,19 @@
               <div class="text-sm font-bold text-white">{{ stock.country.indicators?.interest_rate_pct?.toFixed(2) ?? '—' }}%</div>
             </div>
           </div>
+          <!-- Cross-link: HQ country → top revenue market trade corridor -->
+          <div v-if="tradeFlowLinks.length" class="mt-3 pt-3 border-t border-[#1f2937]">
+            <p class="text-[10px] text-gray-600 mb-1.5">Key trade corridor for {{ stock.symbol }}</p>
+            <NuxtLink
+              :to="`/trade/${tradeFlowLinks[0].pair}`"
+              class="inline-flex items-center gap-2 text-xs text-emerald-600 hover:text-emerald-400 transition-colors"
+            >
+              <span aria-hidden="true">{{ stock.country.flag }}</span>
+              <span aria-hidden="true">↔</span>
+              <span aria-hidden="true">{{ tradeFlowLinks[0].flag }}</span>
+              {{ stock.country.name }} – {{ tradeFlowLinks[0].name }} bilateral trade →
+            </NuxtLink>
+          </div>
         </div>
       </div>
 
@@ -292,10 +312,13 @@
 
       <!-- Related Stocks -->
       <div v-if="stock.sector" class="bg-[#111827] border border-[#1f2937] rounded-xl p-6 mb-6">
-        <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center justify-between mb-1">
           <h2 class="text-base font-bold text-white">Related Stocks</h2>
           <span class="text-xs text-gray-500 bg-[#1f2937] px-2 py-1 rounded">{{ stock.sector }}</span>
         </div>
+        <p class="text-xs text-gray-500 mb-4">
+          {{ stock.sector }} sector peers — compare geographic revenue exposure and market cap across similar companies.
+        </p>
         <div v-if="relatedLoading" class="space-y-2">
           <div v-for="i in 4" :key="i" class="h-10 bg-[#1f2937] rounded-lg animate-pulse"/>
         </div>

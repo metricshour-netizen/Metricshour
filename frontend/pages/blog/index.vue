@@ -52,6 +52,14 @@
         </NuxtLink>
       </div>
 
+      <!-- Newsletter -->
+      <div class="mt-10 border border-gray-800 rounded-xl p-6 bg-gray-900/40 max-w-xl mx-auto">
+        <p class="text-xs font-mono text-emerald-500 uppercase tracking-widest mb-1">Weekly Briefing</p>
+        <p class="text-sm font-semibold text-white mb-1">More macro intelligence, every week.</p>
+        <p class="text-xs text-gray-500 mb-4">GDP, trade flows, market moves — free.</p>
+        <NewsletterCapture source="blog_index" button-text="Subscribe free" />
+      </div>
+
     </div>
   </div>
 </template>

@@ -147,17 +147,34 @@
 
       <!-- Trade flow visualiser -->
       <div v-if="td" class="bg-[#111827] border border-[#1f2937] rounded-xl p-5 mb-6">
-        <h2 class="text-sm font-bold text-white mb-4">Trade Flow</h2>
+        <h2 class="text-sm font-bold text-white mb-1">Trade Flow</h2>
+        <p class="text-xs text-gray-600 mb-4">
+          Proportional share of goods flowing in each direction — bars sized relative to total bilateral volume.
+        </p>
         <div class="flex items-center gap-3">
           <span class="text-2xl shrink-0" aria-hidden="true">{{ data.exporter.flag }}</span>
           <div class="flex-1">
             <div class="flex items-center gap-2 mb-1.5">
               <div class="text-[10px] text-emerald-400 uppercase tracking-wider font-bold">Exports {{ fmtUsd(td.exports_usd) }}</div>
             </div>
-            <div class="h-4 bg-[#1f2937] rounded-full overflow-hidden mb-1.5">
+            <div
+              class="h-4 bg-[#1f2937] rounded-full overflow-hidden mb-1.5"
+              role="progressbar"
+              :aria-valuenow="exportPct"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              :aria-label="`${data.exporter.name} exports ${fmtUsd(td.exports_usd)}, ${exportPct}% of total bilateral trade`"
+            >
               <div class="h-full bg-emerald-500/70 rounded-full" :style="{ width: exportPct + '%' }"/>
             </div>
-            <div class="h-4 bg-[#1f2937] rounded-full overflow-hidden">
+            <div
+              class="h-4 bg-[#1f2937] rounded-full overflow-hidden"
+              role="progressbar"
+              :aria-valuenow="importPct"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              :aria-label="`${data.importer.name} exports ${fmtUsd(td.imports_usd)}, ${importPct}% of total bilateral trade`"
+            >
               <div class="h-full bg-red-500/60 rounded-full" :style="{ width: importPct + '%' }"/>
             </div>
             <div class="flex items-center gap-2 mt-1.5">
@@ -190,7 +207,14 @@
                 <span class="text-xs text-gray-300 capitalize truncate mr-2">{{ p.name }}</span>
                 <span class="text-xs font-bold text-white tabular-nums shrink-0">{{ fmtUsd(p.value_usd) }}</span>
               </div>
-              <div class="h-1.5 bg-[#1f2937] rounded-full overflow-hidden">
+              <div
+                class="h-1.5 bg-[#1f2937] rounded-full overflow-hidden"
+                role="progressbar"
+                :aria-valuenow="productBarPct(td.top_export_products, p.value_usd)"
+                aria-valuemin="0"
+                aria-valuemax="100"
+                :aria-label="`${p.name}: ${fmtUsd(p.value_usd)}`"
+              >
                 <div class="h-full bg-emerald-500 rounded-full transition-all"
                   :style="{ width: `${productBarPct(td.top_export_products, p.value_usd)}%`, opacity: 1 - i * 0.12 }"/>
               </div>
@@ -213,7 +237,14 @@
                 <span class="text-xs text-gray-300 capitalize truncate mr-2">{{ p.name }}</span>
                 <span class="text-xs font-bold text-white tabular-nums shrink-0">{{ fmtUsd(p.value_usd) }}</span>
               </div>
-              <div class="h-1.5 bg-[#1f2937] rounded-full overflow-hidden">
+              <div
+                class="h-1.5 bg-[#1f2937] rounded-full overflow-hidden"
+                role="progressbar"
+                :aria-valuenow="productBarPct(td.top_import_products, p.value_usd)"
+                aria-valuemin="0"
+                aria-valuemax="100"
+                :aria-label="`${p.name}: ${fmtUsd(p.value_usd)}`"
+              >
                 <div class="h-full bg-blue-500 rounded-full transition-all"
                   :style="{ width: `${productBarPct(td.top_import_products, p.value_usd)}%`, opacity: 1 - i * 0.12 }"/>
               </div>
@@ -279,9 +310,51 @@
         </div>
       </div>
 
+      <!-- More corridors — internal linking -->
+      <div class="bg-[#111827] border border-[#1f2937] rounded-xl p-6 mb-6">
+        <h2 class="text-sm font-bold text-white mb-1">Explore more trade corridors</h2>
+        <p class="text-xs text-gray-500 mb-4">See all bilateral trade flows involving these countries</p>
+        <div class="flex flex-wrap gap-3">
+          <NuxtLink
+            :to="`/trade?country=${codeA.toUpperCase()}`"
+            class="flex items-center gap-2 text-xs text-emerald-600 hover:text-emerald-400 bg-[#0d1117] border border-[#1f2937] hover:border-emerald-800 px-3 py-2 rounded-lg transition-colors"
+          >
+            <span aria-hidden="true">{{ data.exporter.flag }}</span>
+            All {{ data.exporter.name }} trade partners →
+          </NuxtLink>
+          <NuxtLink
+            :to="`/trade?country=${codeB.toUpperCase()}`"
+            class="flex items-center gap-2 text-xs text-emerald-600 hover:text-emerald-400 bg-[#0d1117] border border-[#1f2937] hover:border-emerald-800 px-3 py-2 rounded-lg transition-colors"
+          >
+            <span aria-hidden="true">{{ data.importer.flag }}</span>
+            All {{ data.importer.name }} trade partners →
+          </NuxtLink>
+          <NuxtLink
+            :to="`/countries/${codeA}`"
+            class="flex items-center gap-2 text-xs text-gray-500 hover:text-gray-300 bg-[#0d1117] border border-[#1f2937] px-3 py-2 rounded-lg transition-colors"
+          >
+            {{ data.exporter.name }} macro data →
+          </NuxtLink>
+          <NuxtLink
+            :to="`/countries/${codeB}`"
+            class="flex items-center gap-2 text-xs text-gray-500 hover:text-gray-300 bg-[#0d1117] border border-[#1f2937] px-3 py-2 rounded-lg transition-colors"
+          >
+            {{ data.importer.name }} macro data →
+          </NuxtLink>
+        </div>
+      </div>
+
       <p class="text-xs text-gray-700 text-center">
         Trade: {{ td?.data_source || 'UN Comtrade 2022' }} · Macro: World Bank · IMF
       </p>
+
+      <!-- Newsletter -->
+      <div class="mt-8 border border-gray-800 rounded-xl p-6 bg-gray-900/40">
+        <p class="text-xs font-mono text-emerald-500 uppercase tracking-widest mb-1">Weekly Briefing</p>
+        <p class="text-sm font-semibold text-white mb-1">Trade flows, macro shifts — explained every week.</p>
+        <p class="text-xs text-gray-500 mb-4">Bilateral trade, GDP, currency moves — free.</p>
+        <NewsletterCapture :source="`trade_page_${pair}`" button-text="Subscribe free" />
+      </div>
     </main>
   </div>
 </template>

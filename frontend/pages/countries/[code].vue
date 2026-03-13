@@ -138,12 +138,13 @@
 
       <!-- GDP Chart -->
       <div class="bg-[#111827] border border-[#1f2937] rounded-lg p-5 mb-4">
-        <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center justify-between mb-1">
           <h2 class="text-sm font-bold text-white">GDP History</h2>
           <span v-if="gdpHistory?.length" class="text-xs text-emerald-400 font-medium tabular-nums">
             {{ fmt('gdp_usd', gdpHistory[gdpHistory.length - 1]?.gdp) }}
           </span>
         </div>
+        <p class="text-xs text-gray-600 mb-3">Total annual economic output in current US dollars · Source: World Bank</p>
         <div v-if="!gdpHistory?.length" class="h-36 flex items-center justify-center text-gray-600 text-xs">
           No GDP history data available
         </div>
@@ -240,7 +241,10 @@
 
       <!-- Trade Partners -->
       <div class="bg-[#111827] border border-[#1f2937] rounded-lg p-6 mb-6">
-        <h2 class="text-sm font-bold text-white mb-4">Top Trade Partners</h2>
+        <h2 class="text-sm font-bold text-white mb-1">Top Trade Partners</h2>
+        <p class="text-xs text-gray-500 mb-4">
+          Bilateral goods trade ranked by total volume — click any partner to view the full trade corridor breakdown. Source: UN Comtrade.
+        </p>
         <div v-if="tradePartnersLoading" class="space-y-2">
           <div v-for="i in 5" :key="i" class="h-6 bg-[#1f2937] rounded animate-pulse"/>
         </div>
@@ -249,10 +253,10 @@
           <table class="w-full text-sm">
             <thead>
               <tr class="text-xs text-gray-500 border-b border-[#1f2937]">
-                <th class="text-left py-2 font-medium">Partner</th>
-                <th class="text-right py-2 font-medium">Exports</th>
-                <th class="text-right py-2 font-medium">Imports</th>
-                <th class="text-right py-2 font-medium">Balance</th>
+                <th class="text-left py-2 font-medium" scope="col">Partner</th>
+                <th class="text-right py-2 font-medium" scope="col">Exports</th>
+                <th class="text-right py-2 font-medium" scope="col">Imports</th>
+                <th class="text-right py-2 font-medium" scope="col">Balance</th>
               </tr>
             </thead>
             <tbody>
@@ -284,6 +288,21 @@
               </tr>
             </tbody>
           </table>
+          <!-- Corridor quick-links -->
+          <div v-if="tradePartners?.length" class="mt-4 pt-4 border-t border-[#1f2937]">
+            <p class="text-[10px] text-gray-600 uppercase tracking-wider mb-2">Explore trade corridors</p>
+            <div class="flex flex-wrap gap-2">
+              <NuxtLink
+                v-for="p in (tradePartners || []).slice(0, 6)"
+                :key="p.partner.code"
+                :to="`/trade/${code.toLowerCase()}--${p.partner.slug ?? p.partner.code.toLowerCase()}`"
+                class="flex items-center gap-1.5 text-[11px] text-emerald-700 hover:text-emerald-400 bg-[#0d1117] border border-[#1f2937] hover:border-emerald-800 px-2 py-1 rounded transition-colors"
+              >
+                <span aria-hidden="true">{{ p.partner.flag }}</span>
+                {{ country.name }} – {{ p.partner.name }} →
+              </NuxtLink>
+            </div>
+          </div>
         </div>
       </div>
 

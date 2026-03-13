@@ -12,7 +12,8 @@
           <button
             v-if="alertable && r.indicatorKey && r.raw != null"
             class="opacity-0 group-hover:opacity-100 transition-opacity text-gray-600 hover:text-emerald-400"
-            title="Set macro alert"
+            :title="`Set alert for ${r.label}`"
+            :aria-label="`Set macro alert for ${r.label} (current: ${r.raw})`"
             @click="$emit('set-alert', { indicatorKey: r.indicatorKey, label: r.label, currentValue: r.raw })"
           >
             <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

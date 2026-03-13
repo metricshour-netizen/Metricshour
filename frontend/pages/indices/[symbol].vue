@@ -157,6 +157,14 @@
       </div>
 
       <p class="text-xs text-gray-700 text-center">Data: Marketstack · FRED · NYSE · NASDAQ · CME</p>
+
+      <!-- Newsletter -->
+      <div class="mt-8 border border-gray-800 rounded-xl p-6 bg-gray-900/40">
+        <p class="text-xs font-mono text-emerald-500 uppercase tracking-widest mb-1">Weekly Briefing</p>
+        <p class="text-sm font-semibold text-white mb-1">Market moves + macro context, every week.</p>
+        <p class="text-xs text-gray-500 mb-4">Index performance, trade flows, economic shifts — free.</p>
+        <NewsletterCapture :source="`index_page_${symbol}`" button-text="Subscribe free" />
+      </div>
     </main>
   </div>
 </template>
