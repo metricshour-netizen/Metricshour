@@ -69,6 +69,7 @@ app = Celery('metricshour', include=[
     'tasks.social_content',
     'tasks.seo_monitor',
     'tasks.security_monitor',
+    'tasks.search_index',
 ])
 
 # Use SSL only for rediss:// URLs (Upstash); skip for local redis:// (DragonflyDB)
@@ -241,6 +242,12 @@ app.conf.update(
             'schedule': crontab(hour=7, minute=0),
         },
 
+        # Meilisearch full reindex — daily at 7:15am (after R2 snapshots)
+        'search-reindex-daily-715am': {
+            'task': 'tasks.search_index.reindex_search',
+            'schedule': crontab(hour=7, minute=15),
+        },
+
         # Social content drafts — daily at 9am UTC → sent to Telegram for approval
         'social-drafts-daily-9am': {
             'task': 'tasks.social_content.generate_social_drafts',
@@ -277,6 +284,12 @@ app.conf.update(
         'security-monitor-hourly': {
             'task': 'tasks.security_monitor.run_security_checks',
             'schedule': 3600.0,
+        },
+
+        # Meilisearch full reindex — daily at 7:15am (after R2 snapshots)
+        'search-reindex-daily-715am': {
+            'task': 'tasks.search_index.reindex_search',
+            'schedule': crontab(hour=7, minute=15),
         },
     },
 )

@@ -28,6 +28,9 @@ class Settings:
     r2_access_key_id: str = os.environ.get("R2_ACCESS_KEY_ID", "")
     r2_secret_access_key: str = os.environ.get("R2_SECRET_ACCESS_KEY", "")
     r2_public_url: str = os.environ.get("R2_PUBLIC_URL", "")
+    # Meilisearch
+    meili_url: str = os.environ.get("MEILI_URL", "http://127.0.0.1:7700")
+    meili_master_key: str = os.environ.get("MEILI_MASTER_KEY", "")
     # Sentry
     sentry_dsn: str = os.environ.get("SENTRY_DSN", "")
     # Google OAuth
