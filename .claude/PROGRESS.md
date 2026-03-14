@@ -10,6 +10,37 @@
 
 ---
 
+## Session 2026-03-14 (continued) — Bug Sweep, Security Hardening, Search Fix
+
+### Fixed (commits 7f46dc2 → 91c6941)
+- **`Query` import missing** — countries.py + assets.py crashed API on startup (502). Fixed.
+- **Search broken** — `SearchModal.vue` called `$apiFetch` which doesn't exist anywhere. Replaced with `useApi().get()`. Search now works.
+- **`flag_emoji` field mismatch** — search API returns `flag`, template used `flag_emoji`. Fixed.
+- **`groupings` null crash** — `c.groupings.slice()` throws if null. Added `(c.groupings ?? [])` guard.
+- **`tradePartners` null crash** — filtered out entries missing `partner.code` before render.
+- **`/api/auth/me` no rate limit** — added `@limiter.limit("120/minute")` (token enumeration risk).
+- **`/api/feed/events/{id}` no rate limit** — added `@limiter.limit("60/minute")`.
+- **`track_page_view` wrong param order** — slowapi requires `request` first; `body` was first, rate limit silently ignored. Fixed.
+- **Docker secrets** — Netcup + Hetzner docker-compose.yml moved hardcoded passwords to `.env` files.
+- **db.query() migration 100% complete** — all 15 remaining worker batch tasks migrated to SQLAlchemy 2.0 `select()`.
+- **Worker failure resilience** — Telegram alerts on final failure, Redis DLQ (last 100), watchdog heartbeat every 10min.
+
+### SEO audit result: 95/100 ✓
+- All 22 page types: useSeoMeta, og:image, canonical, JSON-LD, h1
+- Sitemap: 2,791 URLs with dynamic lastmod
+- robots.txt: AI scrapers blocked
+
+### Security posture (post-session)
+- All public endpoints rate-limited ✓
+- `request` param order correct on all @limiter decorators ✓
+- Docker secrets in .env files ✓
+- No `$apiFetch` ghost references remaining ✓
+
+### Smoke test (all 200)
+- api.metricshour.com/health, /api/countries, /api/assets, /api/search, /api/feed, /api/trade, metricshour.com
+
+---
+
 ## Session 2026-03-14 — Social Card Templates + Distribution
 
 ### Done
