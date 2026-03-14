@@ -531,6 +531,7 @@ def _social_card(
     facts: list[str],
     source: str,
     accent: tuple[int, int, int] = GREEN,
+    cta: str = "Explore the data  \u2192",
 ) -> bytes:
     """720×1280 portrait 'Did you know?' social card — clean full-height layout."""
     BG     = (10, 14, 26)
@@ -611,7 +612,7 @@ def _social_card(
         fy += 72
 
     # ── 6. CTA button ──────────────────────────────────────────────────────
-    cl  = "Explore the data  \u2192"
+    cl  = cta
     cf  = _font(22, bold=True)
     cw  = SW - PAD * 2
     draw.rounded_rectangle([(PAD, 950), (PAD + cw, 1010)], radius=30, fill=accent)
@@ -665,6 +666,7 @@ def _country_social_card(c, db) -> bytes:
     while len(facts) < 3:
         facts.append("Data: metricshour.com")
 
+    name_short = c.name if len(c.name) <= 18 else c.name[:16] + "\u2026"
     return _social_card(
         category="Global Economy",
         badge=c.code,
@@ -674,6 +676,7 @@ def _country_social_card(c, db) -> bytes:
         hero_desc=hero_desc,
         facts=facts,
         source="World Bank / MetricsHour",
+        cta=f"Explore {name_short}  \u2192",
     )
 
 
@@ -708,11 +711,12 @@ def _stock_social_card(a, db) -> bytes:
         category="Equity Markets",
         badge=a.symbol[:4],
         title=a.symbol,
-        subtitle=a.name[:32] + "…" if len(a.name) > 32 else a.name,
+        subtitle=a.name[:32] + "\u2026" if len(a.name) > 32 else a.name,
         hero_number=hero_num,
         hero_desc=hero_desc,
         facts=facts,
         source="Yahoo Finance / MetricsHour",
+        cta=f"Track {a.symbol} on MetricsHour  \u2192",
     )
 
 
@@ -739,13 +743,14 @@ def _trade_social_card(exp, imp, p) -> bytes:
     return _social_card(
         category="Global Trade",
         badge=exp.code,
-        title=f"{exp.name} ↔ {imp.name}",
+        title=f"{exp.name} \u2194 {imp.name}",
         subtitle=f"({p.year} data)" if p.year else "",
         hero_number=hero_num,
         hero_desc=hero_desc,
         facts=facts,
         source="UN Comtrade / MetricsHour",
-        accent=(251, 191, 36),   # amber for trade cards
+        accent=(251, 191, 36),
+        cta=f"See {exp.code}\u2194{imp.code} trade flows  \u2192",
     )
 
 
