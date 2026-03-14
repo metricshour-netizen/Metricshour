@@ -455,8 +455,38 @@ def _country_insight_text(country: Country, db) -> str | None:
         f"Every sentence asserts — no 'could', 'may', 'might'. "
         f"No bullets. No headers. End with a period."
     )
-    return _call_ai(prompt, min_words=min_w - 5, max_words=max_w + 10,
-                    prefer_gemini=bool(country.is_g20))
+    result = _call_ai(prompt, min_words=min_w - 5, max_words=max_w + 10,
+                      prefer_gemini=bool(country.is_g20))
+    if result:
+        return result
+
+    # Rule-based fallback — uses already-loaded indicator data
+    rate = ind.get("interest_rate_pct")
+    infl = ind.get("inflation_pct")
+    growth = ind.get("gdp_growth_pct")
+    debt = ind.get("government_debt_gdp_pct")
+    gdp = ind.get("gdp_usd")
+    if rate is not None and infl is not None:
+        real = rate - infl
+        stance = "restrictive" if real > 2 else "accommodative" if real < 0 else "neutral"
+        lines = [
+            f"{country.name}'s real interest rate is {real:+.1f}% (policy rate {rate:.2f}% minus inflation {infl:.1f}%), a {stance} monetary stance."
+        ]
+        if growth is not None:
+            direction = "expanding" if growth > 0 else "contracting"
+            lines.append(f"The economy is {direction} at {growth:.1f}% annually.")
+        if debt is not None and country.credit_rating_sp:
+            lines.append(f"Government debt stands at {debt:.0f}% of GDP; S&P rates {country.code} {country.credit_rating_sp}.")
+        return " ".join(lines)
+    if growth is not None:
+        gdp_str = _fmt_gdp(gdp)
+        lines = [f"{country.name} GDP growth is {growth:.1f}% (GDP: {gdp_str})."]
+        if ind.get("unemployment_pct") is not None:
+            lines.append(f"Unemployment stands at {ind['unemployment_pct']:.1f}%.")
+        if debt is not None:
+            lines.append(f"Government debt is {debt:.0f}% of GDP.")
+        return " ".join(lines)
+    return None
 
 
 # ── Stock summary ──────────────────────────────────────────────────────────────
@@ -753,7 +783,20 @@ def _stock_price_insight_text(asset: Asset, hq, db) -> str | None:
         f"Every assertion is declarative — no 'could', 'may', 'might'. "
         f"No bullets. No headers. End with a period."
     )
-    return _call_ai(prompt, min_words=min_w - 5, max_words=max_w + 10, prefer_gemini=False)
+    result = _call_ai(prompt, min_words=min_w - 5, max_words=max_w + 10, prefer_gemini=False)
+    if result:
+        return result
+
+    # Rule-based fallback using price and sector data
+    cap_str = _fmt_cap(asset.market_cap_usd)
+    lines = [f"{asset.name} ({asset.symbol}) is a {cap_str} {asset.sector or 'equity'} stock."]
+    if price_row:
+        chg_pct = ((price_row.close - price_row.open) / price_row.open * 100) if price_row.open else None
+        chg_str = f" ({chg_pct:+.1f}% vs open)" if chg_pct is not None else ""
+        lines.append(f"Latest price: {price_row.close:.2f} {asset.currency or 'USD'}{chg_str}.")
+    if hq_macro:
+        lines.append(hq_macro + ".")
+    return " ".join(lines)
 
 
 def _stock_insight_text(asset: Asset, db) -> str | None:
@@ -845,7 +888,27 @@ def _stock_insight_text(asset: Asset, db) -> str | None:
         f"Every assertion is declarative — no 'could', 'may', 'might'. "
         f"No bullets. No headers. End with a period."
     )
-    return _call_ai(prompt, min_words=min_w - 5, max_words=max_w + 10, prefer_gemini=False)
+    result = _call_ai(prompt, min_words=min_w - 5, max_words=max_w + 10, prefer_gemini=False)
+    if result:
+        return result
+
+    # Rule-based fallback using geographic revenue data
+    top_rev, top_c = revs[0]
+    flag = top_c.flag_emoji or ""
+    lines = [
+        f"{asset.symbol}'s largest revenue market is {flag} {top_c.name} at {top_rev.revenue_pct:.0f}% of sales (FY{top_rev.fiscal_year})."
+    ]
+    if len(revs) >= 2:
+        r2, c2 = revs[1]
+        lines.append(f"{c2.flag_emoji or ''} {c2.name} contributes {r2.revenue_pct:.0f}%.")
+    if top_rev.revenue_pct >= 40:
+        lines.append(
+            f"This concentration ties {asset.symbol} earnings directly to macro conditions in {top_c.name}."
+        )
+    elif len(revs) >= 3:
+        r3, c3 = revs[2]
+        lines.append(f"Further exposure via {c3.flag_emoji or ''} {c3.name} at {r3.revenue_pct:.0f}%.")
+    return " ".join(lines)
 
 
 # ── Trade summary ──────────────────────────────────────────────────────────────
@@ -991,8 +1054,26 @@ def _trade_insight_text(exporter: Country, importer: Country, trade: TradePair |
         f"No bullets. No headers. End with a period."
     )
     top_corridor = bool(exporter.is_g20 and importer.is_g20)
-    return _call_ai(prompt, min_words=min_w - 5, max_words=max_w + 10,
-                    prefer_gemini=top_corridor)
+    result = _call_ai(prompt, min_words=min_w - 5, max_words=max_w + 10,
+                      prefer_gemini=top_corridor)
+    if result:
+        return result
+
+    # Rule-based fallback using trade data already loaded above
+    lines = [
+        f"{exp_flag} {exporter.name} exported {_fmt_usd(trade.exports_usd)} to"
+        f" {imp_flag} {importer.name} in {trade.year},"
+        f" running a {_fmt_usd(trade.balance_usd)} trade {balance_word}."
+    ]
+    if products:
+        prod_str = ", ".join(products[:-1]) + f" and {products[-1]}" if len(products) > 1 else products[0]
+        lines.append(f"Top {exporter.code} exports: {prod_str}.")
+    if trade.exporter_gdp_share_pct:
+        critical = "critical" if trade.exporter_gdp_share_pct >= 5 else "notable"
+        lines.append(
+            f"This corridor represents a {critical} {trade.exporter_gdp_share_pct:.1f}% of {exporter.name}'s GDP."
+        )
+    return " ".join(lines)
 
 
 # ── Commodity summary ──────────────────────────────────────────────────────────
@@ -1097,7 +1178,22 @@ def _commodity_insight_text(asset: Asset, db=None) -> str | None:
         f"Say 'price swings' not 'volatility'. "
         f"No bullets. No headers. End with a period."
     )
-    return _call_ai(prompt, min_words=min_w - 5, max_words=max_w + 10, prefer_gemini=False)
+    result = _call_ai(prompt, min_words=min_w - 5, max_words=max_w + 10, prefer_gemini=False)
+    if result:
+        return result
+
+    # Rule-based fallback using price data already loaded above
+    lines = [
+        f"{full_name} ({asset.symbol}) is a globally traded {sector.lower()} commodity priced in {unit}."
+    ]
+    if price_line:
+        # price_line format: "Latest price: X.XX UNIT (+Y.Y% prev session)\n"
+        lines.append(price_line.strip())
+    lines.append(
+        f"Price is driven by supply and demand dynamics across major producers and consumers. "
+        f"Trade flow exposure and equity sector links are tracked on MetricsHour."
+    )
+    return " ".join(lines)
 
 
 # ── Emoji helpers ─────────────────────────────────────────────────────────────
