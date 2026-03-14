@@ -534,7 +534,7 @@ def og_section(section: str):
 
 @router.get("/og/feed/{event_id}.png", include_in_schema=False)
 def og_feed(event_id: int, db: Session = Depends(get_db)):
-    event = db.query(FeedEvent).filter(FeedEvent.id == event_id).first()
+    event = db.execute(select(FeedEvent).where(FeedEvent.id == event_id)).scalar_one_or_none()
     if event is None:
         raise HTTPException(status_code=404, detail="Event not found")
     try:
@@ -554,7 +554,7 @@ def og_feed(event_id: int, db: Session = Depends(get_db)):
 
 @router.get("/og/countries/{code}.png", include_in_schema=False)
 def og_country(code: str, db: Session = Depends(get_db)):
-    country = db.query(Country).filter(Country.code == code.upper()).first()
+    country = db.execute(select(Country).where(Country.code == code.upper())).scalar_one_or_none()
     if country is None:
         raise HTTPException(status_code=404, detail="Country not found")
     gdp_row = db.execute(
@@ -593,8 +593,8 @@ def og_trade(pair: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Invalid pair format")
     exp_code, imp_code = parts[0].upper(), parts[1].upper()
 
-    exp = db.query(Country).filter(Country.code == exp_code).first()
-    imp = db.query(Country).filter(Country.code == imp_code).first()
+    exp = db.execute(select(Country).where(Country.code == exp_code)).scalar_one_or_none()
+    imp = db.execute(select(Country).where(Country.code == imp_code)).scalar_one_or_none()
     if not exp or not imp:
         raise HTTPException(status_code=404, detail="Country not found")
 
@@ -659,9 +659,9 @@ def og_index(symbol: str):
 
 @router.get("/og/stocks/{symbol}.png", include_in_schema=False)
 def og_stock(symbol: str, db: Session = Depends(get_db)):
-    asset = db.query(Asset).filter(
-        Asset.symbol == symbol.upper(), Asset.asset_type == AssetType.stock
-    ).first()
+    asset = db.execute(
+        select(Asset).where(Asset.symbol == symbol.upper(), Asset.asset_type == AssetType.stock)
+    ).scalar_one_or_none()
     if asset is None:
         raise HTTPException(status_code=404, detail="Stock not found")
     price_row = db.execute(

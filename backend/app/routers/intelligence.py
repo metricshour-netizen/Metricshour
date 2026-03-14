@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from sqlalchemy import text
+from sqlalchemy import text, select
 from sqlalchemy.orm import Session
 
 from app.limiter import limiter
@@ -217,23 +217,24 @@ def _build_spotlight(db: Session) -> list[dict[str, Any]]:
 # ── Summary generation ─────────────────────────────────────────────────────────
 
 def _country_summary(code: str, db: Session) -> str | None:
-    country = db.query(Country).filter(Country.code == code.upper()).first()
+    country = db.execute(select(Country).where(Country.code == code.upper())).scalar_one_or_none()
     if not country:
         return None
 
     # Fetch latest indicators
     indicators: dict[str, float] = {}
-    rows = (
-        db.query(CountryIndicator)
-        .filter(CountryIndicator.country_id == country.id)
-        .filter(CountryIndicator.indicator.in_([
-            "gdp_usd", "gdp_growth_pct", "inflation_pct",
-            "interest_rate_pct", "unemployment_pct", "population",
-        ]))
+    rows = db.execute(
+        select(CountryIndicator)
+        .where(
+            CountryIndicator.country_id == country.id,
+            CountryIndicator.indicator.in_([
+                "gdp_usd", "gdp_growth_pct", "inflation_pct",
+                "interest_rate_pct", "unemployment_pct", "population",
+            ])
+        )
         .order_by(CountryIndicator.period_date.desc())
         .limit(30)
-        .all()
-    )
+    ).scalars().all()
     seen_ind: set[str] = set()
     for r in rows:
         if r.indicator not in seen_ind:
@@ -302,11 +303,11 @@ def _country_summary(code: str, db: Session) -> str | None:
 
 
 def _stock_summary(symbol: str, db: Session) -> str | None:
-    asset = db.query(Asset).filter(Asset.symbol == symbol.upper()).first()
+    asset = db.execute(select(Asset).where(Asset.symbol == symbol.upper())).scalar_one_or_none()
     if not asset:
         return None
 
-    hq_country = db.query(Country).filter(Country.id == asset.country_id).first() if asset.country_id else None
+    hq_country = db.execute(select(Country).where(Country.id == asset.country_id)).scalar_one_or_none() if asset.country_id else None
 
     def fmt_cap(v: float | None) -> str:
         if v is None:
@@ -317,14 +318,13 @@ def _stock_summary(symbol: str, db: Session) -> str | None:
             return f"${v/1e9:.0f}B"
         return f"${v/1e6:.0f}M"
 
-    revenues = (
-        db.query(StockCountryRevenue, Country)
+    revenues = db.execute(
+        select(StockCountryRevenue, Country)
         .join(Country, StockCountryRevenue.country_id == Country.id)
-        .filter(StockCountryRevenue.asset_id == asset.id)
+        .where(StockCountryRevenue.asset_id == asset.id)
         .order_by(StockCountryRevenue.revenue_pct.desc())
         .limit(5)
-        .all()
-    )
+    ).all()
 
     hq_str = f" headquartered in {hq_country.name}" if hq_country else ""
     parts = [
@@ -350,9 +350,9 @@ def _stock_summary(symbol: str, db: Session) -> str | None:
 
 
 def _commodity_summary(symbol: str, db: Session) -> str | None:
-    asset = db.query(Asset).filter(
-        Asset.symbol == symbol.upper(), Asset.asset_type == "commodity"
-    ).first()
+    asset = db.execute(
+        select(Asset).where(Asset.symbol == symbol.upper(), Asset.asset_type == "commodity")
+    ).scalar_one_or_none()
     if not asset:
         return None
     # Simple template fallback for on-the-fly (full AI version runs via Celery)
@@ -364,9 +364,9 @@ def _commodity_summary(symbol: str, db: Session) -> str | None:
 
 
 def _index_summary(symbol: str, db: Session) -> str | None:
-    asset = db.query(Asset).filter(
-        Asset.symbol == symbol.upper(), Asset.asset_type == "index"
-    ).first()
+    asset = db.execute(
+        select(Asset).where(Asset.symbol == symbol.upper(), Asset.asset_type == "index")
+    ).scalar_one_or_none()
     if not asset:
         return None
     region = asset.sector or "global"
@@ -384,27 +384,23 @@ def _trade_summary(pair: str, db: Session) -> str | None:
         return None
     code_a, code_b = parts
 
-    country_a = db.query(Country).filter(Country.code == code_a).first()
-    country_b = db.query(Country).filter(Country.code == code_b).first()
+    country_a = db.execute(select(Country).where(Country.code == code_a)).scalar_one_or_none()
+    country_b = db.execute(select(Country).where(Country.code == code_b)).scalar_one_or_none()
     if not country_a or not country_b:
         return None
 
-    trade = (
-        db.query(TradePair)
-        .filter(TradePair.exporter_id == country_a.id)
-        .filter(TradePair.importer_id == country_b.id)
+    trade = db.execute(
+        select(TradePair)
+        .where(TradePair.exporter_id == country_a.id, TradePair.importer_id == country_b.id)
         .order_by(TradePair.year.desc())
-        .first()
-    )
+    ).scalar_one_or_none()
     if not trade:
         # Try reverse direction
-        trade = (
-            db.query(TradePair)
-            .filter(TradePair.exporter_id == country_b.id)
-            .filter(TradePair.importer_id == country_a.id)
+        trade = db.execute(
+            select(TradePair)
+            .where(TradePair.exporter_id == country_b.id, TradePair.importer_id == country_a.id)
             .order_by(TradePair.year.desc())
-            .first()
-        )
+        ).scalar_one_or_none()
         if trade:
             country_a, country_b = country_b, country_a
 
@@ -537,12 +533,10 @@ def get_summary(request: Request, entity_type: str, entity_code: str, db: Sessio
             detail=f"entity_type must be one of: {', '.join(ALL_ENTITY_TYPES)}"
         )
 
-    existing = (
-        db.query(PageSummary)
-        .filter(PageSummary.entity_type == entity_type)
-        .filter(PageSummary.entity_code == entity_code)
-        .first()
-    )
+    existing = db.execute(
+        select(PageSummary)
+        .where(PageSummary.entity_type == entity_type, PageSummary.entity_code == entity_code)
+    ).scalar_one_or_none()
     if existing:
         return {
             "entity_type": entity_type,
@@ -616,14 +610,13 @@ def get_insights(
             detail=f"entity_type must be one of: {', '.join(INSIGHT_ENTITY_TYPES)}"
         )
 
-    rows = (
-        db.query(PageInsight)
-        .filter(PageInsight.entity_type == entity_type)
-        .filter(PageInsight.entity_code == entity_code)
+    rows = db.execute(
+        select(PageInsight)
+        .where(PageInsight.entity_type == entity_type)
+        .where(PageInsight.entity_code == entity_code)
         .order_by(PageInsight.generated_at.desc())
         .limit(limit)
-        .all()
-    )
+    ).scalars().all()
     return [{"summary": r.summary, "generated_at": r.generated_at.isoformat()} for r in rows]
 
 
@@ -634,10 +627,10 @@ def refresh_summaries(
     db: Session = Depends(get_db),
 ) -> dict:
     """Admin: delete cached summaries/insights so they regenerate. Pass entity_type to scope deletion."""
-    q = db.query(PageSummary)
+    stmt = PageSummary.__table__.delete()
     if entity_type:
-        q = q.filter(PageSummary.entity_type == entity_type)
-    deleted = q.delete()
+        stmt = stmt.where(PageSummary.__table__.c.entity_type == entity_type)
+    deleted = db.execute(stmt).rowcount
     db.commit()
 
     try:

@@ -20,6 +20,7 @@ import math
 from datetime import datetime, timedelta, timezone
 from typing import NamedTuple
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.feed import FeedEvent, UserFollow, UserInteraction, InteractionType
@@ -78,24 +79,22 @@ def rank_feed(
     now = datetime.now(timezone.utc)
     cutoff = now - timedelta(hours=CANDIDATE_WINDOW_HOURS)
 
-    events = (
-        db.query(FeedEvent)
-        .filter(FeedEvent.published_at >= cutoff)
+    events = db.execute(
+        select(FeedEvent)
+        .where(FeedEvent.published_at >= cutoff)
         .order_by(FeedEvent.published_at.desc())
         .limit(MAX_CANDIDATE_EVENTS)
-        .all()
-    )
+    ).scalars().all()
 
     # Fallback: if not enough events in primary window, extend to 7 days
     if len(events) < MIN_CANDIDATE_EVENTS:
         fallback_cutoff = now - timedelta(hours=FALLBACK_WINDOW_HOURS)
-        events = (
-            db.query(FeedEvent)
-            .filter(FeedEvent.published_at >= fallback_cutoff)
+        events = db.execute(
+            select(FeedEvent)
+            .where(FeedEvent.published_at >= fallback_cutoff)
             .order_by(FeedEvent.published_at.desc())
             .limit(MAX_CANDIDATE_EVENTS)
-            .all()
-        )
+        ).scalars().all()
 
     if not events:
         return []
@@ -104,16 +103,12 @@ def rank_feed(
     if user_id is None:
         scored = [ScoredEvent(_base_score(e, geo_country_id), e) for e in events]
     else:
-        follows = (
-            db.query(UserFollow)
-            .filter(UserFollow.user_id == user_id)
-            .all()
-        )
-        interactions = (
-            db.query(UserInteraction)
-            .filter(UserInteraction.user_id == user_id)
-            .all()
-        )
+        follows = db.execute(
+            select(UserFollow).where(UserFollow.user_id == user_id)
+        ).scalars().all()
+        interactions = db.execute(
+            select(UserInteraction).where(UserInteraction.user_id == user_id)
+        ).scalars().all()
         scored = _score_for_user(events, follows, interactions, geo_country_id)
 
     scored.sort(key=lambda s: s.score, reverse=True)

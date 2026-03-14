@@ -22,7 +22,7 @@ import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone, date, timedelta
 
-from sqlalchemy import text
+from sqlalchemy import text, select, func, delete
 
 from celery_app import app
 from app.database import SessionLocal
@@ -234,18 +234,19 @@ def _country_summary_text(country: Country, db) -> str:
     Uses Gemini AI with real indicator data. Falls back to polished template.
     """
     ind: dict[str, float] = {}
-    rows = (
-        db.query(CountryIndicator)
-        .filter(CountryIndicator.country_id == country.id)
-        .filter(CountryIndicator.indicator.in_([
-            "gdp_usd", "gdp_growth_pct", "inflation_pct",
-            "interest_rate_pct", "unemployment_pct",
-            "current_account_usd", "government_debt_gdp_pct",
-        ]))
+    rows = db.execute(
+        select(CountryIndicator)
+        .where(
+            CountryIndicator.country_id == country.id,
+            CountryIndicator.indicator.in_([
+                "gdp_usd", "gdp_growth_pct", "inflation_pct",
+                "interest_rate_pct", "unemployment_pct",
+                "current_account_usd", "government_debt_gdp_pct",
+            ])
+        )
         .order_by(CountryIndicator.period_date.desc())
         .limit(30)
-        .all()
-    )
+    ).scalars().all()
     seen: set[str] = set()
     for r in rows:
         if r.indicator not in seen:
@@ -347,19 +348,20 @@ def _country_insight_text(country: Country, db) -> str | None:
         return None
 
     ind: dict[str, float] = {}
-    rows = (
-        db.query(CountryIndicator)
-        .filter(CountryIndicator.country_id == country.id)
-        .filter(CountryIndicator.indicator.in_([
-            "gdp_usd", "gdp_growth_pct", "inflation_pct",
-            "interest_rate_pct", "unemployment_pct",
-            "current_account_usd", "government_debt_gdp_pct",
-            "current_account_gdp_pct",
-        ]))
+    rows = db.execute(
+        select(CountryIndicator)
+        .where(
+            CountryIndicator.country_id == country.id,
+            CountryIndicator.indicator.in_([
+                "gdp_usd", "gdp_growth_pct", "inflation_pct",
+                "interest_rate_pct", "unemployment_pct",
+                "current_account_usd", "government_debt_gdp_pct",
+                "current_account_gdp_pct",
+            ])
+        )
         .order_by(CountryIndicator.period_date.desc())
         .limit(40)
-        .all()
-    )
+    ).scalars().all()
     seen: set[str] = set()
     for r in rows:
         if r.indicator not in seen:
@@ -496,16 +498,15 @@ def _stock_summary_text(asset: Asset, db) -> str:
     Stable 220-280 word overview for a stock page.
     Focuses on geographic revenue exposure — the MetricsHour differentiator.
     """
-    hq = db.query(Country).filter(Country.id == asset.country_id).first() if asset.country_id else None
+    hq = db.execute(select(Country).where(Country.id == asset.country_id)).scalar_one_or_none() if asset.country_id else None
 
-    revs = (
-        db.query(StockCountryRevenue, Country)
+    revs = db.execute(
+        select(StockCountryRevenue, Country)
         .join(Country, StockCountryRevenue.country_id == Country.id)
-        .filter(StockCountryRevenue.asset_id == asset.id)
+        .where(StockCountryRevenue.asset_id == asset.id)
         .order_by(StockCountryRevenue.revenue_pct.desc())
         .limit(5)
-        .all()
-    )
+    ).all()
 
     hq_name = hq.name if hq else "the United States"
     cap_str = _fmt_cap(asset.market_cap_usd)
@@ -707,12 +708,12 @@ def _stock_price_insight_text(asset: Asset, hq, db) -> str | None:
         return None
 
     # Latest price
-    price_row = (
-        db.query(Price)
-        .filter(Price.asset_id == asset.id)
+    price_row = db.execute(
+        select(Price)
+        .where(Price.asset_id == asset.id)
         .order_by(Price.timestamp.desc())
-        .first()
-    )
+        .limit(1)
+    ).scalar_one_or_none()
 
     price_info = ""
     if price_row:
@@ -725,14 +726,15 @@ def _stock_price_insight_text(asset: Asset, hq, db) -> str | None:
     # HQ macro
     hq_macro = ""
     if hq:
-        hq_rows = (
-            db.query(CountryIndicator)
-            .filter(CountryIndicator.country_id == hq.id)
-            .filter(CountryIndicator.indicator.in_(["gdp_growth_pct", "inflation_pct", "interest_rate_pct"]))
+        hq_rows = db.execute(
+            select(CountryIndicator)
+            .where(
+                CountryIndicator.country_id == hq.id,
+                CountryIndicator.indicator.in_(["gdp_growth_pct", "inflation_pct", "interest_rate_pct"])
+            )
             .order_by(CountryIndicator.period_date.desc())
             .limit(9)
-            .all()
-        )
+        ).scalars().all()
         seen_h: set[str] = set()
         inds: dict[str, float] = {}
         for r in hq_rows:
@@ -806,16 +808,15 @@ def _stock_insight_text(asset: Asset, db) -> str | None:
     if not _has_ai_key():
         return None
 
-    hq = db.query(Country).filter(Country.id == asset.country_id).first() if asset.country_id else None
+    hq = db.execute(select(Country).where(Country.id == asset.country_id)).scalar_one_or_none() if asset.country_id else None
 
-    revs = (
-        db.query(StockCountryRevenue, Country)
+    revs = db.execute(
+        select(StockCountryRevenue, Country)
         .join(Country, StockCountryRevenue.country_id == Country.id)
-        .filter(StockCountryRevenue.asset_id == asset.id)
+        .where(StockCountryRevenue.asset_id == asset.id)
         .order_by(StockCountryRevenue.revenue_pct.desc())
         .limit(4)
-        .all()
-    )
+    ).all()
 
     if not revs:
         # Fallback: price-based insight for stocks without geographic revenue data
@@ -830,14 +831,15 @@ def _stock_insight_text(asset: Asset, db) -> str | None:
     hq_macro = ""
     if hq:
         hq_inds: dict[str, float] = {}
-        hq_rows = (
-            db.query(CountryIndicator)
-            .filter(CountryIndicator.country_id == hq.id)
-            .filter(CountryIndicator.indicator.in_(["gdp_growth_pct", "inflation_pct", "interest_rate_pct"]))
+        hq_rows = db.execute(
+            select(CountryIndicator)
+            .where(
+                CountryIndicator.country_id == hq.id,
+                CountryIndicator.indicator.in_(["gdp_growth_pct", "inflation_pct", "interest_rate_pct"])
+            )
             .order_by(CountryIndicator.period_date.desc())
             .limit(10)
-            .all()
-        )
+        ).scalars().all()
         seen_h: set[str] = set()
         for r in hq_rows:
             if r.indicator not in seen_h:
@@ -1131,13 +1133,12 @@ def _commodity_insight_text(asset: Asset, db=None) -> str | None:
     # Pull latest daily close + prior close for % change
     price_line = ""
     if db:
-        prices = (
-            db.query(Price.close, Price.timestamp)
-            .filter(Price.asset_id == asset.id, Price.interval == "1d")
+        prices = db.execute(
+            select(Price.close, Price.timestamp)
+            .where(Price.asset_id == asset.id, Price.interval == "1d")
             .order_by(Price.timestamp.desc())
             .limit(2)
-            .all()
-        )
+        ).all()
         if prices:
             latest_close = prices[0].close
             prior_close = prices[1].close if len(prices) > 1 else None
@@ -1239,20 +1240,18 @@ def _insight_is_duplicate(new_text: str, old_text: str | None, threshold: float 
 
 def _asset_price_moved(asset_id: int, since: datetime, db, threshold_pct: float = 2.0) -> bool:
     """True if the asset's latest daily close has moved >= threshold_pct since `since`."""
-    price_then = (
-        db.query(Price.close)
-        .filter(Price.asset_id == asset_id, Price.interval == "1d", Price.timestamp <= since)
+    price_then = db.execute(
+        select(Price.close)
+        .where(Price.asset_id == asset_id, Price.interval == "1d", Price.timestamp <= since)
         .order_by(Price.timestamp.desc())
         .limit(1)
-        .scalar()
-    )
-    price_now = (
-        db.query(Price.close)
-        .filter(Price.asset_id == asset_id, Price.interval == "1d")
+    ).scalar()
+    price_now = db.execute(
+        select(Price.close)
+        .where(Price.asset_id == asset_id, Price.interval == "1d")
         .order_by(Price.timestamp.desc())
         .limit(1)
-        .scalar()
-    )
+    ).scalar()
     if not price_then or not price_now or price_then == 0:
         return False
     return abs((price_now - price_then) / price_then) * 100 >= threshold_pct
@@ -1268,24 +1267,23 @@ def _has_fresh_data(insight_type: str, entity_code: str, since: datetime, db) ->
     - trade:     annual data only — always False (staleness alone drives trade insights)
     """
     if insight_type == "country":
-        c = db.query(Country).filter(Country.code == entity_code).first()
+        c = db.execute(select(Country).where(Country.code == entity_code)).scalar_one_or_none()
         if not c:
             return False
-        latest = (
-            db.query(CountryIndicator.period_date)
-            .filter(CountryIndicator.country_id == c.id)
+        latest = db.execute(
+            select(CountryIndicator.period_date)
+            .where(CountryIndicator.country_id == c.id)
             .order_by(CountryIndicator.period_date.desc())
             .limit(1)
-            .scalar()
-        )
+        ).scalar()
         return bool(latest and latest > since.date())
     if insight_type in ("stock", "commodity"):
-        asset = db.query(Asset).filter(Asset.symbol == entity_code).first()
+        asset = db.execute(select(Asset).where(Asset.symbol == entity_code)).scalar_one_or_none()
         if not asset:
             return False
         return _asset_price_moved(asset.id, since, db, threshold_pct=2.0)
     if insight_type == "index":
-        asset = db.query(Asset).filter(Asset.symbol == entity_code, Asset.asset_type == "index").first()
+        asset = db.execute(select(Asset).where(Asset.symbol == entity_code, Asset.asset_type == "index")).scalar_one_or_none()
         if not asset:
             return False
         return _asset_price_moved(asset.id, since, db, threshold_pct=1.0)
@@ -1303,13 +1301,12 @@ def _country_summary_stale(country: Country, existing: PageSummary | None, db) -
     if len(existing.summary.split()) < 200:
         return True
     # Regenerate if any indicator is newer than the summary
-    latest_ind = (
-        db.query(CountryIndicator.period_date)
-        .filter(CountryIndicator.country_id == country.id)
+    latest_ind = db.execute(
+        select(CountryIndicator.period_date)
+        .where(CountryIndicator.country_id == country.id)
         .order_by(CountryIndicator.period_date.desc())
         .limit(1)
-        .scalar()
-    )
+    ).scalar()
     if latest_ind and latest_ind > existing.generated_at.date():
         return True
     return False
@@ -1326,13 +1323,12 @@ def _stock_summary_stale(asset: Asset, existing: PageSummary | None, db) -> bool
     if len(existing.summary.split()) < 130:
         return True
     # Regenerate if a newer fiscal year of revenue data has arrived
-    latest_fy = (
-        db.query(StockCountryRevenue.fiscal_year)
-        .filter(StockCountryRevenue.asset_id == asset.id)
+    latest_fy = db.execute(
+        select(StockCountryRevenue.fiscal_year)
+        .where(StockCountryRevenue.asset_id == asset.id)
         .order_by(StockCountryRevenue.fiscal_year.desc())
         .limit(1)
-        .scalar()
-    )
+    ).scalar()
     if latest_fy and latest_fy > existing.generated_at.year:
         return True
     return False
@@ -1381,10 +1377,12 @@ def _upsert_feed_insight(
     Old records from previous days are replaced.
     """
     # Delete yesterday's insight for this entity (keep only today's)
-    db.query(FeedEvent).filter(
-        FeedEvent.event_type == "daily_insight",
-        FeedEvent.source_url == source_url,
-    ).delete()
+    db.execute(
+        delete(FeedEvent).where(
+            FeedEvent.event_type == "daily_insight",
+            FeedEvent.source_url == source_url,
+        )
+    )
 
     event_data = {
         "entity_type": entity_type,
@@ -1413,16 +1411,15 @@ def _insert_insight(db, entity_type: str, entity_code: str, text_: str):
     today_start = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
     tomorrow_start = today_start + timedelta(days=1)
     # Upsert within today — prevents duplicate rows if task runs more than once
-    existing_today = (
-        db.query(PageInsight)
-        .filter(
+    existing_today = db.execute(
+        select(PageInsight)
+        .where(
             PageInsight.entity_type == entity_type,
             PageInsight.entity_code == entity_code,
             PageInsight.generated_at >= today_start,
             PageInsight.generated_at < tomorrow_start,
         )
-        .first()
-    )
+    ).scalar_one_or_none()
     if existing_today:
         existing_today.summary = text_
         existing_today.generated_at = now
@@ -1437,11 +1434,10 @@ def _insert_insight(db, entity_type: str, entity_code: str, text_: str):
 
 def _upsert_summary(db, entity_type: str, entity_code: str, text_: str):
     now = datetime.now(timezone.utc)
-    existing = (
-        db.query(PageSummary)
-        .filter(PageSummary.entity_type == entity_type, PageSummary.entity_code == entity_code)
-        .first()
-    )
+    existing = db.execute(
+        select(PageSummary)
+        .where(PageSummary.entity_type == entity_type, PageSummary.entity_code == entity_code)
+    ).scalar_one_or_none()
     if existing:
         if existing.summary == text_:
             return  # No change — skip write
@@ -1468,33 +1464,33 @@ def _summary_worker(args: dict) -> dict:
     db = SessionLocal()
     try:
         if entity_type == "country":
-            e = db.query(Country).filter(Country.id == args["id"]).first()
+            e = db.execute(select(Country).where(Country.id == args["id"])).scalar_one_or_none()
             text = _country_summary_text(e, db) if e else None
         elif entity_type == "stock":
-            e = db.query(Asset).filter(Asset.id == args["id"]).first()
+            e = db.execute(select(Asset).where(Asset.id == args["id"])).scalar_one_or_none()
             text = _stock_summary_text(e, db) if e else None
         elif entity_type == "commodity":
-            e = db.query(Asset).filter(Asset.id == args["id"]).first()
+            e = db.execute(select(Asset).where(Asset.id == args["id"])).scalar_one_or_none()
             text = _commodity_summary_text(e) if e else None
         elif entity_type == "trade":
-            exp = db.query(Country).filter(Country.id == args["exp_id"]).first()
-            imp = db.query(Country).filter(Country.id == args["imp_id"]).first()
-            pair = db.query(TradePair).filter(TradePair.id == args["pair_id"]).first()
+            exp = db.execute(select(Country).where(Country.id == args["exp_id"])).scalar_one_or_none()
+            imp = db.execute(select(Country).where(Country.id == args["imp_id"])).scalar_one_or_none()
+            pair = db.execute(select(TradePair).where(TradePair.id == args["pair_id"])).scalar_one_or_none()
             text = _trade_summary_text(exp, imp, pair) if exp and imp else None
         elif entity_type == "fx":
-            e = db.query(Asset).filter(Asset.id == args["id"]).first()
+            e = db.execute(select(Asset).where(Asset.id == args["id"])).scalar_one_or_none()
             text = _fx_summary_text(e) if e else None
         elif entity_type == "crypto":
-            e = db.query(Asset).filter(Asset.id == args["id"]).first()
+            e = db.execute(select(Asset).where(Asset.id == args["id"])).scalar_one_or_none()
             text = _crypto_summary_text(e) if e else None
         elif entity_type == "etf":
-            e = db.query(Asset).filter(Asset.id == args["id"]).first()
+            e = db.execute(select(Asset).where(Asset.id == args["id"])).scalar_one_or_none()
             text = _etf_summary_text(e) if e else None
         elif entity_type == "index":
-            e = db.query(Asset).filter(Asset.id == args["id"]).first()
+            e = db.execute(select(Asset).where(Asset.id == args["id"])).scalar_one_or_none()
             text = _index_summary_text(e) if e else None
         elif entity_type == "bond":
-            e = db.query(Asset).filter(Asset.id == args["id"]).first()
+            e = db.execute(select(Asset).where(Asset.id == args["id"])).scalar_one_or_none()
             text = _bond_summary_text(e) if e else None
         else:
             text = None
@@ -1521,26 +1517,26 @@ def generate_page_summaries(self):
     try:
         existing_map: dict[tuple, PageSummary] = {
             (r.entity_type, r.entity_code): r
-            for r in db.query(PageSummary).all()
+            for r in db.execute(select(PageSummary)).scalars().all()
         }
 
         # ── Build work queue (stale entities only) ──────────────────────────
         work_items: list[dict] = []
         skipped = 0
 
-        for c in db.query(Country).all():
+        for c in db.execute(select(Country)).scalars().all():
             if _country_summary_stale(c, existing_map.get(("country", c.code)), db):
                 work_items.append({"entity_type": "country", "entity_code": c.code, "id": c.id})
             else:
                 skipped += 1
 
-        for s in db.query(Asset).filter(Asset.asset_type == "stock").all():
+        for s in db.execute(select(Asset).where(Asset.asset_type == "stock")).scalars().all():
             if _stock_summary_stale(s, existing_map.get(("stock", s.symbol)), db):
                 work_items.append({"entity_type": "stock", "entity_code": s.symbol, "id": s.id})
             else:
                 skipped += 1
 
-        for c in db.query(Asset).filter(Asset.asset_type == "commodity").all():
+        for c in db.execute(select(Asset).where(Asset.asset_type == "commodity")).scalars().all():
             if _commodity_summary_stale(c, existing_map.get(("commodity", c.symbol)), db):
                 work_items.append({"entity_type": "commodity", "entity_code": c.symbol, "id": c.id})
             else:
@@ -1548,7 +1544,7 @@ def generate_page_summaries(self):
 
         # Non-commodity asset types — refresh weekly
         for asset_type in ("fx", "crypto", "etf", "index", "bond"):
-            for a in db.query(Asset).filter(Asset.asset_type == asset_type).all():
+            for a in db.execute(select(Asset).where(Asset.asset_type == asset_type)).scalars().all():
                 existing = existing_map.get((asset_type, a.symbol))
                 if not existing or (datetime.now(timezone.utc) - existing.generated_at).days > 7:
                     work_items.append({"entity_type": asset_type, "entity_code": a.symbol, "id": a.id})
@@ -1556,9 +1552,9 @@ def generate_page_summaries(self):
                     skipped += 1
 
         seen_pairs: set[str] = set()
-        for pair in db.query(TradePair).order_by(TradePair.year.desc()).all():
-            exp = db.query(Country).filter(Country.id == pair.exporter_id).first()
-            imp = db.query(Country).filter(Country.id == pair.importer_id).first()
+        for pair in db.execute(select(TradePair).order_by(TradePair.year.desc())).scalars().all():
+            exp = db.execute(select(Country).where(Country.id == pair.exporter_id)).scalar_one_or_none()
+            imp = db.execute(select(Country).where(Country.id == pair.importer_id)).scalar_one_or_none()
             if not exp or not imp:
                 continue
             pair_code = f"{exp.code}-{imp.code}"
@@ -1654,13 +1650,12 @@ def _index_insight_text(asset: Asset, db=None) -> str | None:
 
     price_line = ""
     if db:
-        prices = (
-            db.query(Price.close, Price.timestamp)
-            .filter(Price.asset_id == asset.id, Price.interval == "1d")
+        prices = db.execute(
+            select(Price.close, Price.timestamp)
+            .where(Price.asset_id == asset.id, Price.interval == "1d")
             .order_by(Price.timestamp.desc())
             .limit(2)
-            .all()
-        )
+        ).all()
         if prices:
             latest = prices[0].close
             prior = prices[1].close if len(prices) > 1 else None
@@ -1704,7 +1699,7 @@ def generate_daily_insights(self):
         now = datetime.now(timezone.utc)
 
         # Country insights
-        countries = db.query(Country).all()
+        countries = db.execute(select(Country)).scalars().all()
         for c in countries:
             try:
                 insight = _country_insight_text(c, db)
@@ -1729,7 +1724,7 @@ def generate_daily_insights(self):
 
         # Stock insights
         stock_count = 0
-        stocks = db.query(Asset).filter(Asset.asset_type == "stock").all()
+        stocks = db.execute(select(Asset).where(Asset.asset_type == "stock")).scalars().all()
         for s in stocks:
             try:
                 insight = _stock_insight_text(s, db)
@@ -1755,7 +1750,7 @@ def generate_daily_insights(self):
 
         # Commodity insights
         commodity_count = 0
-        commodities = db.query(Asset).filter(Asset.asset_type == "commodity").all()
+        commodities = db.execute(select(Asset).where(Asset.asset_type == "commodity")).scalars().all()
         for c in commodities:
             try:
                 insight = _commodity_insight_text(c, db)
@@ -1782,11 +1777,11 @@ def generate_daily_insights(self):
 
         # Trade pair insights — latest year per pair only
         trade_count = 0
-        pairs = db.query(TradePair).order_by(TradePair.year.desc()).all()
+        pairs = db.execute(select(TradePair).order_by(TradePair.year.desc())).scalars().all()
         seen_pairs: set[str] = set()
         for pair in pairs:
-            exp = db.query(Country).filter(Country.id == pair.exporter_id).first()
-            imp = db.query(Country).filter(Country.id == pair.importer_id).first()
+            exp = db.execute(select(Country).where(Country.id == pair.exporter_id)).scalar_one_or_none()
+            imp = db.execute(select(Country).where(Country.id == pair.importer_id)).scalar_one_or_none()
             if not exp or not imp:
                 continue
             pair_code = f"{exp.code}-{imp.code}"
@@ -1817,7 +1812,7 @@ def generate_daily_insights(self):
 
         # Index insights
         index_count = 0
-        indices = db.query(Asset).filter(Asset.asset_type == "index").all()
+        indices = db.execute(select(Asset).where(Asset.asset_type == "index")).scalars().all()
         for idx in indices:
             try:
                 insight = _index_insight_text(idx, db)
@@ -1882,45 +1877,44 @@ def run_insight_batch(self, insight_type: str):
         if insight_type == "country":
             # Only countries with indicator data — skip uninhabited territories (no angles → always None)
             codes_with_data = {
-                row[0] for row in db.query(Country.code)
-                .join(CountryIndicator, CountryIndicator.country_id == Country.id)
-                .distinct()
-                .all()
+                row[0] for row in db.execute(
+                    select(Country.code)
+                    .join(CountryIndicator, CountryIndicator.country_id == Country.id)
+                    .distinct()
+                ).all()
             }
-            all_codes = [row[0] for row in db.query(Country.code).all() if row[0] in codes_with_data]
+            all_codes = [row[0] for row in db.execute(select(Country.code)).all() if row[0] in codes_with_data]
         elif insight_type == "stock":
             # All active stocks — price-based fallback handles those without revenue data
-            all_codes = [row[0] for row in (
-                db.query(Asset.symbol)
-                .filter(Asset.asset_type == "stock", Asset.is_active == True)
-                .all()
-            )]
+            all_codes = [row[0] for row in db.execute(
+                select(Asset.symbol)
+                .where(Asset.asset_type == "stock", Asset.is_active == True)
+            ).all()]
         elif insight_type == "commodity":
-            all_codes = [row[0] for row in db.query(Asset.symbol).filter(Asset.asset_type == "commodity").all()]
+            all_codes = [row[0] for row in db.execute(select(Asset.symbol).where(Asset.asset_type == "commodity")).all()]
         elif insight_type == "trade":
-            pairs = db.query(TradePair).order_by(TradePair.year.desc()).all()
+            pairs = db.execute(select(TradePair).order_by(TradePair.year.desc())).scalars().all()
             seen: set[str] = set()
             all_codes = []
             for p in pairs:
-                exp_code = db.query(Country.code).filter(Country.id == p.exporter_id).scalar()
-                imp_code = db.query(Country.code).filter(Country.id == p.importer_id).scalar()
+                exp_code = db.execute(select(Country.code).where(Country.id == p.exporter_id)).scalar()
+                imp_code = db.execute(select(Country.code).where(Country.id == p.importer_id)).scalar()
                 if exp_code and imp_code:
                     code = f"{exp_code}-{imp_code}"
                     if code not in seen:
                         seen.add(code)
                         all_codes.append(code)
         elif insight_type == "index":
-            all_codes = [row[0] for row in db.query(Asset.symbol).filter(Asset.asset_type == "index").all()]
+            all_codes = [row[0] for row in db.execute(select(Asset.symbol).where(Asset.asset_type == "index")).all()]
         else:
             log.error("run_insight_batch: unknown type %s", insight_type)
             return {"error": "unknown_type"}
 
         # Preload existing insights: code → (generated_at, summary_text)
-        _existing_rows = (
-            db.query(PageSummary.entity_code, PageSummary.generated_at, PageSummary.summary)
-            .filter(PageSummary.entity_type == summary_type)
-            .all()
-        )
+        _existing_rows = db.execute(
+            select(PageSummary.entity_code, PageSummary.generated_at, PageSummary.summary)
+            .where(PageSummary.entity_type == summary_type)
+        ).all()
         existing_ts: dict[str, datetime] = {r.entity_code: r.generated_at for r in _existing_rows}
         existing_texts: dict[str, str] = {r.entity_code: r.summary for r in _existing_rows}
         _epoch = datetime.min.replace(tzinfo=timezone.utc)
@@ -1950,7 +1944,7 @@ def run_insight_batch(self, insight_type: str):
         for entity_code in batch:
             try:
                 if insight_type == "country":
-                    c = db.query(Country).filter(Country.code == entity_code).first()
+                    c = db.execute(select(Country).where(Country.code == entity_code)).scalar_one_or_none()
                     if not c:
                         continue
                     insight = _country_insight_text(c, db)
@@ -1973,7 +1967,7 @@ def run_insight_batch(self, insight_type: str):
                         count += 1
 
                 elif insight_type == "stock":
-                    s = db.query(Asset).filter(Asset.symbol == entity_code, Asset.asset_type == "stock").first()
+                    s = db.execute(select(Asset).where(Asset.symbol == entity_code, Asset.asset_type == "stock")).scalar_one_or_none()
                     if not s:
                         continue
                     insight = _stock_insight_text(s, db)
@@ -1996,7 +1990,7 @@ def run_insight_batch(self, insight_type: str):
                         count += 1
 
                 elif insight_type == "commodity":
-                    c = db.query(Asset).filter(Asset.symbol == entity_code, Asset.asset_type == "commodity").first()
+                    c = db.execute(select(Asset).where(Asset.symbol == entity_code, Asset.asset_type == "commodity")).scalar_one_or_none()
                     if not c:
                         continue
                     insight = _commodity_insight_text(c, db)
@@ -2021,16 +2015,15 @@ def run_insight_batch(self, insight_type: str):
 
                 elif insight_type == "trade":
                     exp_code, imp_code = entity_code.split("-", 1)
-                    exp = db.query(Country).filter(Country.code == exp_code).first()
-                    imp = db.query(Country).filter(Country.code == imp_code).first()
+                    exp = db.execute(select(Country).where(Country.code == exp_code)).scalar_one_or_none()
+                    imp = db.execute(select(Country).where(Country.code == imp_code)).scalar_one_or_none()
                     if not exp or not imp:
                         continue
-                    pair = (
-                        db.query(TradePair)
-                        .filter(TradePair.exporter_id == exp.id, TradePair.importer_id == imp.id)
+                    pair = db.execute(
+                        select(TradePair)
+                        .where(TradePair.exporter_id == exp.id, TradePair.importer_id == imp.id)
                         .order_by(TradePair.year.desc())
-                        .first()
-                    )
+                    ).scalar_one_or_none()
                     insight = _trade_insight_text(exp, imp, pair)
                     if insight and _insight_is_duplicate(insight, existing_texts.get(entity_code)):
                         log.debug("Skipping %s — insight too similar to previous", entity_code)
@@ -2051,7 +2044,7 @@ def run_insight_batch(self, insight_type: str):
                         count += 1
 
                 elif insight_type == "index":
-                    idx = db.query(Asset).filter(Asset.symbol == entity_code, Asset.asset_type == "index").first()
+                    idx = db.execute(select(Asset).where(Asset.symbol == entity_code, Asset.asset_type == "index")).scalar_one_or_none()
                     if not idx:
                         continue
                     insight = _index_insight_text(idx, db)
@@ -2099,44 +2092,43 @@ def refresh_entity_summary(self, entity_type: str, entity_code: str):
     try:
         summary: str | None = None
         if entity_type == "country":
-            country = db.query(Country).filter(Country.code == entity_code.upper()).first()
+            country = db.execute(select(Country).where(Country.code == entity_code.upper())).scalar_one_or_none()
             if country:
                 summary = _country_summary_text(country, db)
         elif entity_type == "stock":
-            asset = db.query(Asset).filter(Asset.symbol == entity_code.upper()).first()
+            asset = db.execute(select(Asset).where(Asset.symbol == entity_code.upper())).scalar_one_or_none()
             if asset:
                 summary = _stock_summary_text(asset, db)
         elif entity_type == "commodity":
-            asset = db.query(Asset).filter(
-                Asset.symbol == entity_code.upper(), Asset.asset_type == "commodity"
-            ).first()
+            asset = db.execute(
+                select(Asset).where(Asset.symbol == entity_code.upper(), Asset.asset_type == "commodity")
+            ).scalar_one_or_none()
             if asset:
                 summary = _commodity_summary_text(asset)
         elif entity_type == "fx":
-            asset = db.query(Asset).filter(Asset.symbol == entity_code.upper()).first()
+            asset = db.execute(select(Asset).where(Asset.symbol == entity_code.upper())).scalar_one_or_none()
             if asset:
                 summary = _fx_summary_text(asset)
         elif entity_type == "crypto":
-            asset = db.query(Asset).filter(Asset.symbol == entity_code.upper()).first()
+            asset = db.execute(select(Asset).where(Asset.symbol == entity_code.upper())).scalar_one_or_none()
             if asset:
                 summary = _crypto_summary_text(asset)
         elif entity_type in ("etf", "index", "bond"):
-            asset = db.query(Asset).filter(Asset.symbol == entity_code.upper()).first()
+            asset = db.execute(select(Asset).where(Asset.symbol == entity_code.upper())).scalar_one_or_none()
             if asset:
                 fn = {"etf": _etf_summary_text, "index": _index_summary_text, "bond": _bond_summary_text}[entity_type]
                 summary = fn(asset)
         elif entity_type == "trade":
             codes = entity_code.upper().split("-")
             if len(codes) == 2:
-                exp = db.query(Country).filter(Country.code == codes[0]).first()
-                imp = db.query(Country).filter(Country.code == codes[1]).first()
+                exp = db.execute(select(Country).where(Country.code == codes[0])).scalar_one_or_none()
+                imp = db.execute(select(Country).where(Country.code == codes[1])).scalar_one_or_none()
                 if exp and imp:
-                    trade = (
-                        db.query(TradePair)
-                        .filter(TradePair.exporter_id == exp.id, TradePair.importer_id == imp.id)
+                    trade = db.execute(
+                        select(TradePair)
+                        .where(TradePair.exporter_id == exp.id, TradePair.importer_id == imp.id)
                         .order_by(TradePair.year.desc())
-                        .first()
-                    )
+                    ).scalar_one_or_none()
                     summary = _trade_summary_text(exp, imp, trade)
 
         if summary:
