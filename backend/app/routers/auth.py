@@ -212,7 +212,8 @@ def get_admin_user(current_user: User = Depends(get_current_user)) -> User:
 
 
 @router.get("/me", response_model=UserOut)
-def me(current_user: User = Depends(get_current_user)):
+@limiter.limit("120/minute")
+def me(request: Request, current_user: User = Depends(get_current_user)):
     return UserOut(
         id=current_user.id,
         email=current_user.email,

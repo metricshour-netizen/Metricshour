@@ -177,7 +177,8 @@ def get_feed(
 
 
 @router.get("/events/{event_id}", response_model=FeedEventOut)
-def get_feed_event(event_id: int, db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+def get_feed_event(request: Request, event_id: int, db: Session = Depends(get_db)):
     """Return a single feed event by ID — used by the social share og:meta worker."""
     event = db.execute(
         select(FeedEvent).where(FeedEvent.id == event_id)
