@@ -14,3 +14,4 @@ workers/celerybeat-schedule*
 # Internal planning and memory files — never commit these
 CLAUDE.md
 infra/
+workers/templates/
