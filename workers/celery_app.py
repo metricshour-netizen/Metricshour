@@ -42,6 +42,15 @@ def handle_task_failure(sender=None, task_id=None, exception=None, args=None,
     on_task_failure(task_name, exception, retry_count)
 
 
+@signals.task_success.connect
+def handle_task_success(sender=None, result=None, **kw):
+    """Record heartbeat for watchdog staleness checks."""
+    from tasks.watchdog import record_heartbeat
+    task_name = sender.name if sender else ""
+    if task_name:
+        record_heartbeat(task_name)
+
+
 app = Celery('metricshour', include=[
     'tasks.crypto',
     'tasks.stocks',
@@ -71,6 +80,7 @@ app = Celery('metricshour', include=[
     'tasks.security_monitor',
     'tasks.data_quality_monitor',
     'tasks.search_index',
+    'tasks.watchdog',
 ])
 
 # Use SSL only for rediss:// URLs (Upstash); skip for local redis:// (DragonflyDB)
@@ -289,6 +299,13 @@ app.conf.update(
         'security-monitor-hourly': {
             'task': 'tasks.security_monitor.run_security_checks',
             'schedule': 3600.0,
+        },
+
+        # Worker watchdog — checks critical task heartbeats every 10 min
+        # Fires Telegram alert if any task hasn't run within its expected window
+        'watchdog-every-10min': {
+            'task': 'tasks.watchdog.check_worker_health',
+            'schedule': 600.0,
         },
 
     },
