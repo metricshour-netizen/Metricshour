@@ -728,12 +728,12 @@ def _trade_social_card(exp, imp, p) -> bytes:
     hero_desc = f"{exp.name} ↔ {imp.name} annual trade volume"
 
     facts: list[str] = []
-    if p.export_value_usd:
-        facts.append(f"Exports {exp.code}→{imp.code}: {_fmt_large(p.export_value_usd)}")
-    if p.import_value_usd:
-        facts.append(f"Imports {imp.code}→{exp.code}: {_fmt_large(p.import_value_usd)}")
-    if p.top_products:
-        top = p.top_products
+    if p.exports_usd:
+        facts.append(f"Exports {exp.code}→{imp.code}: {_fmt_large(p.exports_usd)}")
+    if p.imports_usd:
+        facts.append(f"Imports {imp.code}→{exp.code}: {_fmt_large(p.imports_usd)}")
+    if p.top_export_products:
+        top = p.top_export_products
         if isinstance(top, list) and top:
             facts.append(f"Top product: {str(top[0])[:40]}")
         elif isinstance(top, str):
