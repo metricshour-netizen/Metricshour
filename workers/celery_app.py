@@ -186,6 +186,10 @@ app.conf.update(
             'task': 'tasks.og_images.generate_feed_og_images',
             'schedule': crontab(hour=4, minute=15),
         },
+        'social-cards-daily-445am': {
+            'task': 'tasks.og_images.generate_social_cards',
+            'schedule': crontab(hour=4, minute=45),
+        },
 
         # --- Data collection: public domain sources ---
 

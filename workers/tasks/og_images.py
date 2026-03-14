@@ -37,11 +37,20 @@ def _base_canvas() -> tuple[Image.Image, ImageDraw.ImageDraw]:
     img = Image.new("RGB", (W, H), BG)
     draw = ImageDraw.Draw(img)
 
-    # Top accent line
-    draw.rectangle([(0, 0), (W, 4)], fill=GREEN)
+    # Top accent bar
+    draw.rectangle([(0, 0), (W, 5)], fill=GREEN)
 
-    # MetricsHour brand — bottom right
-    draw.text((W - 32, H - 40), "METRICSHOUR", font=_font(18, bold=True), fill=GREEN, anchor="rm")
+    # Bottom brand bar
+    draw.rectangle([(0, H - 56), (W, H)], fill=SURFACE)
+
+    # M logo box
+    logo_sz = 34
+    lx, ly = 36, H - 56 + (56 - logo_sz) // 2
+    draw.rounded_rectangle([(lx, ly), (lx + logo_sz, ly + logo_sz)], radius=6, fill=GREEN)
+    draw.text((lx + logo_sz // 2, ly + logo_sz // 2), "M", font=_font(20, bold=True), fill=BG, anchor="mm")
+
+    draw.text((lx + logo_sz + 12, H - 28), "MetricsHour", font=_font(20, bold=True), fill=WHITE, anchor="lm")
+    draw.text((W - 36, H - 28), "metricshour.com", font=_font(17), fill=GRAY, anchor="rm")
 
     return img, draw
 
@@ -68,24 +77,36 @@ def _to_png_bytes(img: Image.Image) -> bytes:
 def _country_image(flag: str, name: str, gdp: float | None, growth: float | None) -> bytes:
     img, draw = _base_canvas()
 
-    # Flag (large emoji via text — best effort; will render as box on some systems)
-    draw.text((80, H // 2 - 60), flag, font=_font(120), fill=WHITE, anchor="lm")
+    PAD = 64
+    cy = H // 2 - 30
+
+    # Flag square
+    if flag:
+        flag_sz = 80
+        draw.rounded_rectangle([(PAD, cy - flag_sz // 2 - 40), (PAD + flag_sz, cy - flag_sz // 2 + 40)], radius=12, fill=SURFACE)
+        draw.text((PAD + flag_sz // 2, cy - flag_sz // 2 + 40 - flag_sz // 2), flag, font=_font(52), fill=WHITE, anchor="mm")
+        tx = PAD + flag_sz + 28
+    else:
+        tx = PAD
 
     # Country name
-    draw.text((260, H // 2 - 50), name, font=_font(64, bold=True), fill=WHITE, anchor="lm")
+    name_disp = name if len(name) <= 22 else name[:20] + "…"
+    draw.text((tx, cy - 50), name_disp, font=_font(68, bold=True), fill=WHITE, anchor="lm")
 
-    # GDP
+    # GDP card
     gdp_str = _fmt_large(gdp)
-    draw.text((260, H // 2 + 30), f"GDP  {gdp_str}", font=_font(32), fill=GRAY_LT, anchor="lm")
+    card_x0, card_x1 = tx, W - PAD
+    draw.rounded_rectangle([(card_x0, cy + 10), (card_x1, cy + 100)], radius=10, fill=SURFACE)
+    draw.rounded_rectangle([(card_x0, cy + 10), (card_x0 + 6, cy + 100)], radius=3, fill=GREEN)
+    draw.text((card_x0 + 24, cy + 55), f"GDP  {gdp_str}", font=_font(36, bold=True), fill=WHITE, anchor="lm")
 
-    # Growth
     if growth is not None:
         color = GREEN if growth >= 0 else (248, 113, 113)
         sign = "+" if growth >= 0 else ""
-        draw.text((260, H // 2 + 80), f"Growth  {sign}{growth:.1f}%", font=_font(28), fill=color, anchor="lm")
+        draw.text((card_x1 - 16, cy + 55), f"{sign}{growth:.1f}%", font=_font(32, bold=True), fill=color, anchor="rm")
 
-    # Label
-    draw.text((80, H - 40), "Economy & Macro Intelligence", font=_font(22), fill=GRAY, anchor="lm")
+    # Sub-label
+    draw.text((PAD, H - 88), "Economy & Macro Intelligence", font=_font(22), fill=GRAY, anchor="lm")
 
     return _to_png_bytes(img)
 
@@ -93,22 +114,26 @@ def _country_image(flag: str, name: str, gdp: float | None, growth: float | None
 def _stock_image(symbol: str, name: str, price: float | None, market_cap: float | None) -> bytes:
     img, draw = _base_canvas()
 
-    # Ticker
-    draw.text((80, H // 2 - 80), symbol, font=_font(96, bold=True), fill=GREEN, anchor="lm")
+    PAD = 64
+    cy = H // 2 - 20
+
+    # Ticker (large green)
+    draw.text((PAD, cy - 70), symbol, font=_font(100, bold=True), fill=GREEN, anchor="lm")
 
     # Company name
-    # Truncate long names
-    display_name = name if len(name) <= 30 else name[:28] + "…"
-    draw.text((80, H // 2 + 20), display_name, font=_font(40), fill=WHITE, anchor="lm")
+    display_name = name if len(name) <= 32 else name[:30] + "…"
+    draw.text((PAD, cy + 10), display_name, font=_font(38), fill=WHITE, anchor="lm")
 
-    # Price + market cap
-    if price is not None:
-        draw.text((80, H // 2 + 90), f"${price:,.2f}", font=_font(32), fill=WHITE, anchor="lm")
-    if market_cap is not None:
-        draw.text((80, H // 2 + 140), f"Market cap  {_fmt_large(market_cap)}", font=_font(28), fill=GRAY_LT, anchor="lm")
+    # Price card
+    if price is not None or market_cap is not None:
+        draw.rounded_rectangle([(PAD, cy + 60), (W - PAD, cy + 160)], radius=10, fill=SURFACE)
+        draw.rounded_rectangle([(PAD, cy + 60), (PAD + 6, cy + 160)], radius=3, fill=GREEN)
+        if price is not None:
+            draw.text((PAD + 24, cy + 100), f"${price:,.2f}", font=_font(42, bold=True), fill=WHITE, anchor="lm")
+        if market_cap is not None:
+            draw.text((W - PAD - 16, cy + 100), f"Cap  {_fmt_large(market_cap)}", font=_font(28), fill=GRAY_LT, anchor="rm")
 
-    # Label
-    draw.text((80, H - 40), "Geographic Revenue & Market Intelligence", font=_font(22), fill=GRAY, anchor="lm")
+    draw.text((PAD, H - 88), "Geographic Revenue & Market Intelligence", font=_font(22), fill=GRAY, anchor="lm")
 
     return _to_png_bytes(img)
 
@@ -116,24 +141,29 @@ def _stock_image(symbol: str, name: str, price: float | None, market_cap: float 
 def _trade_image(flag_a: str, name_a: str, flag_b: str, name_b: str, trade_value: float | None) -> bytes:
     img, draw = _base_canvas()
 
-    # Country A
-    draw.text((80, H // 2 - 30), flag_a, font=_font(80), fill=WHITE, anchor="lm")
-    draw.text((200, H // 2 - 30), name_a, font=_font(48, bold=True), fill=WHITE, anchor="lm")
+    PAD = 48
+    cy = H // 2 - 30
 
-    # Arrow
-    draw.text((W // 2, H // 2 - 30), "↔", font=_font(56, bold=True), fill=GREEN, anchor="mm")
+    # Country A block (left)
+    name_a_disp = name_a if len(name_a) <= 14 else name_a[:12] + "…"
+    draw.text((PAD, cy - 50), flag_a, font=_font(72), fill=WHITE, anchor="lm")
+    draw.text((PAD, cy + 20), name_a_disp, font=_font(40, bold=True), fill=WHITE, anchor="lm")
 
-    # Country B — right side
-    b_x = W - 80
-    draw.text((b_x, H // 2 - 30), flag_b, font=_font(80), fill=WHITE, anchor="rm")
-    draw.text((b_x - 130, H // 2 - 30), name_b, font=_font(48, bold=True), fill=WHITE, anchor="rm")
+    # Arrow (center)
+    draw.text((W // 2, cy - 14), "↔", font=_font(64, bold=True), fill=GREEN, anchor="mm")
 
-    # Trade value
+    # Country B block (right)
+    name_b_disp = name_b if len(name_b) <= 14 else name_b[:12] + "…"
+    draw.text((W - PAD, cy - 50), flag_b, font=_font(72), fill=WHITE, anchor="rm")
+    draw.text((W - PAD, cy + 20), name_b_disp, font=_font(40, bold=True), fill=WHITE, anchor="rm")
+
+    # Trade value card
     if trade_value is not None:
-        draw.text((W // 2, H // 2 + 60), f"Trade volume  {_fmt_large(trade_value)}", font=_font(32), fill=GRAY_LT, anchor="mm")
+        draw.rounded_rectangle([(PAD, cy + 70), (W - PAD, cy + 160)], radius=10, fill=SURFACE)
+        draw.rounded_rectangle([(PAD, cy + 70), (PAD + 6, cy + 160)], radius=3, fill=GREEN)
+        draw.text((W // 2, cy + 115), f"Trade volume  {_fmt_large(trade_value)}", font=_font(34, bold=True), fill=WHITE, anchor="mm")
 
-    # Label
-    draw.text((80, H - 40), "Bilateral Trade Intelligence · UN Comtrade", font=_font(22), fill=GRAY, anchor="lm")
+    draw.text((PAD, H - 88), "Bilateral Trade Intelligence · UN Comtrade", font=_font(22), fill=GRAY, anchor="lm")
 
     return _to_png_bytes(img)
 
@@ -423,6 +453,321 @@ def _feed_event_image(
     draw.rectangle([(0, H - 6), (W, H)], fill=accent)
 
     return _to_png_bytes(img)
+
+
+# ── Portrait social cards (720×1280, 9:16, "Did you know?" template) ──────────
+
+SW, SH = 720, 1280   # social card dimensions
+
+
+def _wrap(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.FreeTypeFont, max_w: int) -> list[str]:
+    words = text.split()
+    lines: list[str] = []
+    cur = ""
+    for w in words:
+        test = (cur + " " + w).strip()
+        if draw.textlength(test, font=font) <= max_w:
+            cur = test
+        else:
+            if cur:
+                lines.append(cur)
+            cur = w
+    if cur:
+        lines.append(cur)
+    return lines
+
+
+def _social_card(
+    category: str,
+    flag: str,
+    title: str,
+    year: str | int | None,
+    hero_number: str,
+    hero_desc: str,
+    facts: list[str],
+    source: str,
+) -> bytes:
+    """
+    720×1280 portrait "Did you know?" social card.
+    Layout: category pill → headline → entity row → hero stat card → key facts → source → CTA → brand bar.
+    """
+    img = Image.new("RGB", (SW, SH), BG)
+    draw = ImageDraw.Draw(img)
+
+    PAD = 36
+    INNER = SW - PAD * 2
+    y = 60
+
+    # ── Category pill (centered, green outline) ────────────────────────────
+    pill_font = _font(19, bold=True)
+    pill_text = category.upper()
+    pill_tw = int(draw.textlength(pill_text, font=pill_font))
+    pill_w, pill_h = pill_tw + 40, 38
+    px0 = (SW - pill_w) // 2
+    draw.rounded_rectangle([(px0, y), (px0 + pill_w, y + pill_h)], radius=14, outline=GREEN, width=2)
+    draw.text((SW // 2, y + pill_h // 2), pill_text, font=pill_font, fill=GREEN, anchor="mm")
+    y += pill_h + 22
+
+    # ── "Did you know?" headline ───────────────────────────────────────────
+    h1_font = _font(54, bold=True)
+    draw.text((SW // 2, y + 32), "Did you know?", font=h1_font, fill=WHITE, anchor="mm")
+    y += 72
+
+    # ── Entity row: flag square + name (green) + year (gray) ──────────────
+    flag_sz = 50
+    if flag:
+        draw.rounded_rectangle([(PAD, y), (PAD + flag_sz, y + flag_sz)], radius=8, fill=SURFACE)
+        draw.text((PAD + flag_sz // 2, y + flag_sz // 2), flag, font=_font(30), fill=WHITE, anchor="mm")
+        tx = PAD + flag_sz + 14
+    else:
+        tx = PAD
+
+    name_font = _font(26, bold=True)
+    max_name_w = SW - tx - PAD - 64
+    name_disp = title if draw.textlength(title, font=name_font) <= max_name_w else title[:26] + "…"
+    draw.text((tx, y + flag_sz // 2), name_disp, font=name_font, fill=GREEN, anchor="lm")
+
+    if year:
+        yr_font = _font(21)
+        draw.text((SW - PAD, y + flag_sz // 2), str(year), font=yr_font, fill=GRAY, anchor="rm")
+    y += flag_sz + 26
+
+    # ── Hero stat card (dark bg, 6px green left border) ────────────────────
+    card_h = 134
+    draw.rounded_rectangle([(PAD, y), (SW - PAD, y + card_h)], radius=10, fill=SURFACE)
+    draw.rounded_rectangle([(PAD, y), (PAD + 6, y + card_h)], radius=3, fill=GREEN)
+
+    num_font = _font(54, bold=True)
+    draw.text((PAD + 24, y + 40), hero_number, font=num_font, fill=GREEN, anchor="lm")
+
+    desc_font = _font(21)
+    desc_lines = _wrap(draw, hero_desc, desc_font, INNER - 32)
+    dy = y + 86
+    for line in desc_lines[:2]:
+        draw.text((PAD + 24, dy), line, font=desc_font, fill=GRAY_LT, anchor="lm")
+        dy += 26
+    y += card_h + 26
+
+    # ── KEY FACTS ─────────────────────────────────────────────────────────
+    lbl_font = _font(17, bold=True)
+    draw.text((PAD, y + 10), "KEY FACTS", font=lbl_font, fill=GRAY, anchor="lm")
+    y += 30
+
+    facts_to_show = facts[:3]
+    fact_font = _font(21)
+    fact_card_h = max(96, 20 + len(facts_to_show) * 52)
+    draw.rounded_rectangle([(PAD, y), (SW - PAD, y + fact_card_h)], radius=10, fill=SURFACE)
+
+    fy = y + 22
+    for fact in facts_to_show:
+        draw.rectangle([(PAD + 16, fy + 7), (PAD + 24, fy + 15)], fill=GREEN)
+        fact_disp = fact if draw.textlength(fact, font=fact_font) <= INNER - 50 else fact[:52] + "…"
+        draw.text((PAD + 38, fy + 1), fact_disp, font=fact_font, fill=WHITE, anchor="lm")
+        fy += 48
+    y += fact_card_h + 16
+
+    # ── Source ────────────────────────────────────────────────────────────
+    draw.text((PAD, y + 10), f"Source: {source}", font=_font(17), fill=GRAY, anchor="lm")
+    y += 34
+
+    # ── CTA button (green, full-width minus padding) ───────────────────────
+    brand_h = 72
+    cta_h = 56
+    cta_y = SH - brand_h - cta_h - 28
+    cta_y = max(cta_y, y + 8)
+    draw.rounded_rectangle([(PAD, cta_y), (SW - PAD, cta_y + cta_h)], radius=12, fill=GREEN)
+    draw.text((SW // 2, cta_y + cta_h // 2), "Explore the data →", font=_font(24, bold=True), fill=BG, anchor="mm")
+
+    # ── Brand bar ─────────────────────────────────────────────────────────
+    brand_y = SH - brand_h
+    draw.rectangle([(0, brand_y), (SW, SH)], fill=SURFACE)
+
+    # M logo box
+    logo_sz = 42
+    lx = PAD
+    ly = brand_y + (brand_h - logo_sz) // 2
+    draw.rounded_rectangle([(lx, ly), (lx + logo_sz, ly + logo_sz)], radius=7, fill=GREEN)
+    draw.text((lx + logo_sz // 2, ly + logo_sz // 2), "M", font=_font(26, bold=True), fill=BG, anchor="mm")
+
+    draw.text((lx + logo_sz + 14, brand_y + brand_h // 2), "MetricsHour", font=_font(24, bold=True), fill=WHITE, anchor="lm")
+    draw.text((SW - PAD, brand_y + brand_h // 2), "metricshour.com", font=_font(18), fill=GRAY, anchor="rm")
+
+    return _to_png_bytes(img)
+
+
+def _country_social_card(c, db) -> bytes:
+    from sqlalchemy import select
+    from app.models.country import CountryIndicator
+
+    def _get(indicator: str):
+        row = db.execute(
+            select(CountryIndicator)
+            .where(CountryIndicator.country_id == c.id, CountryIndicator.indicator == indicator)
+            .order_by(CountryIndicator.period_date.desc())
+            .limit(1)
+        ).scalar_one_or_none()
+        return (row.value if row else None, row.period_date.year if row and row.period_date else None)
+
+    gdp, gdp_year = _get("gdp_usd")
+    growth, _ = _get("gdp_growth_pct")
+    inflation, _ = _get("inflation_pct")
+    population, _ = _get("population")
+
+    hero_num = _fmt_large(gdp) if gdp else "N/A"
+    hero_desc = "Gross Domestic Product (current USD)"
+
+    facts: list[str] = []
+    if growth is not None:
+        sign = "+" if growth >= 0 else ""
+        facts.append(f"GDP growth: {sign}{growth:.1f}%")
+    if inflation is not None:
+        facts.append(f"Inflation: {inflation:.1f}%")
+    if population is not None:
+        pop_m = population / 1e6
+        facts.append(f"Population: {pop_m:.1f}M")
+    while len(facts) < 3:
+        facts.append("Data: metricshour.com")
+
+    return _social_card(
+        category="Global Economy",
+        flag=c.flag_emoji or "",
+        title=c.name,
+        year=gdp_year,
+        hero_number=hero_num,
+        hero_desc=hero_desc,
+        facts=facts,
+        source="World Bank",
+    )
+
+
+def _stock_social_card(a, db) -> bytes:
+    from sqlalchemy import select
+    from app.models.asset import Price
+
+    price_row = db.execute(
+        select(Price)
+        .where(Price.asset_id == a.id, Price.interval == "1d")
+        .order_by(Price.timestamp.desc())
+        .limit(1)
+    ).scalar_one_or_none()
+
+    price = price_row.close if price_row else None
+    year = price_row.timestamp.year if price_row and price_row.timestamp else None
+
+    hero_num = f"${price:,.2f}" if price else "N/A"
+    hero_desc = f"{a.name} — latest close price"
+
+    facts: list[str] = []
+    if a.market_cap_usd:
+        facts.append(f"Market cap: {_fmt_large(a.market_cap_usd)}")
+    if a.sector:
+        facts.append(f"Sector: {a.sector}")
+    if a.exchange:
+        facts.append(f"Exchange: {a.exchange}")
+    while len(facts) < 3:
+        facts.append("Data: metricshour.com")
+
+    return _social_card(
+        category="Equity Markets",
+        flag="📈",
+        title=a.symbol,
+        year=year,
+        hero_number=hero_num,
+        hero_desc=hero_desc,
+        facts=facts,
+        source="Yahoo Finance",
+    )
+
+
+def _trade_social_card(exp, imp, p) -> bytes:
+    hero_num = _fmt_large(p.trade_value_usd) if p.trade_value_usd else "N/A"
+    hero_desc = f"{exp.name} ↔ {imp.name} annual trade volume"
+
+    facts: list[str] = []
+    if p.export_value_usd:
+        facts.append(f"Exports {exp.code}→{imp.code}: {_fmt_large(p.export_value_usd)}")
+    if p.import_value_usd:
+        facts.append(f"Imports {imp.code}→{exp.code}: {_fmt_large(p.import_value_usd)}")
+    if p.top_products:
+        top = p.top_products
+        if isinstance(top, list) and top:
+            facts.append(f"Top product: {str(top[0])[:40]}")
+        elif isinstance(top, str):
+            facts.append(f"Top product: {top[:40]}")
+    while len(facts) < 3:
+        facts.append("Data: UN Comtrade / metricshour.com")
+
+    return _social_card(
+        category="Global Trade",
+        flag=f"{exp.flag_emoji or ''}{imp.flag_emoji or ''}",
+        title=f"{exp.code} ↔ {imp.code}",
+        year=p.year,
+        hero_number=hero_num,
+        hero_desc=hero_desc,
+        facts=facts,
+        source="UN Comtrade / WITS",
+    )
+
+
+@shared_task(name="tasks.og_images.generate_social_cards", max_retries=1)
+def generate_social_cards() -> dict:
+    """Generate 720×1280 portrait 'Did you know?' social cards for all entities. Upload to R2 social/."""
+    import sys
+    sys.path.insert(0, "/var/www/metricshour/backend")
+
+    from sqlalchemy import create_engine, select
+    from sqlalchemy.orm import Session
+
+    engine = create_engine(os.environ["DATABASE_URL"], pool_pre_ping=True)
+    counts = {"countries": 0, "stocks": 0, "trade": 0, "errors": 0}
+
+    with Session(engine) as db:
+        from app.models.country import Country, TradePair
+        from app.models.asset import Asset, AssetType
+
+        # Countries
+        for c in db.execute(select(Country)).scalars().all():
+            try:
+                img_bytes = _country_social_card(c, db)
+                _upload(f"social/countries/{c.code.lower()}.png", img_bytes)
+                counts["countries"] += 1
+            except Exception as e:
+                log.warning("Social card country %s failed: %s", c.code, e)
+                counts["errors"] += 1
+
+        # Stocks
+        for a in db.execute(select(Asset).where(Asset.asset_type == AssetType.stock, Asset.is_active == True)).scalars().all():
+            try:
+                img_bytes = _stock_social_card(a, db)
+                _upload(f"social/stocks/{a.symbol.lower()}.png", img_bytes)
+                counts["stocks"] += 1
+            except Exception as e:
+                log.warning("Social card stock %s failed: %s", a.symbol, e)
+                counts["errors"] += 1
+
+        # Trade pairs (latest year per pair)
+        pairs = db.execute(select(TradePair)).scalars().all()
+        seen: set[tuple] = set()
+        for p in sorted(pairs, key=lambda x: x.year or 0, reverse=True):
+            key = (p.exporter_id, p.importer_id)
+            if key in seen:
+                continue
+            seen.add(key)
+            try:
+                exp = db.get(Country, p.exporter_id)
+                imp = db.get(Country, p.importer_id)
+                if not exp or not imp:
+                    continue
+                img_bytes = _trade_social_card(exp, imp, p)
+                pair_key = f"{exp.code.lower()}-{imp.code.lower()}"
+                _upload(f"social/trade/{pair_key}.png", img_bytes)
+                counts["trade"] += 1
+            except Exception as e:
+                log.warning("Social card trade %s-%s failed: %s", p.exporter_id, p.importer_id, e)
+                counts["errors"] += 1
+
+    log.info("Social cards generated: %s", counts)
+    return counts
 
 
 @shared_task(name="tasks.og_images.generate_feed_og_images", max_retries=1)
