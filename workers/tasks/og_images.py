@@ -533,132 +533,110 @@ def _social_card(
     accent: tuple[int, int, int] = GREEN,
 ) -> bytes:
     """
-    720×1280 portrait "Did you know?" social card — matches Telegram template exactly.
-    Layout (left-aligned throughout):
-      Category pill (top-left) → "Did you know?" headline (large, left) →
-      Entity row (colored flag square + green title + gray subtitle) →
-      Hero card (big number LEFT, description RIGHT on same line) →
-      KEY FACTS (► bullets) → [space] →
-      Source (pinned near bottom) → CTA button (partial width, left) →
-      Thin divider → Brand bar (M logo + MetricsHour + metricshour.com)
+    720x1280 portrait social card — pixel-matched to Telegram template.
+    Fixed layout positions (all left-aligned):
+      y=40   category pill (outline, left-aligned)
+      y=102  "Did you know?" 58px bold white
+      y=178  entity row: red 64px square + 28px green title + gray subtitle below
+      y=268  hero card h=148: 70px number left | description RIGHT-ALIGNED right col
+      y=436  KEY FACTS 14px gray label
+      y=458  facts card 3x48px rows with gray square outline bullets
+      y=1098 source text (fixed)
+      y=1128 CTA button partial-width left pill
+      y=1207 thin divider
+      y=1215 brand bar: outlined M box + MetricsHour white + metricshour.com accent
     """
-    bg_col = (10, 14, 26)
-    surf   = (17, 24, 39)
+    BG_COL   = (10, 14, 26)
+    SURF_COL = (17, 24, 39)
+    FLAG_RED = (220, 38, 38)
+    PAD      = 40
 
-    img  = Image.new("RGB", (SW, SH), bg_col)
+    img  = Image.new("RGB", (SW, SH), BG_COL)
     draw = ImageDraw.Draw(img)
 
-    PAD   = 40
-    INNER = SW - PAD * 2
-    y     = 40
+    # 1. Category pill — y=40, left, outline only
+    pf  = _font(15, bold=True)
+    ptw = int(draw.textlength(category.upper(), font=pf))
+    pw, ph = ptw + 28, 32
+    draw.rounded_rectangle([(PAD, 40), (PAD + pw, 40 + ph)], radius=ph // 2, outline=accent, width=2)
+    draw.text((PAD + pw // 2, 40 + ph // 2), category.upper(), font=pf, fill=accent, anchor="mm")
 
-    # ── Category pill — left-aligned, green outline ────────────────────────
-    pf   = _font(17, bold=True)
-    ptxt = category.upper()
-    ptw  = int(draw.textlength(ptxt, font=pf))
-    pw, ph = ptw + 32, 34
-    draw.rounded_rectangle([(PAD, y), (PAD + pw, y + ph)], radius=ph // 2, outline=accent, width=2)
-    draw.text((PAD + pw // 2, y + ph // 2), ptxt, font=pf, fill=accent, anchor="mm")
-    y += ph + 28
+    # 2. "Did you know?" — y=102, 58px bold white, left
+    draw.text((PAD, 102), "Did you know?", font=_font(58, bold=True), fill=WHITE, anchor="lt")
 
-    # ── "Did you know?" headline — large, left-aligned ─────────────────────
-    draw.text((PAD, y), "Did you know?", font=_font(56, bold=True), fill=WHITE, anchor="lt")
-    y += 76
-
-    # ── Entity row: colored square (flag) + green title + gray subtitle ────
+    # 3. Entity row — y=178
     sq = 64
-    # Flag square — solid red (matches original template design)
-    FLAG_RED = (220, 38, 38)
-    draw.rounded_rectangle([(PAD, y), (PAD + sq, y + sq)], radius=10, fill=FLAG_RED)
-    draw.text((PAD + sq // 2, y + sq // 2), flag[:2] if flag else "?", font=_font(32), fill=WHITE, anchor="mm")
+    draw.rounded_rectangle([(PAD, 178), (PAD + sq, 242)], radius=10, fill=FLAG_RED)
+    draw.text((PAD + sq // 2, 210), flag[:2] if flag else "?", font=_font(30), fill=WHITE, anchor="mm")
 
-    # Title (green bold) — wraps to 2 lines if needed
-    tx   = PAD + sq + 16
-    tf   = _font(26, bold=True)
+    tx = PAD + sq + 16
+    tf = _font(28, bold=True)
     tmax = SW - tx - PAD
     tlines = _wrap(draw, title, tf, tmax)
-    ty = y + 4
+    ty = 183
     for tl in tlines[:2]:
         draw.text((tx, ty), tl, font=tf, fill=accent, anchor="lt")
-        ty += 34
-    # Subtitle gray
-    draw.text((tx, ty + 2), subtitle, font=_font(20), fill=GRAY, anchor="lt")
-    y += max(sq, ty - y + 26) + 20
+        ty += 36
+    draw.text((tx, ty + 2), subtitle, font=_font(19), fill=GRAY, anchor="lt")
 
-    # ── Hero stat card — number LEFT, description RIGHT (same row) ─────────
-    card_h = 120
-    draw.rounded_rectangle([(PAD, y), (SW - PAD, y + card_h)], radius=10, fill=surf)
-    # Left green border
-    draw.rounded_rectangle([(PAD, y), (PAD + 5, y + card_h)], radius=3, fill=accent)
+    # 4. Hero stat card — y=268, h=148, number left 70px, desc right-aligned
+    CY, CH = 268, 148
+    draw.rounded_rectangle([(PAD, CY), (SW - PAD, CY + CH)], radius=10, fill=SURF_COL)
+    draw.rounded_rectangle([(PAD, CY), (PAD + 5, CY + CH)], radius=3, fill=accent)
 
-    num_f  = _font(58, bold=True)
-    num_w  = int(draw.textlength(hero_number, font=num_f))
-    draw.text((PAD + 20, y + card_h // 2), hero_number, font=num_f, fill=accent, anchor="lm")
+    nf = _font(70, bold=True)
+    nw = int(draw.textlength(hero_number, font=nf))
+    draw.text((PAD + 18, CY + CH // 2), hero_number, font=nf, fill=accent, anchor="lm")
 
-    # Description text to the right of the number
-    desc_x   = PAD + 20 + num_w + 14
-    desc_max = SW - PAD - 16 - desc_x
-    desc_f   = _font(20)
-    desc_lines = _wrap(draw, hero_desc, desc_f, desc_max)
-    # Vertically centre the description block
-    block_h = len(desc_lines[:3]) * 26
-    dy = y + (card_h - block_h) // 2
-    for dl in desc_lines[:3]:
-        draw.text((desc_x, dy), dl, font=desc_f, fill=GRAY_LT, anchor="lt")
-        dy += 26
-    y += card_h + 24
+    # Description: right column, RIGHT-aligned, vertically centred
+    dx0  = PAD + 18 + nw + 10
+    dx1  = SW - PAD - 16
+    dmax = dx1 - dx0
+    df   = _font(19)
+    dlines = _wrap(draw, hero_desc, df, dmax)
+    bh   = len(dlines[:3]) * 25
+    dy   = CY + (CH - bh) // 2
+    for dl in dlines[:3]:
+        draw.text((dx1, dy), dl, font=df, fill=GRAY_LT, anchor="rt")
+        dy += 25
 
-    # ── KEY FACTS ─────────────────────────────────────────────────────────
-    draw.text((PAD, y), "KEY FACTS", font=_font(15, bold=True), fill=GRAY, anchor="lt")
-    y += 26
+    # 5. KEY FACTS label — y=436
+    draw.text((PAD, 436), "KEY FACTS", font=_font(14, bold=True), fill=GRAY, anchor="lt")
 
-    facts_to_show = facts[:3]
-    fact_f   = _font(20)
-    row_h    = 46
-    fc_h     = len(facts_to_show) * row_h + 20
-    draw.rounded_rectangle([(PAD, y), (SW - PAD, y + fc_h)], radius=10, fill=surf)
+    # 6. Facts card — y=458
+    fc_y, fc_h = 458, 3 * 48 + 20
+    draw.rounded_rectangle([(PAD, fc_y), (SW - PAD, fc_y + fc_h)], radius=10, fill=SURF_COL)
+    fy = fc_y + 16
+    ff = _font(19)
+    for fact in facts[:3]:
+        bx, by = PAD + 16, fy + 9
+        draw.rectangle([(bx, by), (bx + 8, by + 8)], outline=GRAY, width=1)
+        fd = fact if draw.textlength(fact, font=ff) <= (SW - PAD - PAD - 40) else fact[:52] + "\u2026"
+        draw.text((PAD + 38, fy + 1), fd, font=ff, fill=WHITE, anchor="lt")
+        fy += 48
 
-    fy = y + 14
-    for fact in facts_to_show:
-        # Small gray square outline bullet □ — matches template exactly
-        bx, by = PAD + 16, fy + 8
-        draw.rectangle([(bx, by), (bx + 9, by + 9)], outline=GRAY, width=1)
-        fact_disp = fact if draw.textlength(fact, font=fact_f) <= INNER - 44 else fact[:54] + "…"
-        draw.text((PAD + 36, fy), fact_disp, font=fact_f, fill=WHITE, anchor="lt")
-        fy += row_h
-    y += fc_h
+    # 7. Source — fixed y=1098
+    draw.text((PAD, 1098), f"Source: {source}", font=_font(15), fill=GRAY, anchor="lt")
 
-    # ── Source — pinned near bottom (fixed position) ───────────────────────
-    brand_h  = 66
-    cta_h    = 50
-    src_y    = SH - brand_h - 2 - cta_h - 16 - 24   # 24px above CTA
-    draw.text((PAD, src_y), f"Source: {source}", font=_font(16), fill=GRAY, anchor="lt")
+    # 8. CTA button — partial width, left pill, y=1128
+    cl = "Explore the data  \u2192"
+    cf = _font(21, bold=True)
+    cw = int(draw.textlength(cl, font=cf)) + 44
+    draw.rounded_rectangle([(PAD, 1128), (PAD + cw, 1128 + 52)], radius=26, fill=accent)
+    draw.text((PAD + cw // 2, 1154), cl, font=cf, fill=BG_COL, anchor="mm")
 
-    # ── CTA button — partial width, left-aligned ───────────────────────────
-    cta_label = "Explore the data  →"
-    cta_f     = _font(22, bold=True)
-    cta_tw    = int(draw.textlength(cta_label, font=cta_f))
-    cta_w     = cta_tw + 48
-    cta_y     = SH - brand_h - 2 - cta_h - 8
-    draw.rounded_rectangle([(PAD, cta_y), (PAD + cta_w, cta_y + cta_h)], radius=cta_h // 2, fill=accent)
-    draw.text((PAD + cta_w // 2, cta_y + cta_h // 2), cta_label, font=cta_f, fill=bg_col, anchor="mm")
+    # 9. Thin divider — y=1207
+    draw.rectangle([(PAD, 1207), (SW - PAD, 1208)], fill=(31, 41, 55))
 
-    # ── Thin divider ──────────────────────────────────────────────────────
-    div_y = SH - brand_h - 2
-    draw.rectangle([(PAD, div_y), (SW - PAD, div_y + 1)], fill=(31, 41, 55))
-
-    # ── Brand bar ─────────────────────────────────────────────────────────
-    brand_y = SH - brand_h
-    logo_sz = 38
-    lx = PAD
-    ly = brand_y + (brand_h - logo_sz) // 2
-    # M logo — outlined box (matches Telegram template)
-    draw.rounded_rectangle([(lx, ly), (lx + logo_sz, ly + logo_sz)], radius=7, outline=accent, width=2)
-    draw.text((lx + logo_sz // 2, ly + logo_sz // 2), "M", font=_font(22, bold=True), fill=accent, anchor="mm")
-    draw.text((lx + logo_sz + 12, brand_y + brand_h // 2 - 8), "MetricsHour", font=_font(22, bold=True), fill=WHITE, anchor="lm")
-    draw.text((lx + logo_sz + 12, brand_y + brand_h // 2 + 14), "metricshour.com", font=_font(16), fill=accent, anchor="lm")
+    # 10. Brand bar — y=1215
+    lx, ly = PAD, 1215
+    draw.rounded_rectangle([(lx, ly), (lx + 38, ly + 38)], radius=7, outline=accent, width=2)
+    draw.text((lx + 19, ly + 19), "M", font=_font(21, bold=True), fill=accent, anchor="mm")
+    draw.text((lx + 50, ly + 8), "MetricsHour", font=_font(21, bold=True), fill=WHITE, anchor="lt")
+    draw.text((lx + 50, ly + 32), "metricshour.com", font=_font(15), fill=accent, anchor="lt")
 
     return _to_png_bytes(img)
+
 
 
 def _country_social_card(c, db) -> bytes:
