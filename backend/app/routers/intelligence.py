@@ -10,9 +10,11 @@ import logging
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import text
 from sqlalchemy.orm import Session
+
+from app.limiter import limiter
 
 from app.config import settings
 from app.database import get_db
@@ -444,7 +446,9 @@ def _trade_summary(pair: str, db: Session) -> str | None:
 # ── API endpoints ──────────────────────────────────────────────────────────────
 
 @router.get("/intelligence/spotlight")
+@limiter.limit("30/minute")
 def get_spotlight(
+    request: Request,
     db: Session = Depends(get_db),
     country: str | None = None,  # ISO2 code hint from frontend (e.g. "US")
 ) -> list[dict]:
@@ -516,7 +520,8 @@ ALL_ENTITY_TYPES = SUMMARY_TYPES + INSIGHT_TYPES
 
 
 @router.get("/summaries/{entity_type}/{entity_code}")
-def get_summary(entity_type: str, entity_code: str, db: Session = Depends(get_db)) -> dict:
+@limiter.limit("60/minute")
+def get_summary(request: Request, entity_type: str, entity_code: str, db: Session = Depends(get_db)) -> dict:
     """
     Returns page summary or daily insight. Reads from page_summaries table.
     For summaries: on-the-fly fallback generation if not cached.
@@ -588,7 +593,9 @@ INSIGHT_ENTITY_TYPES = ("country", "stock", "commodity", "trade", "index")
 
 
 @router.get("/insights/{entity_type}/{entity_code}")
+@limiter.limit("60/minute")
 def get_insights(
+    request: Request,
     entity_type: str,
     entity_code: str,
     limit: int = 30,

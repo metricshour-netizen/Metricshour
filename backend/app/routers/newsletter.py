@@ -9,13 +9,14 @@ import re
 import logging
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
 from app.database import get_db
+from app.limiter import limiter
 from app.models.user import NewsletterSubscriber
 from app.notifications import send_newsletter_welcome
 
@@ -31,7 +32,8 @@ class SubscribeRequest(BaseModel):
 
 
 @router.post("/newsletter/subscribe", status_code=201)
-def subscribe(body: SubscribeRequest, db: Session = Depends(get_db)):
+@limiter.limit("10/minute")
+def subscribe(request: Request, body: SubscribeRequest, db: Session = Depends(get_db)):
     email = body.email.strip().lower()
     if not _EMAIL_RE.match(email):
         raise HTTPException(status_code=422, detail="Invalid email address")

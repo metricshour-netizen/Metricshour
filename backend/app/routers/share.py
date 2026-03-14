@@ -14,6 +14,7 @@ import html as _html
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import HTMLResponse
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -52,7 +53,9 @@ def share_preview(event_id: int, db: Session = Depends(get_db)):
     Social bots read the <meta> tags; real browsers are JS-redirected
     to the canonical feed page at metricshour.com.
     """
-    event = db.query(FeedEvent).filter(FeedEvent.id == event_id).first()
+    event = db.execute(
+        select(FeedEvent).where(FeedEvent.id == event_id)
+    ).scalar_one_or_none()
     if event is None:
         raise HTTPException(status_code=404, detail="Event not found")
 

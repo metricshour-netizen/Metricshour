@@ -17,6 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from pydantic import BaseModel, model_validator
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
@@ -56,7 +57,9 @@ def _optional_user(
             return None
     except JWTError:
         return None
-    return db.query(User).filter(User.id == int(user_id), User.is_active == True).first()
+    return db.execute(
+        select(User).where(User.id == int(user_id), User.is_active == True)
+    ).scalar_one_or_none()
 
 
 def _require_user(
@@ -73,7 +76,9 @@ def _require_user(
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
     except JWTError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
-    user = db.query(User).filter(User.id == int(user_id), User.is_active == True).first()
+    user = db.execute(
+        select(User).where(User.id == int(user_id), User.is_active == True)
+    ).scalar_one_or_none()
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
     return user
@@ -155,7 +160,7 @@ def get_feed(
     geo_country_id: int | None = None
     cf_country = request.headers.get("cf-ipcountry", "").strip().upper()
     if cf_country and cf_country not in ("", "T1", "XX"):  # T1=Tor, XX=unknown
-        row = db.query(Country.id).filter(Country.code == cf_country).first()
+        row = db.execute(select(Country.id).where(Country.code == cf_country)).first()
         if row:
             geo_country_id = row[0]
 
@@ -172,7 +177,9 @@ def get_feed(
 @router.get("/events/{event_id}", response_model=FeedEventOut)
 def get_feed_event(event_id: int, db: Session = Depends(get_db)):
     """Return a single feed event by ID — used by the social share og:meta worker."""
-    event = db.query(FeedEvent).filter(FeedEvent.id == event_id).first()
+    event = db.execute(
+        select(FeedEvent).where(FeedEvent.id == event_id)
+    ).scalar_one_or_none()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
     return event
@@ -222,12 +229,11 @@ def list_follows(
     current_user: User = Depends(_require_user),
 ):
     """Return everything the current user follows."""
-    return (
-        db.query(UserFollow)
-        .filter(UserFollow.user_id == current_user.id)
+    return db.execute(
+        select(UserFollow)
+        .where(UserFollow.user_id == current_user.id)
         .order_by(UserFollow.followed_at.desc())
-        .all()
-    )
+    ).scalars().all()
 
 
 @router.post("/follows", response_model=FollowOut, status_code=status.HTTP_201_CREATED)
@@ -237,15 +243,13 @@ def add_follow(
     current_user: User = Depends(_require_user),
 ):
     """Follow an asset or country."""
-    existing = (
-        db.query(UserFollow)
-        .filter(
+    existing = db.execute(
+        select(UserFollow).where(
             UserFollow.user_id == current_user.id,
             UserFollow.entity_type == body.entity_type,
             UserFollow.entity_id == body.entity_id,
         )
-        .first()
-    )
+    ).scalar_one_or_none()
     if existing:
         return existing  # idempotent
 
@@ -272,15 +276,13 @@ def remove_follow(
     current_user: User = Depends(_require_user),
 ):
     """Unfollow an asset or country."""
-    follow = (
-        db.query(UserFollow)
-        .filter(
+    follow = db.execute(
+        select(UserFollow).where(
             UserFollow.user_id == current_user.id,
             UserFollow.entity_type == entity_type,
             UserFollow.entity_id == entity_id,
         )
-        .first()
-    )
+    ).scalar_one_or_none()
     if follow is None:
         raise HTTPException(status_code=404, detail="Follow not found")
     db.delete(follow)
@@ -293,14 +295,13 @@ def get_watchlist(
     current_user: User = Depends(_require_user),
 ) -> list[dict]:
     """Return enriched watchlist — follows with current price / indicator data."""
-    from sqlalchemy import and_, func, select
+    from sqlalchemy import and_, func
 
-    follows = (
-        db.query(UserFollow)
-        .filter(UserFollow.user_id == current_user.id)
+    follows = db.execute(
+        select(UserFollow)
+        .where(UserFollow.user_id == current_user.id)
         .order_by(UserFollow.followed_at.desc())
-        .all()
-    )
+    ).scalars().all()
     if not follows:
         return []
 

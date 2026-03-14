@@ -507,12 +507,27 @@ def _render_section(section: str) -> bytes:
     return _to_png_bytes(img)
 
 
+def _fallback_png(label: str = "MetricsHour") -> bytes:
+    """Return a minimal 1200x630 branded fallback PNG."""
+    img = Image.new("RGB", (W, H), BG)
+    draw = ImageDraw.Draw(img)
+    draw.rectangle([(0, 0), (W, 5)], fill=GREEN)
+    draw.text((W // 2, H // 2 - 20), "METRICSHOUR", font=_font(72, bold=True), fill=WHITE, anchor="mm")
+    draw.text((W // 2, H // 2 + 50), label, font=_font(28), fill=GRAY_LT, anchor="mm")
+    draw.rectangle([(0, H - 5), (W, H)], fill=GREEN)
+    return _to_png_bytes(img)
+
+
 @router.get("/og/section/{section}.png", include_in_schema=False)
 def og_section(section: str):
     """Branded 1200x630 OG image for static/listing pages."""
-    png = _render_section(section)
-    _fire_r2_upload(f"og/section/{section}.png", png)
-    return Response(content=png, media_type="image/png", headers=_PNG_HEADERS)
+    try:
+        png = _render_section(section)
+        _fire_r2_upload(f"og/section/{section}.png", png)
+        return Response(content=png, media_type="image/png", headers=_PNG_HEADERS)
+    except Exception as exc:
+        log.warning("OG section render failed for %s: %s", section, exc)
+        return Response(content=_fallback_png(section.upper()), media_type="image/png", headers=_PNG_HEADERS)
 
 
 # ── Routes ─────────────────────────────────────────────────────────────────────
@@ -533,8 +548,8 @@ def og_feed(event_id: int, db: Session = Depends(get_db)):
         _fire_r2_upload(f"og/feed/{event_id}.png", png)
         return Response(content=png, media_type="image/png", headers=_PNG_HEADERS)
     except Exception as exc:
-        log.error("OG feed render failed for event %s: %s", event_id, exc)
-        raise HTTPException(status_code=500, detail="Image generation failed")
+        log.warning("OG image generation failed for feed/%s: %s", event_id, exc)
+        return Response(content=_fallback_png("Feed Event"), media_type="image/png", headers=_PNG_HEADERS)
 
 
 @router.get("/og/countries/{code}.png", include_in_schema=False)
@@ -565,8 +580,8 @@ def og_country(code: str, db: Session = Depends(get_db)):
         _fire_r2_upload(f"og/countries/{code.lower()}.png", png)
         return Response(content=png, media_type="image/png", headers=_PNG_HEADERS)
     except Exception as exc:
-        log.error("OG country render failed for %s: %s", code, exc)
-        raise HTTPException(status_code=500, detail="Image generation failed")
+        log.warning("OG image generation failed for countries/%s: %s", code, exc)
+        return Response(content=_fallback_png(code.upper()), media_type="image/png", headers=_PNG_HEADERS)
 
 
 @router.get("/og/trade/{pair}.png", include_in_schema=False)
@@ -607,8 +622,8 @@ def og_trade(pair: str, db: Session = Depends(get_db)):
         _fire_r2_upload(f"og/trade/{pair.lower()}.png", png)
         return Response(content=png, media_type="image/png", headers=_PNG_HEADERS)
     except Exception as exc:
-        log.error("OG trade render failed for %s: %s", pair, exc)
-        raise HTTPException(status_code=500, detail="Image generation failed")
+        log.warning("OG image generation failed for trade/%s: %s", pair, exc)
+        return Response(content=_fallback_png(pair.upper()), media_type="image/png", headers=_PNG_HEADERS)
 
 
 @router.get("/og/indices/{symbol}.png", include_in_schema=False)
@@ -638,8 +653,8 @@ def og_index(symbol: str):
         _fire_r2_upload(f"og/indices/{symbol.lower()}.png", png)
         return Response(content=png, media_type="image/png", headers=_PNG_HEADERS)
     except Exception as exc:
-        log.error("OG index render failed for %s: %s", symbol, exc)
-        raise HTTPException(status_code=500, detail="Image generation failed")
+        log.warning("OG image generation failed for indices/%s: %s", symbol, exc)
+        return Response(content=_fallback_png(symbol.upper()), media_type="image/png", headers=_PNG_HEADERS)
 
 
 @router.get("/og/stocks/{symbol}.png", include_in_schema=False)
@@ -665,5 +680,5 @@ def og_stock(symbol: str, db: Session = Depends(get_db)):
         _fire_r2_upload(f"og/stocks/{symbol.lower()}.png", png)
         return Response(content=png, media_type="image/png", headers=_PNG_HEADERS)
     except Exception as exc:
-        log.error("OG stock render failed for %s: %s", symbol, exc)
-        raise HTTPException(status_code=500, detail="Image generation failed")
+        log.warning("OG image generation failed for stocks/%s: %s", symbol, exc)
+        return Response(content=_fallback_png(symbol.upper()), media_type="image/png", headers=_PNG_HEADERS)

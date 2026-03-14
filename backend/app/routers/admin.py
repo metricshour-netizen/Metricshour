@@ -18,7 +18,7 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from pydantic import BaseModel
-from sqlalchemy import func
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -54,25 +54,23 @@ class BlogPublicOut(BaseModel):
 @public_router.get("", response_model=list[BlogPublicOut])
 def list_blog_posts(limit: int = 20, offset: int = 0, db: Session = Depends(get_db)):
     """Public blog listing — published posts only, newest first."""
-    posts = (
-        db.query(BlogPost)
-        .filter(BlogPost.status == BlogStatus.published)
+    posts = db.execute(
+        select(BlogPost)
+        .where(BlogPost.status == BlogStatus.published)
         .order_by(BlogPost.published_at.desc())
         .offset(offset)
         .limit(limit)
-        .all()
-    )
+    ).scalars().all()
     return posts
 
 
 @public_router.get("/{slug}", response_model=BlogPublicOut)
 def get_blog_post(slug: str, db: Session = Depends(get_db)):
     """Public blog article endpoint — returns published posts only."""
-    post = (
-        db.query(BlogPost)
-        .filter(BlogPost.slug == slug, BlogPost.status == BlogStatus.published)
-        .first()
-    )
+    post = db.execute(
+        select(BlogPost)
+        .where(BlogPost.slug == slug, BlogPost.status == BlogStatus.published)
+    ).scalar_one_or_none()
     if post is None:
         raise HTTPException(status_code=404, detail="Article not found")
     return post
@@ -134,7 +132,7 @@ def _slugify(title: str) -> str:
 def _unique_slug(db: Session, base: str) -> str:
     slug = base
     counter = 1
-    while db.query(BlogPost).filter(BlogPost.slug == slug).first():
+    while db.execute(select(BlogPost).where(BlogPost.slug == slug)).scalar_one_or_none():
         slug = f"{base}-{counter}"
         counter += 1
     return slug
@@ -154,11 +152,9 @@ def list_blogs(
     db: Session = Depends(get_db),
     _: User = Depends(get_admin_user),
 ):
-    return (
-        db.query(BlogPost)
-        .order_by(BlogPost.created_at.desc())
-        .all()
-    )
+    return db.execute(
+        select(BlogPost).order_by(BlogPost.created_at.desc())
+    ).scalars().all()
 
 
 @router.post("/blogs", response_model=BlogOut, status_code=status.HTTP_201_CREATED)
@@ -324,36 +320,33 @@ def admin_stats(
     d7 = now - timedelta(days=7)
     d30 = now - timedelta(days=30)
 
-    total_users = db.query(func.count(User.id)).scalar()
-    new_7d = db.query(func.count(User.id)).filter(User.created_at >= d7).scalar()
-    new_30d = db.query(func.count(User.id)).filter(User.created_at >= d30).scalar()
-    pro_users = db.query(func.count(User.id)).filter(User.tier != "free").scalar()
+    total_users = db.execute(select(func.count(User.id))).scalar()
+    new_7d = db.execute(select(func.count(User.id)).where(User.created_at >= d7)).scalar()
+    new_30d = db.execute(select(func.count(User.id)).where(User.created_at >= d30)).scalar()
+    pro_users = db.execute(select(func.count(User.id)).where(User.tier != "free")).scalar()
 
-    logins_7d = db.query(func.count(LoginEvent.id)).filter(LoginEvent.created_at >= d7).scalar()
+    logins_7d = db.execute(
+        select(func.count(LoginEvent.id)).where(LoginEvent.created_at >= d7)
+    ).scalar()
 
-    recent_logins = (
-        db.query(LoginEvent, User.email)
+    recent_logins = db.execute(
+        select(LoginEvent, User.email)
         .join(User, LoginEvent.user_id == User.id)
         .order_by(LoginEvent.created_at.desc())
         .limit(20)
-        .all()
-    )
+    ).all()
 
-    recent_signups = (
-        db.query(User)
-        .order_by(User.created_at.desc())
-        .limit(10)
-        .all()
-    )
+    recent_signups = db.execute(
+        select(User).order_by(User.created_at.desc()).limit(10)
+    ).scalars().all()
 
-    top_pages = (
-        db.query(PageView.entity_type, PageView.entity_code, func.count(PageView.id).label("views"))
-        .filter(PageView.created_at >= d7)
+    top_pages = db.execute(
+        select(PageView.entity_type, PageView.entity_code, func.count(PageView.id).label("views"))
+        .where(PageView.created_at >= d7)
         .group_by(PageView.entity_type, PageView.entity_code)
         .order_by(func.count(PageView.id).desc())
         .limit(20)
-        .all()
-    )
+    ).all()
 
     return {
         "users": {

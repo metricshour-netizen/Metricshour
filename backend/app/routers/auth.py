@@ -25,6 +25,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from pydantic import BaseModel, EmailStr
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -132,7 +133,9 @@ def get_current_user(
     if redis_json_get(_token_key(token)) is not None:
         raise credentials_error
 
-    user = db.query(User).filter(User.id == int(user_id), User.is_active == True).first()
+    user = db.execute(
+        select(User).where(User.id == int(user_id), User.is_active == True)
+    ).scalar_one_or_none()
     if user is None:
         raise credentials_error
     return user
@@ -143,7 +146,7 @@ def get_current_user(
 @router.post("/register", response_model=TokenOut, status_code=status.HTTP_201_CREATED)
 @limiter.limit("5/minute")
 def register(request: Request, body: RegisterIn, db: Session = Depends(get_db)):
-    if db.query(User).filter(User.email == body.email).first():
+    if db.execute(select(User).where(User.email == body.email)).scalar_one_or_none():
         raise HTTPException(status_code=409, detail="Email already registered")
 
     if len(body.password) < 8:
@@ -174,7 +177,9 @@ def register(request: Request, body: RegisterIn, db: Session = Depends(get_db)):
 def login(request: Request, form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     _check_brute_force(form.username)
 
-    user = db.query(User).filter(User.email == form.username, User.is_active == True).first()
+    user = db.execute(
+        select(User).where(User.email == form.username, User.is_active == True)
+    ).scalar_one_or_none()
     if not user:
         _record_fail(form.username)
         raise HTTPException(status_code=401, detail="Invalid email or password")
@@ -230,7 +235,9 @@ class ResetIn(BaseModel):
 @limiter.limit("3/minute")
 def forgot_password(request: Request, body: ForgotIn, db: Session = Depends(get_db)):
     """Send a password reset link. Always returns 204 — never reveals if email exists."""
-    user = db.query(User).filter(User.email == body.email, User.is_active == True).first()
+    user = db.execute(
+        select(User).where(User.email == body.email, User.is_active == True)
+    ).scalar_one_or_none()
     if user and user.password_hash != "__google__":
         token = secrets.token_urlsafe(32)
         redis_json_set(f"auth:reset:{token}", {"email": user.email}, ttl_seconds=3600)
@@ -252,7 +259,9 @@ def reset_password(request: Request, body: ResetIn, db: Session = Depends(get_db
     if not data:
         raise HTTPException(status_code=400, detail="Reset link is invalid or has expired")
 
-    user = db.query(User).filter(User.email == data["email"], User.is_active == True).first()
+    user = db.execute(
+        select(User).where(User.email == data["email"], User.is_active == True)
+    ).scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=400, detail="Reset link is invalid or has expired")
 
@@ -283,7 +292,7 @@ def google_authorize():
         raise HTTPException(status_code=501, detail="Google OAuth not configured")
 
     state = secrets.token_urlsafe(16)
-    redis_json_set(f"oauth:state:{state}", {"valid": True}, ttl_seconds=600)
+    redis_json_set(f"oauth:state:{state}", {"valid": True}, ttl_seconds=3600)
 
     params = urlencode({
         "client_id": settings.google_client_id,
@@ -298,7 +307,9 @@ def google_authorize():
 
 
 @router.get("/google/callback")
+@limiter.limit("10/minute")
 def google_callback(
+    request: Request,
     db: Session = Depends(get_db),
     code: str | None = None,
     state: str | None = None,
@@ -347,7 +358,7 @@ def google_callback(
         return RedirectResponse(f"{_FRONTEND_URL}/auth/callback?error=no_email")
 
     # Find or create user
-    user = db.query(User).filter(User.email == email).first()
+    user = db.execute(select(User).where(User.email == email)).scalar_one_or_none()
     is_new = user is None
 
     if is_new:
