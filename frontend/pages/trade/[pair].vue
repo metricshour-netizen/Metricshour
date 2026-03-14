@@ -466,11 +466,12 @@ function fmtGdp(v: number | null | undefined): string {
 }
 
 const { public: { r2PublicUrl } } = useRuntimeConfig()
-const ogImageUrl = computed(() =>
-  r2PublicUrl
-    ? `${r2PublicUrl}/og/trade/${pair.toLowerCase()}.png`
-    : `https://api.metricshour.com/og/trade/${pair.toLowerCase()}.png`,
-)
+const ogImageUrl = computed(() => {
+  const canonPair = (data.value?.canonical_pair ?? pair).toLowerCase()
+  return r2PublicUrl
+    ? `${r2PublicUrl}/og/trade/${canonPair}.png`
+    : `https://api.metricshour.com/og/trade/${canonPair}.png`
+})
 
 // ── SEO helpers: inject real trade data for long-tail keyword ranking ─────────
 const _seoTitle = computed(() => {

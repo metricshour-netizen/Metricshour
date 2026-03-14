@@ -1203,6 +1203,9 @@ def _country_summary_stale(country: Country, existing: PageSummary | None, db) -
     age_days = (datetime.now(timezone.utc) - existing.generated_at).days
     if age_days > 30:
         return True
+    # Regenerate if summary is too short (generated before 220-280 word target was set)
+    if len(existing.summary.split()) < 200:
+        return True
     # Regenerate if any indicator is newer than the summary
     latest_ind = (
         db.query(CountryIndicator.period_date)

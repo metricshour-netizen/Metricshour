@@ -440,6 +440,10 @@ useHead(computed(() => {
           name: _seoTitle.value,
           url: _canonUrl.value,
           description: _seoDesc.value,
+          speakable: {
+            '@type': 'SpeakableSpecification',
+            cssSelector: ['.page-summary', '.page-insight-latest'],
+          },
           about: [schemaItem(a, canonA), schemaItem(b, canonB)],
         }),
       },

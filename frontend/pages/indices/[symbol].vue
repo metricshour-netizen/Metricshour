@@ -295,7 +295,7 @@ const _seoDesc = computed(() => {
   const name  = index.value.name
   const price = index.value.price?.close
   const chg   = _change.value
-  const base  = indexDescription(symbol).slice(0, 160)
+  const base  = indexDescription(symbol).slice(0, 100)
   if (price != null && chg != null) {
     return `${name} (${symbol}) at ${fmtPrice(price)} (${chg >= 0 ? '+' : ''}${chg.toFixed(2)}% today). ${base}`
   }
