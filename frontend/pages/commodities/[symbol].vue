@@ -486,7 +486,9 @@ useHead(computed(() => ({
         description: `Historical and current ${meta.value.name} price data in ${meta.value.unit}.`,
         url: `https://metricshour.com/commodities/${symbol.toLowerCase()}/`,
         creator: { '@type': 'Organization', name: 'MetricsHour', url: 'https://metricshour.com' },
+        license: 'https://metricshour.com/terms/',
         keywords: [`${meta.value.name} price`, `${symbol.toUpperCase()} price today`, `${meta.value.name} spot price`, `${meta.value.name} historical data`],
+        mainEntity: { '@type': 'Product', name: meta.value.name },
         variableMeasured: [
           { '@type': 'PropertyValue', name: `${meta.value.name} Spot Price`, value: String(_price.value), unitCode: meta.value.unit },
           ...(stats.value ? [

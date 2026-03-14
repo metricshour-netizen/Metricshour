@@ -449,7 +449,18 @@ useHead(computed(() => {
           '@context': 'https://schema.org',
           '@type': 'Dataset',
           name: `${a?.name || canonA} vs ${b?.name || canonB} Economic Indicators`,
+          description: `Side-by-side comparison of economic indicators for ${a?.name || canonA} and ${b?.name || canonB}. Includes GDP, inflation, interest rates, unemployment and more. Source: World Bank, IMF.`,
           url: _canonUrl.value,
+          creator: { '@type': 'Organization', name: 'MetricsHour', url: 'https://metricshour.com' },
+          license: 'https://metricshour.com/terms/',
+          keywords: [`${a?.name || canonA} vs ${b?.name || canonB}`, `${canonA} ${canonB} comparison`, `${a?.name || canonA} economy`, `${b?.name || canonB} economy`],
+          mainEntity: {
+            '@type': 'ItemList',
+            itemListElement: [
+              { '@type': 'ListItem', position: 1, item: { '@type': 'Country', name: a?.name || canonA } },
+              { '@type': 'ListItem', position: 2, item: { '@type': 'Country', name: b?.name || canonB } },
+            ],
+          },
           variableMeasured,
         }),
       },

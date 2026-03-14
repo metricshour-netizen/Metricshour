@@ -348,7 +348,9 @@ useHead(computed(() => ({
         description: `Current and historical price data for ${index.value.name}. Source: Marketstack.`,
         url: `https://metricshour.com/indices/${symbol.toLowerCase()}/`,
         creator: { '@type': 'Organization', name: 'MetricsHour', url: 'https://metricshour.com' },
+        license: 'https://metricshour.com/terms/',
         keywords: [`${symbol} price today`, `${index.value.name} price`, `${symbol} index value`, `${index.value.name} performance`],
+        mainEntity: { '@type': 'FinancialProduct', name: index.value.name, tickerSymbol: symbol },
         variableMeasured: [
           { '@type': 'PropertyValue', name: `${symbol} Price`,   value: String(index.value.price.close) },
           { '@type': 'PropertyValue', name: `${symbol} Day Open`, value: String(index.value.price.open) },

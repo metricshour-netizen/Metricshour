@@ -677,8 +677,10 @@ useHead(computed(() => ({
           description: `GDP, inflation, interest rates and 80+ macro indicators for ${country.value.name}. Source: World Bank, IMF, UN Comtrade.`,
           url: `https://metricshour.com/countries/${code}/`,
           creator: { '@type': 'Organization', name: 'MetricsHour', url: 'https://metricshour.com' },
+          license: 'https://metricshour.com/terms/',
           keywords: [`${country.value.name} GDP`, `${country.value.name} inflation`, `${country.value.name} economy`, `${country.value.name} macro data`],
           temporalCoverage: '2015/..',
+          mainEntity: { '@type': 'Country', name: country.value.name },
           variableMeasured: measured,
         }
       })()),
