@@ -72,7 +72,7 @@ def _fmt_value(value: float, unit: str) -> str:
 
 
 def _call_gemini(prompt: str) -> dict | None:
-    """Call Gemini Flash Lite, return parsed JSON {twitter, linkedin} or None."""
+    """Call Gemini, return parsed JSON or None."""
     if not GEMINI_API_KEY:
         return None
     try:
@@ -83,13 +83,28 @@ def _call_gemini(prompt: str) -> dict | None:
             model="gemini-2.5-flash",
             contents=prompt,
             config=genai_types.GenerateContentConfig(
-                max_output_tokens=2000,
+                max_output_tokens=8192,
                 temperature=0.7,
                 response_mime_type="application/json",
             ),
         )
         text = (r.text or "").strip()
         return json.loads(text)
+    except json.JSONDecodeError as e:
+        # Truncated response — try to extract what we can
+        text = (getattr(r, "text", None) or "").strip()
+        log.warning("Gemini JSON truncated (%s), attempting partial parse", e)
+        try:
+            # Find last complete key we can use
+            import re
+            partial = {}
+            for key in ("twitter", "linkedin", "facebook", "reddit_subreddit", "reddit_title", "reddit_body"):
+                m = re.search(rf'"{key}"\s*:\s*"((?:[^"\\]|\\.)*)"', text)
+                if m:
+                    partial[key] = m.group(1).replace('\\"', '"').replace("\\n", "\n")
+            return partial if partial else None
+        except Exception:
+            return None
     except Exception as e:
         log.warning("Gemini social content failed: %s", e)
         return None
