@@ -17,6 +17,8 @@ def list_assets(
     type: str | None = None,
     sector: str | None = None,
     country_code: str | None = None,
+    limit: int = Query(default=500, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
 ) -> list[dict]:
     # country_code-scoped queries are never cached (too many combinations)
@@ -24,7 +26,7 @@ def list_assets(
     if cache_key:
         cached = cache_get(cache_key)
         if cached is not None:
-            return cached
+            return cached[offset:offset + limit]
 
     query = (
         select(Asset)
@@ -94,7 +96,7 @@ def list_assets(
 
     if cache_key:
         cache_set(cache_key, result, ttl_seconds=300)
-    return result
+    return result[offset:offset + limit]
 
 
 @router.get("/{symbol}/prices")

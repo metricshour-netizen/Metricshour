@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import get_db
+from app.limiter import limiter
 from app.models.asset import Asset, Price
 from app.models.country import Country, CountryIndicator
 from app.models.feed import (
@@ -140,6 +141,7 @@ class FollowOut(BaseModel):
 # ── Routes ────────────────────────────────────────────────────────────────────
 
 @router.get("", response_model=FeedPageOut)
+@limiter.limit("60/minute")
 def get_feed(
     request: Request,
     page: int = Query(1, ge=1),

@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
 from app.database import get_db
+from app.limiter import limiter
 from app.models import Country, Asset
 from app.config import settings
 
@@ -89,7 +90,8 @@ def _pg_search(q: str, db: Session) -> dict:
 
 
 @router.get("")
-def search(q: str = Query(default="", max_length=100), db: Session = Depends(get_db)) -> dict:
+@limiter.limit("60/minute")
+def search(request: Request, q: str = Query(default="", max_length=100), db: Session = Depends(get_db)) -> dict:
     if not q or len(q.strip()) < 2:
         return {"countries": [], "assets": []}
 

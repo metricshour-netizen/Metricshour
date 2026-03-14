@@ -87,6 +87,20 @@
 - **Social card redesign** — clean full-height layout (no empty gaps), green badge, dot bullets, entity-specific CTA text, 55KB/card. All 250 countries + 90 stocks + 2708 trade pairs regenerated on R2.
 - **Deep investigation completed** — 30 issues identified, prioritized (see report above)
 
+---
+
+## Session 2026-03-14 (continued) — Resilience, Security, db.query Migration
+
+### Done
+- **Worker failure resilience** — Telegram alerts on final failure, Redis dead-letter queue (last 100), worker watchdog (10min beat, 8 critical tasks, 30min throttle). Commits: `dce2e18`
+- **Meilisearch** — Confirmed running at `127.0.0.1:7700`, both indexes (countries + assets) populated, search API working
+- **Rate limiting** — `intelligence.py` (spotlight 30/min, summaries/insights 60/min), `newsletter.py` (10/min), OAuth callback (10/min)
+- **OG error handling** — All 6 OG endpoints return branded fallback PNG on exception instead of 500
+- **OAuth TTL** — State token 600s → 3600s
+- **db.query() migration** — All 8 backend routers + summaries.py (73 calls) + feed_ranker.py + og.py fully on SQLAlchemy 2.0 `select()`. Commits: `7953168`, `aa99e61`
+- **Insight fallbacks** — Rule-based fallback for all 5 insight generators when Gemini+Deepseek are down. Commit: `b6e5917`
+- **24 remaining db.query()** — In 15 low-priority worker batch tasks (backfill, bond_yields, stocks, etc.) — deferred
+
 ### Known open items (carry forward)
 - [ ] Facebook Page Access Token — FACEBOOK_PAGE_ACCESS_TOKEN empty in .env
 - [ ] Cloudflare Turnstile — not implemented on /register

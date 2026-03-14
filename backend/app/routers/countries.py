@@ -17,13 +17,15 @@ def list_countries(
     request: Request,
     region: str | None = None,
     is_g20: bool | None = None,
+    limit: int = Query(default=500, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
 ) -> list[dict]:
-    # Key encodes filters so different combos are cached separately
+    # Key encodes filters so different combos are cached separately (excludes pagination)
     cache_key = f"countries:list:{region or 'all'}:{is_g20}"
     cached = cache_get(cache_key)
     if cached is not None:
-        return cached
+        return cached[offset:offset + limit]
 
     query = select(Country).order_by(Country.name)
 
@@ -37,7 +39,7 @@ def list_countries(
 
     # Country list changes very rarely — cache for 1 hour
     cache_set(cache_key, result, ttl_seconds=3600)
-    return result
+    return result[offset:offset + limit]
 
 
 @router.get("/{code}")
