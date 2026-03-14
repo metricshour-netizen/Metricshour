@@ -187,7 +187,7 @@ useSeoMeta({
   robots: 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1',
 })
 
-useHead({
+useHead(computed(() => ({
   link: [{ rel: 'canonical', href: 'https://metricshour.com/commodities/' }],
   script: [{
     type: 'application/ld+json',
@@ -195,10 +195,19 @@ useHead({
       '@context': 'https://schema.org',
       '@type': 'CollectionPage',
       name: 'Commodities — MetricsHour',
-      url: 'https://metricshour.com/commodities',
+      url: 'https://metricshour.com/commodities/',
       description: 'Real-time commodity prices: crude oil, gold, silver, copper, wheat and 20+ instruments tracked globally.',
       isPartOf: { '@type': 'WebSite', name: 'MetricsHour', url: 'https://metricshour.com' },
+      mainEntity: {
+        '@type': 'ItemList',
+        itemListElement: (commodities.value ?? []).slice(0, 30).map((c: any, i: number) => ({
+          '@type': 'ListItem',
+          position: i + 1,
+          name: c.name,
+          item: `https://metricshour.com/commodities/${c.symbol.toLowerCase()}/`,
+        })),
+      },
     }),
   }],
-})
+})))
 </script>

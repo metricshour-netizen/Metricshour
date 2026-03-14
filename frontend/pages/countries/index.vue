@@ -124,7 +124,7 @@ useSeoMeta({
   robots: 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1',
 })
 
-useHead({
+useHead(computed(() => ({
   link: [{ rel: 'canonical', href: 'https://metricshour.com/countries/' }],
   script: [{
     type: 'application/ld+json',
@@ -132,10 +132,19 @@ useHead({
       '@context': 'https://schema.org',
       '@type': 'CollectionPage',
       name: 'Countries — MetricsHour',
-      url: 'https://metricshour.com/countries',
+      url: 'https://metricshour.com/countries/',
       description: 'Macro data for 196 countries: GDP, inflation, interest rates, trade balances, debt, and 80+ economic indicators.',
       isPartOf: { '@type': 'WebSite', name: 'MetricsHour', url: 'https://metricshour.com' },
+      mainEntity: {
+        '@type': 'ItemList',
+        itemListElement: (countries.value ?? []).slice(0, 50).map((c: any, i: number) => ({
+          '@type': 'ListItem',
+          position: i + 1,
+          name: c.name,
+          item: `https://metricshour.com/countries/${c.code.toLowerCase()}/`,
+        })),
+      },
     }),
   }],
-})
+})))
 </script>

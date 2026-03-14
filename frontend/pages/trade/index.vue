@@ -116,7 +116,7 @@ useSeoMeta({
   robots: 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1',
 })
 
-useHead({
+useHead(computed(() => ({
   link: [{ rel: 'canonical', href: 'https://metricshour.com/trade/' }],
   script: [{
     type: 'application/ld+json',
@@ -124,10 +124,19 @@ useHead({
       '@context': 'https://schema.org',
       '@type': 'CollectionPage',
       name: 'Bilateral Trade — MetricsHour',
-      url: 'https://metricshour.com/trade',
+      url: 'https://metricshour.com/trade/',
       description: 'Trade flows between 380 country pairs. Exports, imports, top products, and GDP dependency ratios from UN Comtrade.',
       isPartOf: { '@type': 'WebSite', name: 'MetricsHour', url: 'https://metricshour.com' },
+      mainEntity: {
+        '@type': 'ItemList',
+        itemListElement: (pairs.value ?? []).slice(0, 50).map((p: any, i: number) => ({
+          '@type': 'ListItem',
+          position: i + 1,
+          name: `${p.exporter?.name} – ${p.importer?.name}`,
+          item: `https://metricshour.com/trade/${p.exporter?.slug ?? p.exporter?.code?.toLowerCase()}--${p.importer?.slug ?? p.importer?.code?.toLowerCase()}/`,
+        })),
+      },
     }),
   }],
-})
+})))
 </script>

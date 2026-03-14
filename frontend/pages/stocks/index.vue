@@ -286,7 +286,7 @@ useSeoMeta({
   robots: 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1',
 })
 
-useHead({
+useHead(computed(() => ({
   link: [{ rel: 'canonical', href: 'https://metricshour.com/stocks/' }],
   script: [{
     type: 'application/ld+json',
@@ -294,10 +294,19 @@ useHead({
       '@context': 'https://schema.org',
       '@type': 'CollectionPage',
       name: 'Stocks — MetricsHour',
-      url: 'https://metricshour.com/stocks',
+      url: 'https://metricshour.com/stocks/',
       description: 'Top global stocks with geographic revenue exposure from SEC EDGAR 10-K filings.',
       isPartOf: { '@type': 'WebSite', name: 'MetricsHour', url: 'https://metricshour.com' },
+      mainEntity: {
+        '@type': 'ItemList',
+        itemListElement: (stocks.value ?? []).slice(0, 50).map((s: any, i: number) => ({
+          '@type': 'ListItem',
+          position: i + 1,
+          name: s.name || s.symbol,
+          item: `https://metricshour.com/stocks/${s.symbol.toLowerCase()}/`,
+        })),
+      },
     }),
   }],
-})
+})))
 </script>

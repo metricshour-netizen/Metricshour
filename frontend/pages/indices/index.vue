@@ -160,7 +160,7 @@ useSeoMeta({
   robots: 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1',
 })
 
-useHead({
+useHead(computed(() => ({
   link: [{ rel: 'canonical', href: 'https://metricshour.com/indices/' }],
   script: [{
     type: 'application/ld+json',
@@ -171,7 +171,16 @@ useHead({
       url: 'https://metricshour.com/indices/',
       description: 'Live prices for 18 major global stock indices.',
       isPartOf: { '@type': 'WebSite', name: 'MetricsHour', url: 'https://metricshour.com' },
+      mainEntity: {
+        '@type': 'ItemList',
+        itemListElement: (indices.value ?? []).slice(0, 30).map((idx: any, i: number) => ({
+          '@type': 'ListItem',
+          position: i + 1,
+          name: idx.name,
+          item: `https://metricshour.com/indices/${idx.symbol.toLowerCase()}/`,
+        })),
+      },
     }),
   }],
-})
+})))
 </script>

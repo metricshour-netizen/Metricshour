@@ -329,6 +329,10 @@ useHead(computed(() => ({
         name: _seoTitle.value,
         url: `https://metricshour.com/indices/${symbol.toLowerCase()}/`,
         description: _seoDesc.value,
+        speakable: {
+          '@type': 'SpeakableSpecification',
+          cssSelector: ['.page-summary', '.page-insight-latest'],
+        },
         breadcrumb: {
           '@type': 'BreadcrumbList',
           itemListElement: [

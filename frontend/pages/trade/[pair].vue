@@ -593,6 +593,39 @@ useHead(computed(() => ({
         mainEntity: buildTradeFaqs(data.value, td.value),
       }),
     },
+    ...(td.value ? [{
+      type: 'application/ld+json',
+      innerHTML: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'Dataset',
+        name: `${data.value.exporter.name}–${data.value.importer.name} Bilateral Trade Data`,
+        description: `Bilateral trade flows between ${data.value.exporter.name} and ${data.value.importer.name}. Exports, imports, trade balance, and GDP dependency ratios. Source: UN Comtrade${td.value.year ? ` ${td.value.year}` : ''}.`,
+        url: `https://metricshour.com/trade/${data.value.canonical_pair}/`,
+        creator: { '@type': 'Organization', name: 'MetricsHour', url: 'https://metricshour.com' },
+        license: 'https://metricshour.com/terms/',
+        keywords: [
+          `${data.value.exporter.name} ${data.value.importer.name} trade`,
+          `${data.value.exporter.name} exports to ${data.value.importer.name}`,
+          `${data.value.importer.name} exports to ${data.value.exporter.name}`,
+          `${data.value.exporter.name} ${data.value.importer.name} bilateral trade`,
+        ],
+        mainEntity: {
+          '@type': 'ItemList',
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, item: { '@type': 'Country', name: data.value.exporter.name } },
+            { '@type': 'ListItem', position: 2, item: { '@type': 'Country', name: data.value.importer.name } },
+          ],
+        },
+        variableMeasured: [
+          ...(td.value.trade_value_usd != null ? [{ '@type': 'PropertyValue', name: 'Total Bilateral Trade', value: String(td.value.trade_value_usd), unitCode: 'USD' }] : []),
+          ...(td.value.exports_usd != null ? [{ '@type': 'PropertyValue', name: `${data.value.exporter.name} Exports`, value: String(td.value.exports_usd), unitCode: 'USD' }] : []),
+          ...(td.value.imports_usd != null ? [{ '@type': 'PropertyValue', name: `${data.value.importer.name} Exports`, value: String(td.value.imports_usd), unitCode: 'USD' }] : []),
+          ...(td.value.balance_usd != null ? [{ '@type': 'PropertyValue', name: 'Trade Balance', value: String(td.value.balance_usd), unitCode: 'USD' }] : []),
+          ...(td.value.exporter_gdp_share_pct != null ? [{ '@type': 'PropertyValue', name: `Trade as % of ${data.value.exporter.name} GDP`, value: `${td.value.exporter_gdp_share_pct.toFixed(1)}%` }] : []),
+          ...(td.value.importer_gdp_share_pct != null ? [{ '@type': 'PropertyValue', name: `Trade as % of ${data.value.importer.name} GDP`, value: `${td.value.importer_gdp_share_pct.toFixed(1)}%` }] : []),
+        ],
+      }),
+    }] : []),
   ] : [],
 })))
 
