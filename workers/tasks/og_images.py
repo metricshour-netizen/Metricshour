@@ -31,6 +31,44 @@ def _font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont:
     return ImageFont.truetype(os.path.join(_FONT_BASE, name), size)
 
 
+# ── Template loader ───────────────────────────────────────────────────────────
+# 14 pre-built background templates in workers/templates/{name}.png
+# Moltis overlays data text on top of these bases.
+
+TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "..", "templates")
+
+# Map content type → template filename (without .png)
+TEMPLATE_MAP = {
+    # "Did you know?" portrait cards
+    "country_economy":    "did_you_know_country_economy",
+    "country_trade":      "did_you_know_country_trade",
+    "country_inflation":  "did_you_know_country_inflation",
+    "country_growth":     "did_you_know_country_growth",
+    "stock_price":        "did_you_know_stock_price",
+    "stock_revenue":      "did_you_know_stock_revenue",
+    "trade_pair":         "did_you_know_trade_pair",
+    # Feed event cards
+    "price_move_up":      "breaking_price_up",
+    "price_move_down":    "breaking_price_down",
+    "central_bank":       "central_bank_decision",
+    "macro_gdp":          "macro_gdp",
+    "macro_inflation":    "macro_inflation",
+    "macro_employment":   "macro_employment",
+    "market_intel":       "market_intelligence",
+}
+
+def _load_template(template_key: str) -> tuple[Image.Image, ImageDraw.ImageDraw]:
+    """Load a pre-built template PNG as the base canvas."""
+    name = TEMPLATE_MAP.get(template_key, "did_you_know_country_economy")
+    path = os.path.join(TEMPLATE_DIR, f"{name}.png")
+    if os.path.exists(path):
+        img = Image.open(path).convert("RGB")
+    else:
+        # Fallback: plain dark canvas if template file missing
+        img = Image.new("RGB", (720, 1280), BG)
+    return img, ImageDraw.ImageDraw(img)
+
+
 # ── Canvas helpers ─────────────────────────────────────────────────────────────
 
 def _base_canvas() -> tuple[Image.Image, ImageDraw.ImageDraw]:
@@ -487,116 +525,136 @@ def _social_card(
     category: str,
     flag: str,
     title: str,
-    year: str | int | None,
+    subtitle: str,
     hero_number: str,
     hero_desc: str,
     facts: list[str],
     source: str,
+    accent: tuple[int, int, int] = GREEN,
 ) -> bytes:
     """
-    720×1280 portrait "Did you know?" social card.
-    Layout: category pill → headline → entity row → hero stat card → key facts → source → CTA → brand bar.
+    720×1280 portrait "Did you know?" social card — matches Telegram template exactly.
+    Layout (left-aligned throughout):
+      Category pill (top-left) → "Did you know?" headline (large, left) →
+      Entity row (colored flag square + green title + gray subtitle) →
+      Hero card (big number LEFT, description RIGHT on same line) →
+      KEY FACTS (► bullets) → [space] →
+      Source (pinned near bottom) → CTA button (partial width, left) →
+      Thin divider → Brand bar (M logo + MetricsHour + metricshour.com)
     """
-    img = Image.new("RGB", (SW, SH), BG)
+    bg_col = (10, 14, 26)
+    surf   = (17, 24, 39)
+
+    img  = Image.new("RGB", (SW, SH), bg_col)
     draw = ImageDraw.Draw(img)
 
-    PAD = 36
+    PAD   = 40
     INNER = SW - PAD * 2
-    y = 60
+    y     = 40
 
-    # ── Category pill (centered, green outline) ────────────────────────────
-    pill_font = _font(19, bold=True)
-    pill_text = category.upper()
-    pill_tw = int(draw.textlength(pill_text, font=pill_font))
-    pill_w, pill_h = pill_tw + 40, 38
-    px0 = (SW - pill_w) // 2
-    draw.rounded_rectangle([(px0, y), (px0 + pill_w, y + pill_h)], radius=14, outline=GREEN, width=2)
-    draw.text((SW // 2, y + pill_h // 2), pill_text, font=pill_font, fill=GREEN, anchor="mm")
-    y += pill_h + 22
+    # ── Category pill — left-aligned, green outline ────────────────────────
+    pf   = _font(17, bold=True)
+    ptxt = category.upper()
+    ptw  = int(draw.textlength(ptxt, font=pf))
+    pw, ph = ptw + 32, 34
+    draw.rounded_rectangle([(PAD, y), (PAD + pw, y + ph)], radius=ph // 2, outline=accent, width=2)
+    draw.text((PAD + pw // 2, y + ph // 2), ptxt, font=pf, fill=accent, anchor="mm")
+    y += ph + 28
 
-    # ── "Did you know?" headline ───────────────────────────────────────────
-    h1_font = _font(54, bold=True)
-    draw.text((SW // 2, y + 32), "Did you know?", font=h1_font, fill=WHITE, anchor="mm")
-    y += 72
+    # ── "Did you know?" headline — large, left-aligned ─────────────────────
+    draw.text((PAD, y), "Did you know?", font=_font(56, bold=True), fill=WHITE, anchor="lt")
+    y += 76
 
-    # ── Entity row: flag square + name (green) + year (gray) ──────────────
-    flag_sz = 50
-    if flag:
-        draw.rounded_rectangle([(PAD, y), (PAD + flag_sz, y + flag_sz)], radius=8, fill=SURFACE)
-        draw.text((PAD + flag_sz // 2, y + flag_sz // 2), flag, font=_font(30), fill=WHITE, anchor="mm")
-        tx = PAD + flag_sz + 14
-    else:
-        tx = PAD
+    # ── Entity row: colored square (flag) + green title + gray subtitle ────
+    sq = 64
+    # Flag square — accent colored background
+    draw.rounded_rectangle([(PAD, y), (PAD + sq, y + sq)], radius=10, fill=accent)
+    draw.text((PAD + sq // 2, y + sq // 2), flag[:2] if flag else "?", font=_font(34), fill=bg_col, anchor="mm")
 
-    name_font = _font(26, bold=True)
-    max_name_w = SW - tx - PAD - 64
-    name_disp = title if draw.textlength(title, font=name_font) <= max_name_w else title[:26] + "…"
-    draw.text((tx, y + flag_sz // 2), name_disp, font=name_font, fill=GREEN, anchor="lm")
+    # Title (green bold) — wraps to 2 lines if needed
+    tx   = PAD + sq + 16
+    tf   = _font(26, bold=True)
+    tmax = SW - tx - PAD
+    tlines = _wrap(draw, title, tf, tmax)
+    ty = y + 4
+    for tl in tlines[:2]:
+        draw.text((tx, ty), tl, font=tf, fill=accent, anchor="lt")
+        ty += 34
+    # Subtitle gray
+    draw.text((tx, ty + 2), subtitle, font=_font(20), fill=GRAY, anchor="lt")
+    y += max(sq, ty - y + 26) + 20
 
-    if year:
-        yr_font = _font(21)
-        draw.text((SW - PAD, y + flag_sz // 2), str(year), font=yr_font, fill=GRAY, anchor="rm")
-    y += flag_sz + 26
+    # ── Hero stat card — number LEFT, description RIGHT (same row) ─────────
+    card_h = 120
+    draw.rounded_rectangle([(PAD, y), (SW - PAD, y + card_h)], radius=10, fill=surf)
+    # Left green border
+    draw.rounded_rectangle([(PAD, y), (PAD + 5, y + card_h)], radius=3, fill=accent)
 
-    # ── Hero stat card (dark bg, 6px green left border) ────────────────────
-    card_h = 134
-    draw.rounded_rectangle([(PAD, y), (SW - PAD, y + card_h)], radius=10, fill=SURFACE)
-    draw.rounded_rectangle([(PAD, y), (PAD + 6, y + card_h)], radius=3, fill=GREEN)
+    num_f  = _font(58, bold=True)
+    num_w  = int(draw.textlength(hero_number, font=num_f))
+    draw.text((PAD + 20, y + card_h // 2), hero_number, font=num_f, fill=accent, anchor="lm")
 
-    num_font = _font(54, bold=True)
-    draw.text((PAD + 24, y + 40), hero_number, font=num_font, fill=GREEN, anchor="lm")
-
-    desc_font = _font(21)
-    desc_lines = _wrap(draw, hero_desc, desc_font, INNER - 32)
-    dy = y + 86
-    for line in desc_lines[:2]:
-        draw.text((PAD + 24, dy), line, font=desc_font, fill=GRAY_LT, anchor="lm")
+    # Description text to the right of the number
+    desc_x   = PAD + 20 + num_w + 14
+    desc_max = SW - PAD - 16 - desc_x
+    desc_f   = _font(20)
+    desc_lines = _wrap(draw, hero_desc, desc_f, desc_max)
+    # Vertically centre the description block
+    block_h = len(desc_lines[:3]) * 26
+    dy = y + (card_h - block_h) // 2
+    for dl in desc_lines[:3]:
+        draw.text((desc_x, dy), dl, font=desc_f, fill=GRAY_LT, anchor="lt")
         dy += 26
-    y += card_h + 26
+    y += card_h + 24
 
     # ── KEY FACTS ─────────────────────────────────────────────────────────
-    lbl_font = _font(17, bold=True)
-    draw.text((PAD, y + 10), "KEY FACTS", font=lbl_font, fill=GRAY, anchor="lm")
-    y += 30
+    draw.text((PAD, y), "KEY FACTS", font=_font(15, bold=True), fill=GRAY, anchor="lt")
+    y += 26
 
     facts_to_show = facts[:3]
-    fact_font = _font(21)
-    fact_card_h = max(96, 20 + len(facts_to_show) * 52)
-    draw.rounded_rectangle([(PAD, y), (SW - PAD, y + fact_card_h)], radius=10, fill=SURFACE)
+    fact_f   = _font(20)
+    row_h    = 46
+    fc_h     = len(facts_to_show) * row_h + 20
+    draw.rounded_rectangle([(PAD, y), (SW - PAD, y + fc_h)], radius=10, fill=surf)
 
-    fy = y + 22
+    fy = y + 14
     for fact in facts_to_show:
-        draw.rectangle([(PAD + 16, fy + 7), (PAD + 24, fy + 15)], fill=GREEN)
-        fact_disp = fact if draw.textlength(fact, font=fact_font) <= INNER - 50 else fact[:52] + "…"
-        draw.text((PAD + 38, fy + 1), fact_disp, font=fact_font, fill=WHITE, anchor="lm")
-        fy += 48
-    y += fact_card_h + 16
+        # ► triangle bullet
+        draw.text((PAD + 16, fy + 2), "►", font=_font(14), fill=accent, anchor="lt")
+        fact_disp = fact if draw.textlength(fact, font=fact_f) <= INNER - 44 else fact[:54] + "…"
+        draw.text((PAD + 36, fy), fact_disp, font=fact_f, fill=WHITE, anchor="lt")
+        fy += row_h
+    y += fc_h
 
-    # ── Source ────────────────────────────────────────────────────────────
-    draw.text((PAD, y + 10), f"Source: {source}", font=_font(17), fill=GRAY, anchor="lm")
-    y += 34
+    # ── Source — pinned near bottom (fixed position) ───────────────────────
+    brand_h  = 66
+    cta_h    = 50
+    src_y    = SH - brand_h - 2 - cta_h - 16 - 24   # 24px above CTA
+    draw.text((PAD, src_y), f"Source: {source}", font=_font(16), fill=GRAY, anchor="lt")
 
-    # ── CTA button (green, full-width minus padding) ───────────────────────
-    brand_h = 72
-    cta_h = 56
-    cta_y = SH - brand_h - cta_h - 28
-    cta_y = max(cta_y, y + 8)
-    draw.rounded_rectangle([(PAD, cta_y), (SW - PAD, cta_y + cta_h)], radius=12, fill=GREEN)
-    draw.text((SW // 2, cta_y + cta_h // 2), "Explore the data →", font=_font(24, bold=True), fill=BG, anchor="mm")
+    # ── CTA button — partial width, left-aligned ───────────────────────────
+    cta_label = "Explore the data  →"
+    cta_f     = _font(22, bold=True)
+    cta_tw    = int(draw.textlength(cta_label, font=cta_f))
+    cta_w     = cta_tw + 48
+    cta_y     = SH - brand_h - 2 - cta_h - 8
+    draw.rounded_rectangle([(PAD, cta_y), (PAD + cta_w, cta_y + cta_h)], radius=cta_h // 2, fill=accent)
+    draw.text((PAD + cta_w // 2, cta_y + cta_h // 2), cta_label, font=cta_f, fill=bg_col, anchor="mm")
+
+    # ── Thin divider ──────────────────────────────────────────────────────
+    div_y = SH - brand_h - 2
+    draw.rectangle([(PAD, div_y), (SW - PAD, div_y + 1)], fill=(31, 41, 55))
 
     # ── Brand bar ─────────────────────────────────────────────────────────
     brand_y = SH - brand_h
-    draw.rectangle([(0, brand_y), (SW, SH)], fill=SURFACE)
-
-    # M logo box
-    logo_sz = 42
+    logo_sz = 38
     lx = PAD
     ly = brand_y + (brand_h - logo_sz) // 2
-    draw.rounded_rectangle([(lx, ly), (lx + logo_sz, ly + logo_sz)], radius=7, fill=GREEN)
-    draw.text((lx + logo_sz // 2, ly + logo_sz // 2), "M", font=_font(26, bold=True), fill=BG, anchor="mm")
-
-    draw.text((lx + logo_sz + 14, brand_y + brand_h // 2), "MetricsHour", font=_font(24, bold=True), fill=WHITE, anchor="lm")
-    draw.text((SW - PAD, brand_y + brand_h // 2), "metricshour.com", font=_font(18), fill=GRAY, anchor="rm")
+    # M logo — outlined box (matches Telegram template)
+    draw.rounded_rectangle([(lx, ly), (lx + logo_sz, ly + logo_sz)], radius=7, outline=accent, width=2)
+    draw.text((lx + logo_sz // 2, ly + logo_sz // 2), "M", font=_font(22, bold=True), fill=accent, anchor="mm")
+    draw.text((lx + logo_sz + 12, brand_y + brand_h // 2 - 8), "MetricsHour", font=_font(22, bold=True), fill=WHITE, anchor="lm")
+    draw.text((lx + logo_sz + 12, brand_y + brand_h // 2 + 14), "metricshour.com", font=_font(16), fill=accent, anchor="lm")
 
     return _to_png_bytes(img)
 
@@ -638,11 +696,11 @@ def _country_social_card(c, db) -> bytes:
         category="Global Economy",
         flag=c.flag_emoji or "",
         title=c.name,
-        year=gdp_year,
+        subtitle=f"({gdp_year} data)" if gdp_year else "",
         hero_number=hero_num,
         hero_desc=hero_desc,
         facts=facts,
-        source="World Bank",
+        source="World Bank / MetricsHour",
     )
 
 
@@ -677,11 +735,11 @@ def _stock_social_card(a, db) -> bytes:
         category="Equity Markets",
         flag="📈",
         title=a.symbol,
-        year=year,
+        subtitle=a.name[:32] + "…" if len(a.name) > 32 else a.name,
         hero_number=hero_num,
         hero_desc=hero_desc,
         facts=facts,
-        source="Yahoo Finance",
+        source="Yahoo Finance / MetricsHour",
     )
 
 
@@ -705,13 +763,14 @@ def _trade_social_card(exp, imp, p) -> bytes:
 
     return _social_card(
         category="Global Trade",
-        flag=f"{exp.flag_emoji or ''}{imp.flag_emoji or ''}",
-        title=f"{exp.code} ↔ {imp.code}",
-        year=p.year,
+        flag=exp.flag_emoji or "",
+        title=f"{exp.name} ↔ {imp.name}",
+        subtitle=f"({p.year} data)" if p.year else "",
         hero_number=hero_num,
         hero_desc=hero_desc,
         facts=facts,
-        source="UN Comtrade / WITS",
+        source="UN Comtrade / MetricsHour",
+        accent=(251, 191, 36),   # amber for trade cards
     )
 
 
