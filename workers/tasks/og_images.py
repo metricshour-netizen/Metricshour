@@ -567,9 +567,10 @@ def _social_card(
 
     # ── Entity row: colored square (flag) + green title + gray subtitle ────
     sq = 64
-    # Flag square — accent colored background
-    draw.rounded_rectangle([(PAD, y), (PAD + sq, y + sq)], radius=10, fill=accent)
-    draw.text((PAD + sq // 2, y + sq // 2), flag[:2] if flag else "?", font=_font(34), fill=bg_col, anchor="mm")
+    # Flag square — solid red (matches original template design)
+    FLAG_RED = (220, 38, 38)
+    draw.rounded_rectangle([(PAD, y), (PAD + sq, y + sq)], radius=10, fill=FLAG_RED)
+    draw.text((PAD + sq // 2, y + sq // 2), flag[:2] if flag else "?", font=_font(32), fill=WHITE, anchor="mm")
 
     # Title (green bold) — wraps to 2 lines if needed
     tx   = PAD + sq + 16
@@ -619,8 +620,9 @@ def _social_card(
 
     fy = y + 14
     for fact in facts_to_show:
-        # ► triangle bullet
-        draw.text((PAD + 16, fy + 2), "►", font=_font(14), fill=accent, anchor="lt")
+        # Small gray square outline bullet □ — matches template exactly
+        bx, by = PAD + 16, fy + 8
+        draw.rectangle([(bx, by), (bx + 9, by + 9)], outline=GRAY, width=1)
         fact_disp = fact if draw.textlength(fact, font=fact_f) <= INNER - 44 else fact[:54] + "…"
         draw.text((PAD + 36, fy), fact_disp, font=fact_f, fill=WHITE, anchor="lt")
         fy += row_h
