@@ -84,7 +84,7 @@
 const props = defineProps<{ modelValue: boolean }>()
 const emit = defineEmits<{ (e: 'update:modelValue', v: boolean): void }>()
 
-const { $apiFetch } = useNuxtApp()
+const { get } = useApi()
 const inputRef = ref<HTMLInputElement | null>(null)
 const q = ref('')
 const loading = ref(false)
@@ -118,8 +118,8 @@ function onInput() {
 async function doSearch() {
   loading.value = true
   try {
-    const data = await $apiFetch(`/api/search?q=${encodeURIComponent(q.value)}`)
-    results.value = data as { countries?: any[]; assets?: any[] }
+    const data = await get<{ countries?: any[]; assets?: any[] }>(`/api/search`, { q: q.value })
+    results.value = data
   } catch {
     results.value = {}
   } finally {
