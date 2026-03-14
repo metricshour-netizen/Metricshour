@@ -400,8 +400,8 @@ track_router = APIRouter(tags=["analytics"])
 @track_router.post("/api/track", status_code=status.HTTP_204_NO_CONTENT)
 @limiter.limit("120/minute")
 def track_page_view(
-    body: TrackIn,
     request: Request,
+    body: TrackIn,
     db: Session = Depends(get_db),
 ):
     if body.entity_type not in _VALID_ENTITY_TYPES:
