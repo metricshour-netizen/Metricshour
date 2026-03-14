@@ -1223,6 +1223,9 @@ def _stock_summary_stale(asset: Asset, existing: PageSummary | None, db) -> bool
     age_days = (datetime.now(timezone.utc) - existing.generated_at).days
     if age_days > 30:
         return True
+    # Regenerate if summary is too short (generated before 220-280 word target was set)
+    if len(existing.summary.split()) < 130:
+        return True
     # Regenerate if a newer fiscal year of revenue data has arrived
     latest_fy = (
         db.query(StockCountryRevenue.fiscal_year)
