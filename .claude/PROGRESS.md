@@ -1,12 +1,38 @@
 # MetricsHour — Progress & Session Log
 
-## Current Status: LIVE ✅ (as of 2026-03-13)
+## Current Status: LIVE ✅ (as of 2026-03-14)
 - Site: metricshour.com — SSR Nuxt, all pages 200
 - API: api.metricshour.com — FastAPI 8 workers
 - Workers: 33 Celery beat tasks running (crypto 2min, prices 15min, feed 3min, etc.)
 - CDN: cdn.metricshour.com — R2 snapshots live (countries, assets, trade)
 - Analytics: analytics.metricshour.com — Umami self-hosted
 - CMS: cms.metricshour.com — Directus
+
+---
+
+## Session 2026-03-14 — Social Card Templates + Distribution
+
+### Done
+- **14 PNG background templates** — generated and uploaded to R2 at `templates/{name}.png`
+- **`_social_card()` rebuilt pixel-accurate** — matches Telegram template exactly:
+  - Left-aligned layout, PAD=40
+  - Red 64px flag square, left-aligned entity row
+  - Hero card: 70px number LEFT, description RIGHT-ALIGNED in right column
+  - Gray `□` outline bullets (not arrows)
+  - Fixed y-positions: source=1098, CTA=1128 (partial-width pill), divider=1207, brand bar=1215
+  - M logo OUTLINED box (not filled), MetricsHour + metricshour.com stacked
+- **TradePair attrs fixed** — `exports_usd`, `imports_usd`, `top_export_products`
+- **`generate_social_cards` Celery task** — added to Beat at 4:45 AM UTC
+- **AGENTS.md updated** — full on-demand generation instructions with Python scripts
+- **All 3 image tasks ran on Netcup** — social cards (250 countries, 90 stocks, 3042 trade pairs), OG landscape cards, feed event cards
+- **SearchModal.vue** — recreated after lost in Netcup git reset
+- **Commits**: ccce612, 43b0ec5, 5df10e4, da2f132, 3068e32, 4a772f1, 8db93d3, de27791
+
+### R2 image counts (post-run)
+- `social/countries/`: 250 files
+- `social/stocks/`: 90 files
+- `social/trade/`: in progress (3042 total)
+- `og/countries/`, `og/stocks/`: landscape 1200×630 generated
 
 ---
 
