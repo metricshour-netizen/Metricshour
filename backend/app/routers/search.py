@@ -39,7 +39,7 @@ def _meili_search(q: str) -> dict | None:
                 {
                     "symbol": h["symbol"],
                     "name": h["name"],
-                    "sector": h.get("sector"),
+                    "sector": h.get("sector") or None,
                     "asset_type": h["asset_type"],
                     "type": "asset",
                 }

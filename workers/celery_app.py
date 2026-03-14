@@ -69,6 +69,7 @@ app = Celery('metricshour', include=[
     'tasks.social_content',
     'tasks.seo_monitor',
     'tasks.security_monitor',
+    'tasks.data_quality_monitor',
     'tasks.search_index',
 ])
 

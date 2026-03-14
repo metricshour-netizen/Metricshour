@@ -13,13 +13,8 @@ from celery import shared_task
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
-sys_path_added = False
-try:
-    import sys
-    sys.path.insert(0, '/root/metricshour/backend')
-    sys_path_added = True
-except Exception:
-    pass
+import sys
+sys.path.insert(0, '/root/metricshour/backend')
 
 from app.models import Country, Asset  # noqa: E402 — needs sys.path above
 
@@ -57,7 +52,7 @@ def _configure_indexes(client: meilisearch.Client) -> None:
     # Assets
     client.create_index("assets", {"primaryKey": "id"})
     client.index("assets").update_settings({
-        "searchableAttributes": ["symbol", "name", "sector", "industry"],
+        "searchableAttributes": ["symbol", "name", "sector"],
         "sortableAttributes": ["market_cap_usd"],
         "filterableAttributes": ["is_active", "asset_type"],
         "rankingRules": ["words", "typo", "proximity", "attribute", "sort", "exactness"],
