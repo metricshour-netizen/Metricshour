@@ -77,6 +77,16 @@
 - Sitemap: 2791 URLs with lastmod
 - SEO: all pages pass (title, og:title, og:image, canonical, JSON-LD, h1)
 
+---
+
+## Session 2026-03-14 (continued) — Bug Fixes from Deep Investigation
+
+### Fixed
+- **N+1 alerts query** — `_alert_dict()` no longer calls `db.get(Asset)` per alert. Batch-loads all assets in one query before loop. (`routers/alerts.py`)
+- **Commodities OG image** — was pointing to generic `og/section/commodities.png`. Now uses per-commodity `og/stocks/{symbol}.png`
+- **Social card redesign** — clean full-height layout (no empty gaps), green badge, dot bullets, entity-specific CTA text, 55KB/card. All 250 countries + 90 stocks + 2708 trade pairs regenerated on R2.
+- **Deep investigation completed** — 30 issues identified, prioritized (see report above)
+
 ### Known open items (carry forward)
 - [ ] Facebook Page Access Token — FACEBOOK_PAGE_ACCESS_TOKEN empty in .env
 - [ ] Cloudflare Turnstile — not implemented on /register

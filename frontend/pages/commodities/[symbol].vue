@@ -437,7 +437,7 @@ const _seoDesc = computed(() => {
 })
 
 const { public: { r2PublicUrl: _r2 } } = useRuntimeConfig()
-const _ogImage = `${_r2}/og/section/commodities.png`
+const _ogImage = `${_r2}/og/stocks/${symbol.toLowerCase()}.png`
 
 useSeoMeta({
   title: _seoTitle,

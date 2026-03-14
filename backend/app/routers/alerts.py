@@ -62,8 +62,7 @@ def _gen_code(length: int = 6) -> str:
     return ''.join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(length))
 
 
-def _alert_dict(a: PriceAlert, db: Session) -> dict:
-    asset = db.get(Asset, a.asset_id)
+def _alert_dict(a: PriceAlert, asset: Asset | None) -> dict:
     return {
         "id": a.id,
         "asset": {"id": asset.id, "symbol": asset.symbol, "name": asset.name} if asset else None,
@@ -87,7 +86,11 @@ def list_alerts(
         .where(PriceAlert.user_id == current_user.id)
         .order_by(desc(PriceAlert.created_at))
     ).scalars().all()
-    return [_alert_dict(a, db) for a in alerts]
+    asset_ids = {a.asset_id for a in alerts}
+    assets = {
+        a.id: a for a in db.execute(select(Asset).where(Asset.id.in_(asset_ids))).scalars().all()
+    } if asset_ids else {}
+    return [_alert_dict(a, assets.get(a.asset_id)) for a in alerts]
 
 
 @router.post("", status_code=201)
@@ -126,7 +129,7 @@ def create_alert(
     db.add(alert)
     db.commit()
     db.refresh(alert)
-    return _alert_dict(alert, db)
+    return _alert_dict(alert, asset)
 
 
 @router.delete("/{alert_id}", status_code=204)
