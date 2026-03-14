@@ -91,15 +91,23 @@ def _call_gemini(prompt: str) -> dict | None:
         text = (r.text or "").strip()
         return json.loads(text)
     except json.JSONDecodeError as e:
-        # Truncated response — try to extract what we can
         text = (getattr(r, "text", None) or "").strip()
-        log.warning("Gemini JSON truncated (%s), attempting partial parse", e)
+        log.warning("Gemini JSON truncated (%s), attempting recovery", e)
+        # 1. Try closing the truncated JSON
         try:
-            # Find last complete key we can use
+            fixed = text.rstrip(",").rstrip()
+            if fixed and not fixed.endswith("}"):
+                # Close any open string then close the object
+                fixed = fixed + ('"' if fixed.count('"') % 2 == 1 else "") + "}"
+            return json.loads(fixed)
+        except Exception:
+            pass
+        # 2. Regex extraction of completed string values (handles multiline with re.DOTALL)
+        try:
             import re
             partial = {}
             for key in ("twitter", "linkedin", "facebook", "reddit_subreddit", "reddit_title", "reddit_body"):
-                m = re.search(rf'"{key}"\s*:\s*"((?:[^"\\]|\\.)*)"', text)
+                m = re.search(rf'"{key}"\s*:\s*"((?:[^"\\]|\\.)*)"', text, re.DOTALL)
                 if m:
                     partial[key] = m.group(1).replace('\\"', '"').replace("\\n", "\n")
             return partial if partial else None
@@ -152,8 +160,31 @@ Page: {page_url}
 Write FOUR posts about this macro data point:
 
 1. TWITTER (max 260 chars, include the number, end with a punchy hook or question, 1-2 relevant emojis, include the URL)
-2. LINKEDIN (3 short paragraphs: data context, what it means for investors/markets, call to action with URL. Professional but engaging. ~150 words.)
-3. FACEBOOK (conversational, 2-3 sentences + the number + URL. More casual than LinkedIn, more context than Twitter. 1 emoji.)
+
+2. LINKEDIN — Exact format to follow:
+
+[Country] [indicator]: [value] — [1-line insight explaining why it matters]
+
+[2-3 observations, each on its own line, max 20 words each. Cover: historical context, market signal, investor implication. Name specific currencies, sectors, rates.]
+
+[URL]
+
+No emojis. No hashtags. No "Follow for more." No sign-off. Under 100 words total.
+
+GOOD (write like this):
+Germany debt-to-GDP: 66.4% — above the EU's 60% ceiling for the first time since 2015.
+Berlin's constitutional debt brake limits new borrowing, capping fiscal stimulus.
+Growth forecasts are being cut; the ECB rate cut timeline matters more now.
+Watch EUR and Bund spreads — fiscal drag could outlast the rate cycle.
+metricshour.com/countries/de
+
+BAD (never write like this):
+"In today's global economy, understanding fiscal dynamics is crucial. Germany's debt-to-GDP ratio has reached 66.4%, highlighting significant challenges for investors navigating European markets."
+
+3. FACEBOOK — Single paragraph, no line breaks. [Stat + country + one punchy implication, max 30 words]. [One specific risk or opportunity, max 20 words]. [1 emoji] [URL]
+
+GOOD: Germany's debt hit 66.4% of GDP — above the EU's limit. Budget cuts ahead mean slower growth for Europe's largest economy. 📊 metricshour.com/countries/de
+BAD: "Interesting economic update! Germany's debt-to-GDP ratio has climbed to 66.4%. What do you think about this trend? 📊"
 4. REDDIT — write a genuinely useful discussion post, NOT promotional:
    - "subreddit": best single subreddit from [investing, economics, worldnews, geopolitics, economy, stocks, MacroEconomics, dataisbeautiful] — pick based on content angle
    - "title": compelling Reddit title (max 200 chars) — data-led, sparks discussion, no clickbait
@@ -239,8 +270,30 @@ Page: {page_url}
 Write FOUR posts about this stock's geographic revenue exposure and what it means:
 
 1. TWITTER (max 260 chars, include the %, specific countries, hook about macro risk/opportunity, 1-2 emojis, include URL)
-2. LINKEDIN (3 short paragraphs: the geographic breakdown, macro risk/opportunity for each region, investor takeaway with URL. ~150 words. Professional tone.)
-3. FACEBOOK (conversational, 2-3 sentences about the % and top countries + URL. Casual but informative. 1 emoji.)
+
+2. LINKEDIN — Exact format to follow:
+
+[Ticker] earns [X]% of revenue outside the US — [1-line insight on what that exposure means right now]
+
+[2-3 observations, each on its own line, max 20 words each. Cover: which regions drive growth, specific macro risks (tariffs/FX/policy), what the market may be mispricing.]
+
+[URL]
+
+No emojis. No hashtags. No "Follow for more." No sign-off. Under 100 words total.
+
+GOOD (write like this):
+AAPL earns 58% of revenue outside the US — China alone is 19%, making it one of the most geopolitically exposed megacaps.
+A 10% CNY depreciation cuts EPS by ~$0.40 — rarely priced in during calm periods.
+EU Digital Markets Act compliance costs are rising; watch operating margins in Europe next quarter.
+metricshour.com/stocks/aapl
+
+BAD (never write like this):
+"In today's interconnected markets, geographic revenue diversification is more important than ever. Apple's international exposure represents both opportunity and risk for investors seeking global growth."
+
+3. FACEBOOK — Single paragraph, no line breaks. [Ticker + the % + top markets in one punchy line, max 30 words]. [One specific risk or opportunity this creates, max 20 words]. [1 emoji] [URL]
+
+GOOD: Apple earns 58% of revenue outside the US — China is 19%. A trade war escalation hits EPS directly. 🌍 metricshour.com/stocks/aapl
+BAD: "Did you know Apple earns most of its revenue internationally? This is really interesting for investors to consider! 🌍"
 4. REDDIT — write a genuinely useful discussion post, NOT promotional:
    - "subreddit": best single subreddit from [investing, stocks, SecurityAnalysis, ValueInvesting, StockMarket, geopolitics, economics] — pick based on content angle
    - "title": compelling Reddit title (max 200 chars) — specific numbers, sparks discussion, no clickbait
@@ -300,8 +353,31 @@ Page: {page_url}
 Write FOUR posts about this trade relationship and why it matters to investors:
 
 1. TWITTER (max 260 chars, include the dollar figure, key goods, geopolitical/market angle, 1-2 emojis, URL)
-2. LINKEDIN (3 short paragraphs: the trade relationship, what macro/political risks apply, investor implication with URL. ~150 words.)
-3. FACEBOOK (conversational, 2-3 sentences: the trade value, what's traded, why it matters + URL. Casual tone. 1 emoji.)
+
+2. LINKEDIN — Exact format to follow:
+
+[Exporter]→[Importer]: $[value]/year — [1-line insight on why this corridor matters or what's at risk]
+
+[2-3 observations, each on its own line, max 20 words each. Cover: what's being traded, the geopolitical or policy risk, which sectors/companies are most exposed.]
+
+[URL]
+
+No emojis. No hashtags. No "Follow for more." No sign-off. Under 100 words total.
+
+GOOD (write like this):
+China→US: $427B/year — the world's most politically contested trade corridor.
+Electronics and machinery dominate; 60%+ of US consumer tech imports originate here.
+A 25% tariff shock would add ~$180/device to manufacturing costs — largely passed to consumers.
+Watch semiconductor and retail stocks for the first signs of margin compression.
+metricshour.com/trade/cn-us
+
+BAD (never write like this):
+"Trade relationships between nations are a critical component of the global economy. The China-US trade corridor represents a significant economic partnership with important implications for investors worldwide."
+
+3. FACEBOOK — Single paragraph, no line breaks. [Dollar figure + corridor + the key goods in one punchy line, max 30 words]. [One specific risk or who gets hurt if it breaks, max 20 words]. [1 emoji] [URL]
+
+GOOD: China ships $427B to the US annually — mostly electronics and machinery. Tariffs on this corridor hit consumer prices immediately. 🌐 metricshour.com/trade/cn-us
+BAD: "The trade relationship between China and the US is fascinating and has many implications for global markets! 🌐"
 4. REDDIT — write a genuinely useful discussion post, NOT promotional:
    - "subreddit": best single subreddit from [geopolitics, investing, economics, worldnews, StockMarket, MacroEconomics, GlobalPowers] — pick based on content angle
    - "title": compelling Reddit title (max 200 chars) — specific dollar figure, geopolitical angle, sparks debate, no clickbait

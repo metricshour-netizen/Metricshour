@@ -33,44 +33,42 @@ TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_WEBHOOK_SECRET = os.environ.get("TELEGRAM_WEBHOOK_SECRET", "")
 
 
+def _tg_post(method: str, payload: dict, retries: int = 2) -> None:
+    """POST to Telegram API with one retry on failure."""
+    import time
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/{method}"
+    for attempt in range(retries):
+        try:
+            requests.post(url, json=payload, timeout=5)
+            return
+        except Exception as exc:
+            if attempt < retries - 1:
+                time.sleep(1)
+            else:
+                log.warning("Telegram %s failed after %d attempts: %s", method, retries, exc)
+
+
 def _answer_callback(callback_query_id: str, text: str) -> None:
     """Dismiss the loading spinner on the Telegram button."""
-    try:
-        requests.post(
-            f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/answerCallbackQuery",
-            json={"callback_query_id": callback_query_id, "text": text, "show_alert": False},
-            timeout=5,
-        )
-    except Exception:
-        pass
+    _tg_post("answerCallbackQuery", {
+        "callback_query_id": callback_query_id,
+        "text": text,
+        "show_alert": False,
+    })
 
 
 def _edit_message(chat_id: int, message_id: int, text: str) -> None:
     """Update the original draft message to show status."""
-    try:
-        requests.post(
-            f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/editMessageText",
-            json={
-                "chat_id": chat_id,
-                "message_id": message_id,
-                "text": text[:4000],
-                "parse_mode": "HTML",
-            },
-            timeout=5,
-        )
-    except Exception:
-        pass
+    _tg_post("editMessageText", {
+        "chat_id": chat_id,
+        "message_id": message_id,
+        "text": text[:4000],
+        "parse_mode": "HTML",
+    })
 
 
 def _send_message(chat_id: int, text: str) -> None:
-    try:
-        requests.post(
-            f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
-            json={"chat_id": chat_id, "text": text[:4000], "parse_mode": "HTML"},
-            timeout=5,
-        )
-    except Exception:
-        pass
+    _tg_post("sendMessage", {"chat_id": chat_id, "text": text[:4000], "parse_mode": "HTML"})
 
 
 def _handle_callback_query(callback: dict) -> dict:

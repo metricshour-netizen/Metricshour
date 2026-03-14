@@ -47,8 +47,9 @@ export function useAuth() {
         return
       }
       user.value = await res.json()
-    } catch {
+    } catch (e) {
       // Network error — keep the token, don't wipe user session
+      console.warn('[auth] restore() network error — keeping session:', e)
     }
   }
 

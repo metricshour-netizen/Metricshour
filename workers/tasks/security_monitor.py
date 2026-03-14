@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 SSH_FAIL_THRESHOLD = 50        # >50 SSH failures/hour
 NGINX_5XX_THRESHOLD = 100      # >100 5xx/hour
 NGINX_4XX_THRESHOLD = 1000     # >1000 4xx/hour (scans/fuzzing)
+NGINX_TOTAL_THRESHOLD = 10000  # >10k requests/hour (DDoS)
 UFW_BLOCK_THRESHOLD = 500      # >500 UFW blocks/hour
 EXPECTED_PORTS = {22, 80, 443, 8000, 3000, 5432, 6379, 8090, 9100, 51820}
 
@@ -119,7 +120,22 @@ def run_security_checks(self):
             f"⚠️ <b>UFW surge</b>: {ufw_recent} blocked packets in 1h\n<code>{top}</code>"
         )
 
-    # --- 5. Unexpected open ports ---
+    # --- 5. High total request volume (possible DDoS) ---
+    nx_total = _int(_run(
+        "awk -v t=\"$(date -d '1 hour ago' +'%d/%b/%Y:%H:%M:%S')\" "
+        "'$4>\"/\"t' /var/log/nginx/access.log 2>/dev/null | wc -l || echo 0"
+    ))
+    if nx_total > NGINX_TOTAL_THRESHOLD:
+        top_ips = _run(
+            "awk -v t=\"$(date -d '1 hour ago' +'%d/%b/%Y:%H:%M:%S')\" "
+            "'$4>\"/\"t{print $1}' /var/log/nginx/access.log 2>/dev/null "
+            "| sort | uniq -c | sort -rn | head -5"
+        )
+        alerts.append(
+            f"🚨 <b>Traffic spike (possible DDoS)</b>: {nx_total:,} requests in 1h\n<code>{top_ips}</code>"
+        )
+
+    # --- 6. Unexpected open ports ---
     ports_raw = _run("ss -tlnp | awk 'NR>1{print $4}' | grep -oE ':[0-9]+$' | tr -d ':'")
     open_ports = {int(p) for p in ports_raw.split() if p.isdigit()}
     unexpected = open_ports - EXPECTED_PORTS

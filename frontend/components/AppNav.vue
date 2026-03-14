@@ -29,12 +29,29 @@
         <template v-else>
           <button class="text-xs bg-emerald-700 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg transition-colors font-semibold" @click="showAuth = true">Sign In</button>
         </template>
+        <!-- Search trigger -->
+        <button
+          @click="searchOpen = true"
+          class="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-300 border border-[#1f2937] hover:border-[#374151] px-2.5 py-1.5 rounded-lg transition-colors font-mono"
+          title="Search (press /)"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
+          </svg>
+          <span class="hidden md:inline">Search</span>
+          <kbd class="hidden md:inline-flex items-center px-1 py-0.5 rounded border border-[#374151] bg-[#0d1117] text-gray-600 text-[10px]">/</kbd>
+        </button>
         <!-- Dark/light toggle -->
         <button class="text-lg leading-none" :title="isDark ? 'Switch to light mode' : 'Switch to dark mode'" @click="toggleTheme">{{ isDark ? '☀️' : '🌙' }}</button>
       </div>
 
-      <!-- Mobile right: Feed + hamburger -->
+      <!-- Mobile right: search + Feed + hamburger -->
       <div class="flex sm:hidden items-center gap-3">
+        <button @click="searchOpen = true" class="text-gray-400 hover:text-white transition-colors p-1" aria-label="Search">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
+          </svg>
+        </button>
         <NuxtLink to="/feed" class="text-emerald-300 font-semibold text-sm flex items-center gap-1">
           <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
           {{ isLoggedIn ? 'For You' : 'Feed' }}
@@ -83,12 +100,14 @@
   </nav>
 
   <AuthModal v-model="showAuth" />
+  <SearchModal v-model="searchOpen" />
 </template>
 
 <script setup lang="ts">
 const { isLoggedIn, user, logout } = useAuth()
 const showAuth = ref(false)
 const menuOpen = ref(false)
+const searchOpen = ref(false)
 const route = useRoute()
 
 function logoClick() {
@@ -100,6 +119,14 @@ const isDark = ref(true)
 onMounted(() => {
   isDark.value = localStorage.getItem('theme') !== 'light'
   document.documentElement.classList.toggle('light-mode', !isDark.value)
+
+  // Global "/" shortcut opens search from any page
+  document.addEventListener('keydown', (e: KeyboardEvent) => {
+    if (e.key === '/' && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) {
+      e.preventDefault()
+      searchOpen.value = true
+    }
+  })
 })
 function toggleTheme() {
   isDark.value = !isDark.value

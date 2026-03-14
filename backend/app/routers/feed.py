@@ -293,7 +293,7 @@ def get_watchlist(
     current_user: User = Depends(_require_user),
 ) -> list[dict]:
     """Return enriched watchlist — follows with current price / indicator data."""
-    from sqlalchemy import select
+    from sqlalchemy import and_, func, select
 
     follows = (
         db.query(UserFollow)
@@ -301,23 +301,78 @@ def get_watchlist(
         .order_by(UserFollow.followed_at.desc())
         .all()
     )
+    if not follows:
+        return []
 
+    asset_ids = [f.entity_id for f in follows if f.entity_type == FollowEntityType.asset]
+    country_ids = [f.entity_id for f in follows if f.entity_type == FollowEntityType.country]
+
+    # Batch load assets and countries
+    assets_map = {}
+    if asset_ids:
+        rows = db.execute(select(Asset).where(Asset.id.in_(asset_ids))).scalars().all()
+        assets_map = {a.id: a for a in rows}
+
+    countries_map = {}
+    if country_ids:
+        rows = db.execute(select(Country).where(Country.id.in_(country_ids))).scalars().all()
+        countries_map = {c.id: c for c in rows}
+
+    # Batch load latest price per asset (2 queries instead of N)
+    prices_map: dict[int, Price] = {}
+    if asset_ids:
+        ts_subq = (
+            select(Price.asset_id, func.max(Price.timestamp).label("max_ts"))
+            .where(Price.asset_id.in_(asset_ids))
+            .group_by(Price.asset_id)
+            .subquery()
+        )
+        price_rows = db.execute(
+            select(Price).join(
+                ts_subq,
+                and_(Price.asset_id == ts_subq.c.asset_id, Price.timestamp == ts_subq.c.max_ts),
+            )
+        ).scalars().all()
+        prices_map = {p.asset_id: p for p in price_rows}
+
+    # Batch load latest indicator values per country (2 queries instead of N×3)
+    indicators_map: dict[int, dict[str, float]] = {}
+    if country_ids:
+        ind_keys = ("gdp_usd", "gdp_growth_pct", "inflation_pct")
+        ind_subq = (
+            select(
+                CountryIndicator.country_id,
+                CountryIndicator.indicator,
+                func.max(CountryIndicator.period_date).label("max_date"),
+            )
+            .where(
+                CountryIndicator.country_id.in_(country_ids),
+                CountryIndicator.indicator.in_(ind_keys),
+            )
+            .group_by(CountryIndicator.country_id, CountryIndicator.indicator)
+            .subquery()
+        )
+        ind_rows = db.execute(
+            select(CountryIndicator).join(
+                ind_subq,
+                and_(
+                    CountryIndicator.country_id == ind_subq.c.country_id,
+                    CountryIndicator.indicator == ind_subq.c.indicator,
+                    CountryIndicator.period_date == ind_subq.c.max_date,
+                ),
+            )
+        ).scalars().all()
+        for row in ind_rows:
+            indicators_map.setdefault(row.country_id, {})[row.indicator] = row.value
+
+    # Assemble result from in-memory maps — zero additional DB queries
     result = []
     for f in follows:
         if f.entity_type == FollowEntityType.asset:
-            asset = db.get(Asset, f.entity_id)
+            asset = assets_map.get(f.entity_id)
             if not asset:
                 continue
-            # Latest price
-            price_row = (
-                db.execute(
-                    select(Price)
-                    .where(Price.asset_id == asset.id)
-                    .order_by(Price.timestamp.desc())
-                    .limit(1)
-                )
-                .scalar_one_or_none()
-            )
+            price_row = prices_map.get(asset.id)
             result.append({
                 "follow_id": f.id,
                 "entity_type": "asset",
@@ -334,26 +389,9 @@ def get_watchlist(
                 "followed_at": f.followed_at.isoformat(),
             })
         elif f.entity_type == FollowEntityType.country:
-            country = db.get(Country, f.entity_id)
+            country = countries_map.get(f.entity_id)
             if not country:
                 continue
-            # Latest GDP + GDP growth
-            indicators: dict[str, float] = {}
-            for key in ("gdp_usd", "gdp_growth_pct", "inflation_pct"):
-                row = (
-                    db.execute(
-                        select(CountryIndicator)
-                        .where(
-                            CountryIndicator.country_id == country.id,
-                            CountryIndicator.indicator == key,
-                        )
-                        .order_by(CountryIndicator.period_date.desc())
-                        .limit(1)
-                    )
-                    .scalar_one_or_none()
-                )
-                if row:
-                    indicators[key] = row.value
             result.append({
                 "follow_id": f.id,
                 "entity_type": "country",
@@ -362,7 +400,7 @@ def get_watchlist(
                 "name": country.name,
                 "flag": country.flag_emoji,
                 "region": country.region,
-                "indicators": indicators,
+                "indicators": indicators_map.get(country.id, {}),
                 "followed_at": f.followed_at.isoformat(),
             })
 
