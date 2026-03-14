@@ -13,6 +13,7 @@ import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 
 import requests
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from celery_app import app
@@ -153,7 +154,7 @@ def fetch_central_bank_news(self):
     try:
         # Build country code → id cache
         from app.models.country import Country
-        for c in db.query(Country.code, Country.id).all():
+        for c in db.execute(select(Country.code, Country.id)).all():
             _COUNTRY_ID_CACHE[c.code] = c.id
 
         all_events: list[dict] = []

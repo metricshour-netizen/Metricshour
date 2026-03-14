@@ -14,6 +14,7 @@ import time
 from datetime import datetime, timezone
 
 import yfinance as yf
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from celery_app import app
@@ -237,7 +238,7 @@ def backfill_price_history(self):
     """
     db = SessionLocal()
     try:
-        all_assets = db.query(Asset).filter(Asset.is_active == True).all()
+        all_assets = db.execute(select(Asset).where(Asset.is_active == True)).scalars().all()
         stocks = [a for a in all_assets if a.asset_type == AssetType.stock]
         crypto = [a for a in all_assets if a.asset_type == AssetType.crypto]
         fx     = [a for a in all_assets if a.asset_type == AssetType.fx]

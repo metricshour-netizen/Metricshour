@@ -18,6 +18,7 @@ import time
 from datetime import date
 
 import requests
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from celery_app import app
@@ -44,7 +45,7 @@ def _build_iso3_map(db) -> tuple[dict[str, int], dict[str, str]]:
         iso3_to_id: {alpha3: country_db_id}
         iso2_to_id: {alpha2: country_db_id}
     """
-    countries = db.query(Country.code, Country.code3, Country.id).all()
+    countries = db.execute(select(Country.code, Country.code3, Country.id)).all()
     iso3 = {c.code3: c.id for c in countries if c.code3}
     iso2 = {c.code: c.id for c in countries}
     return iso3, iso2

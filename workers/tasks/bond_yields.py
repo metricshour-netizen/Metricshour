@@ -15,6 +15,7 @@ import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 
 import requests
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from celery_app import app
@@ -74,15 +75,13 @@ def fetch_bond_yields(self):
     """Fetch government bond yields from official sources and upsert into prices table."""
     db = SessionLocal()
     try:
-        assets = (
-            db.query(Asset)
-            .filter(
+        assets = db.execute(
+            select(Asset).where(
                 Asset.asset_type == AssetType.bond,
                 Asset.symbol.in_(list(BOND_FETCHERS.keys())),
                 Asset.is_active == True,
             )
-            .all()
-        )
+        ).scalars().all()
         if not assets:
             log.info("No bond assets active for yield fetching — skipping")
             return

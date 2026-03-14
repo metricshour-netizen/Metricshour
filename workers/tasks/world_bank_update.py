@@ -10,6 +10,7 @@ import time
 from datetime import date
 
 import requests
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from celery_app import app
@@ -134,7 +135,7 @@ def update_world_bank(self):
     db = SessionLocal()
     try:
         # Build ISO-2 → country_id map once
-        countries = db.query(Country.code, Country.id).all()
+        countries = db.execute(select(Country.code, Country.id)).all()
         code_to_id: dict[str, int] = {c.code: c.id for c in countries}
 
         total_upserted = 0

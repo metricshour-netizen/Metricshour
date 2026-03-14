@@ -7,6 +7,7 @@ import logging
 import requests
 from datetime import datetime, timezone
 
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from celery_app import app
@@ -36,11 +37,9 @@ ID_TO_SYMBOL = {v: k for k, v in COINGECKO_IDS.items()}
 def fetch_crypto_prices(self):
     db = SessionLocal()
     try:
-        assets = (
-            db.query(Asset)
-            .filter(Asset.asset_type == AssetType.crypto, Asset.is_active == True)
-            .all()
-        )
+        assets = db.execute(
+            select(Asset).where(Asset.asset_type == AssetType.crypto, Asset.is_active == True)
+        ).scalars().all()
         symbol_to_asset = {a.symbol: a for a in assets}
 
         ids = [COINGECKO_IDS[s] for s in symbol_to_asset if s in COINGECKO_IDS]

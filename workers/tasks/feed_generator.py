@@ -16,7 +16,7 @@ importance_score logic:
 import logging
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import text
+from sqlalchemy import select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from celery_app import app
@@ -144,31 +144,31 @@ def _generate_price_moves(db) -> list[tuple[str, str]]:
     prev_end      = latest_cutoff
     prev_start    = now - timedelta(minutes=45)
 
-    assets = db.query(Asset).filter(Asset.is_active == True).all()
+    assets = db.execute(select(Asset).where(Asset.is_active == True)).scalars().all()
     triggered: list[tuple[str, str]] = []
 
     for asset in assets:
         # Latest price — most recent within the last 22 min
-        latest = (
-            db.query(Price)
-            .filter(Price.asset_id == asset.id, Price.timestamp >= latest_cutoff)
+        latest = db.execute(
+            select(Price)
+            .where(Price.asset_id == asset.id, Price.timestamp >= latest_cutoff)
             .order_by(Price.timestamp.desc())
-            .first()
-        )
+            .limit(1)
+        ).scalar_one_or_none()
         if latest is None:
             continue
 
         # Previous price — the fetch one cycle earlier (22–45 min ago)
-        prev = (
-            db.query(Price)
-            .filter(
+        prev = db.execute(
+            select(Price)
+            .where(
                 Price.asset_id == asset.id,
                 Price.timestamp < prev_end,
                 Price.timestamp >= prev_start,
             )
             .order_by(Price.timestamp.desc())
-            .first()
-        )
+            .limit(1)
+        ).scalar_one_or_none()
         if prev is None or prev.close == 0:
             continue
 
@@ -191,12 +191,14 @@ def _generate_price_moves(db) -> list[tuple[str, str]]:
 
         # Dedup check BEFORE calling AI — skip AI if this event would be dropped anyway
         dedup_cutoff = now - timedelta(minutes=15)
-        already_exists = db.query(FeedEvent.id).filter(
-            FeedEvent.event_type == "price_move",
-            FeedEvent.event_subtype == subtype,
-            FeedEvent.related_asset_ids == [asset.id],
-            FeedEvent.published_at >= dedup_cutoff,
-        ).first()
+        already_exists = db.execute(
+            select(FeedEvent.id).where(
+                FeedEvent.event_type == "price_move",
+                FeedEvent.event_subtype == subtype,
+                FeedEvent.related_asset_ids == [asset.id],
+                FeedEvent.published_at >= dedup_cutoff,
+            )
+        ).scalar()
         if already_exists:
             continue
 
@@ -265,10 +267,10 @@ def _generate_macro_releases(db) -> list[tuple[str, str]]:
         'KR', 'IT', 'RU', 'MX', 'SA', 'AR', 'ZA', 'ID', 'TR',
     }
 
-    recent = (
-        db.query(CountryIndicator, Country)
+    recent = db.execute(
+        select(CountryIndicator, Country)
         .join(Country, Country.id == CountryIndicator.country_id)
-        .filter(
+        .where(
             CountryIndicator.indicator.in_(high_importance),
             CountryIndicator.period_date <= today,          # no forecasts
             CountryIndicator.period_date >= (now - timedelta(days=1095)).date(),  # 3 years back
@@ -276,8 +278,7 @@ def _generate_macro_releases(db) -> list[tuple[str, str]]:
         )
         .order_by(CountryIndicator.period_date.desc(), CountryIndicator.country_id)
         .limit(100)
-        .all()
-    )
+    ).all()
 
     for indicator_row, country in recent:
         importance = INDICATOR_IMPORTANCE.get(indicator_row.indicator, DEFAULT_INDICATOR_IMPORTANCE)
@@ -360,7 +361,7 @@ def _upsert_feed_event(
 
     dedup_cutoff = published_at - timedelta(minutes=dedup_minutes)
 
-    q = db.query(FeedEvent.id).filter(
+    q = select(FeedEvent.id).where(
         FeedEvent.event_type == event_type,
         FeedEvent.event_subtype == event_subtype,
         FeedEvent.published_at >= dedup_cutoff,
@@ -368,13 +369,13 @@ def _upsert_feed_event(
 
     # For price moves: dedup per asset
     if related_asset_ids:
-        q = q.filter(FeedEvent.related_asset_ids == related_asset_ids)
+        q = q.where(FeedEvent.related_asset_ids == related_asset_ids)
 
     # For macro/indicator: dedup per country
     if related_country_ids:
-        q = q.filter(FeedEvent.related_country_ids == related_country_ids)
+        q = q.where(FeedEvent.related_country_ids == related_country_ids)
 
-    if q.first():
+    if db.execute(q).scalar():
         return
 
     db.add(FeedEvent(

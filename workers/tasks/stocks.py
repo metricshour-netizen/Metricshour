@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 
 import requests
 import yfinance as yf
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from celery_app import app
@@ -113,9 +114,11 @@ def _upsert_prices(db, symbol_to_asset: dict, prices: dict[str, float], now: dat
     asset_ids = [symbol_to_asset[s].id for s in prices if s in symbol_to_asset]
     last_prices: dict[int, float] = {}
     for aid in asset_ids:
-        last = db.query(Price.close).filter(Price.asset_id == aid).order_by(Price.timestamp.desc()).first()
-        if last:
-            last_prices[aid] = last[0]
+        last = db.execute(
+            select(Price.close).where(Price.asset_id == aid).order_by(Price.timestamp.desc()).limit(1)
+        ).scalar()
+        if last is not None:
+            last_prices[aid] = last
 
     rows = []
     for sym, price in prices.items():
@@ -153,11 +156,9 @@ def _upsert_prices(db, symbol_to_asset: dict, prices: dict[str, float], now: dat
 def fetch_stock_prices(self):
     db = SessionLocal()
     try:
-        assets = (
-            db.query(Asset)
-            .filter(Asset.asset_type == AssetType.stock, Asset.is_active == True)
-            .all()
-        )
+        assets = db.execute(
+            select(Asset).where(Asset.asset_type == AssetType.stock, Asset.is_active == True)
+        ).scalars().all()
         symbol_to_asset = {a.symbol: a for a in assets}
         symbols = list(symbol_to_asset.keys())
 

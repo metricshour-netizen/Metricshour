@@ -14,6 +14,7 @@ import time
 from datetime import date
 
 import requests
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from celery_app import app
@@ -76,7 +77,7 @@ def _fetch_imf_indicator(imf_code: str) -> dict[str, dict[int, float]]:
 
 def _build_code_maps(db) -> tuple[dict[str, int], dict[str, int]]:
     """Build ISO2 and ISO3 → country_id maps."""
-    countries = db.query(Country.code, Country.code3, Country.id).all()
+    countries = db.execute(select(Country.code, Country.code3, Country.id)).all()
     iso2 = {c.code: c.id for c in countries}
     iso3 = {c.code3: c.id for c in countries if c.code3}
     return iso2, iso3

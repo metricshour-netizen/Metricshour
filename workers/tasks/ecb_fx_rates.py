@@ -13,6 +13,7 @@ import xml.etree.ElementTree as ET
 from datetime import date, datetime, timezone
 
 import requests
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from celery_app import app
@@ -84,11 +85,9 @@ def update_ecb_fx(self):
 
         # --- 1. Update FX asset prices ---
         price_rows = []
-        assets = (
-            db.query(Asset)
-            .filter(Asset.asset_type == AssetType.fx, Asset.is_active == True)
-            .all()
-        )
+        assets = db.execute(
+            select(Asset).where(Asset.asset_type == AssetType.fx, Asset.is_active == True)
+        ).scalars().all()
         symbol_to_asset = {a.symbol: a for a in assets}
 
         for currency, rate in rates.items():
@@ -114,7 +113,7 @@ def update_ecb_fx(self):
         # --- 2. Store as CountryIndicator for each country's currency ---
         code_to_id: dict[str, int] = {
             c.code: c.id
-            for c in db.query(Country.code, Country.id).all()
+            for c in db.execute(select(Country.code, Country.id)).all()
         }
         indicator_rows = []
         period = ref_date or date.today()

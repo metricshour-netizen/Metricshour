@@ -13,6 +13,7 @@ import logging
 from datetime import datetime, timezone
 
 import yfinance as yf
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from celery_app import app
@@ -85,11 +86,11 @@ def _upsert_prices(db, symbol_to_asset: dict, prices: dict[str, float], now: dat
     asset_ids = [symbol_to_asset[s].id for s in prices if s in symbol_to_asset]
     last_prices: dict[int, float] = {}
     for aid in asset_ids:
-        last = db.query(Price.close).filter(
-            Price.asset_id == aid
-        ).order_by(Price.timestamp.desc()).first()
-        if last:
-            last_prices[aid] = last[0]
+        last = db.execute(
+            select(Price.close).where(Price.asset_id == aid).order_by(Price.timestamp.desc()).limit(1)
+        ).scalar()
+        if last is not None:
+            last_prices[aid] = last
 
     rows = []
     for sym, price in prices.items():
@@ -131,14 +132,12 @@ def fetch_index_etf_prices(self):
             log.debug('Index/ETF fetch skipped — weekend')
             return
 
-        assets = (
-            db.query(Asset)
-            .filter(
+        assets = db.execute(
+            select(Asset).where(
                 Asset.asset_type.in_([AssetType.index, AssetType.etf, AssetType.bond]),
                 Asset.is_active == True,
             )
-            .all()
-        )
+        ).scalars().all()
         symbol_to_asset = {a.symbol: a for a in assets}
 
         # Build yfinance symbol → DB symbol reverse map

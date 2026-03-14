@@ -7,6 +7,7 @@ import logging
 from datetime import datetime, timezone
 
 import yfinance as yf
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from celery_app import app
@@ -41,11 +42,9 @@ def fetch_fx_rates(self):
 
     db = SessionLocal()
     try:
-        assets = (
-            db.query(Asset)
-            .filter(Asset.asset_type == AssetType.fx, Asset.is_active == True)
-            .all()
-        )
+        assets = db.execute(
+            select(Asset).where(Asset.asset_type == AssetType.fx, Asset.is_active == True)
+        ).scalars().all()
         symbol_to_asset = {a.symbol: a for a in assets}
 
         yf_to_asset = {

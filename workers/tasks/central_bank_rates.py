@@ -24,6 +24,7 @@ from datetime import date, datetime
 from io import StringIO
 
 import requests
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from celery_app import app
@@ -374,7 +375,7 @@ def fetch_central_bank_rates(self):
     """Fetch central bank policy rates from official free APIs. Runs daily 6:15am UTC."""
     db = SessionLocal()
     try:
-        iso2_map: dict[str, int] = {c.code: c.id for c in db.query(Country.code, Country.id).all()}
+        iso2_map: dict[str, int] = {c.code: c.id for c in db.execute(select(Country.code, Country.id)).all()}
         total = 0
 
         # ── Pass 1: BIS baseline (38 central banks) ───────────────────────────

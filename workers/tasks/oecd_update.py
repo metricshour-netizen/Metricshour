@@ -16,6 +16,7 @@ import time
 from datetime import date
 
 import requests
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from celery_app import app
@@ -221,7 +222,7 @@ def update_oecd_data(self):
     try:
         iso2_map: dict[str, int] = {
             c.code: c.id
-            for c in db.query(Country.code, Country.id).all()
+            for c in db.execute(select(Country.code, Country.id)).all()
         }
         total_upserted = 0
 

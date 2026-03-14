@@ -7,6 +7,7 @@ import logging
 from datetime import datetime, timezone
 
 import yfinance as yf
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from celery_app import app
@@ -79,11 +80,9 @@ def fetch_commodity_prices(self):
             log.debug('Commodity fetch skipped — futures market closed')
             return
 
-        assets = (
-            db.query(Asset)
-            .filter(Asset.asset_type == AssetType.commodity, Asset.is_active == True)
-            .all()
-        )
+        assets = db.execute(
+            select(Asset).where(Asset.asset_type == AssetType.commodity, Asset.is_active == True)
+        ).scalars().all()
         symbol_to_asset = {a.symbol: a for a in assets}
 
         # Build reverse map: yfinance_sym → our DB asset
@@ -102,14 +101,11 @@ def fetch_commodity_prices(self):
         # Build last-known prices for spike guard
         last_prices: dict[int, float] = {}
         for asset in yf_to_asset.values():
-            last = (
-                db.query(Price.close)
-                .filter(Price.asset_id == asset.id)
-                .order_by(Price.timestamp.desc())
-                .first()
-            )
-            if last:
-                last_prices[asset.id] = last[0]
+            last = db.execute(
+                select(Price.close).where(Price.asset_id == asset.id).order_by(Price.timestamp.desc()).limit(1)
+            ).scalar()
+            if last is not None:
+                last_prices[asset.id] = last
 
         rows = []
         for yf_sym, price in prices.items():
