@@ -334,30 +334,36 @@ def _feed_event_image(
     img = Image.new("RGB", (W, H), bg_color)
     draw = ImageDraw.Draw(img)
 
-    # Subtle radial glow (fake with a large blurred circle)
-    # Draw concentric rects with decreasing opacity for glow effect
+    # Subtle centre glow
     glow_r, glow_g, glow_b = accent
-    for i in range(12, 0, -1):
-        alpha = int(20 * (i / 12))
-        rect_w, rect_h = W * (1 - i * 0.03), H * (1 - i * 0.05)
-        x0 = (W - rect_w) / 2
-        y0 = (H - rect_h) / 2 - H * 0.1  # offset upward
-        glow_color = (
-            max(0, bg_color[0] + int((glow_r - bg_color[0]) * alpha / 255)),
-            max(0, bg_color[1] + int((glow_g - bg_color[1]) * alpha / 255)),
-            max(0, bg_color[2] + int((glow_b - bg_color[2]) * alpha / 255)),
+    for i in range(10, 0, -1):
+        alpha_f = i / 10 * 0.08
+        rw, rh = int(W * (0.6 + i * 0.04)), int(H * (0.5 + i * 0.05))
+        rx0, ry0 = (W - rw) // 2, (H - rh) // 2 - 40
+        glow_col = (
+            min(255, bg_color[0] + int((glow_r - bg_color[0]) * alpha_f)),
+            min(255, bg_color[1] + int((glow_g - bg_color[1]) * alpha_f)),
+            min(255, bg_color[2] + int((glow_b - bg_color[2]) * alpha_f)),
         )
-        draw.ellipse([x0, y0, x0 + rect_w, y0 + rect_h], fill=glow_color)
+        draw.ellipse([rx0, ry0, rx0 + rw, ry0 + rh], fill=glow_col)
 
     # Top importance bar
     if importance:
-        bar_width = int(W * min(1.0, importance / 10))
-        draw.rectangle([(0, 0), (bar_width, 5)], fill=accent)
+        bar_w = int(W * min(1.0, importance / 10))
+        draw.rectangle([(0, 0), (bar_w, 5)], fill=accent)
+    else:
+        draw.rectangle([(0, 0), (W, 5)], fill=accent)
 
-    # Brand watermark top-right
-    draw.text((W - 32, 32), "METRICSHOUR", font=_font(20, bold=True), fill=accent, anchor="rm")
+    # Bottom brand bar (consistent with other templates)
+    draw.rectangle([(0, H - 56), (W, H)], fill=SURFACE)
+    logo_sz = 34
+    lx, ly = 36, H - 56 + (56 - logo_sz) // 2
+    draw.rounded_rectangle([(lx, ly), (lx + logo_sz, ly + logo_sz)], radius=6, fill=accent)
+    draw.text((lx + logo_sz // 2, ly + logo_sz // 2), "M", font=_font(20, bold=True), fill=bg_color, anchor="mm")
+    draw.text((lx + logo_sz + 12, H - 28), "MetricsHour", font=_font(20, bold=True), fill=WHITE, anchor="lm")
+    draw.text((W - 36, H - 28), "metricshour.com", font=_font(17), fill=GRAY, anchor="rm")
 
-    # Event type badge
+    # Event type badge pill (top-left)
     TYPE_LABELS = {
         "price_move": "PRICE MOVE",
         "indicator_release": "MACRO DATA",
@@ -367,34 +373,36 @@ def _feed_event_image(
         "blog": "ARTICLE",
     }
     badge_text = TYPE_LABELS.get(event_type, event_type.upper().replace("_", " "))
-    draw.text((60, 44), badge_text, font=_font(18, bold=True), fill=accent, anchor="lm")
+    badge_font = _font(18, bold=True)
+    badge_tw = int(draw.textlength(badge_text, font=badge_font))
+    bw = badge_tw + 32
+    draw.rounded_rectangle([(48, 20), (48 + bw, 56)], radius=12, outline=accent, width=2)
+    draw.text((48 + bw // 2, 38), badge_text, font=badge_font, fill=accent, anchor="mm")
 
     # ── Type-specific hero content ─────────────────────────────────────────
-    cy = H // 2 - 20  # vertical centre anchor
+    cy = H // 2 - 30  # vertical centre anchor
 
     if event_type == "price_move":
         change_pct = float(data.get("change_pct", 0) or 0)
         symbol = str(data.get("symbol", ""))
         price = data.get("price")
         sign = "+" if change_pct >= 0 else ""
-        pct_color = (16, 185, 129) if change_pct >= 0 else (239, 68, 68)
+        pct_color = GREEN if change_pct >= 0 else (239, 68, 68)
         arrow = "↑" if change_pct >= 0 else "↓"
 
-        draw.text((W // 2, cy - 20), f"{sign}{change_pct:.2f}%", font=_font(110, bold=True), fill=pct_color, anchor="mm")
-        draw.text((W // 2, cy + 90), f"{arrow}  {symbol}", font=_font(48, bold=True), fill=WHITE, anchor="mm")
+        draw.text((W // 2, cy - 10), f"{sign}{change_pct:.2f}%", font=_font(108, bold=True), fill=pct_color, anchor="mm")
+        draw.text((W // 2, cy + 90), f"{arrow}  {symbol}", font=_font(46, bold=True), fill=WHITE, anchor="mm")
         if price:
-            draw.text((W // 2, cy + 150), f"${float(price):,.2f}", font=_font(32), fill=GRAY_LT, anchor="mm")
+            draw.text((W // 2, cy + 148), f"${float(price):,.2f}", font=_font(30), fill=GRAY_LT, anchor="mm")
 
     elif event_type in ("indicator_release", "macro_release"):
         country_code = str(data.get("country_code", "")).upper()
         value = data.get("value")
         indicator = str(data.get("indicator") or data.get("indicator_slug", "")).replace("_", " ").upper()
 
-        # Big country code
         if country_code:
-            draw.text((W // 2, cy - 60), country_code, font=_font(80, bold=True), fill=accent, anchor="mm")
+            draw.text((W // 2, cy - 55), country_code, font=_font(76, bold=True), fill=accent, anchor="mm")
 
-        # Big value
         if value is not None:
             n = float(value)
             if abs(n) >= 1e12:
@@ -403,39 +411,40 @@ def _feed_event_image(
                 val_str = f"${n / 1e9:.1f}B"
             else:
                 val_str = f"{n:.2f}" if abs(n) < 1000 else f"{n:,.0f}"
-            draw.text((W // 2, cy + 30), val_str, font=_font(96, bold=True), fill=WHITE, anchor="mm")
+            # Value card
+            draw.rounded_rectangle([(W // 2 - 280, cy + 5), (W // 2 + 280, cy + 95)], radius=10, fill=SURFACE)
+            draw.rounded_rectangle([(W // 2 - 280, cy + 5), (W // 2 - 274, cy + 95)], radius=3, fill=accent)
+            draw.text((W // 2, cy + 50), val_str, font=_font(72, bold=True), fill=WHITE, anchor="mm")
 
         if indicator:
-            # Truncate
-            ind_display = indicator[:50] + "…" if len(indicator) > 50 else indicator
-            draw.text((W // 2, cy + 120), ind_display, font=_font(28), fill=GRAY_LT, anchor="mm")
+            ind_display = indicator[:48] + "…" if len(indicator) > 48 else indicator
+            draw.text((W // 2, cy + 118), ind_display, font=_font(26), fill=GRAY_LT, anchor="mm")
 
     elif event_type == "trade_update":
         exp = str(data.get("exporter", "")).upper()
         imp = str(data.get("importer", "")).upper()
         value = data.get("value_usd")
 
-        draw.text((200, cy), exp, font=_font(96, bold=True), fill=WHITE, anchor="mm")
-        draw.text((W // 2, cy), "↔", font=_font(72, bold=True), fill=accent, anchor="mm")
-        draw.text((W - 200, cy), imp, font=_font(96, bold=True), fill=WHITE, anchor="mm")
+        draw.text((220, cy), exp, font=_font(92, bold=True), fill=WHITE, anchor="mm")
+        draw.text((W // 2, cy), "↔", font=_font(68, bold=True), fill=accent, anchor="mm")
+        draw.text((W - 220, cy), imp, font=_font(92, bold=True), fill=WHITE, anchor="mm")
         if value:
             n = float(value)
             val_str = f"${n / 1e9:.0f}B" if n >= 1e9 else f"${n / 1e6:.0f}M"
-            draw.text((W // 2, cy + 100), val_str, font=_font(48, bold=True), fill=accent, anchor="mm")
+            draw.rounded_rectangle([(W // 2 - 200, cy + 70), (W // 2 + 200, cy + 140)], radius=10, fill=SURFACE)
+            draw.text((W // 2, cy + 105), val_str, font=_font(44, bold=True), fill=accent, anchor="mm")
 
-    else:
-        # Blog / generic — just show title large
-        pass
+    elif event_type in ("central_bank", "blog"):
+        # Generic: bold title centred
+        pass  # handled below in title section
 
-    # ── Title (bottom area) ──────────────────────────────────────────────
-    # Strip leading emoji sequences (rough approach: skip non-ASCII prefix)
+    # ── Title block (bottom area, above brand bar) ────────────────────────
     clean_title = title.encode("ascii", "ignore").decode("ascii").strip(" →↑↓·–—") or title
-    # Word-wrap at ~55 chars per line
     words = clean_title.split()
     lines: list[str] = []
     current = ""
     for w in words:
-        if len(current) + len(w) + 1 <= 55:
+        if len(current) + len(w) + 1 <= 52:
             current = (current + " " + w).strip()
         else:
             if current:
@@ -443,14 +452,11 @@ def _feed_event_image(
             current = w
     if current:
         lines.append(current)
-    lines = lines[:3]  # max 3 lines
+    lines = lines[:3]
 
-    title_y = H - 120
+    title_y = H - 130
     for i, line in enumerate(lines):
-        draw.text((60, title_y + i * 44), line, font=_font(34, bold=True), fill=WHITE, anchor="lm")
-
-    # Subtle bottom border
-    draw.rectangle([(0, H - 6), (W, H)], fill=accent)
+        draw.text((56, title_y + i * 42), line, font=_font(32, bold=True), fill=WHITE, anchor="lm")
 
     return _to_png_bytes(img)
 
