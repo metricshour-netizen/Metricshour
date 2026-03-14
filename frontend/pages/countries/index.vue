@@ -52,7 +52,7 @@
             <span v-if="c.currency_code">· {{ c.currency_code }}</span>
           </div>
           <div class="flex gap-1 mt-2 flex-wrap">
-            <span v-for="g in c.groupings.slice(0, 3)" :key="g"
+            <span v-for="g in (c.groupings ?? []).slice(0, 3)" :key="g"
                   class="text-[10px] bg-[#1f2937] text-gray-400 px-1.5 py-0.5 rounded">
               {{ g }}
             </span>

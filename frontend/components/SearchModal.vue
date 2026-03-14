@@ -48,7 +48,7 @@
               :class="['flex items-center gap-3 px-4 py-2.5 hover:bg-[#111827] transition-colors text-sm', focusIndex === i ? 'bg-[#111827]' : '']"
               @click="$emit('update:modelValue', false)"
             >
-              <span class="text-xl w-7 text-center">{{ item.flag_emoji }}</span>
+              <span class="text-xl w-7 text-center">{{ item.flag }}</span>
               <span class="text-white font-medium">{{ item.name }}</span>
               <span class="ml-auto text-xs text-gray-600">{{ item.code }}</span>
             </NuxtLink>
@@ -118,7 +118,7 @@ function onInput() {
 async function doSearch() {
   loading.value = true
   try {
-    const data = await $apiFetch(`/api/search?q=${encodeURIComponent(q.value)}&limit=8`)
+    const data = await $apiFetch(`/api/search?q=${encodeURIComponent(q.value)}`)
     results.value = data as { countries?: any[]; assets?: any[] }
   } catch {
     results.value = {}

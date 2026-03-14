@@ -462,7 +462,7 @@ const { data: country, pending, error } = useAsyncData(
 
 // Trade partners, exposed stocks, and local stocks are bundled in the R2 snapshot.
 // Use computed to extract them — no separate API call needed.
-const tradePartners = computed(() => country.value?.trade_partners ?? null)
+const tradePartners = computed(() => (country.value?.trade_partners ?? []).filter((p: any) => p?.partner?.code))
 const tradePartnersLoading = computed(() => pending.value)
 const exposedStocks = computed(() => country.value?.exposed_stocks ?? null)
 const stocksLoading = computed(() => pending.value)
