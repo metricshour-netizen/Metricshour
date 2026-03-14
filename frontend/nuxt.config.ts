@@ -63,5 +63,9 @@ export default defineNuxtConfig({
   routeRules: {
     '/sitemap.xml': { redirect: { to: 'https://api.metricshour.com/sitemap.xml', statusCode: 301 } },
     '/robots.txt': { redirect: { to: 'https://api.metricshour.com/robots.txt', statusCode: 301 } },
+    '/login/': { redirect: { to: '/', statusCode: 301 } },
+    '/login': { redirect: { to: '/', statusCode: 301 } },
+    '/register/': { redirect: { to: '/', statusCode: 301 } },
+    '/register': { redirect: { to: '/', statusCode: 301 } },
   },
 })

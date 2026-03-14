@@ -287,10 +287,5 @@ app.conf.update(
             'schedule': 3600.0,
         },
 
-        # Meilisearch full reindex — daily at 7:15am (after R2 snapshots)
-        'search-reindex-daily-715am': {
-            'task': 'tasks.search_index.reindex_search',
-            'schedule': crontab(hour=7, minute=15),
-        },
     },
 )

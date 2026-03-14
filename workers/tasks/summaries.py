@@ -463,7 +463,7 @@ def _country_insight_text(country: Country, db) -> str | None:
 
 def _stock_summary_text(asset: Asset, db) -> str:
     """
-    Stable 75-100 word overview for a stock page.
+    Stable 220-280 word overview for a stock page.
     Focuses on geographic revenue exposure — the MetricsHour differentiator.
     """
     hq = db.query(Country).filter(Country.id == asset.country_id).first() if asset.country_id else None
@@ -500,7 +500,7 @@ def _stock_summary_text(asset: Asset, db) -> str:
             f"(5) Macro linkage: which country-level indicators (rate decisions, inflation, consumer spending) most directly drive this stock's near-term earnings. Name the data release to watch.\n"
             f"GS equity note style. Every sentence has a number. No padding. End with a period."
         )
-        ai = _call_ai(prompt, min_words=190, max_words=310, prefer_gemini=False)
+        ai = _call_ai(prompt, min_words=130, max_words=320, prefer_gemini=False)
         if ai:
             return ai
 
