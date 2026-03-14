@@ -3,7 +3,8 @@ from .country import Country, CountryIndicator, TradePair
 from .asset import Asset, AssetType, Price, StockCountryRevenue
 from .user import User, UserTier, PriceAlert, LoginEvent, PageView
 from .feed import FeedEvent, UserFollow, UserInteraction, FollowEntityType, InteractionType
-from .summary import PageSummary
+from .summary import PageSummary, PageInsight
+from .user import AlertDelivery, MacroAlert
 
 __all__ = [
     "Base",
@@ -17,12 +18,15 @@ __all__ = [
     "User",
     "UserTier",
     "PriceAlert",
+    "AlertDelivery",
+    "MacroAlert",
     "FeedEvent",
     "UserFollow",
     "UserInteraction",
     "FollowEntityType",
     "InteractionType",
     "PageSummary",
+    "PageInsight",
     "LoginEvent",
     "PageView",
 ]

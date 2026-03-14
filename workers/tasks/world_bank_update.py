@@ -128,7 +128,7 @@ def _fetch_indicator(wb_code: str, date_range: str = "2018:2024") -> list[dict]:
         return []
 
 
-@app.task(name='tasks.world_bank_update.update_world_bank', bind=True, max_retries=2)
+@app.task(name="tasks.world_bank_update.update_world_bank", bind=True, max_retries=2, time_limit=3600)
 def update_world_bank(self):
     """Refresh World Bank indicators for all 196 countries. Runs daily."""
     db = SessionLocal()

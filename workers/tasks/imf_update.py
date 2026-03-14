@@ -82,7 +82,7 @@ def _build_code_maps(db) -> tuple[dict[str, int], dict[str, int]]:
     return iso2, iso3
 
 
-@app.task(name='tasks.imf_update.update_imf_data', bind=True, max_retries=2)
+@app.task(name='tasks.imf_update.update_imf_data', bind=True, max_retries=2, time_limit=1800)
 def update_imf_data(self):
     """Refresh IMF forecasts for all countries. Runs monthly on the 1st."""
     db = SessionLocal()

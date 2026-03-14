@@ -146,7 +146,7 @@ def _parse_feed(feed_config: dict) -> list[dict]:
     return results
 
 
-@app.task(name='tasks.central_bank_rss.fetch_central_bank_news', bind=True, max_retries=3)
+@app.task(name='tasks.central_bank_rss.fetch_central_bank_news', bind=True, max_retries=3, time_limit=600)
 def fetch_central_bank_news(self):
     """Parse central bank RSS feeds and store rate decisions as FeedEvents."""
     db = SessionLocal()

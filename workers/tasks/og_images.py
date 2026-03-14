@@ -230,7 +230,7 @@ def _upload(key: str, data: bytes) -> None:
 
 # ── Celery tasks ──────────────────────────────────────────────────────────────
 
-@shared_task(name="tasks.og_images.generate_og_images", max_retries=1)
+@shared_task(name="tasks.og_images.generate_og_images", max_retries=1, time_limit=7200)
 def generate_og_images() -> dict:
     """Generate + upload OG images for all countries, stocks, and trade pairs."""
     import sys
@@ -754,7 +754,7 @@ def _trade_social_card(exp, imp, p) -> bytes:
     )
 
 
-@shared_task(name="tasks.og_images.generate_social_cards", max_retries=1)
+@shared_task(name="tasks.og_images.generate_social_cards", max_retries=1, time_limit=7200)
 def generate_social_cards() -> dict:
     """Generate 720×1280 portrait 'Did you know?' social cards for all entities. Upload to R2 social/."""
     import sys
@@ -815,7 +815,7 @@ def generate_social_cards() -> dict:
     return counts
 
 
-@shared_task(name="tasks.og_images.generate_feed_og_images", max_retries=1)
+@shared_task(name="tasks.og_images.generate_feed_og_images", max_retries=1, time_limit=3600)
 def generate_feed_og_images() -> dict:
     """
     Generate + upload OG images for all feed events that don't yet have one.

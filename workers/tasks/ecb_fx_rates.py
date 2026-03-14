@@ -69,7 +69,7 @@ def _parse_ecb_xml() -> tuple[date | None, dict[str, float]]:
     return ref_date, rates
 
 
-@app.task(name='tasks.ecb_fx_rates.update_ecb_fx', bind=True, max_retries=3)
+@app.task(name='tasks.ecb_fx_rates.update_ecb_fx', bind=True, max_retries=3, time_limit=600)
 def update_ecb_fx(self):
     """Update ECB EUR reference rates. Runs daily at 6:30am UTC."""
     db = SessionLocal()

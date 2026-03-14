@@ -214,7 +214,7 @@ def _period_to_date(period: str) -> tuple[date, str]:
     return date(int(period), 1, 1), "annual"
 
 
-@app.task(name='tasks.oecd_update.update_oecd_data', bind=True, max_retries=2)
+@app.task(name='tasks.oecd_update.update_oecd_data', bind=True, max_retries=2, time_limit=1800)
 def update_oecd_data(self):
     """Refresh OECD economic indicators for all 38 member countries. Runs weekly."""
     db = SessionLocal()

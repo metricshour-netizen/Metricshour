@@ -26,6 +26,7 @@ from app.models.feed import BlogPost, BlogStatus, FeedEvent
 from app.routers.auth import get_admin_user, get_current_user
 from app.models.user import User, LoginEvent, PageView
 from app.storage import r2_public_url, r2_upload
+from app.limiter import limiter
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -397,6 +398,7 @@ track_router = APIRouter(tags=["analytics"])
 
 
 @track_router.post("/api/track", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("120/minute")
 def track_page_view(
     body: TrackIn,
     request: Request,
