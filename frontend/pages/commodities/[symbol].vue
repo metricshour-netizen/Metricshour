@@ -449,6 +449,7 @@ useSeoMeta({
   ogImage: _ogImage,
   ogImageWidth: '1200',
   ogImageHeight: '630',
+  ogImageType: 'image/png',
   twitterCard: 'summary_large_image',
   twitterTitle: _seoTitle,
   twitterDescription: _seoDesc,

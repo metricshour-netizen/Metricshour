@@ -584,6 +584,7 @@ useSeoMeta({
   ogImage: ogImageUrl,
   ogImageWidth: '1200',
   ogImageHeight: '630',
+  ogImageType: 'image/png',
   twitterImage: ogImageUrl,
   twitterTitle: _seoTitle,
   twitterDescription: _seoDesc,
