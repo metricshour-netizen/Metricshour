@@ -234,8 +234,8 @@ def _upload(key: str, data: bytes) -> None:
 def generate_og_images() -> dict:
     """Generate + upload OG images for all countries, stocks, and trade pairs."""
     import sys
-    sys.path.insert(0, "/var/www/metricshour/backend")
-    os.environ.setdefault("PYTHONPATH", "/var/www/metricshour/backend")
+    sys.path.insert(0, "/root/metricshour/backend")
+    os.environ.setdefault("PYTHONPATH", "/root/metricshour/backend")
 
     from sqlalchemy import create_engine
     from sqlalchemy.orm import Session
@@ -758,7 +758,7 @@ def _trade_social_card(exp, imp, p) -> bytes:
 def generate_social_cards() -> dict:
     """Generate 720×1280 portrait 'Did you know?' social cards for all entities. Upload to R2 social/."""
     import sys
-    sys.path.insert(0, "/var/www/metricshour/backend")
+    sys.path.insert(0, "/root/metricshour/backend")
 
     from sqlalchemy import create_engine, select
     from sqlalchemy.orm import Session
@@ -822,7 +822,7 @@ def generate_feed_og_images() -> dict:
     Runs after the main OG task (same daily schedule, or triggered on-demand).
     """
     import sys
-    sys.path.insert(0, "/var/www/metricshour/backend")
+    sys.path.insert(0, "/root/metricshour/backend")
 
     from sqlalchemy import create_engine
     from sqlalchemy.orm import Session

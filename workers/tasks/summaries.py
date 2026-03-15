@@ -2023,7 +2023,8 @@ def run_insight_batch(self, insight_type: str):
                         select(TradePair)
                         .where(TradePair.exporter_id == exp.id, TradePair.importer_id == imp.id)
                         .order_by(TradePair.year.desc())
-                    ).scalar_one_or_none()
+                        .limit(1)
+                    ).scalars().first()
                     insight = _trade_insight_text(exp, imp, pair)
                     if insight and _insight_is_duplicate(insight, existing_texts.get(entity_code)):
                         log.debug("Skipping %s — insight too similar to previous", entity_code)
