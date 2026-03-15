@@ -29,7 +29,8 @@ from app.notifications import (
 
 logger = logging.getLogger(__name__)
 
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+GEMINI_API_KEY   = os.environ.get("GEMINI_API_KEY", "")
+GEMINI_API_KEY_2 = os.environ.get("GEMINI_API_KEY_2", "")
 
 
 _ALERT_SYSTEM = (
@@ -50,7 +51,7 @@ def _generate_smart_context(
     history: list[tuple[int, float]],  # [(year, value), ...] newest first
 ) -> str | None:
     """Call Gemini 2.5 Flash Lite to produce 2-sentence alert context. Returns None on any failure."""
-    if not GEMINI_API_KEY:
+    if not GEMINI_API_KEY and not GEMINI_API_KEY_2:
         return None
     try:
         from google import genai
@@ -69,7 +70,10 @@ def _generate_smart_context(
             f"Total: 30-50 words."
         )
 
-        client = genai.Client(api_key=GEMINI_API_KEY, http_options={"timeout": 45})
+        active_key = GEMINI_API_KEY or GEMINI_API_KEY_2
+        if not active_key:
+            return None
+        client = genai.Client(api_key=active_key, http_options={"timeout": 45})
         r = client.models.generate_content(
             model="gemini-2.5-flash-lite",
             contents=prompt,

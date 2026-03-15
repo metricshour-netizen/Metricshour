@@ -26,6 +26,8 @@ log = logging.getLogger(__name__)
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID   = os.environ.get("TELEGRAM_CHAT_ID", "")
 GEMINI_API_KEY     = os.environ.get("GEMINI_API_KEY", "")
+GEMINI_API_KEY_2   = os.environ.get("GEMINI_API_KEY_2", "")
+_GEMINI_KEY        = GEMINI_API_KEY or GEMINI_API_KEY_2   # use whichever is set
 
 SITE_URL = "https://metricshour.com"
 API_URL  = "https://api.metricshour.com"
@@ -248,13 +250,13 @@ def _build_audit_prompt(signals: list[dict]) -> str:
 
 def _call_gemini_audit(prompt: str) -> str | None:
     """Call Gemini for the SEO audit. Returns raw text or None on failure."""
-    if not GEMINI_API_KEY:
-        log.warning("GEMINI_API_KEY not set — skipping AI audit")
+    if not _GEMINI_KEY:
+        log.warning("No Gemini API key set — skipping AI audit")
         return None
     try:
         resp = requests.post(
             GEMINI_API_URL,
-            params={"key": GEMINI_API_KEY},
+            params={"key": _GEMINI_KEY},
             json={
                 "contents": [{"parts": [{"text": prompt}]}],
                 "generationConfig": {

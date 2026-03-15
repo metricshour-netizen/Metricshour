@@ -4,7 +4,11 @@ from google import genai
 
 load_dotenv('/root/metricshour/backend/.env')
 
-client = genai.Client(api_key=os.environ['GEMINI_API_KEY'])
+_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY_2", "")
+if not _key:
+    print("ERROR: No GEMINI_API_KEY set in .env")
+    exit(1)
+client = genai.Client(api_key=_key)
 
 try:
     response = client.models.generate_content(
