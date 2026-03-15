@@ -1,5 +1,44 @@
 # MetricsHour — Progress & Session Log
 
+## Current Status: LIVE ✅ (as of 2026-03-15)
+
+---
+
+## Session 2026-03-15 — OpenClaw fixes, worker bug fixes, security audit
+
+### OpenClaw (Contabo 158.220.92.254)
+- **Model**: DeepSeek V3 (`deepseek::deepseek-chat`) primary, Gemini 2.5 Flash fallback. No Claude anywhere.
+- **All 17 image templates migrated to PIL** — `_html_to_png` fully removed from all generate_* functions in `/root/openclaw/image_gen.py`. All cards now use brand-consistent PIL design.
+- **Moltis timeout fixed** — `agent_timeout_secs` 120→300, `agent_max_iterations` 15→25
+- **Session cleared** — fresh context, no hallucination history
+
+### Worker bug fixes (commit 295e524)
+- **`summaries.py` MultipleResultsFound** — `scalar_one_or_none()` → `scalars().first()` for all 5 Asset symbol lookups. Commodity insight batch was crashing every 3 min.
+- **`og_images.py` sys.path** — fixed `/var/www/metricshour/backend` → `/root/metricshour/backend`. Trade pair social cards (2708) will generate correctly at 4:45am UTC.
+
+### Security audit (all clean)
+- UFW, docker-ufw-fix, fail2ban, Prometheus localhost-only all confirmed ✓
+- All security headers present (HSTS, CSP, X-Frame DENY, nosniff) ✓
+- SSL cert valid until 2026-05-21 (auto-renews at 30 days) ✓
+- No exposed ports beyond 22/80/443/51820 ✓
+
+### AI model map (confirmed from source)
+| Layer | Primary | Fallback |
+|-------|---------|---------|
+| OpenClaw (Telegram) | deepseek-chat (V3) | gemini-2.5-flash |
+| Worker summaries (bulk) | deepseek-chat | gemini-2.5-flash |
+| Worker summaries (G20) | gemini-2.5-flash | deepseek-chat |
+| Anthropic/Claude | NOT USED | — |
+
+### Open items (carry forward)
+- [ ] Facebook Page Access Token — still empty in .env
+- [ ] Cloudflare Turnstile on /register
+- [ ] Pricing page comparison table
+- [ ] Prometheus/Grafana Telegram alertmanager setup
+- [ ] SSL cert renewal monitor (due ~2026-04-21)
+
+---
+
 ## Current Status: LIVE ✅ (as of 2026-03-14)
 - Site: metricshour.com — SSR Nuxt, all pages 200
 - API: api.metricshour.com — FastAPI 8 workers
@@ -139,3 +178,82 @@
 - [ ] Prometheus/Grafana Telegram alerts — alertmanager not configured
 - [ ] SSL cert renewal — expires 2026-05-21, auto-renew should trigger at 30 days
 - [ ] Nginx rate limiting — applied to / and auth locations. Consider adding to /api/* more granularly.
+
+---
+
+## Session 2026-03-15 (evening) — Security + Worker Audit + OpenClaw Content Strategy
+
+### Security audit: CLEAN ✅
+- All services active: api, worker, frontend, postgresql, dragonfly, nginx
+- UFW correct, Prometheus on 127.0.0.1:9090, DragonflyDB on 127.0.0.1:6379, fail2ban 0 bans
+- Beat firing correctly: price alerts/crypto/commodities/fx/feed/watchdog all running
+- Redis: 3,262 keys — spotlight current (v2:2026031501, 6 items), api cache 152 keys
+
+### Worker bugs fixed
+- **`oecd_update` CardinalityViolation** — OECD API returns duplicate (country, indicator, period) rows in same batch → `ON CONFLICT DO UPDATE` fails. Fixed by deduplicating with dict keyed on `(country_id, indicator, period_date)` before INSERT. Commit `f99c1ad`, deployed via scp.
+- **NOTE: Netcup git diverged** — commit `295e524` (worker fixes Mar 15 00:39) exists only on Netcup. Hetzner/origin at `f99c1ad`. Reconcile needed: push 295e524 from Netcup → origin, then merge.
+
+### OpenClaw AGENTS.md — content strategy upgrade
+- **6 reel angle templates** added: Country Macro, Trade Corridor Shock, Surprising #1, Did You Know, Stock×Country Exposure, Macro Alert
+- **Source attribution fixed** — `body_lines` must show actual data source (IMF/WB/UN Comtrade/EDGAR), NOT "metricshour.com" (that's already in the image footer)
+- **Decision flow**: run SQL first → find surprising fact → pick angle → pick template
+- **SOUL.md rewritten** — editorial judgment, proactive behavior, real voice, no filler words
+
+### OpenClaw vision / image support — UNRESOLVED ⚠️
+- **Problem**: DeepSeek V3 rejects `image_url` (HTTP 400) — can't see photos sent to Telegram
+- **Gemini tried** → rate limited immediately
+- **Haiku tried** → hallucinated tool calls (said "Generated X" but tool_calls=0, nothing sent)
+- **Sonnet tried** → user rejected (too expensive), disabled
+- **Current state**: back on DeepSeek V3, Anthropic provider disabled (`enabled = false`)
+- **Image support = broken until Gemini quota resets or paid tier used**
+- **To re-enable vision**: `bash /root/openclaw/switch_model.sh gemini` (try off-peak hours)
+
+### OpenClaw content generation — AGENTS.md reel issue
+- Moltis generates only 1 image then stops / asks for confirmation instead of firing 7+
+- AGENTS.md updated with explicit "minimum 7 images, no asking, no listing" rule
+- Root cause was Haiku hallucinating + DeepSeek not following multi-tool instructions reliably
+- **TODO next session**: test reel generation with DeepSeek — confirm it fires 7+ images on "generate reel"
+- `switch_model.sh` has no `deepseek` option — add it for easy revert
+
+### Current OpenClaw state (end of session)
+- Model: `deepseek::deepseek-chat` primary, `gemini::models/gemini-2.5-flash` fallback
+- Anthropic: `enabled = false`
+- AGENTS.md: 10 angles, reel auto-execute rule, source attribution fixed
+- SOUL.md: rewritten with editorial voice
+- Vision: broken (DeepSeek can't see images)
+
+---
+
+## Session 2026-03-15 (late) — DeepSeek V3 fix + AGENTS.md overhaul
+
+### DeepSeek V3 — FIXED ✅
+- **Root cause confirmed**: 7 `image_url` base64 blocks in session JSONL (lines 53-57, 60, 76) caused HTTP 400 on every request since DeepSeek rejects `image_url` content type
+- **Fix**: stripped all `image_url` blocks from `/root/.moltis/sessions/telegram_openclaw_7884960961.jsonl`, replaced with `[user sent a photo]` text
+- **Verified working**: logs show `model="deepseek::deepseek-chat"`, responses firing, no HTTP 400
+- `switch_model.sh` updated to include `deepseek` case (was missing)
+- Moltis running stable on DeepSeek V3 + Gemini 2.5 Flash fallback
+
+### AGENTS.md — complete overhaul ✅
+- **606 lines** (up from 315) — full distribution playbook
+- **SQL queries fixed** — all now use correct schema (`trade_value_usd`, JOINs with countries, `country_id`, `period_date`, actual indicator names like `gdp_usd`, `gdp_growth_pct`)
+- **17 tool templates** — each with complete JSON example, correct field names, when-to-use guidance
+- **6 viral triggers** defined — contradiction, scale shock, velocity, David vs Goliath, timely peg, reversal
+- **Caption formula** added — hook + context + data point + CTA, with platform-specific variants (Twitter, Instagram, LinkedIn, WhatsApp)
+- **Reel protocol hardened** — minimum 7 templates, exact execution sequence defined, no asking/listing allowed
+- **Distribution priority order** — templates ranked by viral ceiling (did_you_know → stat_spotlight → macro_alert → trade_shift → ranking → commodity → export_breakdown → quote → rest)
+- **TOOLS.md schema fixed** — `country_indicators`, `trade_pairs`, `stock_country_revenues` now have correct column names
+
+### Token cost optimization
+- DeepSeek V3 = $0.27/M input, $1.10/M output — primary for all ops + content
+- Gemini 2.5 Flash = free tier fallback (auto-triggered when DeepSeek has issues)
+- Claude (Haiku/Sonnet) = manual switch only for complex analysis — always offer revert to DeepSeek after
+- Worker summaries (bulk) = DeepSeek primary, Gemini fallback
+- Worker summaries (G20) = Gemini primary, DeepSeek fallback
+
+### Open items carried forward
+- [ ] Reel generation: verify OpenClaw fires 7+ images on "generate reel" command (test via Telegram)
+- [ ] Vision: DeepSeek can't see photos — switch to Gemini for any image-analysis request
+- [ ] Facebook Page Access Token — still empty in .env
+- [ ] Cloudflare Turnstile on /register
+- [ ] Prometheus alertmanager
+- [ ] SSL cert expires 2026-05-21 (auto-renew at 30 days)
