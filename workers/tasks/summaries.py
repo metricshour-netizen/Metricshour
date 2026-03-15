@@ -1388,8 +1388,10 @@ def _insight_importance(entity_type: str, entity) -> float:
             if mc >= 1e12: return 8.5   # mega-cap $1T+
             if mc >= 1e11: return 7.5   # large-cap $100B+
             if mc >= 1e10: return 6.5   # mid-cap $10B+
-            return 5.5
-        return 6.0
+            if mc >= 1e9:  return 5.5   # small-cap $1B+
+            if mc >= 1e8:  return 5.0   # micro-cap $100M+
+            return 4.5                  # nano-cap <$100M
+        return 5.0
     if entity_type == "commodity":
         return 6.0
     if entity_type == "trade":
@@ -1398,8 +1400,10 @@ def _insight_importance(entity_type: str, entity) -> float:
             if val >= 5e11: return 8.5   # $500B+
             if val >= 1e11: return 7.5   # $100B+
             if val >= 1e10: return 6.5   # $10B+
-            return 5.5
-        return 5.5
+            if val >= 1e9:  return 5.5   # $1B+
+            if val >= 1e8:  return 5.0   # $100M+
+            return 4.5                   # <$100M
+        return 5.0
     if entity_type == "index":
         MAJOR = {"SPY", "QQQ", "DIA", "IWM", "^GSPC", "^IXIC", "^DJI", "SPX", "NDX", "VIX"}
         if getattr(entity, "symbol", "").upper() in MAJOR:
