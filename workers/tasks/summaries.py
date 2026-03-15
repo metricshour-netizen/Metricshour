@@ -124,11 +124,10 @@ def _strip_markdown(text: str) -> str:
     return text
 
 
-def _call_gemini(prompt: str, min_words: int = 55, max_words: int = 110,
-                 model: str = "gemini-2.5-flash-lite") -> str | None:
-    """Call Gemini via direct REST API (SDK hangs on this server). Returns None on any failure."""
+def _call_gemini_key(api_key: str, prompt: str, min_words: int, max_words: int,
+                     model: str) -> str | None:
+    """Call Gemini REST with a single key. Returns None on any failure."""
     import requests as _req
-    api_key = os.environ.get("GEMINI_API_KEY", "") or os.environ.get("GEMINI_API_KEY_2", "")
     if not api_key:
         return None
     try:
@@ -157,6 +156,15 @@ def _call_gemini(prompt: str, min_words: int = 55, max_words: int = 110,
     except Exception as exc:
         log.debug("Gemini call failed (%s): %s", model, exc)
         return None
+
+
+def _call_gemini(prompt: str, min_words: int = 55, max_words: int = 110,
+                 model: str = "gemini-2.5-flash-lite") -> str | None:
+    """Try key 1 first, fall back to key 2. Returns None if both fail."""
+    result = _call_gemini_key(os.environ.get("GEMINI_API_KEY", ""), prompt, min_words, max_words, model)
+    if result:
+        return result
+    return _call_gemini_key(os.environ.get("GEMINI_API_KEY_2", ""), prompt, min_words, max_words, model)
 
 
 _SHARED_SYSTEM = (

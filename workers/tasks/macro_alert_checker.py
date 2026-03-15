@@ -51,41 +51,42 @@ def _generate_smart_context(
     history: list[tuple[int, float]],  # [(year, value), ...] newest first
 ) -> str | None:
     """Call Gemini 2.5 Flash Lite to produce 2-sentence alert context. Returns None on any failure."""
-    active_key = GEMINI_API_KEY or GEMINI_API_KEY_2
-    if not active_key:
+    if not GEMINI_API_KEY and not GEMINI_API_KEY_2:
         return None
-    try:
-        import requests as _req
 
-        hist_str = ", ".join(f"{yr}: {val:.2f}" for yr, val in history) if history else "no history"
-        direction = "above" if condition == "above" else "below"
+    import requests as _req
 
-        prompt = (
-            f"{country_name} — {indicator_label}: current value {current:.2f}, "
-            f"crossed {direction} threshold {threshold:.2f}. "
-            f"Recent history: {hist_str}. "
-            f"Write exactly 2 sentences: "
-            f"sentence 1 states what this trend means using the historical context and specific numbers; "
-            f"sentence 2 gives the single most direct market or portfolio implication. "
-            f"Total: 30-50 words."
-        )
+    hist_str = ", ".join(f"{yr}: {val:.2f}" for yr, val in history) if history else "no history"
+    direction = "above" if condition == "above" else "below"
+    prompt = (
+        f"{country_name} — {indicator_label}: current value {current:.2f}, "
+        f"crossed {direction} threshold {threshold:.2f}. "
+        f"Recent history: {hist_str}. "
+        f"Write exactly 2 sentences: "
+        f"sentence 1 states what this trend means using the historical context and specific numbers; "
+        f"sentence 2 gives the single most direct market or portfolio implication. "
+        f"Total: 30-50 words."
+    )
 
-        resp = _req.post(
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent",
-            params={"key": active_key},
-            json={
-                "system_instruction": {"parts": [{"text": _ALERT_SYSTEM}]},
-                "contents": [{"parts": [{"text": prompt}]}],
-                "generationConfig": {"temperature": 0.2, "maxOutputTokens": 120},
-            },
-            timeout=30,
-        )
-        resp.raise_for_status()
-        text = resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
-        return text if len(text) > 20 else None
-    except Exception as e:
-        logger.warning("Gemini context generation failed: %s", e)
-        return None
+    for key in filter(None, [GEMINI_API_KEY, GEMINI_API_KEY_2]):
+        try:
+            resp = _req.post(
+                "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent",
+                params={"key": key},
+                json={
+                    "system_instruction": {"parts": [{"text": _ALERT_SYSTEM}]},
+                    "contents": [{"parts": [{"text": prompt}]}],
+                    "generationConfig": {"temperature": 0.2, "maxOutputTokens": 120},
+                },
+                timeout=30,
+            )
+            resp.raise_for_status()
+            text = resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+            if len(text) > 20:
+                return text
+        except Exception as e:
+            logger.warning("Gemini alert context failed (key ...%s): %s", key[-6:], e)
+    return None
 
 
 @app.task(name='tasks.macro_alert_checker.check_macro_alerts', bind=True, max_retries=2)
