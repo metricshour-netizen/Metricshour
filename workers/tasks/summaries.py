@@ -2013,7 +2013,7 @@ def run_insight_batch(self, insight_type: str):
                             entity_name=c.name,
                             entity_flag=c.flag_emoji or "🌍",
                             related_country_ids=[c.id],
-                            importance_score=6.0,
+                            importance_score=_insight_importance("country", c),
                         )
                         count += 1
 
@@ -2036,7 +2036,7 @@ def run_insight_batch(self, insight_type: str):
                             entity_name=s.name,
                             entity_flag=entity_code[:2],
                             related_asset_ids=[s.id],
-                            importance_score=6.5,
+                            importance_score=_insight_importance("stock", s),
                         )
                         count += 1
 
@@ -2060,7 +2060,7 @@ def run_insight_batch(self, insight_type: str):
                             entity_name=meta.get("full_name", c.name),
                             entity_flag=_commodity_emoji(entity_code),
                             related_asset_ids=[c.id],
-                            importance_score=6.0,
+                            importance_score=_insight_importance("commodity", c),
                         )
                         count += 1
 
@@ -2091,7 +2091,7 @@ def run_insight_batch(self, insight_type: str):
                             entity_name=f"{exp.name}–{imp.name}",
                             entity_flag=exp.flag_emoji or "🌐",
                             related_country_ids=[exp.id, imp.id],
-                            importance_score=5.5,
+                            importance_score=_insight_importance("trade", pair),
                         )
                         count += 1
 
@@ -2115,7 +2115,7 @@ def run_insight_batch(self, insight_type: str):
                             entity_name=meta.get("full_name", idx.name),
                             entity_flag=meta.get("emoji", "📈"),
                             related_asset_ids=[idx.id],
-                            importance_score=6.5,
+                            importance_score=_insight_importance("index", idx),
                         )
                         count += 1
 
