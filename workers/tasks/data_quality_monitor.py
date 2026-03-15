@@ -110,7 +110,7 @@ def check_data_quality() -> Dict:
     
     # 4. Compile report
     report = {
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "issues": issues,
         "warnings": warnings,
         "status": "OK" if not issues else "ISSUES",

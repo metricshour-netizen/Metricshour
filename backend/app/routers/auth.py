@@ -90,7 +90,9 @@ _FAIL_WINDOW = 900   # seconds — 15 min lockout window
 
 
 def _fail_key(email: str) -> str:
-    return f"auth:fail:{email.lower()}"
+    # HMAC the email so Redis dumps can't enumerate registered addresses
+    h = hashlib.sha256(f"{settings.jwt_secret}:{email.lower()}".encode()).hexdigest()[:24]
+    return f"auth:fail:{h}"
 
 
 def _check_brute_force(email: str) -> None:
@@ -292,7 +294,7 @@ def google_authorize():
     if not settings.google_client_id:
         raise HTTPException(status_code=501, detail="Google OAuth not configured")
 
-    state = secrets.token_urlsafe(16)
+    state = secrets.token_urlsafe(32)
     redis_json_set(f"oauth:state:{state}", {"valid": True}, ttl_seconds=3600)
 
     params = urlencode({

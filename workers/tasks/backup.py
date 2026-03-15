@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from urllib.parse import urlparse
 
 import boto3
+import requests
 from botocore.client import Config
 from celery_app import app
 
@@ -122,4 +123,26 @@ def run_backup(self):
 
     except Exception as exc:
         log.error("Backup failed: %s", exc)
+        if self.request.retries >= self.max_retries:
+            # All retries exhausted — send immediate Telegram alert
+            _alert_backup_failure(exc)
         raise self.retry(exc=exc)
+
+
+def _alert_backup_failure(exc: Exception) -> None:
+    token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+    chat_id = os.environ.get("TELEGRAM_CHAT_ID", "")
+    if not token or not chat_id:
+        return
+    try:
+        requests.post(
+            f"https://api.telegram.org/bot{token}/sendMessage",
+            json={
+                "chat_id": chat_id,
+                "text": f"🚨 <b>Backup FAILED</b> — all retries exhausted\n<code>{exc}</code>",
+                "parse_mode": "HTML",
+            },
+            timeout=10,
+        )
+    except Exception as e:
+        log.error("Failed to send backup failure alert: %s", e)

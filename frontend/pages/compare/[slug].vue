@@ -223,8 +223,11 @@ const { get } = useApi()
 const slug = (route.params.slug as string).toLowerCase()
 const vsParts = slug.split('-vs-')
 
-// Canonical redirect: ensure alphabetically sorted (cn-vs-us → cn-vs-us is fine, us-vs-cn stays)
-// Actually canonical is: sort the two codes alphabetically
+// Guard: must have exactly 2 non-empty parts — anything else is a bad URL
+if (vsParts.length !== 2 || !vsParts[0] || !vsParts[1]) {
+  await navigateTo('/', { replace: true })
+}
+
 const rawA = (vsParts[0] || '').toUpperCase()
 const rawB = (vsParts[1] || '').toUpperCase()
 const [canonA, canonB] = [rawA, rawB].sort()

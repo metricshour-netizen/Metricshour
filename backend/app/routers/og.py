@@ -508,14 +508,19 @@ def _render_section(section: str) -> bytes:
 
 
 def _fallback_png(label: str = "MetricsHour") -> bytes:
-    """Return a minimal 1200x630 branded fallback PNG."""
-    img = Image.new("RGB", (W, H), BG)
-    draw = ImageDraw.Draw(img)
-    draw.rectangle([(0, 0), (W, 5)], fill=GREEN)
-    draw.text((W // 2, H // 2 - 20), "METRICSHOUR", font=_font(72, bold=True), fill=WHITE, anchor="mm")
-    draw.text((W // 2, H // 2 + 50), label, font=_font(28), fill=GRAY_LT, anchor="mm")
-    draw.rectangle([(0, H - 5), (W, H)], fill=GREEN)
-    return _to_png_bytes(img)
+    """Return a minimal 1200x630 branded fallback PNG. Uses default font if DejaVu unavailable."""
+    try:
+        img = Image.new("RGB", (W, H), BG)
+        draw = ImageDraw.Draw(img)
+        draw.rectangle([(0, 0), (W, 5)], fill=GREEN)
+        draw.text((W // 2, H // 2 - 20), "METRICSHOUR", font=_font(72, bold=True), fill=WHITE, anchor="mm")
+        draw.text((W // 2, H // 2 + 50), label, font=_font(28), fill=GRAY_LT, anchor="mm")
+        draw.rectangle([(0, H - 5), (W, H)], fill=GREEN)
+        return _to_png_bytes(img)
+    except Exception:
+        # Last-resort: plain colored PNG with no text (never a 500)
+        img = Image.new("RGB", (W, H), BG)
+        return _to_png_bytes(img)
 
 
 @router.get("/og/section/{section}.png", include_in_schema=False)

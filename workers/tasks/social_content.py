@@ -78,7 +78,7 @@ def _call_gemini(prompt: str) -> dict | None:
     try:
         from google import genai
         from google.genai import types as genai_types
-        client = genai.Client(api_key=GEMINI_API_KEY)
+        client = genai.Client(api_key=GEMINI_API_KEY, http_options={"timeout": 45})
         r = client.models.generate_content(
             model="gemini-2.5-flash",
             contents=prompt,

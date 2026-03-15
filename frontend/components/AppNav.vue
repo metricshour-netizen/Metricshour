@@ -74,7 +74,7 @@
       <NuxtLink to="/countries"   @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">Countries <span class="text-gray-600 text-xs">→</span></NuxtLink>
       <NuxtLink to="/trade"       @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">Trade <span class="text-gray-600 text-xs">→</span></NuxtLink>
       <NuxtLink to="/commodities" @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">Commodities <span class="text-gray-600 text-xs">→</span></NuxtLink>
-      <template v-if="isLoggedIn && user">
+<template v-if="isLoggedIn && user">
         <NuxtLink to="/watchlist"  @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">⭐ Watchlist <span class="text-gray-600 text-xs">→</span></NuxtLink>
         <NuxtLink to="/alerts"    @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-amber-400 hover:text-amber-300 border-b border-[#1f2937]">🔔 Alerts <span class="text-gray-600 text-xs">→</span></NuxtLink>
       </template>

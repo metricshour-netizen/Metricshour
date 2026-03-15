@@ -135,7 +135,25 @@ def run_security_checks(self):
             f"🚨 <b>Traffic spike (possible DDoS)</b>: {nx_total:,} requests in 1h\n<code>{top_ips}</code>"
         )
 
-    # --- 6. Unexpected open ports ---
+    # --- 6. DragonflyDB auth check — ensure unauthenticated connections are rejected ---
+    dragonfly_host = os.environ.get("REDIS_URL", "").replace("redis://", "").split("/")[0].split("@")[-1]
+    if dragonfly_host:
+        import socket
+        try:
+            s = socket.create_connection(tuple(dragonfly_host.rsplit(":", 1)), timeout=3)
+            s.sendall(b"PING\r\n")
+            resp = s.recv(128).decode(errors="ignore")
+            s.close()
+            # Unauthenticated PING to a password-protected Redis returns -NOAUTH
+            if resp.startswith("+PONG"):
+                alerts.append(
+                    "🚨 <b>DragonflyDB auth DISABLED</b> — unauthenticated PING returned PONG. "
+                    "Set requirepass immediately."
+                )
+        except Exception:
+            pass  # Connection refused / timeout = auth is likely enforced
+
+    # --- 7. Unexpected open ports ---
     ports_raw = _run("ss -tlnp | awk 'NR>1{print $4}' | grep -oE ':[0-9]+$' | tr -d ':'")
     open_ports = {int(p) for p in ports_raw.split() if p.isdigit()}
     unexpected = open_ports - EXPECTED_PORTS

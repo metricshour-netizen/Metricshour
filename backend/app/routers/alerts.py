@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Header, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from sqlalchemy import select, desc
+from sqlalchemy import select, desc, func
 
 from app.database import get_db
 from app.limiter import limiter
@@ -108,15 +108,16 @@ def create_alert(
     if not asset:
         raise HTTPException(status_code=404, detail="Asset not found")
 
-    # Limit free tier to 5 active alerts
-    active_count = db.execute(
-        select(PriceAlert).where(
-            PriceAlert.user_id == current_user.id,
-            PriceAlert.is_active == True,
-        )
-    ).scalars().all()
-    if current_user.tier == "free" and len(active_count) >= 5:
-        raise HTTPException(status_code=422, detail="Free tier limited to 5 active alerts. Upgrade for unlimited.")
+    # Limit free tier to 5 active alerts — COUNT(*) avoids loading all rows
+    if current_user.tier == "free":
+        active_count = db.execute(
+            select(func.count()).select_from(PriceAlert).where(
+                PriceAlert.user_id == current_user.id,
+                PriceAlert.is_active == True,
+            )
+        ).scalar_one()
+        if active_count >= 5:
+            raise HTTPException(status_code=422, detail="Free tier limited to 5 active alerts. Upgrade for unlimited.")
 
     alert = PriceAlert(
         user_id=current_user.id,
