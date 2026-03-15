@@ -257,6 +257,13 @@ def update_oecd_data(self):
                 })
 
             if batch:
+                # Deduplicate by constraint key — OECD API can return duplicate periods
+                seen = {}
+                for row in batch:
+                    key = (row["country_id"], row["indicator"], row["period_date"])
+                    seen[key] = row
+                batch = list(seen.values())
+
                 stmt = pg_insert(CountryIndicator).values(batch)
                 stmt = stmt.on_conflict_do_update(
                     constraint="uq_country_indicator_date",
