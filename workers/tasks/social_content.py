@@ -4,7 +4,7 @@ Social Content Pipeline — generates post drafts and sends to Telegram for appr
 Flow:
   Celery Beat (9am UTC daily)
     → pull 3 interesting data hooks from DB
-    → Gemini 2.5 Flash Lite generates Twitter + LinkedIn copy
+    → Gemini 2.5 Flash generates Twitter + LinkedIn copy
     → send each to Telegram with inline buttons [Twitter] [LinkedIn] [Both] [Skip]
     → user taps approval → FastAPI webhook → posts to platform
 
@@ -108,12 +108,12 @@ def _parse_json_response(text: str) -> dict | None:
 
 
 def _call_gemini_with_key(api_key: str, prompt: str) -> dict | None:
-    """Call Gemini 2.5 Flash Lite via direct REST (SDK hangs on this server)."""
+    """Call Gemini 2.5 Flash via direct REST (SDK hangs on this server)."""
     if not api_key:
         return None
     try:
         resp = requests.post(
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent",
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
             params={"key": api_key},
             json={
                 "contents": [{"parts": [{"text": prompt}]}],
