@@ -286,6 +286,20 @@ def _trade_image(
     return _to_png_bytes(img)
 
 
+# ── Section image ─────────────────────────────────────────────────────────────
+
+def _section_image(title: str, subtitle: str) -> bytes:
+    """Branded section OG image for list pages (countries, stocks, trade, etc.)."""
+    img, draw = _base_canvas()
+
+    draw.text((56, 56), "MetricsHour", font=_font(28), fill=GREEN, anchor="lt")
+    draw.text((W // 2, H // 2 - 60), title, font=_font(80, bold=True), fill=WHITE, anchor="mm")
+    draw.text((W // 2, H // 2 + 40), subtitle, font=_font(30), fill=GRAY_LT, anchor="mm")
+    draw.rectangle([(56, H // 2 + 80), (W - 56, H // 2 + 82)], fill=BORDER)
+
+    return _to_png_bytes(img)
+
+
 # ── R2 upload helper ──────────────────────────────────────────────────────────
 
 def _upload(key: str, data: bytes) -> None:
@@ -324,7 +338,7 @@ def generate_og_images() -> dict:
     db_url = os.environ["DATABASE_URL"]
     engine = create_engine(db_url, pool_pre_ping=True)
 
-    counts = {"countries": 0, "stocks": 0, "trade": 0, "errors": 0}
+    counts = {"countries": 0, "stocks": 0, "trade": 0, "commodities": 0, "indices": 0, "errors": 0}
 
     with Session(engine) as db:
         # Import models inline to avoid circular deps
@@ -425,6 +439,60 @@ def generate_og_images() -> dict:
                 counts["trade"] += 1
             except Exception as e:
                 log.warning("OG trade %s-%s failed: %s", p.exporter_id, p.importer_id, e)
+                counts["errors"] += 1
+
+        # ── Commodities ───────────────────────────────────────────────────
+        commodities = db.execute(
+            select(Asset).where(Asset.asset_type == AssetType.commodity, Asset.is_active == True)
+        ).scalars().all()
+        for a in commodities:
+            try:
+                price_row = db.execute(
+                    select(Price)
+                    .where(Price.asset_id == a.id, Price.interval == "1d")
+                    .order_by(Price.timestamp.desc())
+                    .limit(1)
+                ).scalars().first()
+                change_pct = None
+                if price_row and price_row.open and price_row.close and price_row.open > 0:
+                    change_pct = (price_row.close - price_row.open) / price_row.open * 100
+                img_bytes = _stock_image(
+                    a.symbol, a.name,
+                    price=price_row.close if price_row else None,
+                    market_cap=None,
+                    change_pct=change_pct,
+                )
+                _upload(f"og/commodities/{a.symbol.lower()}.png", img_bytes)
+                counts["commodities"] += 1
+            except Exception as e:
+                log.warning("OG commodity %s failed: %s", a.symbol, e)
+                counts["errors"] += 1
+
+        # ── Indices ───────────────────────────────────────────────────────
+        indices_assets = db.execute(
+            select(Asset).where(Asset.asset_type == AssetType.index, Asset.is_active == True)
+        ).scalars().all()
+        for a in indices_assets:
+            try:
+                price_row = db.execute(
+                    select(Price)
+                    .where(Price.asset_id == a.id, Price.interval == "1d")
+                    .order_by(Price.timestamp.desc())
+                    .limit(1)
+                ).scalars().first()
+                change_pct = None
+                if price_row and price_row.open and price_row.close and price_row.open > 0:
+                    change_pct = (price_row.close - price_row.open) / price_row.open * 100
+                img_bytes = _stock_image(
+                    a.symbol, a.name,
+                    price=price_row.close if price_row else None,
+                    market_cap=None,
+                    change_pct=change_pct,
+                )
+                _upload(f"og/indices/{a.symbol.lower()}.png", img_bytes)
+                counts["indices"] += 1
+            except Exception as e:
+                log.warning("OG index %s failed: %s", a.symbol, e)
                 counts["errors"] += 1
 
     log.info("OG images generated: %s", counts)
@@ -951,3 +1019,29 @@ def generate_feed_og_images() -> dict:
 
     log.info("Feed OG images: %s", counts)
     return counts
+
+
+@shared_task(name="tasks.og_images.generate_section_images", max_retries=1, time_limit=120)
+def generate_section_images() -> dict:
+    """Generate + upload branded section OG images for list pages."""
+    sections = [
+        ("home",        "MetricsHour",          "Global Economic Intelligence"),
+        ("countries",   "Country Profiles",     "GDP · Inflation · Trade · Growth"),
+        ("stocks",      "Stock Tracker",        "Prices · Market Cap · Geographic Revenue"),
+        ("trade",       "Trade Flows",          "Bilateral Trade · Exports · Imports"),
+        ("commodities", "Commodities",          "Gold · Oil · Gas · Agricultural"),
+        ("markets",     "Markets",              "Stocks · Indices · FX · Crypto"),
+        ("indices",     "Global Indices",       "S&P 500 · DAX · Nikkei · FTSE"),
+        ("feed",        "Market Intelligence",  "Real-time Economic Events"),
+        ("pricing",     "Pricing",              "Plans · Features · Compare"),
+    ]
+    count = 0
+    for key, title, subtitle in sections:
+        try:
+            img_bytes = _section_image(title, subtitle)
+            _upload(f"og/section/{key}.png", img_bytes)
+            count += 1
+        except Exception as e:
+            log.warning("Section OG %s failed: %s", key, e)
+    log.info("Section OG images generated: %d", count)
+    return {"sections": count}
