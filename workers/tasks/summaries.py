@@ -1419,7 +1419,7 @@ def _insert_insight(db, entity_type: str, entity_code: str, text_: str):
             PageInsight.generated_at >= today_start,
             PageInsight.generated_at < tomorrow_start,
         )
-    ).scalar_one_or_none()
+    ).scalars().first()
     if existing_today:
         existing_today.summary = text_
         existing_today.generated_at = now
@@ -1437,7 +1437,7 @@ def _upsert_summary(db, entity_type: str, entity_code: str, text_: str):
     existing = db.execute(
         select(PageSummary)
         .where(PageSummary.entity_type == entity_type, PageSummary.entity_code == entity_code)
-    ).scalar_one_or_none()
+    ).scalars().first()
     if existing:
         if existing.summary == text_:
             return  # No change — skip write
@@ -2097,25 +2097,25 @@ def refresh_entity_summary(self, entity_type: str, entity_code: str):
             if country:
                 summary = _country_summary_text(country, db)
         elif entity_type == "stock":
-            asset = db.execute(select(Asset).where(Asset.symbol == entity_code.upper())).scalar_one_or_none()
+            asset = db.execute(select(Asset).where(Asset.symbol == entity_code.upper(), Asset.asset_type == "stock")).scalars().first()
             if asset:
                 summary = _stock_summary_text(asset, db)
         elif entity_type == "commodity":
             asset = db.execute(
                 select(Asset).where(Asset.symbol == entity_code.upper(), Asset.asset_type == "commodity")
-            ).scalar_one_or_none()
+            ).scalars().first()
             if asset:
                 summary = _commodity_summary_text(asset)
         elif entity_type == "fx":
-            asset = db.execute(select(Asset).where(Asset.symbol == entity_code.upper())).scalar_one_or_none()
+            asset = db.execute(select(Asset).where(Asset.symbol == entity_code.upper(), Asset.asset_type == "fx")).scalars().first()
             if asset:
                 summary = _fx_summary_text(asset)
         elif entity_type == "crypto":
-            asset = db.execute(select(Asset).where(Asset.symbol == entity_code.upper())).scalar_one_or_none()
+            asset = db.execute(select(Asset).where(Asset.symbol == entity_code.upper(), Asset.asset_type == "crypto")).scalars().first()
             if asset:
                 summary = _crypto_summary_text(asset)
         elif entity_type in ("etf", "index", "bond"):
-            asset = db.execute(select(Asset).where(Asset.symbol == entity_code.upper())).scalar_one_or_none()
+            asset = db.execute(select(Asset).where(Asset.symbol == entity_code.upper(), Asset.asset_type == entity_type)).scalars().first()
             if asset:
                 fn = {"etf": _etf_summary_text, "index": _index_summary_text, "bond": _bond_summary_text}[entity_type]
                 summary = fn(asset)
@@ -2129,7 +2129,8 @@ def refresh_entity_summary(self, entity_type: str, entity_code: str):
                         select(TradePair)
                         .where(TradePair.exporter_id == exp.id, TradePair.importer_id == imp.id)
                         .order_by(TradePair.year.desc())
-                    ).scalar_one_or_none()
+                        .limit(1)
+                    ).scalars().first()
                     summary = _trade_summary_text(exp, imp, trade)
 
         if summary:

@@ -264,15 +264,37 @@ def update_oecd_data(self):
                     seen[key] = row
                 batch = list(seen.values())
 
-                stmt = pg_insert(CountryIndicator).values(batch)
-                stmt = stmt.on_conflict_do_update(
-                    constraint="uq_country_indicator_date",
-                    set_={"value": stmt.excluded.value, "source": stmt.excluded.source},
-                )
-                db.execute(stmt)
-                db.commit()
-                total_upserted += len(batch)
-                log.info(f"OECD: {query['indicator']} — {len(batch)} rows upserted")
+                try:
+                    stmt = pg_insert(CountryIndicator).values(batch)
+                    stmt = stmt.on_conflict_do_update(
+                        constraint="uq_country_indicator_date",
+                        set_={"value": stmt.excluded.value, "source": stmt.excluded.source},
+                    )
+                    db.execute(stmt)
+                    db.commit()
+                    total_upserted += len(batch)
+                    log.info(f"OECD: {query['indicator']} — {len(batch)} rows upserted")
+                except Exception as bulk_err:
+                    # Bulk upsert failed (e.g. CardinalityViolation from duplicate API rows).
+                    # Fall back to row-by-row upserts so the indicator is not lost entirely.
+                    db.rollback()
+                    log.warning(f"OECD bulk upsert failed for {query['indicator']}: {bulk_err} — retrying row-by-row")
+                    row_count = 0
+                    for row in batch:
+                        try:
+                            s = pg_insert(CountryIndicator).values([row])
+                            s = s.on_conflict_do_update(
+                                constraint="uq_country_indicator_date",
+                                set_={"value": s.excluded.value, "source": s.excluded.source},
+                            )
+                            db.execute(s)
+                            db.commit()
+                            row_count += 1
+                        except Exception as row_err:
+                            db.rollback()
+                            log.debug(f"OECD row skip: {row_err}")
+                    total_upserted += row_count
+                    log.info(f"OECD: {query['indicator']} — {row_count}/{len(batch)} rows upserted (row-by-row)")
 
             time.sleep(1)  # OECD is rate-limit-free but be polite
 
