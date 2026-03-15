@@ -304,7 +304,7 @@ def _upload(key: str, data: bytes) -> None:
         Key=key,
         Body=data,
         ContentType="image/png",
-        CacheControl="public, max-age=86400",
+        CacheControl="public, max-age=86400, s-maxage=86400, stale-while-revalidate=3600",
     )
 
 
@@ -487,7 +487,7 @@ def _feed_event_image(
         draw.rectangle([(0, 0), (W, 5)], fill=accent)
 
     # Minimal watermark only — no brand bar blocking content
-    draw.text((W - 36, H - 14), "metricshour.com", font=_font(13), fill=GRAY, anchor="rm")
+    draw.text((W - 36, H - 14), "metricshour.com", font=_font(14), fill=GRAY, anchor="rm")
 
     # Event type badge pill (top-left)
     TYPE_LABELS = {
