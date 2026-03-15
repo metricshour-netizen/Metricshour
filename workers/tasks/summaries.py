@@ -140,7 +140,8 @@ def _call_gemini_key(api_key: str, prompt: str, min_words: int, max_words: int,
                 "contents": [{"parts": [{"text": prompt}]}],
                 "generationConfig": {
                     "temperature": 0.1,
-                    "maxOutputTokens": int(max_words * 2.5),
+                    # flash is a thinking model — add 1024-token buffer for reasoning tokens
+                    "maxOutputTokens": int(max_words * 2.5) + (1024 if "flash-lite" not in model else 0),
                 },
             },
             timeout=30,

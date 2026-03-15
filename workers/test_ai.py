@@ -20,7 +20,7 @@ def test_gemini(key: str, label: str, model: str = "gemini-2.5-flash") -> str:
             f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
             params={"key": key},
             json={"contents": [{"parts": [{"text": PROMPT}]}],
-                  "generationConfig": {"maxOutputTokens": 20}},
+                  "generationConfig": {"maxOutputTokens": 500}},
             timeout=20,
         )
         if r.status_code == 200:
