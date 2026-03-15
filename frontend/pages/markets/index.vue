@@ -541,12 +541,12 @@ useSeoMeta({
   ogDescription: 'Search crypto, stocks, ETFs, indices, bonds, commodities and FX. Real-time prices and global market data.',
   ogUrl: 'https://metricshour.com/markets',
   ogType: 'website',
-  ogImage: 'https://api.metricshour.com/og/section/markets.png',
+  ogImage: 'https://cdn.metricshour.com/og/section/markets.png',
   ogImageWidth: '1200',
   ogImageHeight: '630',
   twitterTitle: 'Global Markets: Stocks, Crypto, Commodities & FX — MetricsHour',
   twitterDescription: 'Search crypto, stocks, ETFs, indices, bonds, commodities and FX. Real-time prices and global market data.',
-  twitterImage: 'https://api.metricshour.com/og/section/markets.png',
+  twitterImage: 'https://cdn.metricshour.com/og/section/markets.png',
   twitterCard: 'summary_large_image',
 })
 

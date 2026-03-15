@@ -685,12 +685,12 @@ useSeoMeta({
   ogDescription: 'Connect stock geographic revenue, bilateral trade flows, and country macro data. 196 countries, 130+ assets, 38,000+ trade pairs. Free forever.',
   ogUrl: 'https://metricshour.com/',
   ogType: 'website',
-  ogImage: 'https://api.metricshour.com/og/section/home.png',
+  ogImage: 'https://cdn.metricshour.com/og/section/home.png',
   ogImageWidth: '1200',
   ogImageHeight: '630',
   twitterTitle: 'MetricsHour — Global Financial Intelligence',
   twitterDescription: 'Connect stock geographic revenue, bilateral trade flows, and country macro data. 196 countries, 130+ assets, 38,000+ trade pairs. Free forever.',
-  twitterImage: 'https://api.metricshour.com/og/section/home.png',
+  twitterImage: 'https://cdn.metricshour.com/og/section/home.png',
   twitterCard: 'summary_large_image',
 })
 

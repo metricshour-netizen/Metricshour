@@ -91,11 +91,11 @@ useSeoMeta({
   ogDescription: 'World Bank, IMF, UN Comtrade, SEC EDGAR, and US Census Bureau — aggregated into one macro terminal. Learn how MetricsHour works.',
   ogUrl: 'https://metricshour.com/about/',
   ogType: 'website',
-  ogImage: 'https://api.metricshour.com/og/section/home.png',
+  ogImage: 'https://cdn.metricshour.com/og/section/home.png',
   ogImageWidth: '1200',
   ogImageHeight: '630',
   twitterCard: 'summary_large_image',
-  twitterImage: 'https://api.metricshour.com/og/section/home.png',
+  twitterImage: 'https://cdn.metricshour.com/og/section/home.png',
 })
 
 useHead({

@@ -154,7 +154,7 @@ useSeoMeta({
   ogDescription: 'Live prices for 18 major global stock indices: S&P 500, Dow Jones, Nasdaq 100, FTSE 100, DAX, Nikkei 225.',
   ogUrl: 'https://metricshour.com/indices/',
   ogType: 'website',
-  ogImage: 'https://api.metricshour.com/og/section/indices.png',
+  ogImage: 'https://cdn.metricshour.com/og/section/indices.png',
   ogImageWidth: '1200',
   ogImageHeight: '630',
   robots: 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1',

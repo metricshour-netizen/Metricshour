@@ -625,7 +625,7 @@ const { public: { r2PublicUrl } } = useRuntimeConfig()
 const ogImageUrl = computed(() =>
   r2PublicUrl
     ? `${r2PublicUrl}/og/stocks/${ticker.toLowerCase()}.png`
-    : `https://api.metricshour.com/og/stocks/${ticker.toLowerCase()}.png`,
+    : `https://cdn.metricshour.com/og/stocks/${ticker.toLowerCase()}.png`,
 )
 
 // ── SEO helpers: inject real revenue data for long-tail keyword ranking ───────

@@ -531,7 +531,7 @@ const { public: { r2PublicUrl } } = useRuntimeConfig()
 const ogImageUrl = computed(() =>
   r2PublicUrl
     ? `${r2PublicUrl}/og/countries/${code.toLowerCase()}.png`
-    : `https://api.metricshour.com/og/countries/${code.toLowerCase()}.png`,
+    : `https://cdn.metricshour.com/og/countries/${code.toLowerCase()}.png`,
 )
 
 // ── SEO helpers: inject real data for long-tail keyword ranking ───────────────

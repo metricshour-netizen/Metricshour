@@ -470,7 +470,7 @@ const ogImageUrl = computed(() => {
   const canonPair = (data.value?.canonical_pair ?? pair).toLowerCase()
   return r2PublicUrl
     ? `${r2PublicUrl}/og/trade/${canonPair}.png`
-    : `https://api.metricshour.com/og/trade/${canonPair}.png`
+    : `https://cdn.metricshour.com/og/trade/${canonPair}.png`
 })
 
 // ── SEO helpers: inject real trade data for long-tail keyword ranking ─────────

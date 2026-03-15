@@ -116,12 +116,12 @@ useSeoMeta({
   ogDescription: 'Institutional-grade financial intelligence from $9.99/month. Real-time prices, AI insights, 196 countries and 130+ assets. Free tier always available.',
   ogUrl: 'https://metricshour.com/pricing/',
   ogType: 'website',
-  ogImage: 'https://api.metricshour.com/og/section/pricing.png',
+  ogImage: 'https://cdn.metricshour.com/og/section/pricing.png',
   ogImageWidth: '1200',
   ogImageHeight: '630',
   twitterTitle: 'MetricsHour Pricing: Free & Pro Plans — Global Finance Data',
   twitterDescription: 'Institutional-grade financial intelligence from $9.99/month. Real-time prices, AI insights, 196 countries and 130+ assets. Free tier always available.',
-  twitterImage: 'https://api.metricshour.com/og/section/pricing.png',
+  twitterImage: 'https://cdn.metricshour.com/og/section/pricing.png',
   twitterCard: 'summary_large_image',
 })
 

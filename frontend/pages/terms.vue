@@ -114,10 +114,10 @@ useSeoMeta({
   description: 'Terms of Service for MetricsHour — financial data intelligence platform.',
   ogTitle: 'Terms of Service — MetricsHour',
   ogUrl: 'https://metricshour.com/terms/',
-  ogImage: 'https://api.metricshour.com/og/section/home.png',
+  ogImage: 'https://cdn.metricshour.com/og/section/home.png',
   ogImageWidth: '1200',
   ogImageHeight: '630',
-  twitterImage: 'https://api.metricshour.com/og/section/home.png',
+  twitterImage: 'https://cdn.metricshour.com/og/section/home.png',
   twitterCard: 'summary_large_image',
 })
 useHead({
