@@ -82,19 +82,19 @@ def _metric_card(
     """Draw a single metric card with a coloured left accent bar."""
     draw.rounded_rectangle([(x0, y0), (x1, y1)], radius=10, fill=SURFACE)
     draw.rounded_rectangle([(x0, y0), (x0 + 6, y1)], radius=3, fill=accent)
-    draw.text((x0 + 24, y0 + 22), label, font=_font(18), fill=GRAY, anchor="lt")
-    draw.text((x0 + 24, y0 + 76), value, font=_font(value_size, bold=True), fill=value_color, anchor="lt")
+    draw.text((x0 + 24, y0 + 24), label, font=_font(20), fill=GRAY, anchor="lt")
+    draw.text((x0 + 24, y0 + 72), value, font=_font(value_size, bold=True), fill=value_color, anchor="lt")
 
 
 def _base_canvas() -> tuple[Image.Image, ImageDraw.ImageDraw]:
     img = Image.new("RGB", (W, H), BG)
     draw = ImageDraw.Draw(img)
 
-    # Thin top accent bar only — branding stays out of the data area
-    draw.rectangle([(0, 0), (W, 4)], fill=GREEN)
+    # Slightly thicker top accent bar — more visible at mobile thumbnail scale
+    draw.rectangle([(0, 0), (W, 6)], fill=GREEN)
 
     # Minimal watermark: small gray URL bottom-right, does not obstruct data
-    draw.text((W - 36, H - 14), "metricshour.com", font=_font(13), fill=GRAY, anchor="rm")
+    draw.text((W - 36, H - 14), "metricshour.com", font=_font(14), fill=GRAY, anchor="rm")
 
     return img, draw
 
@@ -118,10 +118,17 @@ def _to_png_bytes(img: Image.Image) -> bytes:
 
 # ── Generators ────────────────────────────────────────────────────────────────
 
+def _source_line(draw: ImageDraw.ImageDraw, source: str) -> None:
+    """Draw a small source attribution at the bottom-left."""
+    if source:
+        draw.text((56, H - 14), f"Source: {source}", font=_font(14), fill=GRAY, anchor="lm")
+
+
 def _country_image(
     flag: str, name: str,
     gdp: float | None, growth: float | None,
     inflation: float | None = None, interest_rate: float | None = None,
+    source: str = "",
 ) -> bytes:
     img, draw = _base_canvas()
     PAD = 56
@@ -129,28 +136,28 @@ def _country_image(
     # ── Header: flag + name ────────────────────────────────────────────────
     flag_x = PAD
     if flag:
-        draw.text((flag_x, 30), flag, font=_font(56), fill=WHITE, anchor="lt")
-        name_x = flag_x + 70
+        draw.text((flag_x, 24), flag, font=_font(62), fill=WHITE, anchor="lt")
+        name_x = flag_x + 80
     else:
         name_x = flag_x
 
-    name_disp = name if len(name) <= 24 else name[:22] + "…"
-    draw.text((name_x, 30), name_disp, font=_font(48, bold=True), fill=WHITE, anchor="lt")
-    draw.text((name_x, 88), "Economy Overview", font=_font(20), fill=GRAY, anchor="lt")
+    name_disp = name if len(name) <= 20 else name[:18] + "…"
+    draw.text((name_x, 22), name_disp, font=_font(54, bold=True), fill=WHITE, anchor="lt")
+    draw.text((name_x, 84), "Economy Overview", font=_font(24), fill=GRAY, anchor="lt")
 
-    # ── 2 × 2 metric grid ─────────────────────────────────────────────────
-    GAP_X, GAP_Y = 20, 14
-    card_w = (W - PAD * 2 - GAP_X) // 2   # ≈ 534 px
-    card_h = (600 - 120 - GAP_Y) // 2      # ≈ 233 px — taller now brand bar gone
+    # ── Hero card: GDP (full width, large number) ──────────────────────────
+    hero_y, hero_h = 124, 220
+    draw.rounded_rectangle([(PAD, hero_y), (W - PAD, hero_y + hero_h)], radius=12, fill=SURFACE)
+    draw.rounded_rectangle([(PAD, hero_y), (PAD + 8, hero_y + hero_h)], radius=4, fill=GREEN)
+    draw.text((PAD + 38, hero_y + 26), "GDP", font=_font(24), fill=GRAY, anchor="lt")
+    gdp_str = _fmt_large(gdp) if gdp else "—"
+    draw.text((PAD + 38, hero_y + 62), gdp_str, font=_font(92, bold=True), fill=WHITE, anchor="lt")
 
-    y_row1 = 120
-    y_row2 = y_row1 + card_h + GAP_Y
-    x_col1 = PAD
-    x_col2 = PAD + card_w + GAP_X
-
-    # GDP
-    _metric_card(draw, x_col1, y_row1, x_col1 + card_w, y_row1 + card_h,
-                 "GDP", _fmt_large(gdp) if gdp else "—")
+    # ── Secondary row: GDP Growth + Inflation ─────────────────────────────
+    GAP_X = 20
+    sec_y = hero_y + hero_h + 16
+    sec_h = H - sec_y - 32
+    card_w = (W - PAD * 2 - GAP_X) // 2
 
     # GDP Growth
     if growth is not None:
@@ -159,8 +166,8 @@ def _country_image(
         g_str = f"{sign}{growth:.1f}%"
     else:
         g_color, g_str = GRAY_LT, "—"
-    _metric_card(draw, x_col2, y_row1, x_col2 + card_w, y_row1 + card_h,
-                 "GDP Growth", g_str, value_color=g_color)
+    _metric_card(draw, PAD, sec_y, PAD + card_w, sec_y + sec_h,
+                 "GDP Growth", g_str, value_color=g_color, value_size=54)
 
     # Inflation
     if inflation is not None:
@@ -173,14 +180,10 @@ def _country_image(
         inf_str = f"{inflation:.1f}%"
     else:
         inf_color, inf_str = GRAY_LT, "—"
-    _metric_card(draw, x_col1, y_row2, x_col1 + card_w, y_row2 + card_h,
-                 "Inflation", inf_str, value_color=inf_color)
+    _metric_card(draw, PAD + card_w + GAP_X, sec_y, W - PAD, sec_y + sec_h,
+                 "Inflation", inf_str, value_color=inf_color, value_size=54)
 
-    # Interest Rate
-    ir_str = f"{interest_rate:.2f}%" if interest_rate is not None else "—"
-    _metric_card(draw, x_col2, y_row2, x_col2 + card_w, y_row2 + card_h,
-                 "Interest Rate", ir_str, value_color=GRAY_LT)
-
+    _source_line(draw, source)
     return _to_png_bytes(img)
 
 
@@ -188,29 +191,29 @@ def _stock_image(
     symbol: str, name: str,
     price: float | None, market_cap: float | None,
     change_pct: float | None = None, sector: str | None = None,
+    source: str = "",
 ) -> bytes:
     img, draw = _base_canvas()
     PAD = 56
 
     # ── Header: ticker + company name ─────────────────────────────────────
-    draw.text((PAD, 28), symbol, font=_font(56, bold=True), fill=GREEN, anchor="lt")
+    draw.text((PAD, 22), symbol, font=_font(62, bold=True), fill=GREEN, anchor="lt")
     display_name = name if len(name) <= 36 else name[:34] + "…"
-    draw.text((PAD, 88), display_name, font=_font(26), fill=GRAY_LT, anchor="lt")
+    draw.text((PAD, 88), display_name, font=_font(28), fill=GRAY_LT, anchor="lt")
 
-    # ── 2 × 2 metric grid ─────────────────────────────────────────────────
-    GAP_X, GAP_Y = 20, 14
-    card_w = (W - PAD * 2 - GAP_X) // 2
-    card_h = (600 - 120 - GAP_Y) // 2      # taller now brand bar gone
-
-    y_row1 = 120
-    y_row2 = y_row1 + card_h + GAP_Y
-    x_col1 = PAD
-    x_col2 = PAD + card_w + GAP_X
-
-    # Price
+    # ── Hero card: Price (full width, large number) ────────────────────────
+    hero_y, hero_h = 124, 220
+    draw.rounded_rectangle([(PAD, hero_y), (W - PAD, hero_y + hero_h)], radius=12, fill=SURFACE)
+    draw.rounded_rectangle([(PAD, hero_y), (PAD + 8, hero_y + hero_h)], radius=4, fill=GREEN)
+    draw.text((PAD + 38, hero_y + 26), "Price (USD)", font=_font(24), fill=GRAY, anchor="lt")
     price_str = f"${price:,.2f}" if price is not None else "—"
-    _metric_card(draw, x_col1, y_row1, x_col1 + card_w, y_row1 + card_h,
-                 "Price (USD)", price_str)
+    draw.text((PAD + 38, hero_y + 62), price_str, font=_font(92, bold=True), fill=WHITE, anchor="lt")
+
+    # ── Secondary row: Day Change + Market Cap ────────────────────────────
+    GAP_X = 20
+    sec_y = hero_y + hero_h + 16
+    sec_h = H - sec_y - 32
+    card_w = (W - PAD * 2 - GAP_X) // 2
 
     # Day Change %
     if change_pct is not None:
@@ -219,19 +222,14 @@ def _stock_image(
         ch_str = f"{sign}{change_pct:.2f}%"
     else:
         ch_color, ch_str = GRAY_LT, "—"
-    _metric_card(draw, x_col2, y_row1, x_col2 + card_w, y_row1 + card_h,
-                 "Day Change", ch_str, value_color=ch_color)
+    _metric_card(draw, PAD, sec_y, PAD + card_w, sec_y + sec_h,
+                 "Day Change", ch_str, value_color=ch_color, value_size=54)
 
     # Market Cap
-    _metric_card(draw, x_col1, y_row2, x_col1 + card_w, y_row2 + card_h,
-                 "Market Cap", _fmt_large(market_cap) if market_cap else "—")
+    _metric_card(draw, PAD + card_w + GAP_X, sec_y, W - PAD, sec_y + sec_h,
+                 "Market Cap", _fmt_large(market_cap) if market_cap else "—", value_size=54)
 
-    # Sector
-    sec_raw = sector or "—"
-    sec_disp = sec_raw if len(sec_raw) <= 18 else sec_raw[:16] + "…"
-    _metric_card(draw, x_col2, y_row2, x_col2 + card_w, y_row2 + card_h,
-                 "Sector", sec_disp, value_color=GRAY_LT, value_size=32)
-
+    _source_line(draw, source)
     return _to_png_bytes(img)
 
 
@@ -243,6 +241,7 @@ def _trade_image(
     year: int | None = None,
     code_a: str = "",
     code_b: str = "",
+    source: str = "",
 ) -> bytes:
     img, draw = _base_canvas()
     PAD = 56
@@ -251,32 +250,34 @@ def _trade_image(
     name_a_d = name_a if len(name_a) <= 16 else name_a[:14] + "…"
     name_b_d = name_b if len(name_b) <= 16 else name_b[:14] + "…"
 
-    draw.text((PAD, 22), flag_a, font=_font(44), fill=WHITE, anchor="lt")
-    draw.text((PAD, 72), name_a_d, font=_font(36, bold=True), fill=WHITE, anchor="lt")
-    draw.text((W // 2, 50), "↔", font=_font(46, bold=True), fill=GREEN, anchor="mm")
-    draw.text((W - PAD, 22), flag_b, font=_font(44), fill=WHITE, anchor="rt")
-    draw.text((W - PAD, 72), name_b_d, font=_font(36, bold=True), fill=WHITE, anchor="rt")
+    draw.text((PAD, 18), flag_a, font=_font(50), fill=WHITE, anchor="lt")
+    draw.text((PAD, 72), name_a_d, font=_font(40, bold=True), fill=WHITE, anchor="lt")
+    draw.text((W // 2, 50), "↔", font=_font(52, bold=True), fill=GREEN, anchor="mm")
+    draw.text((W - PAD, 18), flag_b, font=_font(50), fill=WHITE, anchor="rt")
+    draw.text((W - PAD, 72), name_b_d, font=_font(40, bold=True), fill=WHITE, anchor="rt")
 
-    # ── Trade volume — full-width card ────────────────────────────────────
+    # ── Trade volume — full-width hero card ───────────────────────────────
     vol_label = "Total Trade Volume" + (f"  ·  {year}" if year else "")
-    _metric_card(draw, PAD, 118, W - PAD, 298, vol_label,
-                 _fmt_large(trade_value) if trade_value else "—", value_size=52)
+    _metric_card(draw, PAD, 120, W - PAD, 310, vol_label,
+                 _fmt_large(trade_value) if trade_value else "—", value_size=72)
 
     # ── Exports | Imports — side by side ──────────────────────────────────
     GAP_X = 20
     card_w = (W - PAD * 2 - GAP_X) // 2
-    y2, card_h2 = 314, 230
+    y2 = 326
+    card_h2 = H - y2 - 32
 
     # Use ISO codes (passed in) for clear labels
     lbl_a = (code_a or name_a[:3]).upper()
     lbl_b = (code_b or name_b[:3]).upper()
     _metric_card(draw, PAD, y2, PAD + card_w, y2 + card_h2,
                  f"Exports  {lbl_a} → {lbl_b}",
-                 _fmt_large(exports_usd) if exports_usd else "—")
+                 _fmt_large(exports_usd) if exports_usd else "—", value_size=52)
     _metric_card(draw, PAD + card_w + GAP_X, y2, W - PAD, y2 + card_h2,
                  f"Exports  {lbl_b} → {lbl_a}",
-                 _fmt_large(imports_usd) if imports_usd else "—")
+                 _fmt_large(imports_usd) if imports_usd else "—", value_size=52)
 
+    _source_line(draw, source)
     return _to_png_bytes(img)
 
 
@@ -347,6 +348,7 @@ def generate_og_images() -> dict:
                     growth=_ci(c.id, "gdp_growth_pct"),
                     inflation=_ci(c.id, "inflation_pct"),
                     interest_rate=_ci(c.id, "interest_rate"),
+                    source="World Bank",
                 )
                 _upload(f"og/countries/{c.code.lower()}.png", img_bytes)
                 counts["countries"] += 1
@@ -378,6 +380,7 @@ def generate_og_images() -> dict:
                     market_cap=a.market_cap_usd,
                     change_pct=change_pct,
                     sector=a.sector,
+                    source="Yahoo Finance",
                 )
                 _upload(f"og/stocks/{a.symbol.lower()}.png", img_bytes)
                 counts["stocks"] += 1
@@ -410,6 +413,7 @@ def generate_og_images() -> dict:
                     year=p.year,
                     code_a=exp.code,
                     code_b=imp.code,
+                    source="UN Comtrade",
                 )
                 pair_key = f"{exp.code.lower()}-{imp.code.lower()}"
                 _upload(f"og/trade/{pair_key}.png", img_bytes)
