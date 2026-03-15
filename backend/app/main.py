@@ -49,13 +49,7 @@ app.add_middleware(
 @app.middleware("http")
 async def security_headers(request: Request, call_next) -> Response:
     response = await call_next(request)
-    response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["X-Frame-Options"] = "DENY"
-    response.headers["X-XSS-Protection"] = "1; mode=block"
-    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
-    # HSTS — only sent over HTTPS (Nginx handles SSL, so this is safe)
-    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    # Security headers are set by Nginx (security-headers.conf) — no duplication here.
 
     # Edge cache (Cloudflare CDN, free — no KV writes).
     # TTLs match data freshness; auth/feed/alerts are private and never cached.
