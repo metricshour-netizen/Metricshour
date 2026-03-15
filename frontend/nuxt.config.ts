@@ -63,6 +63,36 @@ export default defineNuxtConfig({
   routeRules: {
     '/sitemap.xml': { redirect: { to: 'https://api.metricshour.com/sitemap.xml', statusCode: 301 } },
     '/robots.txt': { redirect: { to: 'https://api.metricshour.com/robots.txt', statusCode: 301 } },
+
+    // Edge cache headers — Cloudflare respects s-maxage; client gets max-age
+    // Share preview pages (social crawlers) — 5 min edge cache, stale ok for up to 1h
+    '/s/**': { headers: { 'Cache-Control': 'public, s-maxage=300, max-age=60, stale-while-revalidate=3600' } },
+    // Homepage — 1h edge cache
+    '/': { headers: { 'Cache-Control': 'public, s-maxage=3600, max-age=300, stale-while-revalidate=86400' } },
+    // Listing/index pages — 1h edge cache
+    '/countries': { headers: { 'Cache-Control': 'public, s-maxage=3600, max-age=300, stale-while-revalidate=86400' } },
+    '/stocks': { headers: { 'Cache-Control': 'public, s-maxage=3600, max-age=300, stale-while-revalidate=86400' } },
+    '/trade': { headers: { 'Cache-Control': 'public, s-maxage=3600, max-age=300, stale-while-revalidate=86400' } },
+    '/commodities': { headers: { 'Cache-Control': 'public, s-maxage=3600, max-age=300, stale-while-revalidate=86400' } },
+    '/indices': { headers: { 'Cache-Control': 'public, s-maxage=3600, max-age=300, stale-while-revalidate=86400' } },
+    '/blog': { headers: { 'Cache-Control': 'public, s-maxage=3600, max-age=300, stale-while-revalidate=86400' } },
+    '/compare': { headers: { 'Cache-Control': 'public, s-maxage=3600, max-age=300, stale-while-revalidate=86400' } },
+    '/pricing': { headers: { 'Cache-Control': 'public, s-maxage=3600, max-age=300, stale-while-revalidate=86400' } },
+    '/about': { headers: { 'Cache-Control': 'public, s-maxage=86400, max-age=3600' } },
+    '/privacy': { headers: { 'Cache-Control': 'public, s-maxage=86400, max-age=3600' } },
+    '/terms': { headers: { 'Cache-Control': 'public, s-maxage=86400, max-age=3600' } },
+    // Dynamic entity pages — 30 min edge cache, stale up to 24h
+    '/countries/**': { headers: { 'Cache-Control': 'public, s-maxage=1800, max-age=300, stale-while-revalidate=86400' } },
+    '/stocks/**': { headers: { 'Cache-Control': 'public, s-maxage=1800, max-age=300, stale-while-revalidate=86400' } },
+    '/trade/**': { headers: { 'Cache-Control': 'public, s-maxage=1800, max-age=300, stale-while-revalidate=86400' } },
+    '/commodities/**': { headers: { 'Cache-Control': 'public, s-maxage=1800, max-age=300, stale-while-revalidate=86400' } },
+    '/indices/**': { headers: { 'Cache-Control': 'public, s-maxage=1800, max-age=300, stale-while-revalidate=86400' } },
+    '/blog/**': { headers: { 'Cache-Control': 'public, s-maxage=1800, max-age=300, stale-while-revalidate=86400' } },
+    // Markets + Feed — 5 min (data changes frequently)
+    '/markets': { headers: { 'Cache-Control': 'public, s-maxage=300, max-age=60, stale-while-revalidate=3600' } },
+    '/feed': { headers: { 'Cache-Control': 'public, s-maxage=300, max-age=60, stale-while-revalidate=3600' } },
+    '/feed/**': { headers: { 'Cache-Control': 'public, s-maxage=300, max-age=60, stale-while-revalidate=3600' } },
+
     '/login/': { redirect: { to: '/', statusCode: 301 } },
     '/login': { redirect: { to: '/', statusCode: 301 } },
     '/register/': { redirect: { to: '/', statusCode: 301 } },
