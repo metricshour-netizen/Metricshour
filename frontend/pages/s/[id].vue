@@ -16,7 +16,8 @@ const { data: event } = await useAsyncData(
   () => get<any>(`/api/feed/events/${eventId}`).catch(() => null),
 )
 
-const ogImage = event.value?.image_url || `https://cdn.metricshour.com/og/feed/${eventId}.png`
+const rawImage = event.value?.image_url || `https://cdn.metricshour.com/og/feed/${eventId}.png`
+const ogImage = rawImage.replace('https://api.metricshour.com/', 'https://cdn.metricshour.com/')
 const title = event.value?.title ? `${event.value.title} — MetricsHour` : 'Market Insight — MetricsHour'
 const desc = event.value?.body?.slice(0, 200) || 'Real-time global market intelligence on MetricsHour.'
 

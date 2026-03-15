@@ -1,6 +1,114 @@
 # MetricsHour — Progress & Session Log
 
-## Current Status: LIVE ✅ (as of 2026-03-15)
+## Current Status: LIVE ✅ (as of 2026-03-16)
+
+---
+
+## Session 2026-03-16 — AI flow audit + critical worker crash fix
+
+### Critical: worker had been down (unknown duration)
+- `tasks/search_index.py` imports `meilisearch` which was not installed → worker crashed on startup every 15s
+- **Fix**: `pip install meilisearch` on both Hetzner + Netcup venvs ✅
+- **Zero tasks were running** until this was fixed
+
+### AI model fixes (commits b7140b0, ca4b5bc — pushed + deployed to Netcup)
+- `social_content.py`: `gemini-2.5-flash-lite` → `gemini-2.5-flash` (better quality for daily post drafts)
+- `summaries.py`: added 1024-token thinking buffer to `maxOutputTokens` for flash model (thinking model consumes tokens before output — G20 summaries were being silently truncated)
+- `test_ai.py`: rewritten — real prompt, tests both Gemini (flash + flash-lite) + DeepSeek, exits non-zero on failure
+
+### Keys
+- `GEMINI_API_KEY_2` added to both Hetzner + Netcup `.env` (sourced from Contabo secrets.env)
+- All 4 keys confirmed live on Netcup: Gemini key1 ✅ Gemini key2 ✅ DeepSeek ✅
+
+### Infrastructure clarification (IMPORTANT)
+- **We run Claude Code on Hetzner (89.167.35.114 / 10.0.0.2)**
+- **Production is on Netcup (10.0.0.1)** — always SSH there to verify production state
+- Hetzner also runs a copy of worker+API but Redis is unreachable (10.0.0.1:6379) → degraded, not production
+- Deploy flow: commit on Hetzner → git push → ssh Netcup git pull → systemctl restart
+
+### Full AI model map (production, Netcup — verified 2026-03-16)
+| Flow | Model | Fallback |
+|------|-------|---------|
+| `social_content` (9am drafts) | gemini-2.5-flash | gemini-2.5-flash (key2) → DeepSeek |
+| `summaries` bulk | DeepSeek primary | gemini-2.5-flash-lite |
+| `summaries` G20 | gemini-2.5-flash | DeepSeek |
+| `macro_alert_checker` | gemini-2.5-flash-lite | gemini-2.5-flash-lite (key2) |
+| `seo_monitor` | gemini-2.5-flash-lite | (key2 fallback) |
+| OpenClaw (Contabo) | deepseek-chat | gemini-2.5-flash |
+
+### Production health (Netcup, confirmed)
+- API: `{"status":"ok","database":"connected","redis":"connected"}` ✅
+- Services: metricshour-api ✅ metricshour-worker ✅ metricshour-frontend ✅
+- No tracebacks in worker logs ✅
+- All 28+ Celery tasks loaded ✅
+
+### SEO/OG fix (commit 0caf311 — deployed)
+- Added `og:image:type: 'image/png'` to all 5 entity pages (countries, stocks, trade, commodities, indices)
+- Facebook/WhatsApp/LinkedIn require this for reliable image previews in social shares
+- CF cache purged — crawlers now get fresh HTML with correct tags
+- ROOT CAUSE of social blocking: platforms had cached OLD `api.metricshour.com/og/...` URLs (changed to cdn in commit 3ad0b8a). With cache purge + og:image:type, new scrapes will work. Old cached shares on platforms (Facebook/LinkedIn) need manual re-scrape via their debug tools:
+  - Facebook: https://developers.facebook.com/tools/debug/
+  - LinkedIn: https://www.linkedin.com/post-inspector/
+
+### OG image brand bar removal (commit 712fd14 — deployed + live on CDN ✅)
+- **Root issue**: prominent green "M" box + bold "MetricsHour" bar at bottom of every OG/feed image was dominating visually over data
+- **Fix**: replaced brand bar entirely with a single tiny gray `metricshour.com` watermark at bottom-right only
+- Also fixed trade image: had 40% empty black space at top; redesigned to header + total volume card + exports/imports side-by-side cards
+- Feed event images: same brand bar removal applied
+- All 250 country + 90 stock + 2708 trade OG images regenerated and live at cdn.metricshour.com ✅
+- Feed OG images (8390) regeneration dispatched, still running
+- CF cache purged after regeneration ✅
+- Verified live on CDN: Germany, TSLA, US-China trade all confirmed correct
+
+### OG image redesign (commit 02aa569 — deployed + regeneration running)
+- **Root issue**: `_country_image` / `_stock_image` only showed 2 metrics, right half of 1200×630 completely empty. Green MetricsHour branding dominated.
+- **Fix**: Complete redesign to 2×2 metric grid layout filling full canvas.
+  - Country: GDP + GDP Growth + Inflation + Interest Rate (4 cards). Inflation color-coded amber/red/green.
+  - Stock: Price + Day Change% + Market Cap + Sector (4 cards). Change% color-coded.
+  - Added `_metric_card()` helper.
+  - `generate_og_images()` now queries `inflation_pct` and `interest_rate` for countries; computes `change_pct` from open/close for stocks; passes `sector` to stock image.
+  - Branding reduced to bottom bar only.
+- **Regeneration task dispatched** at 13:28 UTC on Netcup (task ID: 99a42d12-...) — still running (3000+ trade pairs)
+- After task completes: all OG images at cdn.metricshour.com/og/{type}/{code}.png will be updated
+
+### OG image session (2026-03-15 continued) — commits 321a854, 6a94bf3
+- Fix: trade OG "UNI → UNI" label bug — uses ISO codes now (GB/US not UNI/UNI) — commit 321a854
+- Fix: feed event OG title repositioned to fill space freed by brand bar removal — commit 6a94bf3
+- Countries 250/250 ✅ Stocks 90/90 ✅ Trade 2708/2708 ✅ — all COMPLETE
+- Feed OG: 6494/8441 as of ~15:40 UTC — task b25c149f running, finishes automatically
+- All pages 200: / /countries /stocks /trade /commodities /indices ✅
+- OG meta tags verified live: correct cdn.metricshour.com URLs on all page types ✅
+- Snapshots current: 2026-03-15 07:00 UTC (daily 7am schedule) ✅
+- Sitemap: 2791 URLs, redirects working ✅
+- Security: DOCKER-USER 5 DROP rules active, fail2ban 1518 bans, internal ports locked ✅
+- CF cache purged multiple times ✅
+
+### Open items (carry forward)
+- [ ] ANTHROPIC_API_KEY not set on Netcup (not needed — no code uses it)
+- [ ] Hetzner worker Redis broken (10.0.0.1:6379 unreachable from Hetzner) — investigate or disable
+- [ ] Facebook Page Access Token — still empty
+- [ ] Cloudflare Turnstile on /register
+- [ ] Pricing page comparison table
+- [ ] Prometheus alertmanager
+- [ ] Old social shares (pre-cdn migration) need manual re-scrape on Facebook/LinkedIn debug tools
+
+---
+
+## Session 2026-03-15 (evening) — Social share + edge caching
+
+### Social share fixes (commits 3ad0b8a, f09548b)
+- **og:image URLs** — all 19 frontend pages had hardcoded `api.metricshour.com/og/...`. Fixed to `cdn.metricshour.com/og/...` across every page.
+- **Share URL** — `FeedCard.vue` share link was `api.metricshour.com/s/{id}`. Moved to `metricshour.com/s/{id}`.
+- **New SSR share page** — `pages/s/[id].vue` created. Fetches event data, renders OG meta server-side for crawlers, client-side redirects real users to `/feed/{id}`.
+
+### Edge caching (commit 229c5ec)
+Added `Cache-Control` headers via Nuxt `routeRules` so Cloudflare caches SSR HTML at the edge:
+- `/s/**` — 5 min (share previews)
+- `/` + listing pages — 1 h
+- Entity pages (`/countries/**`, `/stocks/**`, `/trade/**`, etc.) — 30 min + 24 h stale-while-revalidate
+- Markets/Feed — 5 min (live data)
+- Static pages (about/privacy/terms) — 24 h
+CF cache purged after deploy. Pages now served from Cloudflare PoPs on cache hit.
 
 ---
 

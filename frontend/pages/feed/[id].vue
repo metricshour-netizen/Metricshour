@@ -141,10 +141,11 @@ function copyLink() {
   }
 }
 
-// SEO meta for social sharing
-const ogImage = computed(() =>
-  event.value?.image_url || `https://cdn.metricshour.com/og/feed/${eventId}.png`
-)
+// SEO meta for social sharing — normalize any legacy api.metricshour.com image_url to CDN
+const ogImage = computed(() => {
+  const raw = event.value?.image_url || `https://cdn.metricshour.com/og/feed/${eventId}.png`
+  return raw.replace('https://api.metricshour.com/', 'https://cdn.metricshour.com/')
+})
 
 useSeoMeta({
   title: computed(() => event.value ? `${event.value.title} — MetricsHour` : 'Market Insight — MetricsHour'),
