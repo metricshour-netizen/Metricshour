@@ -1278,12 +1278,12 @@ def _has_fresh_data(insight_type: str, entity_code: str, since: datetime, db) ->
         ).scalar()
         return bool(latest and latest > since.date())
     if insight_type in ("stock", "commodity"):
-        asset = db.execute(select(Asset).where(Asset.symbol == entity_code)).scalar_one_or_none()
+        asset = db.execute(select(Asset).where(Asset.symbol == entity_code)).scalars().first()
         if not asset:
             return False
         return _asset_price_moved(asset.id, since, db, threshold_pct=2.0)
     if insight_type == "index":
-        asset = db.execute(select(Asset).where(Asset.symbol == entity_code, Asset.asset_type == "index")).scalar_one_or_none()
+        asset = db.execute(select(Asset).where(Asset.symbol == entity_code, Asset.asset_type == "index")).scalars().first()
         if not asset:
             return False
         return _asset_price_moved(asset.id, since, db, threshold_pct=1.0)
@@ -1967,7 +1967,7 @@ def run_insight_batch(self, insight_type: str):
                         count += 1
 
                 elif insight_type == "stock":
-                    s = db.execute(select(Asset).where(Asset.symbol == entity_code, Asset.asset_type == "stock")).scalar_one_or_none()
+                    s = db.execute(select(Asset).where(Asset.symbol == entity_code, Asset.asset_type == "stock")).scalars().first()
                     if not s:
                         continue
                     insight = _stock_insight_text(s, db)
@@ -1990,7 +1990,7 @@ def run_insight_batch(self, insight_type: str):
                         count += 1
 
                 elif insight_type == "commodity":
-                    c = db.execute(select(Asset).where(Asset.symbol == entity_code, Asset.asset_type == "commodity")).scalar_one_or_none()
+                    c = db.execute(select(Asset).where(Asset.symbol == entity_code, Asset.asset_type == "commodity")).scalars().first()
                     if not c:
                         continue
                     insight = _commodity_insight_text(c, db)
@@ -2045,7 +2045,7 @@ def run_insight_batch(self, insight_type: str):
                         count += 1
 
                 elif insight_type == "index":
-                    idx = db.execute(select(Asset).where(Asset.symbol == entity_code, Asset.asset_type == "index")).scalar_one_or_none()
+                    idx = db.execute(select(Asset).where(Asset.symbol == entity_code, Asset.asset_type == "index")).scalars().first()
                     if not idx:
                         continue
                     insight = _index_insight_text(idx, db)
