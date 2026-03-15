@@ -35,6 +35,7 @@ log = logging.getLogger(__name__)
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+GEMINI_API_KEY_2 = os.environ.get("GEMINI_API_KEY_2", "")
 
 DRAFT_TTL = 60 * 60 * 48  # 48h — drafts expire if not acted on
 
@@ -106,14 +107,14 @@ def _parse_json_response(text: str) -> dict | None:
         return None
 
 
-def _call_gemini(prompt: str) -> dict | None:
-    """Call Gemini 2.5 Flash, return parsed JSON or None."""
-    if not GEMINI_API_KEY:
+def _call_gemini_with_key(api_key: str, prompt: str) -> dict | None:
+    """Call Gemini 2.5 Flash with a specific API key."""
+    if not api_key:
         return None
     try:
         from google import genai
         from google.genai import types as genai_types
-        client = genai.Client(api_key=GEMINI_API_KEY, http_options={"timeout": 45})
+        client = genai.Client(api_key=api_key, http_options={"timeout": 45})
         r = client.models.generate_content(
             model="gemini-2.5-flash",
             contents=prompt,
@@ -126,8 +127,19 @@ def _call_gemini(prompt: str) -> dict | None:
         text = (r.text or "").strip()
         return _parse_json_response(text)
     except Exception as e:
-        log.warning("Gemini social content failed: %s", e)
+        log.warning("Gemini call failed (key=...%s): %s", api_key[-6:], e)
         return None
+
+
+def _call_gemini(prompt: str) -> dict | None:
+    """Try primary Gemini key, fall back to secondary key if primary fails."""
+    result = _call_gemini_with_key(GEMINI_API_KEY, prompt)
+    if result:
+        return result
+    if GEMINI_API_KEY_2:
+        log.info("Primary Gemini key failed — trying secondary Gemini key")
+        return _call_gemini_with_key(GEMINI_API_KEY_2, prompt)
+    return None
 
 
 def _call_deepseek(prompt: str) -> dict | None:
