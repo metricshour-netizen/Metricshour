@@ -4,6 +4,35 @@
 
 ---
 
+## Session 2026-03-16 (continued) — Verification + importance score fix + deploy
+
+### All previous fixes verified ✅
+- `useApi.ts`: `_fetchWithTimeout()` + AbortController ✅
+- `useAuth.ts`: `console.warn` in `restore()` ✅
+- `telegram_webhook.py`: `_tg_post()` helper ✅
+- `security_monitor.py`: DDoS detection (10k/hr threshold) ✅
+- `og_images.py`: sys.path = `/root/metricshour/backend` ✅
+- `storage.py` + `celery_app.py`: SSL only for `rediss://` ✅
+- `social_content.py`: Gemini truncation recovery + `re.DOTALL` ✅
+- `feed.py /watchlist`: batch subquery joins ✅
+- `summaries.py`: `scalars().first()` for PageInsight/PageSummary + `asset_type` filters ✅
+- `meilisearch` package installed in venv ✅
+
+### Fixed (commits 5a9147e, 04fba85 — pushed + deployed)
+- `frontend/pages/feed/[id].vue` + `s/[id].vue`: normalize legacy `api.metricshour.com` image_url → `cdn.metricshour.com` (old DB records still have api.metricshour.com URLs)
+- `workers/tasks/summaries.py` `_insight_importance()`: lower tiers now granular — stock $1B/$100M splits, trade $1B/$100M splits → 4.5/5.0/5.5 instead of flat 5.5 for all small entities
+- Frontend built + deployed, worker restarted, CF cache purged ✅
+
+### Open items (carry forward)
+- [ ] Facebook Page Access Token — still empty
+- [ ] Cloudflare Turnstile on /register
+- [ ] Pricing page comparison table
+- [ ] Prometheus alertmanager
+- [ ] Old social shares: manual re-scrape on Facebook/LinkedIn debug tools
+- [ ] Test reel generation: OpenClaw fire 7+ images on "generate reel"
+
+---
+
 ## Session 2026-03-16 — AI flow audit + critical worker crash fix
 
 ### Critical: worker had been down (unknown duration)
