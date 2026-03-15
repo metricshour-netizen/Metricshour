@@ -640,13 +640,12 @@ async function generateImage(format: 'story' | 'post'): Promise<Blob> {
   ctx.fillStyle = accent
   ctx.fillText('●'.repeat(dots) + ' ' + importance + '/10', W / 2, metaY + 56)
 
-  // Branding
-  ctx.font = `bold ${format === 'story' ? 44 : 36}px -apple-system, sans-serif`
-  ctx.fillStyle = '#10b981'
-  ctx.fillText('METRICSHOUR', W / 2, H - 72)
-  ctx.font = `${format === 'story' ? 34 : 28}px monospace`
-  ctx.fillStyle = 'rgba(255,255,255,0.2)'
-  ctx.fillText('metricshour.com', W / 2, H - 30)
+  // Minimal watermark — bottom-right only, does not obstruct data
+  ctx.font = `${format === 'story' ? 28 : 22}px monospace`
+  ctx.fillStyle = 'rgba(255,255,255,0.18)'
+  ctx.textAlign = 'right'
+  ctx.textBaseline = 'alphabetic'
+  ctx.fillText('metricshour.com', W - 40, H - 24)
 
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('toBlob failed')), 'image/png')
