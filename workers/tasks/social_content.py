@@ -108,23 +108,25 @@ def _parse_json_response(text: str) -> dict | None:
 
 
 def _call_gemini_with_key(api_key: str, prompt: str) -> dict | None:
-    """Call Gemini 2.5 Flash with a specific API key."""
+    """Call Gemini 2.5 Flash Lite via direct REST (SDK hangs on this server)."""
     if not api_key:
         return None
     try:
-        from google import genai
-        from google.genai import types as genai_types
-        client = genai.Client(api_key=api_key, http_options={"timeout": 45})
-        r = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt,
-            config=genai_types.GenerateContentConfig(
-                max_output_tokens=8192,
-                temperature=0.7,
-                response_mime_type="application/json",
-            ),
+        resp = requests.post(
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent",
+            params={"key": api_key},
+            json={
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {
+                    "temperature": 0.7,
+                    "maxOutputTokens": 2048,
+                    "responseMimeType": "application/json",
+                },
+            },
+            timeout=30,
         )
-        text = (r.text or "").strip()
+        resp.raise_for_status()
+        text = resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
         return _parse_json_response(text)
     except Exception as e:
         log.warning("Gemini call failed (key=...%s): %s", api_key[-6:], e)

@@ -51,11 +51,11 @@ def _generate_smart_context(
     history: list[tuple[int, float]],  # [(year, value), ...] newest first
 ) -> str | None:
     """Call Gemini 2.5 Flash Lite to produce 2-sentence alert context. Returns None on any failure."""
-    if not GEMINI_API_KEY and not GEMINI_API_KEY_2:
+    active_key = GEMINI_API_KEY or GEMINI_API_KEY_2
+    if not active_key:
         return None
     try:
-        from google import genai
-        from google.genai import types as genai_types
+        import requests as _req
 
         hist_str = ", ".join(f"{yr}: {val:.2f}" for yr, val in history) if history else "no history"
         direction = "above" if condition == "above" else "below"
@@ -70,20 +70,18 @@ def _generate_smart_context(
             f"Total: 30-50 words."
         )
 
-        active_key = GEMINI_API_KEY or GEMINI_API_KEY_2
-        if not active_key:
-            return None
-        client = genai.Client(api_key=active_key, http_options={"timeout": 45})
-        r = client.models.generate_content(
-            model="gemini-2.5-flash-lite",
-            contents=prompt,
-            config=genai_types.GenerateContentConfig(
-                system_instruction=_ALERT_SYSTEM,
-                max_output_tokens=120,
-                temperature=0.2,
-            ),
+        resp = _req.post(
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent",
+            params={"key": active_key},
+            json={
+                "system_instruction": {"parts": [{"text": _ALERT_SYSTEM}]},
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {"temperature": 0.2, "maxOutputTokens": 120},
+            },
+            timeout=30,
         )
-        text = (r.text or "").strip()
+        resp.raise_for_status()
+        text = resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
         return text if len(text) > 20 else None
     except Exception as e:
         logger.warning("Gemini context generation failed: %s", e)

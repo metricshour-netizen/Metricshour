@@ -125,25 +125,31 @@ def _strip_markdown(text: str) -> str:
 
 
 def _call_gemini(prompt: str, min_words: int = 55, max_words: int = 110,
-                 model: str = "gemini-2.5-flash") -> str | None:
-    """Call Gemini AI model. Returns None on any failure."""
-    api_key = os.environ.get("GEMINI_API_KEY", "")
+                 model: str = "gemini-2.5-flash-lite") -> str | None:
+    """Call Gemini via direct REST API (SDK hangs on this server). Returns None on any failure."""
+    import requests as _req
+    api_key = os.environ.get("GEMINI_API_KEY", "") or os.environ.get("GEMINI_API_KEY_2", "")
     if not api_key:
         return None
     try:
-        from google import genai
-        from google.genai import types as genai_types
-        client = genai.Client(api_key=api_key, http_options={"timeout": 45})
-        r = client.models.generate_content(
-            model=model,
-            contents=prompt,
-            config=genai_types.GenerateContentConfig(
-                system_instruction=_SHARED_SYSTEM,
-                temperature=0.1,
-                max_output_tokens=int(max_words * 2.5),  # ~1.5 tok/word + buffer
-            ),
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+        resp = _req.post(
+            url,
+            params={"key": api_key},
+            json={
+                "system_instruction": {"parts": [{"text": _SHARED_SYSTEM}]},
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {
+                    "temperature": 0.1,
+                    "maxOutputTokens": int(max_words * 2.5),
+                },
+            },
+            timeout=30,
         )
-        text = _strip_markdown(r.text.strip())
+        resp.raise_for_status()
+        text = _strip_markdown(
+            resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+        )
         words = len(text.split())
         if (min_words - 8) <= words <= (max_words + 8):
             return text
@@ -207,23 +213,23 @@ def _call_deepseek(prompt: str, min_words: int = 55, max_words: int = 110) -> st
 def _call_ai(prompt: str, min_words: int = 55, max_words: int = 110,
              prefer_gemini: bool = False) -> str | None:
     """
-    Cost-optimised AI routing — both paths use gemini-2.5-flash-lite:
-      prefer_gemini=True  → Gemini first, DeepSeek fallback  (G20 / top corridors)
-      prefer_gemini=False → DeepSeek first, Gemini fallback  (everything else)
+    Cost-optimised AI routing:
+      prefer_gemini=True  → gemini-2.5-flash first (G20/quality), DeepSeek fallback
+      prefer_gemini=False → DeepSeek first (bulk/cheap), gemini-2.5-flash-lite fallback
     """
     if prefer_gemini:
         return (
-            _call_gemini(prompt, min_words, max_words)
+            _call_gemini(prompt, min_words, max_words, model="gemini-2.5-flash")
             or _call_deepseek(prompt, min_words, max_words)
         )
     return (
         _call_deepseek(prompt, min_words, max_words)
-        or _call_gemini(prompt, min_words, max_words)
+        or _call_gemini(prompt, min_words, max_words, model="gemini-2.5-flash-lite")
     )
 
 
 def _has_ai_key() -> bool:
-    return bool(os.environ.get("DEEPSEEK_API_KEY") or os.environ.get("GEMINI_API_KEY"))
+    return bool(os.environ.get("DEEPSEEK_API_KEY") or os.environ.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY_2"))
 
 
 # ── Country summary ────────────────────────────────────────────────────────────
