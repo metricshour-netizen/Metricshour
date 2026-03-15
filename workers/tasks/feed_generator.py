@@ -186,7 +186,7 @@ def _generate_price_moves(db) -> list[tuple[str, str]]:
 
         direction = "up" if change_pct > 0 else "down"
         sign = "+" if change_pct > 0 else ""
-        importance = min(10.0, abs(change_pct))
+        importance = round(min(10.0, max(1.0, abs(change_pct))), 1)
         subtype = asset.asset_type.value  # stock, crypto, commodity, fx
 
         # Dedup check BEFORE calling AI — skip AI if this event would be dropped anyway

@@ -155,7 +155,7 @@
               :style="{ color: accentColor, borderColor: `${accentColor}44`, background: `${accentColor}11` }"
             >{{ eventData.symbol }}</span>
             <span class="meta-tag ml-auto" :style="{ color: accentColor, borderColor: `${accentColor}33`, background: `${accentColor}11` }">
-              {{ '●'.repeat(Math.min(5, Math.ceil((event.importance_score || 1) / 2))) }} {{ event.importance_score || '—' }}/10
+              {{ '●'.repeat(Math.min(5, Math.ceil((event.importance_score || 1) / 2))) }} {{ event.importance_score ? Math.round(event.importance_score * 10) / 10 : '—' }}/10
             </span>
           </div>
         </div>
@@ -487,7 +487,7 @@ async function generateImage(format: 'story' | 'post'): Promise<Blob> {
   const ctx = canvas.getContext('2d')!
   const accent = accentColor.value
   const bg = BG[eventType.value] || '#050505'
-  const importance = props.event.importance_score || 5
+  const importance = Math.round((props.event.importance_score || 5) * 10) / 10
   const type = eventType.value
   const data = eventData.value
 

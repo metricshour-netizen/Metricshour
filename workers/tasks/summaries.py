@@ -1372,6 +1372,42 @@ def _commodity_summary_stale(asset: Asset, existing: PageSummary | None, db) -> 
     return _asset_price_moved(asset.id, existing.generated_at, db, threshold_pct=5.0)
 
 
+# ── Importance scoring ─────────────────────────────────────────────────────────
+
+def _insight_importance(entity_type: str, entity) -> float:
+    """Dynamic importance score (1–10) for daily insight feed events."""
+    if entity_type == "country":
+        if getattr(entity, "is_g7", False):   return 8.0
+        if getattr(entity, "is_g20", False):  return 7.0
+        if getattr(entity, "is_oecd", False): return 6.5
+        if getattr(entity, "is_eu", False):   return 6.0
+        return 5.0
+    if entity_type == "stock":
+        mc = getattr(entity, "market_cap_usd", None)
+        if mc:
+            if mc >= 1e12: return 8.5   # mega-cap $1T+
+            if mc >= 1e11: return 7.5   # large-cap $100B+
+            if mc >= 1e10: return 6.5   # mid-cap $10B+
+            return 5.5
+        return 6.0
+    if entity_type == "commodity":
+        return 6.0
+    if entity_type == "trade":
+        val = getattr(entity, "trade_value_usd", None) or getattr(entity, "exports_usd", None)
+        if val:
+            if val >= 5e11: return 8.5   # $500B+
+            if val >= 1e11: return 7.5   # $100B+
+            if val >= 1e10: return 6.5   # $10B+
+            return 5.5
+        return 5.5
+    if entity_type == "index":
+        MAJOR = {"SPY", "QQQ", "DIA", "IWM", "^GSPC", "^IXIC", "^DJI", "SPX", "NDX", "VIX"}
+        if getattr(entity, "symbol", "").upper() in MAJOR:
+            return 8.0
+        return 6.5
+    return 6.0
+
+
 # ── Upsert helpers ─────────────────────────────────────────────────────────────
 
 def _upsert_feed_insight(
@@ -1729,7 +1765,7 @@ def generate_daily_insights(self):
                         entity_name=c.name,
                         entity_flag=c.flag_emoji or "🌍",
                         related_country_ids=[c.id],
-                        importance_score=6.0,
+                        importance_score=_insight_importance("country", c),
                     )
                     total += 1
             except Exception as e:
@@ -1754,7 +1790,7 @@ def generate_daily_insights(self):
                         entity_name=s.name,
                         entity_flag=s.symbol[:2],
                         related_asset_ids=[s.id],
-                        importance_score=6.5,
+                        importance_score=_insight_importance("stock", s),
                     )
                     total += 1
                     stock_count += 1
@@ -1781,7 +1817,7 @@ def generate_daily_insights(self):
                         entity_name=meta.get("full_name", c.name),
                         entity_flag=_commodity_emoji(c.symbol),
                         related_asset_ids=[c.id],
-                        importance_score=6.0,
+                        importance_score=_insight_importance("commodity", c),
                     )
                     total += 1
                     commodity_count += 1
@@ -1816,7 +1852,7 @@ def generate_daily_insights(self):
                         entity_name=f"{exp.name}–{imp.name}",
                         entity_flag=exp.flag_emoji or "🌐",
                         related_country_ids=[exp.id, imp.id],
-                        importance_score=5.5,
+                        importance_score=_insight_importance("trade", pair),
                     )
                     total += 1
                     trade_count += 1
@@ -1843,7 +1879,7 @@ def generate_daily_insights(self):
                         entity_name=meta.get("full_name", idx.name),
                         entity_flag=meta.get("emoji", "📈"),
                         related_asset_ids=[idx.id],
-                        importance_score=6.5,
+                        importance_score=_insight_importance("index", idx),
                     )
                     total += 1
                     index_count += 1
