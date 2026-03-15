@@ -71,6 +71,21 @@ def _load_template(template_key: str) -> tuple[Image.Image, ImageDraw.ImageDraw]
 
 # ── Canvas helpers ─────────────────────────────────────────────────────────────
 
+def _metric_card(
+    draw: ImageDraw.ImageDraw,
+    x0: int, y0: int, x1: int, y1: int,
+    label: str, value: str,
+    value_color: tuple = WHITE,
+    accent: tuple = GREEN,
+    value_size: int = 44,
+) -> None:
+    """Draw a single metric card with a coloured left accent bar."""
+    draw.rounded_rectangle([(x0, y0), (x1, y1)], radius=10, fill=SURFACE)
+    draw.rounded_rectangle([(x0, y0), (x0 + 6, y1)], radius=3, fill=accent)
+    draw.text((x0 + 24, y0 + 22), label, font=_font(18), fill=GRAY, anchor="lt")
+    draw.text((x0 + 24, y0 + 76), value, font=_font(value_size, bold=True), fill=value_color, anchor="lt")
+
+
 def _base_canvas() -> tuple[Image.Image, ImageDraw.ImageDraw]:
     img = Image.new("RGB", (W, H), BG)
     draw = ImageDraw.Draw(img)
@@ -112,66 +127,119 @@ def _to_png_bytes(img: Image.Image) -> bytes:
 
 # ── Generators ────────────────────────────────────────────────────────────────
 
-def _country_image(flag: str, name: str, gdp: float | None, growth: float | None) -> bytes:
+def _country_image(
+    flag: str, name: str,
+    gdp: float | None, growth: float | None,
+    inflation: float | None = None, interest_rate: float | None = None,
+) -> bytes:
     img, draw = _base_canvas()
+    PAD = 56
 
-    PAD = 64
-    cy = H // 2 - 30
-
-    # Flag square
+    # ── Header: flag + name ────────────────────────────────────────────────
+    flag_x = PAD
     if flag:
-        flag_sz = 80
-        draw.rounded_rectangle([(PAD, cy - flag_sz // 2 - 40), (PAD + flag_sz, cy - flag_sz // 2 + 40)], radius=12, fill=SURFACE)
-        draw.text((PAD + flag_sz // 2, cy - flag_sz // 2 + 40 - flag_sz // 2), flag, font=_font(52), fill=WHITE, anchor="mm")
-        tx = PAD + flag_sz + 28
+        draw.text((flag_x, 30), flag, font=_font(56), fill=WHITE, anchor="lt")
+        name_x = flag_x + 70
     else:
-        tx = PAD
+        name_x = flag_x
 
-    # Country name
-    name_disp = name if len(name) <= 22 else name[:20] + "…"
-    draw.text((tx, cy - 50), name_disp, font=_font(68, bold=True), fill=WHITE, anchor="lm")
+    name_disp = name if len(name) <= 24 else name[:22] + "…"
+    draw.text((name_x, 30), name_disp, font=_font(48, bold=True), fill=WHITE, anchor="lt")
+    draw.text((name_x, 88), "Economy Overview", font=_font(20), fill=GRAY, anchor="lt")
 
-    # GDP card
-    gdp_str = _fmt_large(gdp)
-    card_x0, card_x1 = tx, W - PAD
-    draw.rounded_rectangle([(card_x0, cy + 10), (card_x1, cy + 100)], radius=10, fill=SURFACE)
-    draw.rounded_rectangle([(card_x0, cy + 10), (card_x0 + 6, cy + 100)], radius=3, fill=GREEN)
-    draw.text((card_x0 + 24, cy + 55), f"GDP  {gdp_str}", font=_font(36, bold=True), fill=WHITE, anchor="lm")
+    # ── 2 × 2 metric grid ─────────────────────────────────────────────────
+    GAP_X, GAP_Y = 20, 14
+    card_w = (W - PAD * 2 - GAP_X) // 2   # ≈ 534 px
+    card_h = (548 - 120 - GAP_Y) // 2      # ≈ 207 px
 
+    y_row1 = 120
+    y_row2 = y_row1 + card_h + GAP_Y
+    x_col1 = PAD
+    x_col2 = PAD + card_w + GAP_X
+
+    # GDP
+    _metric_card(draw, x_col1, y_row1, x_col1 + card_w, y_row1 + card_h,
+                 "GDP", _fmt_large(gdp) if gdp else "—")
+
+    # GDP Growth
     if growth is not None:
-        color = GREEN if growth >= 0 else (248, 113, 113)
+        g_color = GREEN if growth >= 0 else (248, 113, 113)
         sign = "+" if growth >= 0 else ""
-        draw.text((card_x1 - 16, cy + 55), f"{sign}{growth:.1f}%", font=_font(32, bold=True), fill=color, anchor="rm")
+        g_str = f"{sign}{growth:.1f}%"
+    else:
+        g_color, g_str = GRAY_LT, "—"
+    _metric_card(draw, x_col2, y_row1, x_col2 + card_w, y_row1 + card_h,
+                 "GDP Growth", g_str, value_color=g_color)
 
-    # Sub-label
-    draw.text((PAD, H - 88), "Economy & Macro Intelligence", font=_font(22), fill=GRAY, anchor="lm")
+    # Inflation
+    if inflation is not None:
+        if inflation > 8:
+            inf_color = (248, 113, 113)
+        elif inflation > 3:
+            inf_color = (251, 191, 36)
+        else:
+            inf_color = GREEN
+        inf_str = f"{inflation:.1f}%"
+    else:
+        inf_color, inf_str = GRAY_LT, "—"
+    _metric_card(draw, x_col1, y_row2, x_col1 + card_w, y_row2 + card_h,
+                 "Inflation", inf_str, value_color=inf_color)
+
+    # Interest Rate
+    ir_str = f"{interest_rate:.2f}%" if interest_rate is not None else "—"
+    _metric_card(draw, x_col2, y_row2, x_col2 + card_w, y_row2 + card_h,
+                 "Interest Rate", ir_str, value_color=GRAY_LT)
 
     return _to_png_bytes(img)
 
 
-def _stock_image(symbol: str, name: str, price: float | None, market_cap: float | None) -> bytes:
+def _stock_image(
+    symbol: str, name: str,
+    price: float | None, market_cap: float | None,
+    change_pct: float | None = None, sector: str | None = None,
+) -> bytes:
     img, draw = _base_canvas()
+    PAD = 56
 
-    PAD = 64
-    cy = H // 2 - 20
+    # ── Header: ticker + company name ─────────────────────────────────────
+    draw.text((PAD, 28), symbol, font=_font(56, bold=True), fill=GREEN, anchor="lt")
+    display_name = name if len(name) <= 36 else name[:34] + "…"
+    draw.text((PAD, 88), display_name, font=_font(26), fill=GRAY_LT, anchor="lt")
 
-    # Ticker (large green)
-    draw.text((PAD, cy - 70), symbol, font=_font(100, bold=True), fill=GREEN, anchor="lm")
+    # ── 2 × 2 metric grid ─────────────────────────────────────────────────
+    GAP_X, GAP_Y = 20, 14
+    card_w = (W - PAD * 2 - GAP_X) // 2
+    card_h = (548 - 120 - GAP_Y) // 2
 
-    # Company name
-    display_name = name if len(name) <= 32 else name[:30] + "…"
-    draw.text((PAD, cy + 10), display_name, font=_font(38), fill=WHITE, anchor="lm")
+    y_row1 = 120
+    y_row2 = y_row1 + card_h + GAP_Y
+    x_col1 = PAD
+    x_col2 = PAD + card_w + GAP_X
 
-    # Price card
-    if price is not None or market_cap is not None:
-        draw.rounded_rectangle([(PAD, cy + 60), (W - PAD, cy + 160)], radius=10, fill=SURFACE)
-        draw.rounded_rectangle([(PAD, cy + 60), (PAD + 6, cy + 160)], radius=3, fill=GREEN)
-        if price is not None:
-            draw.text((PAD + 24, cy + 100), f"${price:,.2f}", font=_font(42, bold=True), fill=WHITE, anchor="lm")
-        if market_cap is not None:
-            draw.text((W - PAD - 16, cy + 100), f"Cap  {_fmt_large(market_cap)}", font=_font(28), fill=GRAY_LT, anchor="rm")
+    # Price
+    price_str = f"${price:,.2f}" if price is not None else "—"
+    _metric_card(draw, x_col1, y_row1, x_col1 + card_w, y_row1 + card_h,
+                 "Price (USD)", price_str)
 
-    draw.text((PAD, H - 88), "Geographic Revenue & Market Intelligence", font=_font(22), fill=GRAY, anchor="lm")
+    # Day Change %
+    if change_pct is not None:
+        ch_color = GREEN if change_pct >= 0 else (248, 113, 113)
+        sign = "+" if change_pct >= 0 else ""
+        ch_str = f"{sign}{change_pct:.2f}%"
+    else:
+        ch_color, ch_str = GRAY_LT, "—"
+    _metric_card(draw, x_col2, y_row1, x_col2 + card_w, y_row1 + card_h,
+                 "Day Change", ch_str, value_color=ch_color)
+
+    # Market Cap
+    _metric_card(draw, x_col1, y_row2, x_col1 + card_w, y_row2 + card_h,
+                 "Market Cap", _fmt_large(market_cap) if market_cap else "—")
+
+    # Sector
+    sec_raw = sector or "—"
+    sec_disp = sec_raw if len(sec_raw) <= 18 else sec_raw[:16] + "…"
+    _metric_card(draw, x_col2, y_row2, x_col2 + card_w, y_row2 + card_h,
+                 "Sector", sec_disp, value_color=GRAY_LT, value_size=32)
 
     return _to_png_bytes(img)
 
@@ -253,26 +321,26 @@ def generate_og_images() -> dict:
 
         # ── Countries ──────────────────────────────────────────────────────
         countries = db.execute(select(Country)).scalars().all()
+
+        def _ci(country_id: int, indicator: str) -> float | None:
+            row = db.execute(
+                select(CountryIndicator)
+                .where(CountryIndicator.country_id == country_id,
+                       CountryIndicator.indicator == indicator)
+                .order_by(CountryIndicator.period_date.desc())
+                .limit(1)
+            ).scalar_one_or_none()
+            return row.value if row else None
+
         for c in countries:
             try:
-                gdp_row = db.execute(
-                    select(CountryIndicator)
-                    .where(CountryIndicator.country_id == c.id, CountryIndicator.indicator == "gdp_usd")
-                    .order_by(CountryIndicator.period_date.desc())
-                    .limit(1)
-                ).scalar_one_or_none()
-                growth_row = db.execute(
-                    select(CountryIndicator)
-                    .where(CountryIndicator.country_id == c.id, CountryIndicator.indicator == "gdp_growth_pct")
-                    .order_by(CountryIndicator.period_date.desc())
-                    .limit(1)
-                ).scalar_one_or_none()
-
                 img_bytes = _country_image(
                     c.flag_emoji or "",
                     c.name,
-                    gdp_row.value if gdp_row else None,
-                    growth_row.value if growth_row else None,
+                    gdp=_ci(c.id, "gdp_usd"),
+                    growth=_ci(c.id, "gdp_growth_pct"),
+                    inflation=_ci(c.id, "inflation_pct"),
+                    interest_rate=_ci(c.id, "interest_rate"),
                 )
                 _upload(f"og/countries/{c.code.lower()}.png", img_bytes)
                 counts["countries"] += 1
@@ -293,11 +361,17 @@ def generate_og_images() -> dict:
                     .limit(1)
                 ).scalar_one_or_none()
 
+                change_pct = None
+                if price_row and price_row.open and price_row.close and price_row.open > 0:
+                    change_pct = (price_row.close - price_row.open) / price_row.open * 100
+
                 img_bytes = _stock_image(
                     a.symbol,
                     a.name,
-                    price_row.close if price_row else None,
-                    a.market_cap_usd,
+                    price=price_row.close if price_row else None,
+                    market_cap=a.market_cap_usd,
+                    change_pct=change_pct,
+                    sector=a.sector,
                 )
                 _upload(f"og/stocks/{a.symbol.lower()}.png", img_bytes)
                 counts["stocks"] += 1
