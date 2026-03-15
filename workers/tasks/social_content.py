@@ -71,8 +71,43 @@ def _fmt_value(value: float, unit: str) -> str:
     return f"{value:.2f}"
 
 
+DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
+
+
+def _parse_json_response(text: str) -> dict | None:
+    """Parse JSON from LLM response, with recovery for truncated output."""
+    import re as _re
+    text = text.strip()
+    # Strip markdown code fences if present
+    text = _re.sub(r'^```(?:json)?\s*', '', text, flags=_re.MULTILINE)
+    text = _re.sub(r'\s*```$', '', text, flags=_re.MULTILINE)
+    text = text.strip()
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+    # Try closing truncated JSON
+    try:
+        fixed = text.rstrip(",").rstrip()
+        if fixed and not fixed.endswith("}"):
+            fixed = fixed + ('"' if fixed.count('"') % 2 == 1 else "") + "}"
+        return json.loads(fixed)
+    except Exception:
+        pass
+    # Regex extraction of completed string values
+    try:
+        partial = {}
+        for key in ("twitter", "linkedin", "facebook", "reddit_subreddit", "reddit_title", "reddit_body"):
+            m = _re.search(rf'"{key}"\s*:\s*"((?:[^"\\]|\\.)*)"', text, _re.DOTALL)
+            if m:
+                partial[key] = m.group(1).replace('\\"', '"').replace("\\n", "\n")
+        return partial if partial else None
+    except Exception:
+        return None
+
+
 def _call_gemini(prompt: str) -> dict | None:
-    """Call Gemini, return parsed JSON or None."""
+    """Call Gemini 2.5 Flash, return parsed JSON or None."""
     if not GEMINI_API_KEY:
         return None
     try:
@@ -89,33 +124,50 @@ def _call_gemini(prompt: str) -> dict | None:
             ),
         )
         text = (r.text or "").strip()
-        return json.loads(text)
-    except json.JSONDecodeError as e:
-        text = (getattr(r, "text", None) or "").strip()
-        log.warning("Gemini JSON truncated (%s), attempting recovery", e)
-        # 1. Try closing the truncated JSON
-        try:
-            fixed = text.rstrip(",").rstrip()
-            if fixed and not fixed.endswith("}"):
-                # Close any open string then close the object
-                fixed = fixed + ('"' if fixed.count('"') % 2 == 1 else "") + "}"
-            return json.loads(fixed)
-        except Exception:
-            pass
-        # 2. Regex extraction of completed string values (handles multiline with re.DOTALL)
-        try:
-            import re
-            partial = {}
-            for key in ("twitter", "linkedin", "facebook", "reddit_subreddit", "reddit_title", "reddit_body"):
-                m = re.search(rf'"{key}"\s*:\s*"((?:[^"\\]|\\.)*)"', text, re.DOTALL)
-                if m:
-                    partial[key] = m.group(1).replace('\\"', '"').replace("\\n", "\n")
-            return partial if partial else None
-        except Exception:
-            return None
+        return _parse_json_response(text)
     except Exception as e:
         log.warning("Gemini social content failed: %s", e)
         return None
+
+
+def _call_deepseek(prompt: str) -> dict | None:
+    """Call DeepSeek V3 via OpenAI-compatible API. Fallback when Gemini is unavailable."""
+    if not DEEPSEEK_API_KEY:
+        return None
+    try:
+        resp = requests.post(
+            "https://api.deepseek.com/chat/completions",
+            headers={
+                "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": "deepseek-chat",
+                "messages": [
+                    {"role": "system", "content": "You are a financial social media copywriter. Return only valid JSON."},
+                    {"role": "user", "content": prompt},
+                ],
+                "max_tokens": 2048,
+                "temperature": 0.7,
+                "response_format": {"type": "json_object"},
+            },
+            timeout=60,
+        )
+        resp.raise_for_status()
+        text = resp.json()["choices"][0]["message"]["content"]
+        return _parse_json_response(text)
+    except Exception as e:
+        log.warning("DeepSeek social content failed: %s", e)
+        return None
+
+
+def _call_ai(prompt: str) -> dict | None:
+    """Call Gemini first, fall back to DeepSeek V3 if Gemini is unavailable."""
+    result = _call_gemini(prompt)
+    if result:
+        return result
+    log.info("Gemini unavailable — falling back to DeepSeek V3")
+    return _call_deepseek(prompt)
 
 
 def _hook_country_spotlight(db) -> dict | None:
@@ -192,7 +244,7 @@ BAD: "Interesting economic update! Germany's debt-to-GDP ratio has climbed to 66
 
 Return ONLY valid JSON: {{"twitter": "...", "linkedin": "...", "facebook": "...", "reddit_subreddit": "...", "reddit_title": "...", "reddit_body": "..."}}
 """
-    result = _call_gemini(prompt)
+    result = _call_ai(prompt)
     if not result:
         return None
     return {
@@ -301,7 +353,7 @@ BAD: "Did you know Apple earns most of its revenue internationally? This is real
 
 Return ONLY valid JSON: {{"twitter": "...", "linkedin": "...", "facebook": "...", "reddit_subreddit": "...", "reddit_title": "...", "reddit_body": "..."}}
 """
-    result = _call_gemini(prompt)
+    result = _call_ai(prompt)
     if not result:
         return None
     return {
@@ -385,7 +437,7 @@ BAD: "The trade relationship between China and the US is fascinating and has man
 
 Return ONLY valid JSON: {{"twitter": "...", "linkedin": "...", "facebook": "...", "reddit_subreddit": "...", "reddit_title": "...", "reddit_body": "..."}}
 """
-    result = _call_gemini(prompt)
+    result = _call_ai(prompt)
     if not result:
         return None
     return {
@@ -470,7 +522,7 @@ def _send_draft_to_telegram(draft: dict) -> str | None:
         return None
 
 
-@app.task(name='tasks.social_content.generate_social_drafts', bind=True, max_retries=1)
+@app.task(name='tasks.social_content.generate_social_drafts', bind=True, max_retries=2)
 def generate_social_drafts(self):
     """Generate 3 social post drafts and send to Telegram for approval. Runs daily at 9am UTC."""
     db = SessionLocal()
@@ -486,7 +538,16 @@ def generate_social_drafts(self):
                 if _send_draft_to_telegram(draft):
                     sent += 1
         log.info("Social drafts generated and sent: %d/3", sent)
+        if sent == 0:
+            # All AI calls failed — retry after 5 minutes
+            raise self.retry(
+                exc=RuntimeError("All 3 AI calls failed — both Gemini and DeepSeek unavailable"),
+                countdown=300,
+            )
         return f"ok: {sent} drafts sent"
+    except self.MaxRetriesExceededError:
+        log.error("Social drafts: max retries exceeded — AI unavailable at 9am UTC")
+        return "error: max retries exceeded"
     except Exception as exc:
         log.exception("Social content generation failed")
         raise self.retry(exc=exc, countdown=300)
