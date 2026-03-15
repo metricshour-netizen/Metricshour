@@ -451,9 +451,9 @@ const absoluteTime = computed(() => {
 })
 
 // ── External URL ──────────────────────────────────────────────────────────────
-// Share URL points to the FastAPI /s/ endpoint which serves proper OG meta tags
-// and og:image to social crawlers, then JS-redirects real browsers to the feed page
-const shareUrl = computed(() => `https://api.metricshour.com/s/${props.event.id}`)
+// Share URL served by Nuxt SSR page /s/[id] — OG meta tags rendered server-side
+// for social crawlers; real browsers are JS-redirected to /feed/[id]
+const shareUrl = computed(() => `https://metricshour.com/s/${props.event.id}`)
 const { public: { r2PublicUrl } } = useRuntimeConfig()
 const r2Base = (r2PublicUrl as string || 'https://api.metricshour.com').replace(/\/$/, '')
 
