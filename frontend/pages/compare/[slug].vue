@@ -388,7 +388,7 @@ const _seoDesc = computed(() => {
 
 const _canonUrl = computed(() => `https://metricshour.com/compare/${codeA}-vs-${codeB}/`)
 const { public: { r2PublicUrl: _r2 } } = useRuntimeConfig()
-const _ogImage  = `${_r2}/og/section/countries.png`
+const _ogImage  = `${_r2}/og/countries/${codeA}.png`
 
 useSeoMeta({
   title:            _seoTitle,
