@@ -108,7 +108,8 @@ class FeedEventOut(BaseModel):
     def ensure_image_url(self) -> 'FeedEventOut':
         # Always return an OG image URL so the card always has a background
         if not self.image_url:
-            self.image_url = f"{settings.api_url}/og/feed/{self.id}.png"
+            r2 = settings.r2_public_url or "https://cdn.metricshour.com"
+            self.image_url = f"{r2}/og/feed/{self.id}.png"
         return self
 
 

@@ -269,7 +269,7 @@ function indexDescription(symbol: string): string {
 }
 
 const config = useRuntimeConfig()
-const r2PublicUrl = config.public.r2PublicUrl || 'https://api.metricshour.com'
+const r2PublicUrl = config.public.r2PublicUrl || 'https://cdn.metricshour.com'
 const ogImageUrl = `${r2PublicUrl}/og/indices/${symbol.toLowerCase()}.png`
 
 // ── SEO helpers — inject live price + change ──────────────────────────────────
