@@ -90,20 +90,11 @@ def _base_canvas() -> tuple[Image.Image, ImageDraw.ImageDraw]:
     img = Image.new("RGB", (W, H), BG)
     draw = ImageDraw.Draw(img)
 
-    # Top accent bar
-    draw.rectangle([(0, 0), (W, 5)], fill=GREEN)
+    # Thin top accent bar only — branding stays out of the data area
+    draw.rectangle([(0, 0), (W, 4)], fill=GREEN)
 
-    # Bottom brand bar
-    draw.rectangle([(0, H - 56), (W, H)], fill=SURFACE)
-
-    # M logo box
-    logo_sz = 34
-    lx, ly = 36, H - 56 + (56 - logo_sz) // 2
-    draw.rounded_rectangle([(lx, ly), (lx + logo_sz, ly + logo_sz)], radius=6, fill=GREEN)
-    draw.text((lx + logo_sz // 2, ly + logo_sz // 2), "M", font=_font(20, bold=True), fill=BG, anchor="mm")
-
-    draw.text((lx + logo_sz + 12, H - 28), "MetricsHour", font=_font(20, bold=True), fill=WHITE, anchor="lm")
-    draw.text((W - 36, H - 28), "metricshour.com", font=_font(17), fill=GRAY, anchor="rm")
+    # Minimal watermark: small gray URL bottom-right, does not obstruct data
+    draw.text((W - 36, H - 14), "metricshour.com", font=_font(13), fill=GRAY, anchor="rm")
 
     return img, draw
 
@@ -150,7 +141,7 @@ def _country_image(
     # ── 2 × 2 metric grid ─────────────────────────────────────────────────
     GAP_X, GAP_Y = 20, 14
     card_w = (W - PAD * 2 - GAP_X) // 2   # ≈ 534 px
-    card_h = (548 - 120 - GAP_Y) // 2      # ≈ 207 px
+    card_h = (600 - 120 - GAP_Y) // 2      # ≈ 233 px — taller now brand bar gone
 
     y_row1 = 120
     y_row2 = y_row1 + card_h + GAP_Y
@@ -209,7 +200,7 @@ def _stock_image(
     # ── 2 × 2 metric grid ─────────────────────────────────────────────────
     GAP_X, GAP_Y = 20, 14
     card_w = (W - PAD * 2 - GAP_X) // 2
-    card_h = (548 - 120 - GAP_Y) // 2
+    card_h = (600 - 120 - GAP_Y) // 2      # taller now brand bar gone
 
     y_row1 = 120
     y_row2 = y_row1 + card_h + GAP_Y
@@ -244,32 +235,44 @@ def _stock_image(
     return _to_png_bytes(img)
 
 
-def _trade_image(flag_a: str, name_a: str, flag_b: str, name_b: str, trade_value: float | None) -> bytes:
+def _trade_image(
+    flag_a: str, name_a: str, flag_b: str, name_b: str,
+    trade_value: float | None,
+    exports_usd: float | None = None,
+    imports_usd: float | None = None,
+    year: int | None = None,
+) -> bytes:
     img, draw = _base_canvas()
+    PAD = 56
 
-    PAD = 48
-    cy = H // 2 - 30
+    # ── Header: Country A  ↔  Country B ──────────────────────────────────
+    name_a_d = name_a if len(name_a) <= 16 else name_a[:14] + "…"
+    name_b_d = name_b if len(name_b) <= 16 else name_b[:14] + "…"
 
-    # Country A block (left)
-    name_a_disp = name_a if len(name_a) <= 14 else name_a[:12] + "…"
-    draw.text((PAD, cy - 50), flag_a, font=_font(72), fill=WHITE, anchor="lm")
-    draw.text((PAD, cy + 20), name_a_disp, font=_font(40, bold=True), fill=WHITE, anchor="lm")
+    draw.text((PAD, 22), flag_a, font=_font(44), fill=WHITE, anchor="lt")
+    draw.text((PAD, 72), name_a_d, font=_font(36, bold=True), fill=WHITE, anchor="lt")
+    draw.text((W // 2, 50), "↔", font=_font(46, bold=True), fill=GREEN, anchor="mm")
+    draw.text((W - PAD, 22), flag_b, font=_font(44), fill=WHITE, anchor="rt")
+    draw.text((W - PAD, 72), name_b_d, font=_font(36, bold=True), fill=WHITE, anchor="rt")
 
-    # Arrow (center)
-    draw.text((W // 2, cy - 14), "↔", font=_font(64, bold=True), fill=GREEN, anchor="mm")
+    # ── Trade volume — full-width card ────────────────────────────────────
+    vol_label = "Total Trade Volume" + (f"  ·  {year}" if year else "")
+    _metric_card(draw, PAD, 118, W - PAD, 298, vol_label,
+                 _fmt_large(trade_value) if trade_value else "—", value_size=52)
 
-    # Country B block (right)
-    name_b_disp = name_b if len(name_b) <= 14 else name_b[:12] + "…"
-    draw.text((W - PAD, cy - 50), flag_b, font=_font(72), fill=WHITE, anchor="rm")
-    draw.text((W - PAD, cy + 20), name_b_disp, font=_font(40, bold=True), fill=WHITE, anchor="rm")
+    # ── Exports | Imports — side by side ──────────────────────────────────
+    GAP_X = 20
+    card_w = (W - PAD * 2 - GAP_X) // 2
+    y2, card_h2 = 314, 230
 
-    # Trade value card
-    if trade_value is not None:
-        draw.rounded_rectangle([(PAD, cy + 70), (W - PAD, cy + 160)], radius=10, fill=SURFACE)
-        draw.rounded_rectangle([(PAD, cy + 70), (PAD + 6, cy + 160)], radius=3, fill=GREEN)
-        draw.text((W // 2, cy + 115), f"Trade volume  {_fmt_large(trade_value)}", font=_font(34, bold=True), fill=WHITE, anchor="mm")
-
-    draw.text((PAD, H - 88), "Bilateral Trade Intelligence · UN Comtrade", font=_font(22), fill=GRAY, anchor="lm")
+    code_a = name_a[:3].upper()
+    code_b = name_b[:3].upper()
+    _metric_card(draw, PAD, y2, PAD + card_w, y2 + card_h2,
+                 f"Exports  {code_a} → {code_b}",
+                 _fmt_large(exports_usd) if exports_usd else "—")
+    _metric_card(draw, PAD + card_w + GAP_X, y2, W - PAD, y2 + card_h2,
+                 f"Exports  {code_b} → {code_a}",
+                 _fmt_large(imports_usd) if imports_usd else "—")
 
     return _to_png_bytes(img)
 
@@ -399,6 +402,9 @@ def generate_og_images() -> dict:
                     imp.flag_emoji or "",
                     imp.name,
                     p.trade_value_usd,
+                    exports_usd=p.exports_usd,
+                    imports_usd=p.imports_usd,
+                    year=p.year,
                 )
                 pair_key = f"{exp.code.lower()}-{imp.code.lower()}"
                 _upload(f"og/trade/{pair_key}.png", img_bytes)
@@ -466,14 +472,8 @@ def _feed_event_image(
     else:
         draw.rectangle([(0, 0), (W, 5)], fill=accent)
 
-    # Bottom brand bar (consistent with other templates)
-    draw.rectangle([(0, H - 56), (W, H)], fill=SURFACE)
-    logo_sz = 34
-    lx, ly = 36, H - 56 + (56 - logo_sz) // 2
-    draw.rounded_rectangle([(lx, ly), (lx + logo_sz, ly + logo_sz)], radius=6, fill=accent)
-    draw.text((lx + logo_sz // 2, ly + logo_sz // 2), "M", font=_font(20, bold=True), fill=bg_color, anchor="mm")
-    draw.text((lx + logo_sz + 12, H - 28), "MetricsHour", font=_font(20, bold=True), fill=WHITE, anchor="lm")
-    draw.text((W - 36, H - 28), "metricshour.com", font=_font(17), fill=GRAY, anchor="rm")
+    # Minimal watermark only — no brand bar blocking content
+    draw.text((W - 36, H - 14), "metricshour.com", font=_font(13), fill=GRAY, anchor="rm")
 
     # Event type badge pill (top-left)
     TYPE_LABELS = {
