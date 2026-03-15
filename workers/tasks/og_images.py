@@ -23,6 +23,11 @@ GRAY_LT  = (156, 163, 175)   # gray-400
 
 W, H = 1200, 630
 
+# ── Data source attributions (official/government sources only) ───────────────
+_SOURCE_COUNTRY = "World Bank"
+_SOURCE_TRADE   = "UN Comtrade"
+# Stocks: price data from commercial provider — no source label shown
+
 # ── Fonts (DejaVu — guaranteed on Ubuntu) ────────────────────────────────────
 _FONT_BASE = "/usr/share/fonts/truetype/dejavu"
 
@@ -348,7 +353,7 @@ def generate_og_images() -> dict:
                     growth=_ci(c.id, "gdp_growth_pct"),
                     inflation=_ci(c.id, "inflation_pct"),
                     interest_rate=_ci(c.id, "interest_rate"),
-                    source="World Bank",
+                    source=_SOURCE_COUNTRY,
                 )
                 _upload(f"og/countries/{c.code.lower()}.png", img_bytes)
                 counts["countries"] += 1
@@ -380,7 +385,7 @@ def generate_og_images() -> dict:
                     market_cap=a.market_cap_usd,
                     change_pct=change_pct,
                     sector=a.sector,
-                    source="Yahoo Finance",
+                    source="",
                 )
                 _upload(f"og/stocks/{a.symbol.lower()}.png", img_bytes)
                 counts["stocks"] += 1
@@ -413,7 +418,7 @@ def generate_og_images() -> dict:
                     year=p.year,
                     code_a=exp.code,
                     code_b=imp.code,
-                    source="UN Comtrade",
+                    source=_SOURCE_TRADE,
                 )
                 pair_key = f"{exp.code.lower()}-{imp.code.lower()}"
                 _upload(f"og/trade/{pair_key}.png", img_bytes)
