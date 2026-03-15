@@ -555,7 +555,7 @@ def _feed_event_image(
         # Generic: bold title centred
         pass  # handled below in title section
 
-    # ── Title block (bottom area, above brand bar) ────────────────────────
+    # ── Title block (bottom area) ──────────────────────────────────────────
     clean_title = title.encode("ascii", "ignore").decode("ascii").strip(" →↑↓·–—") or title
     words = clean_title.split()
     lines: list[str] = []
@@ -571,9 +571,8 @@ def _feed_event_image(
         lines.append(current)
     lines = lines[:3]
 
-    # title_y chosen so 3 lines × 42px all clear the brand bar (starts at H-56=574)
-    # Line 2 centre = H-175+84 = 539 → text bottom ~558, 16px above brand bar
-    title_y = H - 175
+    # title_y: 3 lines × 42px ending ~30px above the bottom watermark
+    title_y = H - 148
     for i, line in enumerate(lines):
         draw.text((56, title_y + i * 42), line, font=_font(32, bold=True), fill=WHITE, anchor="lm")
 
