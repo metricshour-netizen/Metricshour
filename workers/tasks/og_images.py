@@ -241,6 +241,8 @@ def _trade_image(
     exports_usd: float | None = None,
     imports_usd: float | None = None,
     year: int | None = None,
+    code_a: str = "",
+    code_b: str = "",
 ) -> bytes:
     img, draw = _base_canvas()
     PAD = 56
@@ -265,13 +267,14 @@ def _trade_image(
     card_w = (W - PAD * 2 - GAP_X) // 2
     y2, card_h2 = 314, 230
 
-    code_a = name_a[:3].upper()
-    code_b = name_b[:3].upper()
+    # Use ISO codes (passed in) for clear labels
+    lbl_a = (code_a or name_a[:3]).upper()
+    lbl_b = (code_b or name_b[:3]).upper()
     _metric_card(draw, PAD, y2, PAD + card_w, y2 + card_h2,
-                 f"Exports  {code_a} → {code_b}",
+                 f"Exports  {lbl_a} → {lbl_b}",
                  _fmt_large(exports_usd) if exports_usd else "—")
     _metric_card(draw, PAD + card_w + GAP_X, y2, W - PAD, y2 + card_h2,
-                 f"Exports  {code_b} → {code_a}",
+                 f"Exports  {lbl_b} → {lbl_a}",
                  _fmt_large(imports_usd) if imports_usd else "—")
 
     return _to_png_bytes(img)
@@ -405,6 +408,8 @@ def generate_og_images() -> dict:
                     exports_usd=p.exports_usd,
                     imports_usd=p.imports_usd,
                     year=p.year,
+                    code_a=exp.code,
+                    code_b=imp.code,
                 )
                 pair_key = f"{exp.code.lower()}-{imp.code.lower()}"
                 _upload(f"og/trade/{pair_key}.png", img_bytes)
