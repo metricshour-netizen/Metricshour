@@ -224,6 +224,65 @@
 
 ---
 
+## Session 2026-03-15 (night) — Celery failure elimination + AI key hardening
+
+### Celery failures — ALL ELIMINATED ✅
+
+| Task | Error | Fix | Commit |
+|------|-------|-----|--------|
+| `oecd_update` | CardinalityViolation (weekly, recurring) | try/except around bulk upsert → row-by-row fallback | `2071a0a` |
+| `summaries.run_insight_batch` | MultipleResultsFound | `scalar_one_or_none()` → `scalars().first()` on PageInsight, PageSummary; added `asset_type` filter to all Asset symbol lookups; `.limit(1)` on TradePair query | `2071a0a` |
+| `social_content` (9am) | Gemini instant timeout, 0 drafts sent | DeepSeek V3 fallback added; verified 3/3 drafts sent at 09:17 UTC | `bad3e82` |
+
+**celery-failures.log**: last entry 2026-03-15T01:10 (OECD). All subsequent tasks clean.
+
+### 9am social media posts — WORKING ✅
+- `generate_social_drafts` fires at 9am UTC via Celery Beat
+- Chain: Gemini primary key → Gemini secondary key → DeepSeek V3
+- 3 drafts sent to Telegram (Brazil country, SAP SE stock, Netherlands–Germany trade) at 09:17 UTC
+- Verified: `DEEPSEEK_API_KEY` set in Netcup `.env` ✓
+
+### Morning visual cards (Contabo cron) — 4/4 WORKING ✅
+- `morning_social.py` runs at 09:05 UTC on Contabo
+- **Root cause of 2/4**: `_find_best_growth_corridor()` required 2022+2023 corridor overlap — zero rows exist (each year uses different data source, no pairs appear in both years)
+- **Fix**: replaced with `_find_top_corridor()` — picks biggest 2023 corridor by volume, fetches any available prior-year data for sparkline
+- **Test run**: Netherlands ↔ Germany = $288B → 4/4 cards sent ✓
+
+### AI key safety hardening ✅
+- `GEMINI_API_KEY_2` support added everywhere Gemini is called:
+  - `social_content.py`: full try-key-1 → try-key-2 → DeepSeek chain
+  - `macro_alert_checker.py`: `active_key = GEMINI_API_KEY or GEMINI_API_KEY_2`
+  - `seo_monitor.py`: `_GEMINI_KEY = GEMINI_API_KEY or GEMINI_API_KEY_2`
+  - `test_ai.py`: safe `.get()` instead of `['key']` (was crashing on missing key)
+- **Zero hardcoded keys anywhere** — full audit confirmed
+- **Commit**: `b9325c1`, deployed to Netcup, worker restarted
+
+### Key security rules (enforced going forward)
+- Never paste API keys into chat — set them on server: `nano /root/metricshour/backend/.env`
+- Test keys via SSH: `cd /root/metricshour/workers && python3 test_ai.py`
+- To add `GEMINI_API_KEY_2`: `echo 'GEMINI_API_KEY_2=<key>' >> /root/metricshour/backend/.env` then `systemctl restart metricshour-api metricshour-worker`
+
+### Full AI model map (as of 2026-03-15 night)
+| Layer | Primary | Fallback 1 | Fallback 2 |
+|-------|---------|-----------|-----------|
+| `social_content` (9am drafts) | `GEMINI_API_KEY` | `GEMINI_API_KEY_2` | DeepSeek V3 |
+| `summaries` bulk | DeepSeek V3 | gemini-2.5-flash | — |
+| `summaries` G20 | gemini-2.5-flash | DeepSeek V3 | — |
+| `macro_alert_checker` | `GEMINI_API_KEY` || `GEMINI_API_KEY_2` | — | — |
+| `seo_monitor` | `_GEMINI_KEY` (key1 or key2) | — | — |
+| OpenClaw (Telegram) | deepseek-chat | gemini-2.5-flash | — |
+| Anthropic/Claude | NOT USED anywhere | — | — |
+
+### Open items (carry forward)
+- [ ] Set `GEMINI_API_KEY_2` in Netcup `.env` (user to do via SSH — never paste in chat)
+- [ ] Facebook Page Access Token — `FACEBOOK_PAGE_ACCESS_TOKEN` still empty
+- [ ] Cloudflare Turnstile on /register
+- [ ] Pricing page comparison table
+- [ ] Prometheus/Grafana Telegram alertmanager
+- [ ] SSL cert expires 2026-05-21 (auto-renews at 30 days)
+
+---
+
 ## Session 2026-03-15 (late) — DeepSeek V3 fix + AGENTS.md overhaul
 
 ### DeepSeek V3 — FIXED ✅
