@@ -455,7 +455,7 @@ const absoluteTime = computed(() => {
 // for social crawlers; real browsers are JS-redirected to /feed/[id]
 const shareUrl = computed(() => `https://metricshour.com/s/${props.event.id}`)
 const { public: { r2PublicUrl } } = useRuntimeConfig()
-const r2Base = (r2PublicUrl as string || 'https://api.metricshour.com').replace(/\/$/, '')
+const r2Base = (r2PublicUrl as string || 'https://cdn.metricshour.com').replace(/\/$/, '')
 
 const copied = ref(false)
 
