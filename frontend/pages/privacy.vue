@@ -104,6 +104,7 @@
 useSeoMeta({
   title: 'Privacy Policy — MetricsHour',
   description: 'How MetricsHour collects, uses, and protects your personal data.',
+  ogDescription: 'How MetricsHour collects, uses, and protects your personal data.',
   ogTitle: 'Privacy Policy — MetricsHour',
   ogUrl: 'https://metricshour.com/privacy/',
   ogImage: 'https://cdn.metricshour.com/og/section/home.png',
