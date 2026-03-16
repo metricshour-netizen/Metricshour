@@ -122,5 +122,15 @@ useSeoMeta({
 })
 useHead({
   link: [{ rel: 'canonical', href: 'https://metricshour.com/terms/' }],
+  script: [{
+    type: 'application/ld+json',
+    innerHTML: JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'WebPage',
+      name: 'Terms of Service — MetricsHour',
+      url: 'https://metricshour.com/terms/',
+      isPartOf: { '@type': 'WebSite', name: 'MetricsHour', url: 'https://metricshour.com' },
+    }),
+  }],
 })
 </script>

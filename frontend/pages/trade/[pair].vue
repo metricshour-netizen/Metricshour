@@ -573,6 +573,13 @@ useHead(computed(() => ({
         name: `${data.value.exporter.name}–${data.value.importer.name} Trade — MetricsHour`,
         url: `https://metricshour.com/trade/${data.value?.canonical_pair ?? pair}/`,
         description: `${data.value.exporter.name} and ${data.value.importer.name} bilateral trade flows, top products, and GDP dependency. Source: UN Comtrade.`,
+        mainEntity: {
+          '@type': 'ItemList',
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, item: { '@type': 'Country', name: data.value.exporter.name } },
+            { '@type': 'ListItem', position: 2, item: { '@type': 'Country', name: data.value.importer.name } },
+          ],
+        },
         speakable: {
           '@type': 'SpeakableSpecification',
           cssSelector: ['.page-summary', '.page-insight-latest'],

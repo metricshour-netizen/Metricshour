@@ -115,5 +115,15 @@ useSeoMeta({
 })
 useHead({
   link: [{ rel: 'canonical', href: 'https://metricshour.com/privacy/' }],
+  script: [{
+    type: 'application/ld+json',
+    innerHTML: JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'WebPage',
+      name: 'Privacy Policy — MetricsHour',
+      url: 'https://metricshour.com/privacy/',
+      isPartOf: { '@type': 'WebSite', name: 'MetricsHour', url: 'https://metricshour.com' },
+    }),
+  }],
 })
 </script>

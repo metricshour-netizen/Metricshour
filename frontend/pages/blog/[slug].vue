@@ -128,21 +128,35 @@ useSeoMeta({
 
 useHead({
   link: [{ rel: 'canonical', href: `https://metricshour.com/blog/${slug}/` }],
-  script: [{
-    type: 'application/ld+json',
-    innerHTML: computed(() => post.value ? JSON.stringify({
-      '@context': 'https://schema.org',
-      '@type': 'Article',
-      headline: post.value.title,
-      description: post.value.excerpt || '',
-      image: post.value.cover_image_url || 'https://metricshour.com/og-image.png',
-      author: { '@type': 'Person', name: post.value.author_name },
-      publisher: { '@type': 'Organization', name: 'MetricsHour', url: 'https://metricshour.com', logo: { '@type': 'ImageObject', url: 'https://metricshour.com/favicon.svg' } },
-      datePublished: post.value.published_at || '',
-      dateModified: post.value.published_at || '',
-      mainEntityOfPage: { '@type': 'WebPage', '@id': `https://metricshour.com/blog/${slug}` },
-      url: `https://metricshour.com/blog/${slug}`,
-    }) : '{}'),
-  }],
+  script: [
+    {
+      type: 'application/ld+json',
+      innerHTML: computed(() => post.value ? JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'Article',
+        headline: post.value.title,
+        description: post.value.excerpt || '',
+        image: post.value.cover_image_url || 'https://metricshour.com/og-image.png',
+        author: { '@type': 'Person', name: post.value.author_name },
+        publisher: { '@type': 'Organization', name: 'MetricsHour', url: 'https://metricshour.com', logo: { '@type': 'ImageObject', url: 'https://metricshour.com/favicon.svg' } },
+        datePublished: post.value.published_at || '',
+        dateModified: post.value.published_at || '',
+        mainEntityOfPage: { '@type': 'WebPage', '@id': `https://metricshour.com/blog/${slug}` },
+        url: `https://metricshour.com/blog/${slug}`,
+      }) : '{}'),
+    },
+    {
+      type: 'application/ld+json',
+      innerHTML: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://metricshour.com' },
+          { '@type': 'ListItem', position: 2, name: 'Blog', item: 'https://metricshour.com/blog/' },
+          { '@type': 'ListItem', position: 3, name: slug, item: `https://metricshour.com/blog/${slug}/` },
+        ],
+      }),
+    },
+  ],
 })
 </script>

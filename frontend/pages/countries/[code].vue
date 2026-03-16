@@ -638,6 +638,7 @@ useHead(computed(() => ({
         name: `${country.value.name} Economy & Macro Data — MetricsHour`,
         url: `https://metricshour.com/countries/${code}/`,
         description: `GDP, inflation, trade flows, and 80+ macro indicators for ${country.value.name}. Data from World Bank, IMF, and UN Comtrade.`,
+        mainEntity: { '@type': 'Country', name: country.value.name },
         speakable: {
           '@type': 'SpeakableSpecification',
           cssSelector: ['.page-summary', '.page-insight-latest'],

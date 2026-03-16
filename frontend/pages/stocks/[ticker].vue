@@ -730,6 +730,7 @@ useHead(computed(() => ({
         name: `${stock.value.symbol} — ${stock.value.name} — MetricsHour`,
         url: `https://metricshour.com/stocks/${ticker.toLowerCase()}/`,
         description: `${stock.value.name} (${stock.value.symbol}) geographic revenue breakdown from SEC EDGAR.`,
+        mainEntity: { '@type': 'Corporation', name: stock.value.name, tickerSymbol: stock.value.symbol },
         speakable: {
           '@type': 'SpeakableSpecification',
           cssSelector: ['.page-summary', '.page-insight-latest'],

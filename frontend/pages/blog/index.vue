@@ -111,5 +111,23 @@ useSeoMeta({
 
 useHead({
   link: [{ rel: 'canonical', href: 'https://metricshour.com/blog/' }],
+  script: [{
+    type: 'application/ld+json',
+    innerHTML: JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'CollectionPage',
+      name: 'Blog — MetricsHour',
+      url: 'https://metricshour.com/blog/',
+      description: 'Market intelligence articles, data analysis, and financial commentary from the MetricsHour team.',
+      isPartOf: { '@type': 'WebSite', name: 'MetricsHour', url: 'https://metricshour.com' },
+      breadcrumb: {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://metricshour.com' },
+          { '@type': 'ListItem', position: 2, name: 'Blog', item: 'https://metricshour.com/blog/' },
+        ],
+      },
+    }),
+  }],
 })
 </script>
