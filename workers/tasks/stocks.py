@@ -12,6 +12,10 @@ from datetime import datetime, timezone
 
 import requests
 import yfinance as yf
+
+# yfinance logs internal per-ticker errors at ERROR level before our except blocks run.
+# We handle missing tickers ourselves, so suppress yfinance's own noisy output.
+logging.getLogger("yfinance").setLevel(logging.CRITICAL)
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 

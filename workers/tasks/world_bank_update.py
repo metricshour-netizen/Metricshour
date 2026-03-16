@@ -111,6 +111,9 @@ def _fetch_indicator(wb_code: str, date_range: str = "2018:2024") -> list[dict]:
     }
     try:
         r = requests.get(url, params=params, timeout=30)
+        if r.status_code in (400, 404):
+            log.warning(f"WB indicator unavailable (HTTP {r.status_code}): {wb_code}")
+            return []
         r.raise_for_status()
         data = r.json()
         if not data or len(data) < 2 or not data[1]:
@@ -125,7 +128,7 @@ def _fetch_indicator(wb_code: str, date_range: str = "2018:2024") -> list[dict]:
             if row.get("value") is not None
         ]
     except Exception:
-        log.exception(f"WB fetch failed: {wb_code}")
+        log.warning(f"WB fetch failed: {wb_code}")
         return []
 
 
