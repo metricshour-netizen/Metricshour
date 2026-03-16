@@ -120,9 +120,11 @@
               </div>
               <div class="text-right shrink-0 ml-2">
                 <div class="text-sm font-bold tabular-nums font-mono" :class="isStale(s.price?.timestamp) ? 'text-gray-400' : 'text-white'">{{ s.price ? fmtPrice(s.price.close) : '—' }}</div>
+                <div v-if="s.price?.change_pct != null" class="text-[10px] tabular-nums font-medium mt-0.5"
+                     :class="s.price.change_pct >= 0 ? 'text-emerald-400' : 'text-red-400'">
+                  {{ s.price.change_pct >= 0 ? '▲' : '▼' }} {{ Math.abs(s.price.change_pct).toFixed(2) }}%
+                </div>
                 <div class="text-[10px] text-gray-600 tabular-nums">{{ fmtCap(s.market_cap_usd) }}</div>
-                <div v-if="s.price?.timestamp" class="text-[11px] mt-1 tabular-nums font-mono font-semibold" :class="isStale(s.price.timestamp) ? 'text-amber-400' : 'text-emerald-400'">↻ {{ fmtCloseDate(s.price.timestamp) }}</div>
-                <div v-else-if="s.price" class="text-[10px] mt-0.5 text-gray-600">no ts</div>
               </div>
             </div>
             <!-- Desktop row -->
@@ -139,10 +141,10 @@
               <span class="text-xs text-gray-500 truncate pr-2">{{ s.sector || '—' }}</span>
               <div class="text-right">
                 <div class="text-sm font-bold tabular-nums font-mono" :class="isStale(s.price?.timestamp) ? 'text-gray-400' : 'text-white'">{{ s.price ? fmtPrice(s.price.close) : '—' }}</div>
-                <div v-if="s.price?.timestamp" class="text-xs tabular-nums font-mono mt-1 font-semibold" :class="isStale(s.price.timestamp) ? 'text-amber-400' : 'text-emerald-400'">
-                  ↻ {{ fmtCloseDate(s.price.timestamp) }}
+                <div v-if="s.price?.change_pct != null" class="text-xs tabular-nums font-medium mt-0.5"
+                     :class="s.price.change_pct >= 0 ? 'text-emerald-400' : 'text-red-400'">
+                  {{ s.price.change_pct >= 0 ? '▲' : '▼' }} {{ Math.abs(s.price.change_pct).toFixed(2) }}%
                 </div>
-                <div v-else-if="s.price" class="text-[10px] text-gray-600 mt-0.5">no timestamp</div>
                 <div v-else class="text-[10px] text-gray-600">no data</div>
               </div>
               <span class="text-xs text-right text-gray-400 tabular-nums">{{ fmtCap(s.market_cap_usd) }}</span>

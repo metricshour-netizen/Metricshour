@@ -50,10 +50,10 @@
               <div class="mt-auto">
                 <template v-if="apiMap[idx.symbol]?.price?.close != null">
                   <div class="text-base font-extrabold text-white tabular-nums">{{ fmtPrice(apiMap[idx.symbol].price.close) }}</div>
-                  <div v-if="apiMap[idx.symbol].price.open" class="text-[10px] mt-0.5 tabular-nums"
-                    :class="apiMap[idx.symbol].price.close >= apiMap[idx.symbol].price.open ? 'text-emerald-400' : 'text-red-400'">
-                    {{ apiMap[idx.symbol].price.close >= apiMap[idx.symbol].price.open ? '▲' : '▼' }}
-                    {{ Math.abs(((apiMap[idx.symbol].price.close - apiMap[idx.symbol].price.open) / apiMap[idx.symbol].price.open) * 100).toFixed(2) }}%
+                  <div v-if="apiMap[idx.symbol].price.change_pct != null" class="text-[10px] mt-0.5 tabular-nums"
+                    :class="apiMap[idx.symbol].price.change_pct >= 0 ? 'text-emerald-400' : 'text-red-400'">
+                    {{ apiMap[idx.symbol].price.change_pct >= 0 ? '▲' : '▼' }}
+                    {{ Math.abs(apiMap[idx.symbol].price.change_pct).toFixed(2) }}%
                   </div>
                 </template>
                 <div v-else class="text-base font-extrabold text-gray-700 tabular-nums">—</div>

@@ -91,9 +91,9 @@ def _fetch_marketstack(symbols: list[str]) -> dict[str, float]:
     return result
 
 
-def _fetch_yfinance(symbols: list[str]) -> dict[str, float]:
-    """yfinance fallback for symbols Marketstack doesn't cover."""
-    result: dict[str, float] = {}
+def _fetch_yfinance(symbols: list[str]) -> dict[str, tuple[float | None, float]]:
+    """yfinance fallback. Returns {symbol: (open_price, close_price)}."""
+    result: dict[str, tuple[float | None, float]] = {}
     for i in range(0, len(symbols), CHUNK_SIZE):
         chunk = symbols[i:i + CHUNK_SIZE]
         try:
@@ -104,8 +104,10 @@ def _fetch_yfinance(symbols: list[str]) -> dict[str, float]:
             for sym in chunk:
                 try:
                     close = df[sym]['Close'].dropna()
+                    open_ = df[sym]['Open'].dropna()
                     if not close.empty:
-                        result[sym] = float(close.iloc[-1])
+                        open_val = float(open_.iloc[-1]) if not open_.empty else None
+                        result[sym] = (open_val, float(close.iloc[-1]))
                 except (KeyError, IndexError, TypeError):
                     pass
         except Exception:
@@ -113,8 +115,17 @@ def _fetch_yfinance(symbols: list[str]) -> dict[str, float]:
     return result
 
 
-def _upsert_prices(db, symbol_to_asset: dict, prices: dict[str, float], now: datetime) -> int:
-    # Fetch last known price per asset for spike guard
+def _upsert_prices(
+    db,
+    symbol_to_asset: dict,
+    prices: dict[str, tuple[float | None, float] | float],
+    now: datetime,
+) -> int:
+    """
+    Upsert daily prices. `prices` values can be (open, close) tuples or bare close floats.
+    Timestamp must already be day-truncated by the caller.
+    On conflict, updates close but preserves the day's first open.
+    """
     asset_ids = [symbol_to_asset[s].id for s in prices if s in symbol_to_asset]
     last_prices: dict[int, float] = {}
     for aid in asset_ids:
@@ -125,32 +136,37 @@ def _upsert_prices(db, symbol_to_asset: dict, prices: dict[str, float], now: dat
             last_prices[aid] = last
 
     rows = []
-    for sym, price in prices.items():
+    for sym, price_data in prices.items():
         if sym not in symbol_to_asset:
             continue
+        open_val, close_val = price_data if isinstance(price_data, tuple) else (None, price_data)
         asset = symbol_to_asset[sym]
         if asset.id in last_prices and last_prices[asset.id] > 0:
-            chg = abs((price - last_prices[asset.id]) / last_prices[asset.id]) * 100
+            chg = abs((close_val - last_prices[asset.id]) / last_prices[asset.id]) * 100
             if chg > MAX_STOCK_SPIKE_PCT:
                 log.warning(
                     'Stock spike rejected: %s new=%.4f prev=%.4f chg=%.1f%%',
-                    sym, price, last_prices[asset.id], chg,
+                    sym, close_val, last_prices[asset.id], chg,
                 )
                 continue
         rows.append({
             'asset_id': asset.id,
             'timestamp': now,
             'interval': '1d',
-            'open': None, 'high': None, 'low': None,
-            'close': price,
+            'open': open_val, 'high': None, 'low': None,
+            'close': close_val,
             'volume': None,
         })
     if not rows:
         return 0
     stmt = pg_insert(Price).values(rows)
+    # On conflict: update close (intraday updates) but preserve the day's first open
     stmt = stmt.on_conflict_do_update(
         constraint='uq_price_asset_time_interval',
-        set_={'close': stmt.excluded.close},
+        set_={
+            'close': stmt.excluded.close,
+            'open': stmt.excluded.open,  # overwrite open only if new open is not null
+        },
     )
     db.execute(stmt)
     return len(rows)
@@ -169,7 +185,8 @@ def fetch_stock_prices(self):
         if not symbols:
             return
 
-        now = datetime.now(timezone.utc).replace(second=0, microsecond=0)
+        # Truncate to day-start so every run upserts the same daily row
+        now = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
 
         # Skip entirely on weekends — no exchange has settled EOD data
         if not is_trading_day(now):
@@ -190,11 +207,12 @@ def fetch_stock_prices(self):
         # Fallback / intraday: yfinance covers anything Marketstack missed and
         # keeps prices updating throughout the trading day.
         missed = [s for s in symbols if s not in ms_prices]
-        yf_prices: dict[str, float] = {}
+        yf_prices: dict[str, tuple[float | None, float]] = {}
         if missed:
             yf_prices = _fetch_yfinance(missed)
 
-        prices = {**ms_prices, **yf_prices}
+        # Marketstack returns bare close floats; yfinance returns (open, close) tuples
+        prices: dict[str, tuple[float | None, float] | float] = {**ms_prices, **yf_prices}
         count = _upsert_prices(db, symbol_to_asset, prices, now)
         db.commit()
         log.info(

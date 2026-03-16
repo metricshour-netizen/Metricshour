@@ -85,13 +85,7 @@ def list_assets(
     for a in assets:
         row = _asset_summary(a, countries.get(a.country_id))
         p = prices.get(a.id)
-        row["price"] = {
-            "close": p.close,
-            "open": p.open,
-            "high": p.high,
-            "low": p.low,
-            "timestamp": p.timestamp.isoformat(),
-        } if p else None
+        row["price"] = _price_dict(p) if p else None
         result.append(row)
 
     if cache_key:
@@ -203,18 +197,27 @@ def get_asset(request: Request, symbol: str, db: Session = Depends(get_db)) -> d
                 })
 
     result = _asset_summary(asset, country)
-    result["price"] = {
-        "close": latest_price.close,
-        "open": latest_price.open,
-        "high": latest_price.high,
-        "low": latest_price.low,
-        "timestamp": latest_price.timestamp.isoformat(),
-    } if latest_price else None
+    result["price"] = _price_dict(latest_price) if latest_price else None
     result["country_revenues"] = revenues
 
     # Prices are updated every 15min — cache for 15min so data is never stale
     cache_set(cache_key, result, ttl_seconds=900)
     return result
+
+
+def _price_dict(p: Price) -> dict:
+    """Serialize a Price row including computed change_pct from open/close."""
+    chg = None
+    if p.open and p.open > 0 and p.close is not None:
+        chg = round((p.close - p.open) / p.open * 100, 4)
+    return {
+        "close": p.close,
+        "open": p.open,
+        "high": p.high,
+        "low": p.low,
+        "change_pct": chg,
+        "timestamp": p.timestamp.isoformat(),
+    }
 
 
 def _asset_summary(asset: Asset, country: Country | None) -> dict:

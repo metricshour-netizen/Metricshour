@@ -99,31 +99,65 @@ def fetch_fx_rates(self):
             except Exception:
                 log.exception('FX daily fallback fetch failed')
 
-        now = datetime.now(timezone.utc).replace(second=0, microsecond=0)
-        rows = [
-            {
-                'asset_id': yf_to_asset[yf_sym].id,
-                'timestamp': now,
-                'interval': '15m',
-                'open': None,
-                'high': None,
-                'low': None,
-                'close': price,
-                'volume': None,
-            }
-            for yf_sym, price in prices.items()
-            if yf_sym in yf_to_asset
-        ]
+        now_minute = datetime.now(timezone.utc).replace(second=0, microsecond=0)
+        now_day = now_minute.replace(hour=0, minute=0)
 
-        if rows:
-            stmt = pg_insert(Price).values(rows)
+        # Also fetch daily open for change % calculation
+        daily_open: dict[str, float | None] = {}
+        try:
+            tickers_d = yf_symbols if len(yf_symbols) > 1 else yf_symbols * 2
+            df_d = yf.download(
+                tickers_d, period='2d', interval='1d',
+                group_by='ticker', progress=False, threads=True,
+            )
+            for yf_sym in yf_symbols:
+                try:
+                    open_ = df_d[yf_sym]['Open'].dropna()
+                    daily_open[yf_sym] = float(open_.iloc[-1]) if not open_.empty else None
+                except (KeyError, IndexError, TypeError):
+                    daily_open[yf_sym] = None
+        except Exception:
+            pass
+
+        rows_15m = []
+        rows_1d = []
+        for yf_sym, price in prices.items():
+            if yf_sym not in yf_to_asset:
+                continue
+            asset_id = yf_to_asset[yf_sym].id
+            rows_15m.append({
+                'asset_id': asset_id,
+                'timestamp': now_minute,
+                'interval': '15m',
+                'open': None, 'high': None, 'low': None,
+                'close': price, 'volume': None,
+            })
+            rows_1d.append({
+                'asset_id': asset_id,
+                'timestamp': now_day,
+                'interval': '1d',
+                'open': daily_open.get(yf_sym), 'high': None, 'low': None,
+                'close': price, 'volume': None,
+            })
+
+        if rows_15m:
+            stmt = pg_insert(Price).values(rows_15m)
             stmt = stmt.on_conflict_do_update(
                 constraint='uq_price_asset_time_interval',
                 set_={'close': stmt.excluded.close},
             )
             db.execute(stmt)
-            db.commit()
-            log.info(f'FX: upserted {len(rows)} rates')
+
+        if rows_1d:
+            stmt = pg_insert(Price).values(rows_1d)
+            stmt = stmt.on_conflict_do_update(
+                constraint='uq_price_asset_time_interval',
+                set_={'close': stmt.excluded.close, 'open': stmt.excluded.open},
+            )
+            db.execute(stmt)
+
+        db.commit()
+        log.info(f'FX: upserted {len(rows_15m)} 15m + {len(rows_1d)} 1d rates')
 
     except Exception as exc:
         db.rollback()

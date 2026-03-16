@@ -348,6 +348,10 @@ const latestPrice = computed(() => {
 })
 
 const change24h = computed(() => {
+  // Prefer API-provided change_pct (computed from open/close in same daily row)
+  const chg = asset.value?.price?.change_pct
+  if (chg != null) return chg
+  // Fallback: consecutive closes from price history
   const p = pricesRaw.value
   if (!p || p.length < 2) return null
   const prev = p[p.length - 2].c

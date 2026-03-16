@@ -49,6 +49,10 @@
                 <div class="text-4xl font-extrabold text-white tabular-nums tracking-tight">
                   {{ stock.price ? `$${stock.price.close.toFixed(2)}` : '—' }}
                 </div>
+                <div v-if="stock.price?.change_pct != null" class="text-sm font-bold tabular-nums mt-1"
+                     :class="stock.price.change_pct >= 0 ? 'text-emerald-400' : 'text-red-400'">
+                  {{ stock.price.change_pct >= 0 ? '▲' : '▼' }} {{ Math.abs(stock.price.change_pct).toFixed(2) }}% today
+                </div>
                 <div class="text-xs text-gray-600 mt-1">
                   <template v-if="stock.price">Last updated · <span class="font-mono text-emerald-700">{{ fmtPriceTs(stock.price.timestamp) }}</span></template>
                   <template v-else>Awaiting price feed</template>

@@ -52,38 +52,62 @@ def fetch_crypto_prices(self):
                 'ids': ','.join(ids),
                 'vs_currencies': 'usd',
                 'include_24hr_vol': 'true',
+                'include_24hr_change': 'true',
             },
             timeout=15,
         )
         resp.raise_for_status()
         data = resp.json()
 
-        now = datetime.now(timezone.utc).replace(second=0, microsecond=0)
-        rows = []
+        now_minute = datetime.now(timezone.utc).replace(second=0, microsecond=0)
+        now_day = now_minute.replace(hour=0, minute=0)
+
+        rows_1m = []
+        rows_1d = []
         for cg_id, vals in data.items():
             sym = ID_TO_SYMBOL.get(cg_id)
             if not sym or sym not in symbol_to_asset:
                 continue
-            rows.append({
+            close = vals['usd']
+            change_pct = vals.get('usd_24h_change')
+            # Reconstruct 24h-ago price as a proxy for today's open
+            open_val = close / (1 + change_pct / 100) if change_pct is not None else None
+
+            rows_1m.append({
                 'asset_id': symbol_to_asset[sym].id,
-                'timestamp': now,
+                'timestamp': now_minute,
                 'interval': '1m',
-                'open': None,
-                'high': None,
-                'low': None,
-                'close': vals['usd'],
+                'open': None, 'high': None, 'low': None,
+                'close': close,
+                'volume': vals.get('usd_24h_vol'),
+            })
+            rows_1d.append({
+                'asset_id': symbol_to_asset[sym].id,
+                'timestamp': now_day,
+                'interval': '1d',
+                'open': open_val, 'high': None, 'low': None,
+                'close': close,
                 'volume': vals.get('usd_24h_vol'),
             })
 
-        if rows:
-            stmt = pg_insert(Price).values(rows)
+        if rows_1m:
+            stmt = pg_insert(Price).values(rows_1m)
             stmt = stmt.on_conflict_do_update(
                 constraint='uq_price_asset_time_interval',
                 set_={'close': stmt.excluded.close, 'volume': stmt.excluded.volume},
             )
             db.execute(stmt)
-            db.commit()
-            log.info(f'Crypto: upserted {len(rows)} prices')
+
+        if rows_1d:
+            stmt = pg_insert(Price).values(rows_1d)
+            stmt = stmt.on_conflict_do_update(
+                constraint='uq_price_asset_time_interval',
+                set_={'close': stmt.excluded.close, 'volume': stmt.excluded.volume, 'open': stmt.excluded.open},
+            )
+            db.execute(stmt)
+
+        db.commit()
+        log.info(f'Crypto: upserted {len(rows_1m)} 1m + {len(rows_1d)} 1d prices')
 
     except Exception as exc:
         db.rollback()

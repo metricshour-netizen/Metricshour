@@ -675,10 +675,17 @@ const tickerItems = computed(() => {
     .map((a: any) => {
       const p = a.price
       if (!p?.close) return null
-      const open = p.open || p.close
-      const dir = p.close >= open ? 1 : -1
-      const pct = open > 0 ? Math.abs((p.close - open) / open * 100) : 0
-      return { symbol: a.symbol, assetType: a.asset_type, priceStr: fmtTickerPrice(p.close), changePct: pct.toFixed(2) + '%', dir, typeColor: tickerTypeColor(a.asset_type) }
+      // Use API-provided change_pct; fallback to open/close ratio if available
+      let chgPct: number
+      if (p.change_pct != null) {
+        chgPct = p.change_pct
+      } else if (p.open && p.open > 0) {
+        chgPct = (p.close - p.open) / p.open * 100
+      } else {
+        return null  // skip assets with no change data — don't show 0.0%
+      }
+      const dir = chgPct >= 0 ? 1 : -1
+      return { symbol: a.symbol, assetType: a.asset_type, priceStr: fmtTickerPrice(p.close), changePct: Math.abs(chgPct).toFixed(2) + '%', dir, typeColor: tickerTypeColor(a.asset_type) }
     })
     .filter(Boolean) as { symbol: string; priceStr: string; changePct: string; dir: number; typeColor: string }[]
 })

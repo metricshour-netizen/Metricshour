@@ -47,9 +47,9 @@ YFINANCE_MAP: dict[str, str] = {
 }
 
 
-def _fetch_commodity_prices(yf_symbols: list[str]) -> dict[str, float]:
-    """Returns {yfinance_symbol: latest_close}."""
-    result: dict[str, float] = {}
+def _fetch_commodity_prices(yf_symbols: list[str]) -> dict[str, tuple[float | None, float]]:
+    """Returns {yfinance_symbol: (open, close)} for the latest trading day."""
+    result: dict[str, tuple[float | None, float]] = {}
     try:
         # Always use multi-ticker path so df[sym] gives a clean sub-DataFrame
         tickers = yf_symbols if len(yf_symbols) > 1 else yf_symbols * 2
@@ -62,8 +62,10 @@ def _fetch_commodity_prices(yf_symbols: list[str]) -> dict[str, float]:
         for sym in yf_symbols:
             try:
                 close = df[sym]['Close'].dropna()
+                open_ = df[sym]['Open'].dropna()
                 if not close.empty:
-                    result[sym] = float(close.iloc[-1])
+                    open_val = float(open_.iloc[-1]) if not open_.empty else None
+                    result[sym] = (open_val, float(close.iloc[-1]))
             except (KeyError, IndexError):
                 pass
     except Exception:
@@ -96,7 +98,8 @@ def fetch_commodity_prices(self):
             return
 
         prices = _fetch_commodity_prices(list(yf_to_asset.keys()))
-        now = datetime.now(timezone.utc).replace(second=0, microsecond=0)
+        # Truncate to day-start so every run upserts the same daily row
+        now = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
 
         # Build last-known prices for spike guard
         last_prices: dict[int, float] = {}
@@ -108,24 +111,25 @@ def fetch_commodity_prices(self):
                 last_prices[asset.id] = last
 
         rows = []
-        for yf_sym, price in prices.items():
+        for yf_sym, price_data in prices.items():
             if yf_sym not in yf_to_asset:
                 continue
+            open_val, close_val = price_data
             asset = yf_to_asset[yf_sym]
             if asset.id in last_prices and last_prices[asset.id] > 0:
-                chg = abs((price - last_prices[asset.id]) / last_prices[asset.id]) * 100
+                chg = abs((close_val - last_prices[asset.id]) / last_prices[asset.id]) * 100
                 if chg > MAX_COMMODITY_SPIKE_PCT:
                     log.warning(
                         'Commodity spike rejected: %s new=%.4f prev=%.4f chg=%.1f%%',
-                        asset.symbol, price, last_prices[asset.id], chg,
+                        asset.symbol, close_val, last_prices[asset.id], chg,
                     )
                     continue
             rows.append({
                 'asset_id': asset.id,
                 'timestamp': now,
                 'interval': '1d',
-                'open': None, 'high': None, 'low': None,
-                'close': price,
+                'open': open_val, 'high': None, 'low': None,
+                'close': close_val,
                 'volume': None,
             })
 
@@ -133,7 +137,7 @@ def fetch_commodity_prices(self):
             stmt = pg_insert(Price).values(rows)
             stmt = stmt.on_conflict_do_update(
                 constraint='uq_price_asset_time_interval',
-                set_={'close': stmt.excluded.close},
+                set_={'close': stmt.excluded.close, 'open': stmt.excluded.open},
             )
             db.execute(stmt)
             db.commit()

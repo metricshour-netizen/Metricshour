@@ -348,8 +348,14 @@ const PriceBadge = defineComponent({
     }
     return { fmtPrice }
   },
-  template: `<div v-if="asset?.price" class="text-sm font-bold text-white mt-2 tabular-nums">{{ fmtPrice(asset.price.close) }}</div>
-             <div v-else class="text-[10px] text-gray-700 mt-2 flex items-center gap-1"><span class="w-1 h-1 rounded-full bg-yellow-700 inline-block"></span> Pending</div>`,
+  template: `<template v-if="asset?.price">
+    <div class="text-sm font-bold text-white mt-2 tabular-nums">{{ fmtPrice(asset.price.close) }}</div>
+    <div v-if="asset.price.change_pct != null" class="text-[10px] mt-0.5 tabular-nums font-medium"
+         :class="asset.price.change_pct >= 0 ? 'text-emerald-400' : 'text-red-400'">
+      {{ asset.price.change_pct >= 0 ? '▲' : '▼' }} {{ Math.abs(asset.price.change_pct).toFixed(2) }}%
+    </div>
+  </template>
+  <div v-else class="text-[10px] text-gray-700 mt-2 flex items-center gap-1"><span class="w-1 h-1 rounded-full bg-yellow-700 inline-block"></span> Pending</div>`,
 })
 
 // ── Data ──────────────────────────────────────────────────────────────────────
