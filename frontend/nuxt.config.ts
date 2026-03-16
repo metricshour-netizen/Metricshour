@@ -93,10 +93,10 @@ export default defineNuxtConfig({
     '/feed': { headers: { 'Cache-Control': 'public, s-maxage=300, max-age=60, stale-while-revalidate=3600' } },
     '/feed/**': { headers: { 'Cache-Control': 'public, s-maxage=300, max-age=60, stale-while-revalidate=3600' } },
 
-    '/login/': { redirect: { to: '/', statusCode: 301 } },
-    '/login': { redirect: { to: '/', statusCode: 301 } },
-    '/register/': { redirect: { to: '/', statusCode: 301 } },
-    '/register': { redirect: { to: '/', statusCode: 301 } },
+    '/register/': { redirect: { to: '/join', statusCode: 301 } },
+    '/register': { redirect: { to: '/join', statusCode: 301 } },
+    '/signup/': { redirect: { to: '/join', statusCode: 301 } },
+    '/signup': { redirect: { to: '/join', statusCode: 301 } },
     // Common commodity name aliases → canonical ticker URLs
     '/commodities/gold/': { redirect: { to: '/commodities/xauusd/', statusCode: 301 } },
     '/commodities/gold': { redirect: { to: '/commodities/xauusd/', statusCode: 301 } },

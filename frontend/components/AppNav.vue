@@ -27,7 +27,8 @@
           </div>
         </template>
         <template v-else>
-          <button class="text-xs bg-emerald-700 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg transition-colors font-semibold" @click="showAuth = true">Sign In</button>
+          <NuxtLink to="/login" class="text-xs text-gray-300 hover:text-white transition-colors font-medium">Sign In</NuxtLink>
+          <NuxtLink to="/join" class="text-xs bg-emerald-700 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg transition-colors font-semibold">Join Free</NuxtLink>
         </template>
         <!-- Search trigger -->
         <button
@@ -93,7 +94,10 @@
           </div>
         </template>
         <template v-else>
-          <button class="w-full bg-emerald-700 hover:bg-emerald-600 text-white text-sm font-semibold py-2.5 rounded-lg transition-colors" @click="showAuth = true; menuOpen = false">Sign In</button>
+          <div class="flex gap-2">
+            <NuxtLink to="/login" @click="menuOpen = false" class="flex-1 text-center text-sm text-gray-300 border border-[#1f2937] py-2.5 rounded-lg transition-colors hover:text-white font-medium">Sign In</NuxtLink>
+            <NuxtLink to="/join" @click="menuOpen = false" class="flex-1 text-center bg-emerald-700 hover:bg-emerald-600 text-white text-sm font-semibold py-2.5 rounded-lg transition-colors">Join Free</NuxtLink>
+          </div>
         </template>
       </div>
     </div>
