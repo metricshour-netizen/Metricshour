@@ -34,9 +34,24 @@
       </div>
 
       <!-- Body -->
-      <div class="prose prose-invert prose-sm max-w-none text-gray-300 leading-relaxed whitespace-pre-wrap mb-10">
-        {{ post.body }}
-      </div>
+      <div
+        class="prose prose-invert prose-sm max-w-none text-gray-300 leading-relaxed mb-10
+               prose-headings:text-white prose-headings:font-bold
+               prose-h2:text-xl prose-h2:mt-8 prose-h2:mb-3
+               prose-h3:text-lg prose-h3:mt-6 prose-h3:mb-2
+               prose-p:text-gray-300 prose-p:leading-relaxed
+               prose-a:text-emerald-400 prose-a:no-underline hover:prose-a:underline
+               prose-strong:text-white
+               prose-em:text-gray-400
+               prose-blockquote:border-emerald-500 prose-blockquote:text-gray-400
+               prose-table:text-sm prose-table:w-full
+               prose-th:text-white prose-th:bg-[#111827] prose-th:px-3 prose-th:py-2
+               prose-td:px-3 prose-td:py-2 prose-td:border-gray-800
+               prose-img:rounded-xl prose-img:w-full prose-img:my-6
+               prose-hr:border-gray-800
+               prose-code:text-emerald-400 prose-code:bg-[#0d1117] prose-code:px-1 prose-code:rounded"
+        v-html="renderedBody"
+      />
 
       <!-- Share buttons -->
       <div class="flex items-center gap-3 mb-8">
@@ -75,6 +90,8 @@
 </template>
 
 <script setup lang="ts">
+import { marked } from 'marked'
+
 interface BlogPost {
   id: number
   title: string
@@ -88,14 +105,28 @@ interface BlogPost {
 
 const route = useRoute()
 const { get } = useApi()
+const runtimeConfig = useRuntimeConfig()
 
 const slug = route.params.slug as string
 const articleUrl = `https://metricshour.com/blog/${slug}`
 
 const { data: post, pending, error } = useAsyncData(
   `blog-${slug}`,
-  () => get<BlogPost>(`/api/blog/${slug}`).catch(() => null),
+  async () => {
+    // On the server, call the API directly (bypasses Cloudflare which strips markdown images)
+    const base = import.meta.server
+      ? runtimeConfig.apiBaseServer
+      : runtimeConfig.public.apiBase
+    const res = await fetch(`${base}/api/blog/${slug}`).catch(() => null)
+    if (!res || !res.ok) return null
+    return res.json() as Promise<BlogPost>
+  },
 )
+
+const renderedBody = computed(() => {
+  if (!post.value?.body) return ''
+  return marked.parse(post.value.body, { async: false }) as string
+})
 
 const readingTime = computed(() => {
   if (!post.value?.body) return 1

@@ -11,6 +11,8 @@ export default defineNuxtConfig({
   },
 
   runtimeConfig: {
+    // Private — server-side only. Bypasses Cloudflare to prevent JSON body transformation.
+    apiBaseServer: process.env.NUXT_API_BASE_SERVER || 'http://127.0.0.1:8000',
     public: {
       apiBase: process.env.NUXT_PUBLIC_API_BASE || 'https://api.metricshour.com',
       // R2 CDN base URL — cdn.metricshour.com is a Cloudflare R2 custom domain.

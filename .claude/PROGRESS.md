@@ -1,6 +1,46 @@
 # MetricsHour — Progress & Session Log
 
-## Session 2026-03-16 (latest) — Price change % fix + Moltis PDF/blog — commit 0ae6514
+## Session 2026-03-16c — Moltis blog hallucination fix + first blog post published ✅
+
+### Moltis publish_blog was hallucinating — FIXED
+- Root cause: Moltis LLM was routing blog publishes to Directus CMS (wrong system) instead of calling the `publish_blog` MCP tool which uses `api.metricshour.com/api/admin/blogs`
+- Evidence: session JSONL showed Moltis fabricating "Directus CMS Link: cms.metricshour.com/..." URLs that never existed
+- Fix: Updated `publish_blog` tool description in `/root/openclaw/mcp_server.py` — explicit warning: "NOT Directus CMS, do NOT call cms.metricshour.com, do NOT use SSH to write files"
+- Deployed to Contabo; mcp_server restarts on-demand so fix is live immediately
+
+### First blog post published ✅
+- Article: "The Great Geographic Blind Spot: Why Your Portfolio Is Riskier Than You Think"
+- Source: medium_article_final.pdf (940.5 KB) sent via Telegram today
+- URL: https://metricshour.com/blog/the-great-geographic-blind-spot-why-your-portfolio-is-riskier-than-you-think
+- Status: Published (ID: 2, feed event auto-created)
+- CF cache purged (used zone ID 6af28d1007b6f8de70ced8653822e49a + VLogFrQw... token)
+
+### Bridge stability issues diagnosed
+- Old `telegram_doc_bridge.py` was being run manually, conflicting with webhook bridge during 19:06-20:19
+- Since 20:19 webhook bridge is stable (tg-bridge.service running, no cron/service for old script)
+- Moltis still has `[channels.telegram.openclaw]` in moltis.toml → spams getUpdates errors but is harmless (can still send replies)
+
+---
+
+## Session 2026-03-16b — Contabo WireGuard + Moltis private routing ✅
+
+### Contabo added to WireGuard mesh
+- Installed WireGuard on Contabo (158.220.92.254), assigned IP **10.0.0.3/24**
+- Contabo pubkey: `B8P7R1d77LLcD0Wyu5KDAoMSVBSjnI2+DlioMhXHsxE=`
+- Added as peer on Netcup (10.0.0.1) + Hetzner (10.0.0.2) — live `wg set` + conf file
+- All 3 servers can ping each other via private IPs. Latency: Contabo↔Netcup ~20ms, Contabo↔Hetzner ~38ms
+- wg-quick@wg0 enabled on boot on Contabo
+
+### Moltis routes updated to WireGuard IPs
+- `publish_blog` / `list_blog_posts`: `https://cms.metricshour.com` → `http://10.0.0.2:8055`
+- `NETCUP` constant in all crons: `159.195.29.136` → `10.0.0.1`
+- SSH targets in story_finder.py: public IP → `10.0.0.1`
+- Moltis restarted (PID 248010)
+- Verified: `curl http://10.0.0.2:8055/server/health` → `{"status":"ok"}` from Contabo ✅
+
+---
+
+## Session 2026-03-16 — Price change % fix + Moltis PDF/blog — commit 0ae6514
 
 ### Price change % — FIXED EVERYWHERE ✅
 Root cause: all workers stored `open=None`, stocks/commodities used minute-precision timestamps for `interval='1d'` creating 167k duplicate rows. Result: `change_pct` was always 0.0% or null.
