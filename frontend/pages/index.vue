@@ -150,6 +150,11 @@
         </NuxtLink>
       </div>
 
+      <div v-if="!isLoggedIn" class="flex items-center justify-center gap-3 mt-5">
+        <NuxtLink to="/join" class="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors">Create Free Account</NuxtLink>
+        <NuxtLink to="/login" class="text-sm text-gray-400 hover:text-white transition-colors">Sign In →</NuxtLink>
+      </div>
+
     </section>
 
     <!-- ── Economic Calendar Strip ────────────────────────────────────────── -->
@@ -402,6 +407,7 @@
 <script setup lang="ts">
 const { get } = useApi()
 const router = useRouter()
+const { isLoggedIn } = useAuth()
 
 // ── G20 Countries ─────────────────────────────────────────────────────────────
 const { data: countries, pending: countriesPending } = useAsyncData(
