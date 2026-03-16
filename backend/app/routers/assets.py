@@ -62,13 +62,13 @@ def list_assets(
         rows = db.execute(select(Country).where(Country.id.in_(country_ids))).scalars().all()
         countries = {c.id: c for c in rows}
 
-    # Batch-load latest price per asset (any interval) to avoid N+1
+    # Batch-load latest 1d price per asset to get open/close for change_pct
     asset_ids = [a.id for a in assets]
     prices: dict[int, Price] = {}
     if asset_ids:
         latest_ts_sq = (
             select(Price.asset_id, func.max(Price.timestamp).label("max_ts"))
-            .where(Price.asset_id.in_(asset_ids))
+            .where(Price.asset_id.in_(asset_ids), Price.interval == "1d")
             .group_by(Price.asset_id)
             .subquery()
         )
@@ -77,7 +77,7 @@ def list_assets(
                 latest_ts_sq,
                 (Price.asset_id == latest_ts_sq.c.asset_id) &
                 (Price.timestamp == latest_ts_sq.c.max_ts)
-            )
+            ).where(Price.interval == "1d")
         ).scalars().all()
         prices = {p.asset_id: p for p in price_rows}
 
