@@ -78,6 +78,7 @@ app = Celery('metricshour', include=[
     'tasks.social_content',
     'tasks.seo_monitor',
     'tasks.security_monitor',
+    'tasks.google_indexing',
     'tasks.data_quality_monitor',
     'tasks.search_index',
     'tasks.watchdog',
@@ -149,6 +150,12 @@ app.conf.update(
             # CF Pages no longer serves traffic — skip the deploy hook, just ping IndexNow + Bing
             'task': 'tasks.sitemap_deploy.ping_only',
             'schedule': crontab(hour=4, minute=0),
+        },
+        'google-indexing-daily-405am': {
+            # Submit 200 URLs/day to Google Indexing API (rotates through all ~2800 URLs)
+            # Requires GOOGLE_INDEXING_KEY_FILE set in .env (see tasks/google_indexing.py)
+            'task': 'tasks.google_indexing.submit_daily_batch',
+            'schedule': crontab(hour=4, minute=5),
         },
         # Summaries only regenerate when underlying data changes (staleness checks inside).
         # Weekly beat is a safety net — most entities will be skipped by the staleness checks.

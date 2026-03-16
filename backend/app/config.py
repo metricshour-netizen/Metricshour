@@ -36,6 +36,8 @@ class Settings:
     # Google OAuth
     google_client_id: str = os.environ.get("GOOGLE_CLIENT_ID", "")
     google_client_secret: str = os.environ.get("GOOGLE_CLIENT_SECRET", "")
+    # Google Indexing API (service account JSON key file path)
+    google_indexing_key_file: str = os.environ.get("GOOGLE_INDEXING_KEY_FILE", "")
     frontend_url: str = os.environ.get("FRONTEND_URL", "https://metricshour.com")
     api_url: str = os.environ.get("API_URL", "https://api.metricshour.com")
     # Notifications
