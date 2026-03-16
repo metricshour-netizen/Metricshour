@@ -75,20 +75,19 @@ interface BlogPost {
   published_at?: string | null
 }
 
-const { get } = useApi()
-const posts = ref<BlogPost[]>([])
-const pending = ref(true)
+const runtimeConfig = useRuntimeConfig()
 
-onMounted(async () => {
-  try {
-    const data = await get<BlogPost[]>('/api/blog', { limit: 50 })
-    posts.value = Array.isArray(data) ? data : []
-  } catch {
-    posts.value = []
-  } finally {
-    pending.value = false
-  }
+const { data, pending } = useAsyncData('blog-index', async () => {
+  const base = import.meta.server
+    ? runtimeConfig.apiBaseServer
+    : runtimeConfig.public.apiBase
+  const res = await fetch(`${base}/api/blog?limit=50`).catch(() => null)
+  if (!res || !res.ok) return []
+  const data = await res.json()
+  return Array.isArray(data) ? data : []
 })
+
+const posts = computed<BlogPost[]>(() => data.value ?? [])
 
 function formatDate(iso?: string | null): string {
   if (!iso) return ''
