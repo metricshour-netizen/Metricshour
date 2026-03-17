@@ -943,7 +943,7 @@ def _trigger_reel_via_moltis(style: str, subject: str, hook: str) -> None:
             "from": {"id": int(TELEGRAM_CHAT_ID), "is_bot": False, "first_name": "Scheduler"},
             "chat": {"id": int(TELEGRAM_CHAT_ID), "type": "private"},
             "date": int(time.time()),
-            "text": f"Generate a {style} reel now. Subject: {subject}. Hook: {hook}",
+            "text": f"[AUTOMATED] Call mcp__metricshour__smart_reel now: style={style} subject={subject} hook={hook}",
         },
     }
     try:
@@ -960,27 +960,32 @@ def _trigger_reel_via_moltis(style: str, subject: str, hook: str) -> None:
 
 @app.task(name='tasks.social_content.generate_social_drafts', bind=True, max_retries=2)
 def generate_social_drafts(self):
-    """Generate 3 social post drafts and send to Telegram. Runs daily at 9am UTC."""
+    """Generate 1 rotating social post draft and send to Telegram. Runs daily at 9am UTC.
+    Rotates daily: country spotlight → stock exposure → trade insight → repeat.
+    Keeps morning total at 2 posts (market_open at 8am + this at 9am) + 1 reel (8:30am).
+    """
     db = SessionLocal()
     try:
-        hooks = [
-            _hook_country_spotlight(db),
-            _hook_stock_exposure(db),
-            _hook_trade_insight(db),
-        ]
-        sent = 0
-        for draft in hooks:
+        # Rotate hook type by day-of-year so it cycles: country → stock → trade
+        from datetime import date
+        day_index = date.today().timetuple().tm_yday % 3
+        hook_fns = [_hook_country_spotlight, _hook_stock_exposure, _hook_trade_insight]
+        # Try primary hook first, fall back to next ones if data unavailable
+        draft = None
+        for i in range(3):
+            fn = hook_fns[(day_index + i) % 3]
+            draft = fn(db)
             if draft and draft.get("linkedin"):
-                if _send_draft_to_telegram(draft):
-                    sent += 1
-        log.info("Social drafts generated and sent: %d/3", sent)
-        if sent == 0:
-            # All AI calls failed — retry after 5 minutes
-            raise self.retry(
-                exc=RuntimeError("All 3 AI calls failed — both Gemini and DeepSeek unavailable"),
-                countdown=300,
-            )
-        return f"ok: {sent} drafts sent"
+                break
+        if draft and draft.get("linkedin"):
+            if _send_draft_to_telegram(draft):
+                log.info("Social draft (09:00) sent to Telegram: %s", draft.get("entity", "?"))
+                return "ok: 1 draft sent"
+        log.warning("Social draft (09:00): no data or AI unavailable")
+        raise self.retry(
+            exc=RuntimeError("Social draft: no data or AI call failed"),
+            countdown=300,
+        )
     except self.MaxRetriesExceededError:
         log.error("Social drafts: max retries exceeded — AI unavailable at 9am UTC")
         return "error: max retries exceeded"
@@ -1073,8 +1078,40 @@ def generate_morning_reel():
     return "reel triggered"
 
 
+@app.task(name='tasks.social_content.generate_morning_reel_2')
+def generate_morning_reel_2():
+    """Generate second morning reel via Moltis at 9:30 UTC.
+    Rotates daily: country_deep_dive → stock_analysis → trade_spotlight.
+    """
+    from datetime import date
+    styles = [
+        ("country_deep_dive", "US", "The macro story behind the world's largest economy"),
+        ("stock_analysis", "AAPL", "How global trade shapes this stock's revenue"),
+        ("trade_spotlight", "US-CN", "The world's most important trade relationship"),
+    ]
+    pick = styles[date.today().timetuple().tm_yday % 3]
+    _trigger_reel_via_moltis(pick[0], pick[1], pick[2])
+    return "reel triggered"
+
+
 @app.task(name='tasks.social_content.generate_evening_reel')
 def generate_evening_reel():
     """Generate evening crypto/wrap reel via Moltis at 17:30 UTC."""
     _trigger_reel_via_moltis("crypto_update", "bitcoin", "Today's crypto wrap: biggest moves of the day")
+    return "reel triggered"
+
+
+@app.task(name='tasks.social_content.generate_evening_reel_2')
+def generate_evening_reel_2():
+    """Generate second evening reel via Moltis at 18:30 UTC.
+    Rotates daily: commodities → trade_spotlight → country_deep_dive.
+    """
+    from datetime import date
+    styles = [
+        ("commodities", "gold", "Gold, oil, metals — today's commodity moves"),
+        ("trade_spotlight", "DE-CN", "Europe's biggest trade corridor in focus"),
+        ("country_deep_dive", "CN", "China's economy: the numbers that move markets"),
+    ]
+    pick = styles[date.today().timetuple().tm_yday % 3]
+    _trigger_reel_via_moltis(pick[0], pick[1], pick[2])
     return "reel triggered"
