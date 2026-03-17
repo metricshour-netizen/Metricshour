@@ -270,10 +270,14 @@ app.conf.update(
             'schedule': crontab(hour=7, minute=15),
         },
 
-        # Social content drafts — 4 daily slots sent to Telegram for approval
+        # Social content — 6 daily slots: posts (copy-ready Telegram) + reels (via tg-bridge → Moltis)
         'social-market-open-8am': {
             'task': 'tasks.social_content.generate_market_open_drafts',
             'schedule': crontab(hour=8, minute=0),
+        },
+        'social-morning-reel-830': {
+            'task': 'tasks.social_content.generate_morning_reel',
+            'schedule': crontab(hour=8, minute=30),
         },
         'social-insight-9am': {
             'task': 'tasks.social_content.generate_social_drafts',
@@ -282,6 +286,10 @@ app.conf.update(
         'social-evening-wrap-5pm': {
             'task': 'tasks.social_content.generate_evening_wrap_drafts',
             'schedule': crontab(hour=17, minute=0),
+        },
+        'social-evening-reel-1730': {
+            'task': 'tasks.social_content.generate_evening_reel',
+            'schedule': crontab(hour=17, minute=30),
         },
         'social-viral-hook-6pm': {
             'task': 'tasks.social_content.generate_viral_hook_drafts',

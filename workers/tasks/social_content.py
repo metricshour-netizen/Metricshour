@@ -1,12 +1,12 @@
 """
-Social Content Pipeline — generates post drafts and sends to Telegram for approval.
+Social Content Pipeline — generates post copy and delivers to Telegram for manual publishing.
 
 Flow:
   Celery Beat (scheduled daily)
     → pull interesting data hooks from DB
     → Gemini 2.5 Flash generates Twitter + LinkedIn + Facebook + Instagram copy
-    → send each to Telegram with inline buttons
-    → user taps approval → FastAPI webhook → posts to platform
+    → send each to Telegram as 5 separate copy-ready messages (image + 4 platforms)
+    → user reads in Telegram, long-press copies, and posts manually
 
 Content hooks:
   1. Country spotlight — G20 country with notable indicator value
@@ -15,11 +15,16 @@ Content hooks:
   4. Market movers — top 5 biggest price movers (8am)
   5. Day wrap — biggest gainer + loser end-of-day (5pm)
   6. Viral stat — shocking "did you know" financial stat (6pm)
+
+Reel scheduling (via tg-bridge → Moltis):
+  7. Morning reel — market recap at 8:30 UTC
+  8. Evening reel — crypto/wrap at 17:30 UTC
 """
 import json
 import logging
 import os
 import random
+import time
 from datetime import date, timedelta
 
 import requests
@@ -31,19 +36,17 @@ from app.models.country import Country, CountryIndicator
 from app.models.asset import Asset, StockCountryRevenue
 from sqlalchemy.orm import aliased
 
-from app.storage import get_redis
-
 log = logging.getLogger(__name__)
 
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 GEMINI_API_KEY_2 = os.environ.get("GEMINI_API_KEY_2", "")
-
-DRAFT_TTL = 60 * 60 * 48  # 48h — drafts expire if not acted on
+TELEGRAM_WEBHOOK_SECRET = os.environ.get("TELEGRAM_WEBHOOK_SECRET", "")
 
 SITE_URL = "https://metricshour.com"
 CDN_URL = "https://cdn.metricshour.com"
+TG_BRIDGE_URL = "http://10.0.0.3:8767/webhook"
 
 # Indicators worth posting about (interesting to investors)
 SPOTLIGHT_INDICATORS = [
@@ -808,79 +811,156 @@ Return ONLY valid JSON: {{"twitter": "...", "linkedin": "...", "facebook": "..."
 
 
 def _send_draft_to_telegram(draft: dict) -> str | None:
-    """Send draft to Telegram with inline approval buttons. Returns message_id or None."""
+    """Send draft to Telegram as 5 separate copy-ready messages. Returns 'ok' or None."""
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         return None
 
-    draft_key = f"social:draft:{draft['type']}:{draft['entity_code']}:{date.today().isoformat()}"
+    tg_api = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
+    og_image_url = draft.get("og_image_url", "")
+    entity = draft.get("entity", "")
+    label = draft.get("label", "")
+    value = draft.get("value", "")
+    slot_name = draft.get("type", "post").replace("_", " ").title()
 
-    # Store draft in Redis for webhook to retrieve
-    try:
-        r = get_redis()
-        r.setex(draft_key, DRAFT_TTL, json.dumps(draft))
-    except Exception as e:
-        log.warning("Redis store draft failed: %s", e)
-        return None
+    sent_count = 0
 
-    fb_text = draft.get("facebook", "")
-    ig_text = draft.get("instagram", "")
-    og_url = draft.get("og_image_url", "")
-    reddit_sub = draft.get("reddit_subreddit", "")
-    reddit_title = draft.get("reddit_title", "")
-    reddit_body = draft.get("reddit_body", "")
+    # 1. Photo message with caption (if OG image available)
+    if og_image_url:
+        try:
+            r = requests.post(
+                f"{tg_api}/sendPhoto",
+                json={
+                    "chat_id": TELEGRAM_CHAT_ID,
+                    "photo": og_image_url,
+                    "caption": f"📊 {slot_name} — {entity} {value}",
+                },
+                timeout=10,
+            )
+            r.raise_for_status()
+            sent_count += 1
+        except Exception as e:
+            log.warning("Telegram photo send failed: %s", e)
 
-    text = (
-        f"📱 <b>Social Draft — {draft['entity']}</b>\n"
-        f"<i>{draft['label']}: {draft['value']}</i>\n"
-        + (f"<i>🖼 OG: {og_url}</i>\n" if og_url else "")
-        + "\n"
-        f"💼 <b>LinkedIn:</b>\n{draft['linkedin'][:500]}\n\n"
-        + (f"📘 <b>Facebook:</b>\n{fb_text[:300]}\n\n" if fb_text else "")
-        + (f"📸 <b>Instagram:</b>\n{ig_text[:300]}\n\n" if ig_text else "")
-        + f"🐦 <b>Twitter:</b>\n<code>{draft['twitter'][:280]}</code>"
-        + (f"\n\n🟠 <b>Reddit r/{reddit_sub}:</b>\n<b>{reddit_title}</b>\n{reddit_body[:400]}" if reddit_title else "")
-    )
+    # 2. Twitter message
+    twitter_text = draft.get("twitter", "")
+    if twitter_text:
+        try:
+            r = requests.post(
+                f"{tg_api}/sendMessage",
+                json={
+                    "chat_id": TELEGRAM_CHAT_ID,
+                    "text": (
+                        "🐦 TWITTER (copy & post)\n"
+                        "━━━━━━━━━━━━━━━━━━\n"
+                        f"{twitter_text}"
+                    ),
+                },
+                timeout=10,
+            )
+            r.raise_for_status()
+            sent_count += 1
+        except Exception as e:
+            log.warning("Telegram Twitter message failed: %s", e)
 
-    keyboard = {
-        "inline_keyboard": [
-            [
-                {"text": "💼 LinkedIn", "callback_data": f"social:linkedin:{draft_key}"},
-                {"text": "📘 Facebook", "callback_data": f"social:facebook:{draft_key}"},
-            ],
-            [
-                {"text": "📸 Instagram", "callback_data": f"social:instagram:{draft_key}"},
-                {"text": "🐦 Twitter", "callback_data": f"social:twitter:{draft_key}"},
-            ],
-            [
-                {"text": "✅ All 4", "callback_data": f"social:all:{draft_key}"},
-                {"text": "❌ Skip", "callback_data": f"social:skip:{draft_key}"},
-            ],
-        ]
+    # 3. LinkedIn message
+    linkedin_text = draft.get("linkedin", "")
+    if linkedin_text:
+        try:
+            r = requests.post(
+                f"{tg_api}/sendMessage",
+                json={
+                    "chat_id": TELEGRAM_CHAT_ID,
+                    "text": (
+                        "💼 LINKEDIN (copy & post)\n"
+                        "━━━━━━━━━━━━━━━━━━\n"
+                        f"{linkedin_text}"
+                    ),
+                },
+                timeout=10,
+            )
+            r.raise_for_status()
+            sent_count += 1
+        except Exception as e:
+            log.warning("Telegram LinkedIn message failed: %s", e)
+
+    # 4. Facebook message
+    facebook_text = draft.get("facebook", "")
+    if facebook_text:
+        try:
+            r = requests.post(
+                f"{tg_api}/sendMessage",
+                json={
+                    "chat_id": TELEGRAM_CHAT_ID,
+                    "text": (
+                        "📘 FACEBOOK (copy & post)\n"
+                        "━━━━━━━━━━━━━━━━━━\n"
+                        f"{facebook_text}"
+                    ),
+                },
+                timeout=10,
+            )
+            r.raise_for_status()
+            sent_count += 1
+        except Exception as e:
+            log.warning("Telegram Facebook message failed: %s", e)
+
+    # 5. Instagram message
+    instagram_text = draft.get("instagram", "")
+    if instagram_text:
+        try:
+            r = requests.post(
+                f"{tg_api}/sendMessage",
+                json={
+                    "chat_id": TELEGRAM_CHAT_ID,
+                    "text": (
+                        "📸 INSTAGRAM (copy & post)\n"
+                        "━━━━━━━━━━━━━━━━━━\n"
+                        f"{instagram_text}"
+                    ),
+                },
+                timeout=10,
+            )
+            r.raise_for_status()
+            sent_count += 1
+        except Exception as e:
+            log.warning("Telegram Instagram message failed: %s", e)
+
+    if sent_count > 0:
+        log.info("Draft sent to Telegram: %s (%d messages)", entity, sent_count)
+        return "ok"
+    return None
+
+
+def _trigger_reel_via_moltis(style: str, subject: str, hook: str) -> None:
+    """Trigger a reel generation via tg-bridge injection to Moltis."""
+    if not TELEGRAM_WEBHOOK_SECRET or not TELEGRAM_CHAT_ID:
+        log.warning("Reel trigger skipped — TELEGRAM_WEBHOOK_SECRET or TELEGRAM_CHAT_ID not set")
+        return
+    payload = {
+        "update_id": 999999,
+        "message": {
+            "message_id": 999999,
+            "from": {"id": int(TELEGRAM_CHAT_ID), "is_bot": False, "first_name": "Scheduler"},
+            "chat": {"id": int(TELEGRAM_CHAT_ID), "type": "private"},
+            "date": int(time.time()),
+            "text": f"Generate a {style} reel now. Subject: {subject}. Hook: {hook}",
+        },
     }
-
     try:
         r = requests.post(
-            f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
-            json={
-                "chat_id": TELEGRAM_CHAT_ID,
-                "text": text[:4000],
-                "parse_mode": "HTML",
-                "reply_markup": keyboard,
-            },
+            TG_BRIDGE_URL,
+            json=payload,
+            headers={"X-Telegram-Bot-Api-Secret-Token": TELEGRAM_WEBHOOK_SECRET},
             timeout=10,
         )
-        r.raise_for_status()
-        msg_id = r.json().get("result", {}).get("message_id")
-        log.info("Draft sent to Telegram: %s (msg_id=%s)", draft["entity"], msg_id)
-        return str(msg_id)
+        log.info("Reel trigger (%s/%s) → tg-bridge: HTTP %s", style, subject, r.status_code)
     except Exception as e:
-        log.warning("Telegram draft send failed: %s", e)
-        return None
+        log.warning("Reel trigger failed (%s/%s): %s", style, subject, e)
 
 
 @app.task(name='tasks.social_content.generate_social_drafts', bind=True, max_retries=2)
 def generate_social_drafts(self):
-    """Generate 3 social post drafts and send to Telegram for approval. Runs daily at 9am UTC."""
+    """Generate 3 social post drafts and send to Telegram. Runs daily at 9am UTC."""
     db = SessionLocal()
     try:
         hooks = [
@@ -984,3 +1064,17 @@ def generate_viral_hook_drafts(self):
         raise self.retry(exc=exc, countdown=300)
     finally:
         db.close()
+
+
+@app.task(name='tasks.social_content.generate_morning_reel')
+def generate_morning_reel():
+    """Generate morning market reel via Moltis at 8:30 UTC."""
+    _trigger_reel_via_moltis("market_recap", "markets", "Markets open: here are today's biggest movers")
+    return "reel triggered"
+
+
+@app.task(name='tasks.social_content.generate_evening_reel')
+def generate_evening_reel():
+    """Generate evening crypto/wrap reel via Moltis at 17:30 UTC."""
+    _trigger_reel_via_moltis("crypto_update", "bitcoin", "Today's crypto wrap: biggest moves of the day")
+    return "reel triggered"
