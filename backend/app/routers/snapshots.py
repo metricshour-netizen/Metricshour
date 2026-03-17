@@ -39,7 +39,8 @@ _REDIS_TTL = 3600
 @router.get("/{key:path}")
 def serve_snapshot(key: str) -> Response:
     """Return a pre-built JSON snapshot from R2. Cloudflare caches the response at the edge."""
-    r2_key = f"snapshots/{key}"
+    # R2 keys are always lowercase — normalise to avoid case-sensitive 404s
+    r2_key = f"snapshots/{key.lower()}"
 
     if not any(r2_key.startswith(p) for p in _ALLOWED_PREFIXES):
         raise HTTPException(status_code=404, detail="Not found")

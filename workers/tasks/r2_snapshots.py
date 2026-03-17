@@ -304,20 +304,30 @@ def _write_country_snapshots(db) -> int:
         return c.slug, data
 
     # Build all payloads then upload in parallel
-    payloads: list[tuple[str, str, dict]] = []  # (slug_key, iso_key_or_None, data)
+    # Each entry: (slug_key, iso_lower_key_or_None, iso_upper_key_or_None, data)
+    payloads: list[tuple[str, str | None, str | None, dict]] = []
     for c in countries:
         slug, data = _build_payload(c)
-        iso = c.code.lower() if c.code and c.code.lower() != slug else None
-        payloads.append((f"snapshots/countries/{slug}.json", iso and f"snapshots/countries/{iso}.json", data))
+        iso_lower = c.code.lower() if c.code and c.code.lower() != slug else None
+        # Also write uppercase ISO variant (e.g. US.json) so cdn.metricshour.com/…/US.json works
+        iso_upper = c.code.upper() if c.code and c.code.upper() != slug else None
+        payloads.append((
+            f"snapshots/countries/{slug}.json",
+            iso_lower and f"snapshots/countries/{iso_lower}.json",
+            iso_upper and f"snapshots/countries/{iso_upper}.json",
+            data,
+        ))
 
-    def _upload_pair(args):
-        slug_key, iso_key, data = args
+    def _upload_variants(args):
+        slug_key, iso_lower_key, iso_upper_key, data = args
         _upload(slug_key, data)
-        if iso_key:
-            _upload(iso_key, data)
+        if iso_lower_key:
+            _upload(iso_lower_key, data)
+        if iso_upper_key:
+            _upload(iso_upper_key, data)
 
     with ThreadPoolExecutor(max_workers=20) as pool:
-        futures = [pool.submit(_upload_pair, p) for p in payloads]
+        futures = [pool.submit(_upload_variants, p) for p in payloads]
         for f in as_completed(futures):
             f.result()  # re-raise any exceptions
 
@@ -594,6 +604,8 @@ def write_r2_snapshots(self):
                 purge_urls.append(f"{base}/snapshots/countries/{c.slug}.json")
                 if c.code and c.code.lower() != c.slug:
                     purge_urls.append(f"{base}/snapshots/countries/{c.code.lower()}.json")
+                if c.code:
+                    purge_urls.append(f"{base}/snapshots/countries/{c.code.upper()}.json")
             pairs = db2.execute(select(TradePair.exporter_id, TradePair.importer_id)).all()
             slug_map = {c.id: c.slug for c in all_countries}
             code_map = {c.id: c.code.lower() for c in all_countries if c.code}
