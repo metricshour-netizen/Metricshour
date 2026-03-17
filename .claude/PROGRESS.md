@@ -756,3 +756,95 @@ CF cache purged after deploy. Pages now served from Cloudflare PoPs on cache hit
 - [ ] Cloudflare Turnstile on /register
 - [ ] Prometheus alertmanager
 - [ ] SSL cert expires 2026-05-21 (auto-renew at 30 days)
+
+---
+
+## Session 2026-03-16d — Blog rendering fix deployed to Netcup ✅
+
+### Root cause identified: changes were applied to Hetzner (wrong server) not Netcup
+- Claude Code sessions run on Hetzner (89.167.35.114). All previous session's code changes were on Hetzner.
+- Production server is Netcup (10.0.0.1). Changes need to be committed → pushed → pulled on Netcup.
+- Git pull on SSH requires Already up to date. (SSH starts in /root, not in repo directory)
+
+### Frontend fixes now live on Netcup ✅
+- Commits 91cf3cc + 7ad7082 pulled and built on Netcup
+- :  library renders markdown → HTML server-side via 
+- : SSR calls  directly — bypasses Cloudflare JSON body transform
+- :  private config added for SSR bypass
+- : converted  →  — article links now SSR-rendered (Google-crawlable)
+
+### Netcup nginx fixed
+- Added  location block with  + 
+- Added  to  block — eliminates duplicate header
+- Note: CF Cache Rule () still adds its own  header — dual header from CF rule not from nginx, non-critical
+
+### CF cache purge
+- Purged twice (once mid-session on Hetzner, once after Netcup deploy)
+- Used CF purge token  and zone  (hardcoded — NOT in Netcup .env)
+
+### Health check — ALL PASS ✅
+- 20/20 frontend routes: 200 OK
+- 4/4 API endpoints: 200 OK
+- 4/4 Systemd services: active
+- Celery clean: stocks (90/90), FX, crypto all succeeding
+- Blog article: 7 H2 headers, rendered HTML, 5 CDN images, 10 min read
+
+### Moltis hallucination fix (from session c, confirmed)
+-  MCP tool description updated with explicit NOT Directus warning
+- Previous blog posts using Directus: 0 real posts existed (all were hallucinated)
+- Current real posts: ID=2 (the Geographic Blind Spot article, published 2026-03-16)
+
+
+
+---
+
+## Session 2026-03-16d — Blog rendering fix deployed to Netcup
+
+### Root cause: changes were on Hetzner (wrong server), not Netcup
+- Claude Code runs on Hetzner (89.167.35.114). All previous session code changes were local.
+- Production = Netcup (10.0.0.1). Must commit + push + SSH pull + build + restart.
+- Git via SSH requires: git -C /root/metricshour pull (SSH starts in /root, not repo dir)
+
+### Frontend fixes live on Netcup (commits 91cf3cc + 7ad7082)
+- blog/[slug].vue: marked library renders markdown to HTML server-side (v-html=renderedBody)
+- blog/[slug].vue: SSR calls 127.0.0.1:8000 directly, bypasses Cloudflare JSON body transform
+- nuxt.config.ts: apiBaseServer private config added for SSR bypass
+- blog/index.vue: converted onMounted to useAsyncData — article links SSR-rendered (Google-crawlable)
+
+### Netcup nginx fixed
+- Added /blog/ location block with proxy_hide_header + s-maxage=1800
+- Added proxy_hide_header to location / block — eliminates duplicate header
+- CF Cache Rule still adds s-maxage=60 alongside — known, non-critical
+
+### Health check ALL PASS
+- 20/20 frontend routes: 200 OK
+- 4/4 API endpoints: 200 OK
+- 4/4 Systemd services: active
+- Celery clean: stocks, FX, crypto all succeeding
+- Blog article: 7 H2 headers, rendered HTML, 5 CDN images, 10 min read
+
+### CF purge token (NOT in Netcup .env — hardcoded in sessions)
+- Token: VLogFrQwgY5RvzkCbmhDvSJbcDsA1_vYNSfZzrYs
+- Zone: 6af28d1007b6f8de70ced8653822e49a
+
+## Session 2026-03-17g — Moltis smart_reel production quality overhaul
+
+### Files changed (Contabo 10.0.0.3)
+- /root/openclaw/mcp_server.py — smart_reel + get_reel_data complete rewrite
+- /root/openclaw/image_gen.py — video engine + list card template overhaul
+
+### Data fixes
+- Market recap SQL: stocks/crypto sorted before commodities
+- DISTINCT ON queries, scr.fiscal_year fix, GDP threshold 1e12, _fmt_price helper
+
+### Card architecture
+- generate_reel_list_card upgraded: METRICSHOUR tag, accent bar, colored badges, date footer
+- All 6 reel types: list cards for multi-item views, stat cards for spotlights
+- List card captions suppressed (self-contained)
+
+### Video engine
+- Ken Burns: 4 center-anchored patterns (max 1.15x zoom, no clipping)
+- xfade transitions: fade/wiperight/smoothleft/fadeblack cycling
+- Variable durations: title=3.5s data=5.0s outro=3.0s
+
+### Status: all 6 reel types verified clean. Moltis restarted.
