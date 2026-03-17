@@ -270,10 +270,22 @@ app.conf.update(
             'schedule': crontab(hour=7, minute=15),
         },
 
-        # Social content drafts — daily at 9am UTC → sent to Telegram for approval
-        'social-drafts-daily-9am': {
+        # Social content drafts — 4 daily slots sent to Telegram for approval
+        'social-market-open-8am': {
+            'task': 'tasks.social_content.generate_market_open_drafts',
+            'schedule': crontab(hour=8, minute=0),
+        },
+        'social-insight-9am': {
             'task': 'tasks.social_content.generate_social_drafts',
             'schedule': crontab(hour=9, minute=0),
+        },
+        'social-evening-wrap-5pm': {
+            'task': 'tasks.social_content.generate_evening_wrap_drafts',
+            'schedule': crontab(hour=17, minute=0),
+        },
+        'social-viral-hook-6pm': {
+            'task': 'tasks.social_content.generate_viral_hook_drafts',
+            'schedule': crontab(hour=18, minute=0),
         },
 
         # SEO health monitor — weekly Sunday 2am UTC
