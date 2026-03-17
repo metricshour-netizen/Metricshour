@@ -848,3 +848,73 @@ CF cache purged after deploy. Pages now served from Cloudflare PoPs on cache hit
 - Variable durations: title=3.5s data=5.0s outro=3.0s
 
 ### Status: all 6 reel types verified clean. Moltis restarted.
+
+## Session 2026-03-17g — Moltis full upgrade + infra hardening ✅
+
+### Moltis disconnection — ROOT CAUSE FIXED
+- moltis.service was missing  → OS assigned random port each restart
+- tg-bridge hardcoded to 13131 → Connection refused on every moltis restart
+- Fix: added  to ExecStart in moltis.service
+- tg-bridge.service: added ExecStartPre=/bin/sleep 8 + StartLimitIntervalSec=0
+- Result: stable connection, handshake confirmed in logs
+
+### Moltis MCP tools: 30 → 64 exposed
+- Added all image, video, template, content, and publishing tools to EXPOSED_TOOLS
+- 71 tools defined total; 7 kept hidden (admin/destructive: execute_sql, manage_user, etc.)
+- TOML soul string fixed (invalid \' escapes → plain ') — MCP was showing 0 configured
+
+### BOOT.md rewritten (2084 → 7591 chars)
+- Full server infrastructure map (all 3 servers with IPs, ports, services)
+- All 64 tools catalogued with descriptions and categories
+- All 10 custom templates with variables listed
+- Content formulas, SQL patterns, deploy procedure
+
+### Infrastructure hardening — all 3 servers (2026-03-17)
+- **Hetzner**: UFW was INACTIVE → enabled (22/80/443/51820); fail2ban installed; node_exporter 9100 WireGuard-only
+- **Contabo**: added 51820/udp to UFW; 3389 BLOCKED; xrdp MASKED + process killed
+- **All servers**: fail2ban ignoreip = 127.0.0.0/8 + 10.0.0.0/24 → no more WireGuard false-positive bans
+
+### All flows verified healthy (2026-03-17)
+- Celery: crypto (every 2min), price_alerts (every 1min), feed_generator (every 3min), indices, watchdog — all succeeding ✅
+- Alertmanager: 5 rules (APIDown/HighCPU/HighMem/DiskFull/HighLatency), Telegram channel configured ✅
+- Prometheus: healthy (127.0.0.1:9090) ✅
+- AI APIs: Gemini×2 + Anthropic on Netcup backend; DeepSeek + Gemini×2 + Anthropic + ElevenLabs on Contabo ✅
+- API: {status:ok,database:connected,redis:connected} ✅
+- Moltis port 13131 + tg-bridge connected ✅
+- xrdp: masked + dead + port 3389 closed ✅
+
+### Note: Hetzner runs secondary MetricsHour stack
+- Nginx on Hetzner proxies api.metricshour.com AND metricshour.com (not just Docker)
+- FastAPI gunicorn + Nuxt SSR also running on Hetzner (secondary/dev)
+- Docker: Umami (8080) + Directus (8055) on Hetzner
+
+## Session 2026-03-17g — Moltis full upgrade + infra hardening
+
+### Moltis disconnection ROOT CAUSE FIXED
+- moltis.service was missing --port 13131 → OS assigned random port each restart
+- tg-bridge hardcoded to 13131 → Connection refused on every moltis restart
+- Fix: added --port 13131 to ExecStart in moltis.service
+- tg-bridge.service: ExecStartPre=/bin/sleep 8 + StartLimitIntervalSec=0
+
+### Moltis MCP tools: 30 → 64 exposed
+- Added all image, video, template, content, publishing tools to EXPOSED_TOOLS
+- 71 tools defined total; 7 kept hidden (admin/destructive)
+- TOML soul string fixed (invalid backslash-quote escapes) — MCP was showing 0 configured
+
+### BOOT.md rewritten (2084 → 7591 chars)
+- Full 3-server infrastructure map with IPs, ports, WireGuard addresses
+- All 64 tools catalogued with categories
+- 10 custom templates with variables, content formulas, SQL patterns
+
+### Infrastructure hardening — all 3 servers
+- Hetzner: UFW was INACTIVE → enabled; fail2ban installed; node_exporter 9100 WireGuard-only
+- Contabo: added 51820/udp; 3389 BLOCKED; xrdp MASKED + killed
+- All servers: fail2ban ignoreip = 127.0.0.0/8 + 10.0.0.0/24 (WireGuard false-positive fix)
+
+### All flows verified healthy
+- Celery: crypto/price_alerts/feed_generator/indices/watchdog all succeeding
+- Alertmanager: 5 rules, Telegram configured, 0 active alerts
+- Prometheus healthy, API healthy (db+redis connected)
+- All AI APIs present: Gemini x2, Anthropic, DeepSeek, ElevenLabs
+- Moltis port 13131 stable, tg-bridge connected
+- xrdp: masked + dead + 3389 closed
