@@ -918,3 +918,32 @@ CF cache purged after deploy. Pages now served from Cloudflare PoPs on cache hit
 - All AI APIs present: Gemini x2, Anthropic, DeepSeek, ElevenLabs
 - Moltis port 13131 stable, tg-bridge connected
 - xrdp: masked + dead + 3389 closed
+
+## Session 2026-03-17h — Social media pipeline + blog publishing
+
+### Social media schedule — 4 slots (was 1)
+- 8:00 UTC: generate_market_open_drafts — top movers since yesterday
+- 9:00 UTC: generate_social_drafts — country/stock/trade insight (existing, upgraded)
+- 17:00 UTC: generate_evening_wrap_drafts — day wrap, biggest gainer/loser
+- 18:00 UTC: generate_viral_hook_drafts — shocking stat / did-you-know
+
+### Platforms: LinkedIn + Facebook + Instagram + Twitter (was just LI+FB+Reddit)
+- Instagram: 2-step Graph API (media container → publish), R2 OG image as visual
+- Telegram buttons: [LI][FB] / [Instagram][Twitter] / [All 4][Skip]
+- post_approved_draft() dispatches all 4 with Make.com fallback
+- og_image_url added to all drafts (R2 CDN: /og/countries/, /og/stocks/, /og/trade/, /og/section/)
+- 3 new hooks: _hook_market_movers, _hook_day_wrap, _hook_viral_stat
+
+### Missing env vars (must add to Netcup .env):
+- FACEBOOK_PAGE_ACCESS_TOKEN (needed for Facebook + Instagram direct API)
+- INSTAGRAM_BUSINESS_ACCOUNT_ID
+- TWITTER_API_KEY, TWITTER_API_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET
+- Until set: all posting falls back to Make.com webhook
+
+### Blog publishing via Moltis — new craft_blog tool (tool #65)
+Two modes:
+1. craft_blog(title, topic, data_hook) → AI (Gemini→DeepSeek) queries DB, writes 800-1000 words SEO post → publishes → returns URL
+2. craft_blog(title, raw_content) → user-provided text → publish as-is (no AI)
+- data_hook: 'country:IN', 'stock:AAPL', 'trade:US-CN', 'commodity:gold'
+- BOOT.md updated with blog flows (8352 chars)
+- Moltis now at 65 tools exposed
