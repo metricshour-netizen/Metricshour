@@ -947,3 +947,25 @@ Two modes:
 - data_hook: 'country:IN', 'stock:AAPL', 'trade:US-CN', 'commodity:gold'
 - BOOT.md updated with blog flows (8352 chars)
 - Moltis now at 65 tools exposed
+
+## Session 2026-03-17i — Social media posts manual flow + reel scheduling
+
+### Architecture change: manual publishing (no API automation)
+- All posts delivered to Telegram as copy-ready text — user posts manually
+- 5 messages per slot: photo (OG image from R2) + Twitter + LinkedIn + Facebook + Instagram
+- Each platform message is separate so user can long-press copy in Telegram
+- Removed: Redis draft storage, inline keyboards, approval buttons, API posting code
+
+### 6 daily schedule slots (UTC)
+- 08:00 — Market open: top movers text posts
+- 08:30 — Morning reel (Moltis generates market_recap reel via tg-bridge injection)
+- 09:00 — Insight post: country/stock/trade (3 hooks rotate)
+- 17:00 — Evening wrap: day summary biggest mover/loser
+- 17:30 — Evening reel (Moltis generates crypto_update reel via tg-bridge)
+- 18:00 — Viral hook: shocking stat / did-you-know
+
+### Reel trigger flow
+- Celery task POSTs fake Telegram update to http://10.0.0.3:8767/webhook (WireGuard)
+- Header: X-Telegram-Bot-Api-Secret-Token validates the request
+- tg-bridge forwards command to Moltis → Moltis generates reel → sends video to Telegram
+- User downloads video from Telegram and posts to Instagram/TikTok manually
