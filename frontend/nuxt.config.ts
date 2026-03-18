@@ -90,6 +90,7 @@ export default defineNuxtConfig({
     '/commodities/**': { headers: { 'Cache-Control': 'public, s-maxage=1800, max-age=300, stale-while-revalidate=86400' } },
     '/indices/**': { headers: { 'Cache-Control': 'public, s-maxage=1800, max-age=300, stale-while-revalidate=86400' } },
     '/blog/**': { headers: { 'Cache-Control': 'public, s-maxage=1800, max-age=300, stale-while-revalidate=86400' } },
+    '/compare/**': { headers: { 'Cache-Control': 'public, s-maxage=1800, max-age=300, stale-while-revalidate=86400' } },
     // Markets + Feed — 5 min (data changes frequently)
     '/markets': { headers: { 'Cache-Control': 'public, s-maxage=300, max-age=60, stale-while-revalidate=3600' } },
     '/feed': { headers: { 'Cache-Control': 'public, s-maxage=300, max-age=60, stale-while-revalidate=3600' } },
