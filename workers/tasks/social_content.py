@@ -191,10 +191,121 @@ def _call_ai(prompt: str) -> dict | None:
     return _call_deepseek(prompt)
 
 
+# Audience persona injected into every content prompt
+AUDIENCE_PERSONA = (
+    "Audience: retail investor aged 30-45 who follows stocks and macro on Twitter/Reddit. "
+    "They want to feel smarter than CNBC viewers. Tone: sharp, confident, data-grounded, slightly provocative. "
+    "Goal: make them want to share this with one friend."
+)
+
+
+def _fetch_news_context(query: str, max_results: int = 2) -> str:
+    """Fetch recent news headlines for a topic via Google News RSS. Returns '' on failure."""
+    import xml.etree.ElementTree as ET
+    import urllib.parse
+    try:
+        url = (
+            "https://news.google.com/rss/search"
+            f"?q={urllib.parse.quote(query + ' economy finance')}"
+            "&hl=en&gl=US&ceid=US:en"
+        )
+        resp = requests.get(url, timeout=8, headers={"User-Agent": "Mozilla/5.0"})
+        if resp.status_code != 200:
+            return ""
+        root = ET.fromstring(resp.content)
+        items = root.findall(".//item")[:max_results]
+        headlines = []
+        for item in items:
+            title = item.findtext("title", "").strip()
+            # Strip source suffix e.g. "- Reuters"
+            if " - " in title:
+                title = title.rsplit(" - ", 1)[0].strip()
+            if title:
+                headlines.append(f"• {title}")
+        return "\n".join(headlines) if headlines else ""
+    except Exception:
+        return ""
+
+
+def _compute_angle(history_rows, current_val: float, unit: str) -> str:
+    """Return a plain-English note on what's notable about this value vs history."""
+    if len(history_rows) < 2:
+        return ""
+    vals = [float(r.value) for r in history_rows]
+    notes = []
+    if len(vals) >= 2:
+        yoy = vals[0] - vals[1]
+        direction = "up" if yoy > 0 else "down"
+        if unit == "%":
+            notes.append(f"YoY: {direction} {abs(yoy):.1f}pp from {vals[1]:.1f}%")
+        else:
+            notes.append(f"YoY: {direction} {_fmt_value(abs(yoy), unit)}")
+    if len(vals) >= 4:
+        if vals[0] >= max(vals):
+            notes.append(f"Highest in {len(vals)} years of data")
+        elif vals[0] <= min(vals):
+            notes.append(f"Lowest in {len(vals)} years of data")
+        # Trend: all moving same direction?
+        trend = [vals[i] - vals[i+1] for i in range(len(vals)-1)]
+        if all(t > 0 for t in trend):
+            notes.append(f"Rising for {len(vals)-1} consecutive years")
+        elif all(t < 0 for t in trend):
+            notes.append(f"Falling for {len(vals)-1} consecutive years")
+    return ". ".join(notes)
+
+
+def _pick_best_country_indicator(db) -> tuple | None:
+    """
+    Scan G20 countries × spotlight indicators and return the (country_code, indicator_key, label, unit)
+    with the largest absolute YoY change. Falls back to random if query fails.
+    """
+    try:
+        rows = db.execute(text("""
+            WITH ranked AS (
+                SELECT
+                    c.code, c.name, ci.indicator,
+                    ci.value,
+                    ci.period_date,
+                    LAG(ci.value) OVER (
+                        PARTITION BY c.id, ci.indicator ORDER BY ci.period_date
+                    ) AS prev_value
+                FROM country_indicators ci
+                JOIN countries c ON c.id = ci.country_id
+                WHERE c.code = ANY(:codes)
+                  AND ci.indicator = ANY(:inds)
+                  AND ci.period_date >= NOW() - INTERVAL '5 years'
+            )
+            SELECT code, name, indicator, value, prev_value,
+                   ABS(value - prev_value) AS abs_change
+            FROM ranked
+            WHERE prev_value IS NOT NULL
+            ORDER BY abs_change DESC
+            LIMIT 20
+        """), {
+            "codes": G20_CODES,
+            "inds": [i[0] for i in SPOTLIGHT_INDICATORS],
+        }).fetchall()
+        if not rows:
+            return None
+        # Pick from top 5 — randomise a bit to avoid always same country
+        pick = random.choice(rows[:5])
+        ind_meta = {k: (l, u) for k, l, u in SPOTLIGHT_INDICATORS}
+        label, unit = ind_meta.get(pick.indicator, (pick.indicator, ""))
+        return pick.code, pick.indicator, label, unit
+    except Exception as e:
+        log.warning("_pick_best_country_indicator failed: %s", e)
+        return None
+
+
 def _hook_country_spotlight(db) -> dict | None:
-    """Pick a random G20 country + interesting indicator, generate post copy."""
-    indicator_key, label, unit = random.choice(SPOTLIGHT_INDICATORS)
-    country_code = random.choice(G20_CODES)
+    """Pick G20 country + indicator with biggest recent change, generate post copy."""
+    # Smarter selection: country with biggest YoY indicator change
+    best = _pick_best_country_indicator(db)
+    if best:
+        country_code, indicator_key, label, unit = best
+    else:
+        indicator_key, label, unit = random.choice(SPOTLIGHT_INDICATORS)
+        country_code = random.choice(G20_CODES)
 
     country = db.execute(
         select(Country).where(Country.code == country_code)
@@ -202,7 +313,7 @@ def _hook_country_spotlight(db) -> dict | None:
     if not country:
         return None
 
-    # Get latest value + 3-year history
+    # Get latest value + 4-year history
     rows = db.execute(
         select(CountryIndicator.period_date, CountryIndicator.value)
         .where(
@@ -210,7 +321,7 @@ def _hook_country_spotlight(db) -> dict | None:
             CountryIndicator.indicator == indicator_key,
         )
         .order_by(CountryIndicator.period_date.desc())
-        .limit(4)
+        .limit(5)
     ).all()
     if not rows:
         return None
@@ -221,16 +332,24 @@ def _hook_country_spotlight(db) -> dict | None:
         f"{r.period_date.year}: {_fmt_value(float(r.value), unit)}"
         for r in rows
     )
+    angle = _compute_angle(rows, current_val, unit)
+    news = _fetch_news_context(f"{country.name} {label}")
+
     page_url = f"{SITE_URL}/countries/{country_code.lower()}"
     og_image_url = f"{CDN_URL}/og/countries/{country_code.lower()}.png"
 
+    angle_block = f"\nWhat's notable: {angle}" if angle else ""
+    news_block = f"\nCurrent news context:\n{news}" if news else ""
+
     prompt = f"""
 You are writing finance social media content for MetricsHour (macro intelligence platform).
+{AUDIENCE_PERSONA}
 
 Data: {country.name} — {label}: {_fmt_value(current_val, unit)} ({current_year})
-History: {history_str}
+History: {history_str}{angle_block}{news_block}
 Page: {page_url}
 
+Use the angle and news context to frame WHY this data matters RIGHT NOW — not just what the number is.
 Write FIVE posts about this macro data point:
 
 1. TWITTER (max 260 chars, include the number, end with a punchy hook or question, 1-2 relevant emojis, include the URL)
@@ -291,31 +410,64 @@ Return ONLY valid JSON: {{"twitter": "...", "linkedin": "...", "facebook": "..."
 
 
 def _hook_stock_exposure(db) -> dict | None:
-    """Pick a well-known stock with highest international revenue exposure."""
-    # Get stocks with meaningful geo revenue data
-    RevCountry = aliased(Country)
-    rows = db.execute(
-        select(
-            Asset.symbol, Asset.name,
-            func.sum(StockCountryRevenue.revenue_pct).label("intl_pct"),
-        )
-        .join(StockCountryRevenue, StockCountryRevenue.asset_id == Asset.id)
-        .join(RevCountry, RevCountry.id == StockCountryRevenue.country_id)
-        .where(
-            RevCountry.code != "US",
-            StockCountryRevenue.revenue_pct > 5,
-        )
-        .group_by(Asset.id, Asset.symbol, Asset.name)
-        .order_by(func.sum(StockCountryRevenue.revenue_pct).desc())
-        .limit(20)
-    ).all()
-    if not rows:
-        return None
+    """
+    Pick a stock that moved significantly this week AND has high international revenue.
+    Falls back to highest intl revenue if no price data available.
+    """
+    # Try to find recently-moved stocks with international exposure
+    try:
+        moved_rows = db.execute(text("""
+            WITH recent_moves AS (
+                SELECT DISTINCT ON (a.id)
+                       a.id, a.symbol, a.name,
+                       ABS((p.close - p.open) / NULLIF(p.open, 0) * 100) AS abs_pct
+                FROM prices p
+                JOIN assets a ON a.id = p.asset_id
+                WHERE p.interval = '1d'
+                  AND p.open IS NOT NULL
+                  AND p.timestamp >= NOW() - INTERVAL '7 days'
+                  AND a.asset_type = 'stock'
+                ORDER BY a.id, p.timestamp DESC
+            )
+            SELECT rm.id, rm.symbol, rm.name, rm.abs_pct,
+                   SUM(scr.revenue_pct) AS intl_pct
+            FROM recent_moves rm
+            JOIN stock_country_revenues scr ON scr.asset_id = rm.id
+            JOIN countries c ON c.id = scr.country_id AND c.code != 'US'
+            GROUP BY rm.id, rm.symbol, rm.name, rm.abs_pct
+            HAVING SUM(scr.revenue_pct) > 20
+            ORDER BY rm.abs_pct DESC
+            LIMIT 10
+        """)).fetchall()
+    except Exception:
+        moved_rows = []
 
-    pick = random.choice(rows[:10])
-    ticker = pick.symbol
-    name = pick.name
-    intl_pct = float(pick.intl_pct)
+    RevCountry = aliased(Country)
+    if moved_rows:
+        pick_row = random.choice(moved_rows[:5])
+        ticker = pick_row.symbol
+        name = pick_row.name
+        intl_pct = float(pick_row.intl_pct)
+    else:
+        # Fallback: highest intl revenue
+        rows = db.execute(
+            select(
+                Asset.symbol, Asset.name,
+                func.sum(StockCountryRevenue.revenue_pct).label("intl_pct"),
+            )
+            .join(StockCountryRevenue, StockCountryRevenue.asset_id == Asset.id)
+            .join(RevCountry, RevCountry.id == StockCountryRevenue.country_id)
+            .where(RevCountry.code != "US", StockCountryRevenue.revenue_pct > 5)
+            .group_by(Asset.id, Asset.symbol, Asset.name)
+            .order_by(func.sum(StockCountryRevenue.revenue_pct).desc())
+            .limit(20)
+        ).all()
+        if not rows:
+            return None
+        pick = random.choice(rows[:10])
+        ticker = pick.symbol
+        name = pick.name
+        intl_pct = float(pick.intl_pct)
 
     # Get top 3 revenue countries
     RevCountry2 = aliased(Country)
@@ -340,13 +492,18 @@ def _hook_stock_exposure(db) -> dict | None:
     page_url = f"{SITE_URL}/stocks/{ticker.lower()}"
     og_image_url = f"{CDN_URL}/og/stocks/{ticker.lower()}.png"
 
+    news = _fetch_news_context(f"{name} {ticker} stock")
+    news_block = f"\nCurrent news context:\n{news}" if news else ""
+
     prompt = f"""
 You are writing finance social media content for MetricsHour (macro intelligence platform).
+{AUDIENCE_PERSONA}
 
 Data: {name} ({ticker}) earns {intl_pct:.0f}% of revenue outside the US.
 Top international markets: {geo_breakdown}
-Page: {page_url}
+Page: {page_url}{news_block}
 
+Use the news context to frame WHY this geographic exposure matters RIGHT NOW — tie the data to current macro events (tariffs, FX moves, geopolitics) where possible.
 Write FIVE posts about this stock's geographic revenue exposure and what it means:
 
 1. TWITTER (max 260 chars, include the %, specific countries, hook about macro risk/opportunity, 1-2 emojis, include URL)
@@ -429,13 +586,18 @@ def _hook_trade_insight(db) -> dict | None:
     page_url = f"{SITE_URL}/trade/{exp.code.lower()}-{imp.code.lower()}"
     og_image_url = f"{CDN_URL}/og/trade/{exp.code.lower()}-{imp.code.lower()}.png"
 
+    news = _fetch_news_context(f"{exp.name} {imp.name} trade")
+    news_block = f"\nCurrent news context:\n{news}" if news else ""
+
     prompt = f"""
 You are writing finance social media content for MetricsHour (macro intelligence platform).
+{AUDIENCE_PERSONA}
 
 Data: {exp.name}–{imp.name} bilateral trade: {val_str}/year ({pair.year})
 Top traded goods: {products}
-Page: {page_url}
+Page: {page_url}{news_block}
 
+Use the news context to explain WHY this trade corridor is relevant right now — tariffs, diplomatic tensions, sanctions, supply chain shifts. Don't just describe the data; frame it as a live story.
 Write FIVE posts about this trade relationship and why it matters to investors:
 
 1. TWITTER (max 260 chars, include the dollar figure, key goods, geopolitical/market angle, 1-2 emojis, URL)
@@ -529,11 +691,12 @@ def _hook_market_movers(db) -> dict | None:
 
     prompt = f"""
 You are writing finance social media content for MetricsHour (macro intelligence platform).
+{AUDIENCE_PERSONA}
 
 Today's biggest market movers (price change %):
 {movers_str}
 
-Write FOUR posts as a market-open hook:
+Write FOUR posts as a market-open hook. Lead with the most surprising or counterintuitive move — don't just list numbers, tell people what it means:
 
 1. TWITTER (max 260 chars, top 3 movers with % change, punchy hook or question, 1-2 emojis, include URL: {SITE_URL}/markets)
 
@@ -607,6 +770,7 @@ def _hook_day_wrap(db) -> dict | None:
 
     prompt = f"""
 You are writing finance social media content for MetricsHour (macro intelligence platform).
+{AUDIENCE_PERSONA}
 
 Today's market wrap — biggest movers:
 {movers_str}
@@ -614,7 +778,7 @@ Today's market wrap — biggest movers:
 Biggest gainer: {gainer.symbol} ({gainer.name}) {float(gainer.change_pct):+.2f}%
 Biggest loser: {loser.symbol} ({loser.name}) {float(loser.change_pct):+.2f}%
 
-Write FOUR end-of-day wrap posts:
+Write FOUR end-of-day wrap posts. Don't just state the moves — explain what they signal about tomorrow and what surprised most people today:
 
 1. TWITTER (max 260 chars, biggest gainer AND loser with %, punchy market wrap tone, 1-2 emojis, include URL: {SITE_URL}/markets)
 
@@ -652,7 +816,10 @@ Return ONLY valid JSON: {{"twitter": "...", "linkedin": "...", "facebook": "..."
 
 def _hook_viral_stat(db) -> dict | None:
     """Pick a shocking / 'did you know' financial stat at random."""
-    options = ["high_inflation", "high_debt", "trade_yoy", "stock_intl"]
+    options = [
+        "high_inflation", "high_debt", "trade_yoy", "stock_intl",
+        "china_exposure", "big_price_mover", "commodity_extreme", "debt_yoy_surge",
+    ]
     random.shuffle(options)
 
     for option in options:
@@ -769,14 +936,167 @@ def _try_viral_option(db, option: str) -> dict | None:
         og_image_url = f"{CDN_URL}/og/stocks/{code}.png"
         data_context = f"{name} ({ticker}) earns {intl_pct:.0f}% of revenue outside the US"
         hook_angle = "Did you know? This US-listed stock earns most of its money abroad"
+
+    elif option == "china_exposure":
+        # US stocks with highest China revenue — hot topic given tariffs
+        ChinaRev = aliased(StockCountryRevenue)
+        ChinaCountry = aliased(Country)
+        row = db.execute(
+            select(Asset.symbol, Asset.name, ChinaRev.revenue_pct, ChinaRev.revenue_usd)
+            .join(ChinaRev, ChinaRev.asset_id == Asset.id)
+            .join(ChinaCountry, ChinaCountry.id == ChinaRev.country_id)
+            .where(ChinaCountry.code == "CN", ChinaRev.revenue_pct > 5)
+            .order_by(ChinaRev.revenue_usd.desc().nullslast(), ChinaRev.revenue_pct.desc())
+            .limit(10)
+        ).first()
+        if not row:
+            return None
+        ticker = row.symbol
+        name = row.name
+        china_pct = float(row.revenue_pct)
+        china_usd = row.revenue_usd
+        code = ticker.lower()
+        entity = f"{ticker} ({name})"
+        val_str = f"{china_pct:.1f}% China revenue"
+        if china_usd and china_usd >= 1e9:
+            val_str += f" (${china_usd/1e9:.1f}B)"
+        label = "China Revenue Exposure"
+        page_url = f"{SITE_URL}/stocks/{code}"
+        og_image_url = f"{CDN_URL}/og/stocks/{code}.png"
+        data_context = f"{name} ({ticker}) earns {val_str} from China"
+        hook_angle = (
+            "With US-China tariffs at historic highs, this stock's China revenue is a direct line item risk. "
+            "Most investors don't realize how exposed it is."
+        )
+
+    elif option == "big_price_mover":
+        # Most dramatic price move in last 7 days + its geographic story
+        row = db.execute(text("""
+            SELECT DISTINCT ON (a.id)
+                   a.symbol, a.name,
+                   ROUND(CAST((p.close - p.open) / NULLIF(p.open, 0) * 100 AS numeric), 1) AS change_pct,
+                   p.close
+            FROM prices p
+            JOIN assets a ON a.id = p.asset_id
+            WHERE p.interval = '1d'
+              AND p.open IS NOT NULL
+              AND p.timestamp >= NOW() - INTERVAL '7 days'
+              AND a.asset_type IN ('stock', 'crypto', 'commodity')
+            ORDER BY a.id, p.timestamp DESC
+        """)).fetchall()
+        if not row:
+            return None
+        rows_sorted = sorted(row, key=lambda r: abs(float(r.change_pct)), reverse=True)
+        pick = rows_sorted[0]
+        ticker = pick.symbol
+        name = pick.name
+        chg = float(pick.change_pct)
+        direction = "surged" if chg > 0 else "crashed"
+        code = ticker.lower()
+        entity = f"{ticker} ({name})"
+        val_str = f"{chg:+.1f}% this week"
+        label = "Weekly Move"
+        page_url = f"{SITE_URL}/stocks/{code}"
+        og_image_url = f"{CDN_URL}/og/stocks/{code}.png"
+        data_context = f"{name} ({ticker}) {direction} {abs(chg):.1f}% this week"
+        hook_angle = (
+            f"The biggest market move this week was {ticker} at {chg:+.1f}%. "
+            "Most people missed why — the real driver is in the macro data."
+        )
+
+    elif option == "commodity_extreme":
+        # Commodity near 52-week high or low
+        row = db.execute(text("""
+            WITH weekly AS (
+                SELECT DISTINCT ON (a.id)
+                       a.id, a.symbol, a.name,
+                       p.close AS current_price,
+                       p.timestamp
+                FROM prices p
+                JOIN assets a ON a.id = p.asset_id
+                WHERE a.asset_type = 'commodity'
+                  AND p.interval = '1d'
+                  AND p.open IS NOT NULL
+                ORDER BY a.id, p.timestamp DESC
+            ),
+            yearly AS (
+                SELECT asset_id,
+                       MAX(close) AS high_52w,
+                       MIN(close) AS low_52w
+                FROM prices
+                WHERE interval = '1d'
+                  AND timestamp >= NOW() - INTERVAL '52 weeks'
+                GROUP BY asset_id
+            )
+            SELECT w.symbol, w.name, w.current_price, y.high_52w, y.low_52w,
+                   ROUND(CAST((w.current_price - y.low_52w) / NULLIF(y.high_52w - y.low_52w, 0) * 100 AS numeric), 1) AS pct_of_range
+            FROM weekly w
+            JOIN yearly y ON y.asset_id = w.id
+            WHERE y.high_52w > y.low_52w
+            ORDER BY ABS(50 - ROUND(CAST((w.current_price - y.low_52w) / NULLIF(y.high_52w - y.low_52w, 0) * 100 AS numeric), 1)) DESC
+            LIMIT 1
+        """)).fetchone()
+        if not row:
+            return None
+        ticker = row.symbol
+        name = row.name
+        price = float(row.current_price)
+        high_52w = float(row.high_52w)
+        low_52w = float(row.low_52w)
+        pct_range = float(row.pct_of_range)
+        extreme = "52-week HIGH" if pct_range >= 80 else "52-week LOW"
+        code = ticker.lower()
+        entity = f"{ticker} ({name})"
+        val_str = f"${price:.2f} — near {extreme}"
+        label = "52-Week Extreme"
+        page_url = f"{SITE_URL}/commodities/{code}"
+        og_image_url = f"{CDN_URL}/og/commodities/{code}.png"
+        data_context = f"{name} ({ticker}) is at ${price:.2f}, near its {extreme} (range: ${low_52w:.2f}–${high_52w:.2f})"
+        hook_angle = f"{name} is near a {extreme}. Commodity extremes rarely last — here's what drives the next move."
+
+    elif option == "debt_yoy_surge":
+        # Country whose debt-to-GDP jumped most YoY
+        row = db.execute(text("""
+            WITH ranked AS (
+                SELECT c.code, c.name, ci.value, ci.period_date,
+                       LAG(ci.value) OVER (PARTITION BY c.id ORDER BY ci.period_date) AS prev_value
+                FROM country_indicators ci
+                JOIN countries c ON c.id = ci.country_id
+                WHERE ci.indicator = 'government_debt_gdp_pct'
+                  AND ci.period_date >= NOW() - INTERVAL '3 years'
+            )
+            SELECT code, name, value, prev_value, (value - prev_value) AS yoy_change
+            FROM ranked
+            WHERE prev_value IS NOT NULL AND (value - prev_value) > 5
+            ORDER BY yoy_change DESC
+            LIMIT 5
+        """)).fetchone()
+        if not row:
+            return None
+        code = row.code.lower()
+        entity = row.name
+        debt_now = float(row.value)
+        debt_prev = float(row.prev_value)
+        jump = float(row.yoy_change)
+        val_str = f"debt jumped +{jump:.1f}pp to {debt_now:.1f}% of GDP in one year"
+        label = "Debt Surge"
+        page_url = f"{SITE_URL}/countries/{code}"
+        og_image_url = f"{CDN_URL}/og/countries/{code}.png"
+        data_context = f"{entity}'s government debt {val_str} (was {debt_prev:.1f}%)"
+        hook_angle = f"A {jump:.0f}pp single-year debt jump is a major fiscal red flag — bond markets price this in slowly, then suddenly."
+
     else:
         return None
 
+    news = _fetch_news_context(entity)
+    news_block = f"\nCurrent news context:\n{news}" if news else ""
+
     prompt = f"""
 You are writing finance social media content for MetricsHour (macro intelligence platform).
+{AUDIENCE_PERSONA}
 
 Data: {data_context}
-Angle: {hook_angle}
+Angle: {hook_angle}{news_block}
 Page: {page_url}
 
 Write FIVE "did you know" / shocking stat posts:
