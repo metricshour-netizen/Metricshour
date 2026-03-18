@@ -73,6 +73,31 @@
         >💬 WhatsApp</a>
       </div>
 
+      <!-- Related entities — stocks + countries tagged in post -->
+      <div v-if="relatedAssets.length || relatedCountries.length" class="mb-8">
+        <p class="text-xs font-mono text-gray-600 uppercase tracking-widest mb-3">Explore in MetricsHour</p>
+        <div class="flex flex-wrap gap-2">
+          <NuxtLink
+            v-for="a in relatedAssets"
+            :key="a.id"
+            :to="`/stocks/${a.symbol.toLowerCase()}`"
+            class="inline-flex items-center gap-1.5 text-xs bg-[#111827] border border-[#1f2937] hover:border-emerald-500/40 text-gray-300 hover:text-emerald-400 px-3 py-1.5 rounded-lg transition-colors"
+          >
+            <span class="font-mono font-bold text-emerald-400">{{ a.symbol }}</span>
+            <span class="text-gray-500">{{ a.name.split(' ').slice(0, 2).join(' ') }}</span>
+          </NuxtLink>
+          <NuxtLink
+            v-for="c in relatedCountries"
+            :key="c.id"
+            :to="`/countries/${c.code.toLowerCase()}`"
+            class="inline-flex items-center gap-1.5 text-xs bg-[#111827] border border-[#1f2937] hover:border-blue-500/40 text-gray-300 hover:text-blue-400 px-3 py-1.5 rounded-lg transition-colors"
+          >
+            <span>{{ c.flag }}</span>
+            <span>{{ c.name }}</span>
+          </NuxtLink>
+        </div>
+      </div>
+
       <!-- Footer -->
       <div class="border-t border-[#1f2937] pt-6">
         <p class="text-xs text-gray-600">Published on MetricsHour · {{ fmtDate(post.published_at) }}</p>
@@ -101,6 +126,23 @@ interface BlogPost {
   cover_image_url?: string
   author_name: string
   published_at?: string
+  related_asset_ids?: number[] | null
+  related_country_ids?: number[] | null
+}
+
+interface RelatedAsset {
+  id: number
+  symbol: string
+  name: string
+  asset_type: string
+  price?: { close: number; change_pct: number } | null
+}
+
+interface RelatedCountry {
+  id: number
+  code: string
+  name: string
+  flag: string
 }
 
 const route = useRoute()
@@ -122,6 +164,27 @@ const { data: post, pending, error } = useAsyncData(
     return res.json() as Promise<BlogPost>
   },
 )
+
+// Fetch related entities when post loads
+const relatedAssets = ref<RelatedAsset[]>([])
+const relatedCountries = ref<RelatedCountry[]>([])
+
+watch(() => post.value, async (p) => {
+  if (!p) return
+  const base = import.meta.server ? runtimeConfig.apiBaseServer : runtimeConfig.public.apiBase
+
+  if (p.related_asset_ids?.length) {
+    const listRes = await fetch(`${base}/api/assets?limit=200`).then(r => r.ok ? r.json() : []).catch(() => [])
+    const assetList: RelatedAsset[] = Array.isArray(listRes) ? listRes : (listRes.items ?? [])
+    relatedAssets.value = assetList.filter(a => p.related_asset_ids!.includes(a.id)).slice(0, 6)
+  }
+
+  if (p.related_country_ids?.length) {
+    const listRes = await fetch(`${base}/api/countries?limit=300`).then(r => r.ok ? r.json() : []).catch(() => [])
+    const countryList = Array.isArray(listRes) ? listRes : (listRes.items ?? [])
+    relatedCountries.value = countryList.filter((c: RelatedCountry) => p.related_country_ids!.includes(c.id)).slice(0, 8)
+  }
+}, { immediate: true })
 
 const renderedBody = computed(() => {
   if (!post.value?.body) return ''
