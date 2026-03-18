@@ -1,5 +1,290 @@
 # MetricsHour — Progress & Session Log
 
+## Session 2026-03-18c — Blog content push ✅
+
+### Blog cleanup + 3 new posts published
+- Deleted junk "test-blog" (id=3, 25 chars, published) — removed from sitemap
+- Published draft id=5 "Why Most Stock Portfolios Hide a $2 Trillion Geographic Blind Spot"
+- Wrote and published 3 new data-driven posts using real DB data (EDGAR + Comtrade):
+  1. `apple-china-revenue-geographic-exposure-aapl-investors` — AAPL 18.9% China ($72.4B), full geographic breakdown, tariff transmission, 2025 context
+  2. `nvidia-china-revenue-chip-export-controls-nvda` — NVDA 17% China ($10.4B), FY2024 breakdown, export control timeline, Huawei Ascend wildcard
+  3. `us-china-tariffs-sp500-stocks-geographic-revenue-exposure` — China exposure table (BABA/TSLA/AAPL/NVDA/PG/ASML/TM/NVO), tariff transmission mechanisms, portfolio strategy
+- Blog now: 5 published posts (was 3 including junk, now 5 real)
+- CF cache purged; 4 new URLs submitted to IndexNow
+
+### Content strategy — next 10 posts (priority order)
+1. "Tesla's 22% China Revenue: Gigafactory Shanghai and the Geopolitical Bet" (TSLA $21.3B)
+2. "ASML: The Semiconductor Equipment Maker Caught Between Two Superpowers" (10% CN)
+3. "Procter & Gamble in China: $8.2 Billion at Stake in an Unlikely Trade War Target"
+4. "Germany GDP Slowdown 2025: How It Affects US Stocks with European Revenue"
+5. "Japan's Interest Rate Hike: Impact on US Stocks with Japanese Revenue Exposure"
+6. "India's Rising Economy: The Next Frontier for S&P 500 Revenue Growth"
+7. "How to Build a Trade-War-Resilient Portfolio Using Geographic Revenue Data"
+8. "The Complete Guide to Geographic Revenue Risk for Individual Investors"
+9. "Oil Price Volatility 2025: Which Companies Have Middle East Revenue Exposure"
+10. "US-EU Trade Tensions: Which US Stocks Have the Most European Revenue at Risk"
+
+## Session 2026-03-18b — SEO/caching/edge audit + Moltis blog fix ✅
+
+### Moltis craft_blog — FIXED (Contabo /root/openclaw/mcp_server.py)
+- Bug: `craft_blog` handler imported `requests` and `json` but NOT `os`, then called `os.environ.get(...)` → `NameError: name 'os' is not defined`
+- Fix: added `import os` to the `elif name == "craft_blog":` imports line
+- Moltis restarted — blog publishing now works
+
+### social_content.py — SQL query fix (root cause confirmed)
+- 08:00 `generate_market_open_drafts` failed: `psycopg2.errors.UndefinedColumn: column p.symbol does not exist`
+- `prices` table has no `symbol` column; query must JOIN via `asset_id` not `a.symbol = p.symbol`
+- Added `DISTINCT ON (a.id) ORDER BY a.id, p.timestamp DESC` to prevent duplicate rows per asset
+- Same fix applied to both `_hook_market_movers` and `_hook_day_wrap`
+- Reel trigger message upgraded: adds UTC timestamp + explicit tool call instruction
+- Committed: `4c8ce5d`
+
+### Sitemap investigation — 2791 URLs
+- Breakdown: trade 2232, countries 251, compare 172, stocks 91, indices 18, commodities 17, blog 3
+- `sitemap.xml` generates dynamically from DB (FastAPI); `robots.txt` both served from `api.metricshour.com`
+- `metricshour.com/sitemap.xml` → 301 → `api.metricshour.com/sitemap.xml` (Google follows this fine)
+
+### Bug: Nginx `no-store, no-cache` poisoning sitemap — FIXED
+- Nginx for `api.metricshour.com location /` added `Cache-Control: no-store, no-cache, no-transform` to ALL responses
+- FastAPI sets `s-maxage=3600` for sitemap but Nginx overrode it → CF showed `DYNAMIC` on every Googlebot request
+- Fix: added `location = /sitemap.xml` and `location = /robots.txt` exact-match blocks BEFORE `location /`
+  - These blocks have no `add_header Cache-Control` → FastAPI headers pass through clean
+  - `location /` retains `no-store, no-transform` for API data endpoints
+- Nginx reloaded on Hetzner (10.0.0.2)
+
+### Bug: CF cache rule `browser_ttl=0, override_origin` — FIXED
+- CF injected a second `Cache-Control: public, max-age=0, s-maxage=60` header alongside Nuxt's header
+- This killed browser caching (browsers always revalidated) and created ambiguous duplicate headers
+- Root cause: CF Cache Rule `http_request_cache_settings` had `browser_ttl: {default: 0, mode: override_origin}`
+- Fix via CF API: updated both `browser_ttl` and `edge_ttl` to `mode: respect_origin`
+  - CF now defers to Nuxt's `max-age=300` (5min browser) and `s-maxage=1800/3600` (edge)
+- Note: CF still adds `max-age=0, s-maxage=60` second header on Free plan (CF behaviour for edge-managed HTML) — CF IS caching (verified `cf-cache-status: HIT`)
+
+### Bug: Missing `/compare/**` routeRule — FIXED
+- 172 compare pages had no `Cache-Control` header → CF defaulted to 60s edge, 0 browser cache
+- Fix: added `'/compare/**': { headers: { 'Cache-Control': 'public, s-maxage=1800, max-age=300, stale-while-revalidate=86400' } }` to `nuxt.config.ts`
+- Frontend rebuilt + deployed on Netcup; CF cache purged
+- Committed: `28e0aea`
+
+### New CF cache rule: sitemap + robots caching
+- `api.metricshour.com` had no CF cache rule → treated as DYNAMIC even with `s-maxage=3600`
+- Added rule: `http.host eq "api.metricshour.com" and (path eq "/sitemap.xml" or path eq "/robots.txt")`
+  - `edge_ttl: 3600, override_origin` + `browser_ttl: 0, override_origin` (browsers shouldn't cache sitemap)
+- Verified: first hit MISS, second hit HIT ✅
+
+### CF Cache Rules final state (3 rules total)
+1. `metricshour.com` HTML pages: `cache: true, browser_ttl: respect_origin, edge_ttl: respect_origin`
+2. `cdn.metricshour.com` R2 CDN: `cache: true, browser_ttl: 3600 override, edge_ttl: 3600 override`
+3. `api.metricshour.com` sitemap+robots: `cache: true, browser_ttl: 0 override, edge_ttl: 3600 override`
+
+### R2 status — healthy, DYNAMIC expected
+- R2 custom domain (`cdn.metricshour.com`) always shows `cf-cache-status: DYNAMIC`
+- This is expected: R2 IS on CF infrastructure, not a separate origin to CDN-cache
+- Browser `max-age` still applies (86400 for OG images, 3600 for snapshots)
+- Object counts: snapshots/countries/ 750, snapshots/trade/ 5416, og/countries/ 250, og/stocks/ 90, og/trade/ 2708, og/feed/ 10741
+
+### All commits today
+- `9dea4d4` fix: social_content SQL DISTINCT ON + p.symbol → a.symbol (EARLIER SESSION)
+- `28e0aea` fix: /compare/** routeRule (Hetzner → pushed to origin)
+- `56a93c9` fix: reel trigger tool call message (Netcup local, rebased)
+- `f082332` fix: expires=3600 social beat tasks (Netcup local, rebased)
+- `4c8ce5d` fix: social_content SQL + reel trigger UTC timestamp (final push)
+
+## Session 2026-03-18 — Full system audit + Celery Beat fix ✅
+
+### Celery Beat crash-loop fixed (CRITICAL)
+- Beat was crash-looping since 12:50 UTC (46 min down) — restart counter hit 211+
+- Error: `No such option: --timezone` — Celery 5.6.2 dropped this CLI flag
+- Fix: removed `--timezone=UTC` from ExecStart in `/etc/systemd/system/metricshour-beat.service`
+- Timezone already set correctly in `celery_app.py` line 105: `timezone='UTC'`
+- Beat restored at 13:36 UTC, immediately started firing all due tasks
+
+### System audit findings (all 3 servers)
+- Netcup: ✅ healthy — all services up, disk 2%, RAM 4.8/31G
+- Hetzner: ⚠️ RAM 773M free / 3.7G, NO swap — monitor, consider swapfile
+- Contabo: ✅ Moltis + tg-bridge running clean
+- Gemini model causes smart_reel failures (confirmed 09:30 reel today — tool_turns=0)
+- fail2ban: 116 banned (Netcup), 135 banned (Hetzner)
+
+### Moltis model behavior confirmed
+- On Gemini: smart_reel fails (chatted instead of calling MCP tool, tool_turns=0)
+- On DeepSeek: fires tool immediately, tool_turns>0, reels succeed
+- Other tasks (monitoring, chat, server checks) work fine on both models
+
+## Session 2026-03-17f — Moltis smart_reel full audit & fix ✅
+
+### All 6 reel types now verified working (frame-inspected, sent to Telegram)
+market_recap, crypto_update, commodities, country_deep_dive, trade_spotlight, stock_analysis
+
+### Bugs found and fixed (all in `/root/openclaw/mcp_server.py`)
+
+**Bug 1: Duplicate assets in market_recap / crypto / commodities**
+- Queries used `WHERE timestamp >= NOW() - INTERVAL '3 days'` with no deduplication
+- Same asset appeared multiple times (e.g. CT/Cotton twice with different day prices)
+- Fix: wrapped all three queries in `WITH latest AS (SELECT DISTINCT ON (a.id) ... ORDER BY a.id, p.timestamp DESC)` subquery
+
+**Bug 2: Trade products showing raw JSON**
+- `tp.top_export_products` stored as JSON array — was rendering as `[{"name":"petroleum",...}]`
+- Fix: replaced with `jsonb_array_elements` subquery → now renders as `petroleum products, machinery, aircraft`
+
+**Bug 3: Trade value `$0.65T` instead of `$649B`**
+- Threshold `val_f > 1e11` (>$100B → show as T) was wrong — $649B was formatting as `$0.65T`
+- Fix: threshold → `1e12` (>$1T → show as T); also switched to `.0f` for cleaner B formatting
+
+**Bug 4: `scr.year` column doesn't exist → AAPL gets zero geographic revenue cards**
+- Column is `fiscal_year` not `year` — psql error swallowed by `2>/dev/null`
+- Fix: `scr.year` → `scr.fiscal_year`
+
+**Bug 5: Duplicate country rows in geographic revenue (AAPL showing US twice, CN twice)**
+- DB has duplicate entries per country per ticker
+- Fix: `DISTINCT ON (scr.country_id) ... ORDER BY scr.country_id, scr.fiscal_year DESC` + pipe through `sort -k3 -rn | head -8`
+
+### Verified ✅ (all frame-inspected)
+- AAPL: $254.53 +0.57% → Revenue 38.1% US, 18.9% China, 6.3% Japan, 4.9% UK, 4.9% Germany
+- US-CN trade: $649B (2023) · petroleum, machinery, aircraft, electronics, vehicles
+- GB country: GDP Growth 1.1%, GDP $3.69T, Inflation 3.3%, Unemployment 4.7%
+- market_recap: unique assets only, correct prices
+- All 6 reel styles: no header garbage cards, no duplicate rows, correct value formatting
+
+---
+
+## Session 2026-03-17e — Moltis reel data bug fixes ✅
+
+### Root causes found and fixed (all in `/root/openclaw/mcp_server.py`)
+
+**Bug 1: `c.iso2` → `c.code` (schema mismatch)**
+- All country, trade, and stock geo revenue queries used `c.iso2` but the column is `c.code`
+- Queries failed silently (psql error swallowed by `2>/dev/null`) → `live_data` contained only the column header line
+- Affected: `country_deep_dive`, `macro_alert`, `trade_spotlight`, `stock_analysis`
+
+**Bug 2: `tp.top_products` → `tp.top_export_products` (wrong column name)**
+- Trade pair query used non-existent column name
+
+**Bug 3: Header row parsed as data card ("value" showing on screen)**
+- `get_reel_data` wraps results as `"COUNTRY DATA GB (indicator|value|year):\n..."` — header contains `|`
+- Parser read header line as a data row → rendered card with value=**"value"**, label="Country Data Gb (Indicator"
+- Fix for `country_deep_dive`: added `if ind_raw not in IND_MAP: continue`
+- Fix for `trade_spotlight`: changed `except Exception: val_fmt = cols[2]` → `except Exception: continue`
+
+**Bug 4: market_recap corrupt data (carried from prior session)**
+- Added `AND a.asset_type != 'index'` + `AND ABS(change) < 0.5` to market_recap query
+- Added `if abs(chg_f) > 50: continue` sanity check in stat card parser
+
+### Verified ✅
+- country:GB query returns: GDP Growth 1.1%, GDP $3.69T, Inflation 3.3%, Unemployment 4.7% (2024/2025)
+- country:US query returns: GDP Growth 2.8%, GDP $28.75T, Inflation 2.9%, Unemployment 4.2%
+- trade:US-CN returns: $649B (2023), top products petroleum/machinery/aircraft
+- market_recap: SSNLF (60.62%) correctly excluded by filter
+- Frame inspection confirmed: no more "value" garbage cards on GB reel
+- All files pass `ast.parse()` ✅, moltis active ✅
+
+---
+
+## Session 2026-03-17d — tg-bridge multi-turn fix + reel delivery fix ✅
+
+### tg-bridge multi-turn collection — FIXED ✅
+- **Root cause:** `inject_to_moltis` returned `True` on first `thinking_done` with text. Model says "Creating reels..." → bridge exits → smart_reel runs silently → user sees intro text + silent videos with no context.
+- **Fix:** `/root/openclaw/telegram_webhook_bridge.py` — `thinking_done` with text now sends the text but CONTINUES listening. Exits only on idle timeout (8s silence after tool turns complete). Final summary after tool calls is now delivered.
+- `reply_chunks` reset between turns so multi-turn text accumulates correctly.
+
+### BOOT.md strict tool-first rule — ADDED ✅
+- Rule 1: "Call tools FIRST. Zero text before a tool call." with Good/Wrong examples
+- Topic→style reference table with example hooks
+- Hook quality rules: factual, punchy, < 60 chars, no fabricated numbers
+- Tool usage guide: which tool for which job
+
+### Verification ✅
+- Both files pass `ast.parse()` syntax check
+- `moltis` + `tg-bridge` active after restart
+- Webhook registered
+- Session cleared (DeepSeek default, message_count=0)
+- Confirmed reel file sizes post-patch: market_recap 1.9MB (was 0.4MB), trade_spotlight 1.0MB (was 0.5MB) — ElevenLabs voice confirmed active
+
+---
+
+## Session 2026-03-17c — Moltis reel quality overhaul ✅
+
+### Reel quality — FIXED (all styles now produce real data cards + voice + captions)
+
+**Root causes found and fixed:**
+1. `market_recap` data has 5 cols (sym|name|**type**|close|chg%) — old parser read col[2] (type) as price → no data cards generated. Fixed: now reads col[3] for price, col[4] for change.
+2. `trade_spotlight` and `stock_analysis` had **zero card-generation code** — both styles produced only title + outro with no data. Added full parsers for both.
+3. Voiceover was `""` for all data frames → ElevenLabs API error (empty string). Fixed: every frame now has contextual voice text ("Bitcoin is surging — plus 3.2% in the last 24 hours").
+4. `create_voiced_reel` now generates ffmpeg silence for any frame that has empty voiceover text (no API error).
+5. Captions and subcaptions are now passed per-frame into `moviepy_frames` dict so they're burned onto the video.
+
+**Files changed:**
+- `/root/openclaw/mcp_server.py` — smart_reel handler: replaced stat card parsing with style-specific parsers + `frame_meta` list (caption, subcap, voiceover, accent per data frame); replaced voiceover loop with rich per-frame metadata builder
+- `/root/openclaw/image_gen.py` — `create_voiced_reel`: non-empty voiceover texts only go to ElevenLabs; empty frames get ffmpeg silence
+- `/root/.moltis/BOOT.md` — production quality rules, hook quality guide, topic→style table, tool usage guide
+
+**Verified:**
+- Both files pass `ast.parse()` syntax check ✅
+- `moltis` + `tg-bridge` services active ✅
+- Session cleared (4 lines, message_count=0, DeepSeek default) ✅
+
+**Styles now fully supported with data cards:**
+- `market_recap` → top movers (5-col format fixed)
+- `crypto_update` → crypto prices (4-col)
+- `commodities` → commodity prices / specific symbol (4-col)
+- `country_deep_dive` → GDP, inflation, unemployment, growth (3-col)
+- `trade_spotlight` → bilateral trade value + top products (5-col) ← was broken
+- `stock_analysis` → price + geographic revenue breakdown (5-col + 4-col) ← was broken
+
+---
+
+## Session 2026-03-17b — Moltis reliability + video production + ElevenLabs voice ✅
+
+### Bot reliability — FIXED ✅
+- **Root cause:** 64 MCP tool schemas sent ~25K tokens to DeepSeek → intermittent empty responses
+- **Fix:** Added `EXPOSED_TOOLS` filter in `/root/openclaw/mcp_server.py` — only 18 tools exposed to LLM (all 64 still callable). Token count dropped from 25K → 18.8K → DeepSeek reliable
+- DeepSeek set as permanent default in `moltis.toml` + session DB (Gemini was failing at 25K tokens)
+- tg-bridge v2 already in place: persistent WS, 30s keepalive, reconnects automatically
+
+### Video production — FIXED ✅
+- **Bug 1:** `@font-face{font-family:...}` unescaped inside Python f-strings → `NameError: name 'font'`. Fixed 20 occurrences in `/root/openclaw/image_gen.py` (→ `@font-face{{font-family:...}}`)
+- **Bug 2:** Header row `symbol|name|price|24h_chg%` from `get_reel_data` was parsed as a data row → `float("price")` crash. Fixed with `try: price_f = float(price) except: continue`
+- **Bug 3:** `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` missing from `/root/.config/moltis/.env` — were only in tg-bridge.service. Added to moltis env. Videos now send successfully.
+- Verified: `smart_reel` returns `Video sent: /tmp/smart_reel_crypto_update_btc.mp4 (0.4MB)` ✅
+
+### ElevenLabs voice — CONFIGURED ✅
+- `ELEVENLABS_API_KEY=4f409...` added to `/root/.config/moltis/.env`
+- `smart_reel` now calls `create_voiced_reel` when key is set (title + outro spoken by Adam voice)
+- Falls back to `create_moviepy_reel` (silent) if key missing
+
+### Commodity reels — FIXED ✅
+- Added `commodity:SYMBOL` topic to `get_reel_data` for specific lookups (gold=XAUUSD, oil=WTI etc.)
+- Added commodity subject→symbol mapping in `smart_reel` (gold→XAUUSD, silver→XAGUSD, oil→WTI etc.)
+- Added `commodities` to `smart_reel` style enum and `title_map`
+- Gold reel test confirmed: `Video sent: /tmp/smart_reel_commodities_gold.mp4 (0.4MB)` ✅
+
+### SQL fixes
+- `ROUND(float, 2)` → `ROUND(CAST(... AS numeric), 2)` fixed in 5 places in `mcp_server.py`
+- BOOT.md updated with correct PostgreSQL rules and price column names
+
+### BOOT.md optimised
+- `smart_reel` is now ONE-STEP (model calls it directly, no pre-call to `get_reel_data`)
+- Topic→style mapping guide added for all asset types
+- Removed `generate_visual` and `generate_chart` from EXPOSED_TOOLS to prevent fallback to static images
+
+---
+
+## Session 2026-03-17 — Moltis/Telegram audit + website health check ✅
+
+### Moltis/Telegram bot on Contabo — ALL HEALTHY ✅
+- `[channels.telegram.openclaw]` block confirmed present in moltis.toml (token + chat_id set)
+- `telegram_webhook_bridge.py` watchdog loop confirmed implemented (60s loop, re-registers webhook if URL drifts)
+- `tg-bridge.service`: active, PID 345913, listening on 10.0.0.3:8767 (WireGuard-only ✅)
+- `moltis.service`: active, EnvironmentFile=/root/.config/moltis/.env present ✅
+- Webhook: `api.metricshour.com/tg-webhook/` registered, 0 pending updates
+- Test message delivered: msg_id 1280 ✅
+- Minor: duplicate `RestartSec=` lines in moltis.service (5 and 10) — harmless, uses last value
+- Watchdog logs confirmed correct behaviour: re-registered after moltis restart at 01:14-01:17, then stable
+
+### Website health check — see next session update when agent 2 completes
+
+---
+
 ## Session 2026-03-16c — Moltis blog hallucination fix + first blog post published ✅
 
 ### Moltis publish_blog was hallucinating — FIXED
