@@ -14,7 +14,7 @@ def get_r2_client():
         endpoint_url=settings.r2_endpoint,
         aws_access_key_id=settings.r2_access_key_id,
         aws_secret_access_key=settings.r2_secret_access_key,
-        config=Config(signature_version="s3v4"),
+        config=Config(signature_version="s3v4", max_pool_connections=25),
         region_name="auto",
     )
 
