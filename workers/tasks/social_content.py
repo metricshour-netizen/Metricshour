@@ -499,15 +499,15 @@ def _hook_market_movers(db) -> dict | None:
     """Top 5 biggest price movers from the last 24h — market open hook."""
     try:
         rows = db.execute(text("""
-            SELECT p.symbol, a.name,
+            SELECT a.symbol, a.name,
                    ROUND(CAST(p.close AS numeric), 2) AS close,
-                   ROUND(CAST(p.change_pct AS numeric), 2) AS change_pct
+                   ROUND(CAST((p.close - p.open) / NULLIF(p.open, 0) * 100 AS numeric), 2) AS change_pct
             FROM prices p
-            JOIN assets a ON a.symbol = p.symbol
+            JOIN assets a ON a.id = p.asset_id
             WHERE p.interval = '1d'
               AND p.open IS NOT NULL
               AND p.timestamp >= NOW() - INTERVAL '36 hours'
-            ORDER BY ABS(p.change_pct) DESC
+            ORDER BY ABS((p.close - p.open) / NULLIF(p.open, 0)) DESC
             LIMIT 5
         """)).fetchall()
     except Exception as e:
@@ -569,15 +569,15 @@ def _hook_day_wrap(db) -> dict | None:
     """End-of-day wrap — biggest gainer and loser."""
     try:
         rows = db.execute(text("""
-            SELECT p.symbol, a.name,
+            SELECT a.symbol, a.name,
                    ROUND(CAST(p.close AS numeric), 2) AS close,
-                   ROUND(CAST(p.change_pct AS numeric), 2) AS change_pct
+                   ROUND(CAST((p.close - p.open) / NULLIF(p.open, 0) * 100 AS numeric), 2) AS change_pct
             FROM prices p
-            JOIN assets a ON a.symbol = p.symbol
+            JOIN assets a ON a.id = p.asset_id
             WHERE p.interval = '1d'
               AND p.open IS NOT NULL
               AND p.timestamp >= NOW() - INTERVAL '36 hours'
-            ORDER BY ABS(p.change_pct) DESC
+            ORDER BY ABS((p.close - p.open) / NULLIF(p.open, 0)) DESC
             LIMIT 5
         """)).fetchall()
     except Exception as e:
