@@ -12,6 +12,7 @@ import os
 
 # Make backend importable
 sys.path.insert(0, '/root/metricshour/backend')
+sys.path.insert(0, "/root/metricshour/workers")
 
 from dotenv import load_dotenv
 load_dotenv('/root/metricshour/backend/.env')
@@ -271,29 +272,46 @@ app.conf.update(
         },
 
         # Social content — 6 daily slots: posts (copy-ready Telegram) + reels (via tg-bridge → Moltis)
+        # expires=3600: discard if worker was down — stale market data at wrong time is useless
         'social-market-open-8am': {
             'task': 'tasks.social_content.generate_market_open_drafts',
             'schedule': crontab(hour=8, minute=0),
+            'options': {'expires': 3600},
         },
         'social-morning-reel-830': {
             'task': 'tasks.social_content.generate_morning_reel',
             'schedule': crontab(hour=8, minute=30),
+            'options': {'expires': 3600},
         },
         'social-insight-9am': {
             'task': 'tasks.social_content.generate_social_drafts',
             'schedule': crontab(hour=9, minute=0),
+            'options': {'expires': 3600},
+        },
+        'social-morning-reel-2-930': {
+            'task': 'tasks.social_content.generate_morning_reel_2',
+            'schedule': crontab(hour=9, minute=30),
+            'options': {'expires': 3600},
         },
         'social-evening-wrap-5pm': {
             'task': 'tasks.social_content.generate_evening_wrap_drafts',
             'schedule': crontab(hour=17, minute=0),
+            'options': {'expires': 3600},
         },
         'social-evening-reel-1730': {
             'task': 'tasks.social_content.generate_evening_reel',
             'schedule': crontab(hour=17, minute=30),
+            'options': {'expires': 3600},
         },
         'social-viral-hook-6pm': {
             'task': 'tasks.social_content.generate_viral_hook_drafts',
             'schedule': crontab(hour=18, minute=0),
+            'options': {'expires': 3600},
+        },
+        'social-evening-reel-2-1830': {
+            'task': 'tasks.social_content.generate_evening_reel_2',
+            'schedule': crontab(hour=18, minute=30),
+            'options': {'expires': 3600},
         },
 
         # SEO health monitor — weekly Sunday 2am UTC
