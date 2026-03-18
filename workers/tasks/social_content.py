@@ -182,13 +182,43 @@ def _call_deepseek(prompt: str) -> dict | None:
         return None
 
 
+# AI slop phrases that indicate low-quality, generic output — trigger a retry
+_BANNED_PHRASES = [
+    "it's important to note", "it is important to note",
+    "in today's fast-paced", "in today's world", "in the current landscape",
+    "it goes without saying", "needless to say",
+    "at the end of the day", "when all is said and done",
+    "nuanced", "multifaceted", "navigating", "leveraging",
+    "in conclusion", "to summarize", "as we can see",
+    "interestingly enough", "it's worth noting", "it is worth noting",
+    "game-changer", "game changer", "paradigm shift",
+]
+
+
+def _quality_check(result: dict) -> bool:
+    """Return True if AI output passes quality check (no banned phrases). Logs and rejects if bad."""
+    text = " ".join(str(v) for v in result.values()).lower()
+    for phrase in _BANNED_PHRASES:
+        if phrase in text:
+            log.warning("Quality gate rejected output — contains banned phrase: '%s'", phrase)
+            return False
+    return True
+
+
 def _call_ai(prompt: str) -> dict | None:
-    """Call Gemini first, fall back to DeepSeek V3 if Gemini is unavailable."""
-    result = _call_gemini(prompt)
-    if result:
-        return result
-    log.info("Gemini unavailable — falling back to DeepSeek V3")
-    return _call_deepseek(prompt)
+    """Call Gemini first (fallback DeepSeek). Retries once if output fails quality gate."""
+    for attempt in range(2):
+        result = _call_gemini(prompt)
+        if not result:
+            log.info("Gemini unavailable — falling back to DeepSeek V3")
+            result = _call_deepseek(prompt)
+        if result:
+            if _quality_check(result):
+                return result
+            if attempt == 0:
+                log.info("Quality gate failed — retrying AI call")
+                continue
+    return result  # return even if quality gate fails on second attempt (better than None)
 
 
 # Audience persona injected into every content prompt
