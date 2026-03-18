@@ -1259,11 +1259,29 @@ def _send_draft_to_telegram(draft: dict) -> str | None:
     return None
 
 
-def _trigger_reel_via_moltis(style: str, subject: str, hook: str) -> None:
-    """Trigger a reel generation via tg-bridge injection to Moltis."""
+def _send_failure_alert(slot_name: str, error_msg: str) -> None:
+    """Send a Telegram alert when a scheduled slot fails permanently after all retries."""
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+        return
+    try:
+        requests.post(
+            f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
+            json={
+                "chat_id": TELEGRAM_CHAT_ID,
+                "text": f"\u274c *SLOT FAILED: {slot_name}*\n{error_msg}",
+                "parse_mode": "Markdown",
+            },
+            timeout=10,
+        )
+    except Exception:
+        pass
+
+
+def _trigger_reel_via_moltis(style: str, subject: str, hook: str) -> bool:
+    """Trigger a reel generation via tg-bridge injection to Moltis. Returns True on success."""
     if not TELEGRAM_WEBHOOK_SECRET or not TELEGRAM_CHAT_ID:
         log.warning("Reel trigger skipped — TELEGRAM_WEBHOOK_SECRET or TELEGRAM_CHAT_ID not set")
-        return
+        return False
     payload = {
         "update_id": 999999,
         "message": {
@@ -1288,8 +1306,10 @@ def _trigger_reel_via_moltis(style: str, subject: str, hook: str) -> None:
             timeout=10,
         )
         log.info("Reel trigger (%s/%s) → tg-bridge: HTTP %s", style, subject, r.status_code)
+        return r.status_code < 400
     except Exception as e:
         log.warning("Reel trigger failed (%s/%s): %s", style, subject, e)
+        return False
 
 
 @app.task(name='tasks.social_content.generate_social_drafts', bind=True, max_retries=2)
@@ -1322,6 +1342,7 @@ def generate_social_drafts(self):
         )
     except self.MaxRetriesExceededError:
         log.error("Social drafts: max retries exceeded — AI unavailable at 9am UTC")
+        _send_failure_alert("POST 2 (09:00 social draft)", "AI unavailable after 3 attempts — Gemini/DeepSeek both down?")
         return "error: max retries exceeded"
     except Exception as exc:
         log.exception("Social content generation failed")
@@ -1347,6 +1368,7 @@ def generate_market_open_drafts(self):
         )
     except self.MaxRetriesExceededError:
         log.error("Market open drafts: max retries exceeded")
+        _send_failure_alert("POST 1 (08:00 market open)", "AI unavailable after 3 attempts — check celery.log")
         return "error: max retries exceeded"
     except Exception as exc:
         log.exception("Market open draft generation failed")
@@ -1372,6 +1394,7 @@ def generate_evening_wrap_drafts(self):
         )
     except self.MaxRetriesExceededError:
         log.error("Evening wrap drafts: max retries exceeded")
+        _send_failure_alert("POST 3 (17:00 evening wrap)", "AI unavailable after 3 attempts — check celery.log")
         return "error: max retries exceeded"
     except Exception as exc:
         log.exception("Evening wrap draft generation failed")
@@ -1397,6 +1420,7 @@ def generate_viral_hook_drafts(self):
         )
     except self.MaxRetriesExceededError:
         log.error("Viral hook drafts: max retries exceeded")
+        _send_failure_alert("POST 4 (18:00 viral stat)", "AI unavailable after 3 attempts — check celery.log")
         return "error: max retries exceeded"
     except Exception as exc:
         log.exception("Viral hook draft generation failed")
@@ -1405,15 +1429,23 @@ def generate_viral_hook_drafts(self):
         db.close()
 
 
-@app.task(name='tasks.social_content.generate_morning_reel')
-def generate_morning_reel():
+@app.task(name='tasks.social_content.generate_morning_reel', bind=True, max_retries=2)
+def generate_morning_reel(self):
     """Generate morning market reel via Moltis at 8:30 UTC."""
-    _trigger_reel_via_moltis("market_recap", "markets", "Markets open: here are today's biggest movers")
-    return "reel triggered"
+    try:
+        ok = _trigger_reel_via_moltis("market_recap", "markets", "Markets open: here are today's biggest movers")
+        if not ok:
+            raise RuntimeError("tg-bridge rejected or unreachable")
+        return "reel triggered"
+    except self.MaxRetriesExceededError:
+        _send_failure_alert("REEL 1 (08:30 market_recap)", "tg-bridge unreachable after 3 attempts — is it running on Contabo?")
+        return "error: max retries exceeded"
+    except Exception as exc:
+        raise self.retry(exc=exc, countdown=120)
 
 
-@app.task(name='tasks.social_content.generate_morning_reel_2')
-def generate_morning_reel_2():
+@app.task(name='tasks.social_content.generate_morning_reel_2', bind=True, max_retries=2)
+def generate_morning_reel_2(self):
     """Generate second morning reel via Moltis at 9:30 UTC.
     Rotates daily: country_deep_dive → stock_analysis → trade_spotlight.
     """
@@ -1424,19 +1456,35 @@ def generate_morning_reel_2():
         ("trade_spotlight", "US-CN", "The world's most important trade relationship"),
     ]
     pick = styles[date.today().timetuple().tm_yday % 3]
-    _trigger_reel_via_moltis(pick[0], pick[1], pick[2])
-    return "reel triggered"
+    try:
+        ok = _trigger_reel_via_moltis(pick[0], pick[1], pick[2])
+        if not ok:
+            raise RuntimeError("tg-bridge rejected or unreachable")
+        return "reel triggered"
+    except self.MaxRetriesExceededError:
+        _send_failure_alert(f"REEL 2 (09:30 {pick[0]})", "tg-bridge unreachable after 3 attempts — is it running on Contabo?")
+        return "error: max retries exceeded"
+    except Exception as exc:
+        raise self.retry(exc=exc, countdown=120)
 
 
-@app.task(name='tasks.social_content.generate_evening_reel')
-def generate_evening_reel():
+@app.task(name='tasks.social_content.generate_evening_reel', bind=True, max_retries=2)
+def generate_evening_reel(self):
     """Generate evening crypto/wrap reel via Moltis at 17:30 UTC."""
-    _trigger_reel_via_moltis("crypto_update", "bitcoin", "Today's crypto wrap: biggest moves of the day")
-    return "reel triggered"
+    try:
+        ok = _trigger_reel_via_moltis("crypto_update", "bitcoin", "Today's crypto wrap: biggest moves of the day")
+        if not ok:
+            raise RuntimeError("tg-bridge rejected or unreachable")
+        return "reel triggered"
+    except self.MaxRetriesExceededError:
+        _send_failure_alert("REEL 3 (17:30 crypto_update)", "tg-bridge unreachable after 3 attempts — is it running on Contabo?")
+        return "error: max retries exceeded"
+    except Exception as exc:
+        raise self.retry(exc=exc, countdown=120)
 
 
-@app.task(name='tasks.social_content.generate_evening_reel_2')
-def generate_evening_reel_2():
+@app.task(name='tasks.social_content.generate_evening_reel_2', bind=True, max_retries=2)
+def generate_evening_reel_2(self):
     """Generate second evening reel via Moltis at 18:30 UTC.
     Rotates daily: commodities → trade_spotlight → country_deep_dive.
     """
@@ -1447,5 +1495,13 @@ def generate_evening_reel_2():
         ("country_deep_dive", "CN", "China's economy: the numbers that move markets"),
     ]
     pick = styles[date.today().timetuple().tm_yday % 3]
-    _trigger_reel_via_moltis(pick[0], pick[1], pick[2])
-    return "reel triggered"
+    try:
+        ok = _trigger_reel_via_moltis(pick[0], pick[1], pick[2])
+        if not ok:
+            raise RuntimeError("tg-bridge rejected or unreachable")
+        return "reel triggered"
+    except self.MaxRetriesExceededError:
+        _send_failure_alert(f"REEL 4 (18:30 {pick[0]})", "tg-bridge unreachable after 3 attempts — is it running on Contabo?")
+        return "error: max retries exceeded"
+    except Exception as exc:
+        raise self.retry(exc=exc, countdown=120)
