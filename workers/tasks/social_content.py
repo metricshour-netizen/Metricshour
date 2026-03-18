@@ -25,7 +25,7 @@ import logging
 import os
 import random
 import time
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime, timezone
 
 import requests
 from celery_app import app
@@ -499,15 +499,19 @@ def _hook_market_movers(db) -> dict | None:
     """Top 5 biggest price movers from the last 24h — market open hook."""
     try:
         rows = db.execute(text("""
-            SELECT a.symbol, a.name,
-                   ROUND(CAST(p.close AS numeric), 2) AS close,
-                   ROUND(CAST((p.close - p.open) / NULLIF(p.open, 0) * 100 AS numeric), 2) AS change_pct
-            FROM prices p
-            JOIN assets a ON a.id = p.asset_id
-            WHERE p.interval = '1d'
-              AND p.open IS NOT NULL
-              AND p.timestamp >= NOW() - INTERVAL '36 hours'
-            ORDER BY ABS((p.close - p.open) / NULLIF(p.open, 0)) DESC
+            SELECT symbol, name, close, change_pct FROM (
+                SELECT DISTINCT ON (a.id)
+                       a.symbol, a.name,
+                       ROUND(CAST(p.close AS numeric), 2) AS close,
+                       ROUND(CAST((p.close - p.open) / NULLIF(p.open, 0) * 100 AS numeric), 2) AS change_pct
+                FROM prices p
+                JOIN assets a ON a.id = p.asset_id
+                WHERE p.interval = '1d'
+                  AND p.open IS NOT NULL
+                  AND p.timestamp >= NOW() - INTERVAL '36 hours'
+                ORDER BY a.id, p.timestamp DESC
+            ) latest
+            ORDER BY ABS(change_pct) DESC
             LIMIT 5
         """)).fetchall()
     except Exception as e:
@@ -569,15 +573,19 @@ def _hook_day_wrap(db) -> dict | None:
     """End-of-day wrap — biggest gainer and loser."""
     try:
         rows = db.execute(text("""
-            SELECT a.symbol, a.name,
-                   ROUND(CAST(p.close AS numeric), 2) AS close,
-                   ROUND(CAST((p.close - p.open) / NULLIF(p.open, 0) * 100 AS numeric), 2) AS change_pct
-            FROM prices p
-            JOIN assets a ON a.id = p.asset_id
-            WHERE p.interval = '1d'
-              AND p.open IS NOT NULL
-              AND p.timestamp >= NOW() - INTERVAL '36 hours'
-            ORDER BY ABS((p.close - p.open) / NULLIF(p.open, 0)) DESC
+            SELECT symbol, name, close, change_pct FROM (
+                SELECT DISTINCT ON (a.id)
+                       a.symbol, a.name,
+                       ROUND(CAST(p.close AS numeric), 2) AS close,
+                       ROUND(CAST((p.close - p.open) / NULLIF(p.open, 0) * 100 AS numeric), 2) AS change_pct
+                FROM prices p
+                JOIN assets a ON a.id = p.asset_id
+                WHERE p.interval = '1d'
+                  AND p.open IS NOT NULL
+                  AND p.timestamp >= NOW() - INTERVAL '36 hours'
+                ORDER BY a.id, p.timestamp DESC
+            ) latest
+            ORDER BY ABS(change_pct) DESC
             LIMIT 5
         """)).fetchall()
     except Exception as e:
@@ -943,7 +951,13 @@ def _trigger_reel_via_moltis(style: str, subject: str, hook: str) -> None:
             "from": {"id": int(TELEGRAM_CHAT_ID), "is_bot": False, "first_name": "Scheduler"},
             "chat": {"id": int(TELEGRAM_CHAT_ID), "type": "private"},
             "date": int(time.time()),
-            "text": f"[AUTOMATED] Call mcp__metricshour__smart_reel now: style={style} subject={subject} hook={hook}",
+            "text": (
+                    "[AUTOMATED "
+                    + datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+                    + "] TOOL CALL REQUIRED - do NOT respond with text first."
+                    f" Call mcp__metricshour__smart_reel immediately."
+                    f" Arguments: style={style} subject={subject} hook={hook}"
+                ),
         },
     }
     try:
