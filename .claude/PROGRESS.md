@@ -1,5 +1,41 @@
 # MetricsHour — Progress & Session Log
 
+## Session 2026-03-18d — Moltis craft_blog fix + blog entity linking ✅
+
+### Moltis craft_blog — FULLY FIXED (Contabo /root/openclaw/mcp_server.py)
+- Root cause: `_run_psql` was called 5× but never defined anywhere → silent NameError → all DB queries failed → AI wrote generic posts with no real data
+- Also: DB query column names were all wrong (c.iso2, ci.indicator_code, p.change_pct — none exist)
+- Fix: replaced entire data-fetching block with calls to MetricsHour public API:
+  - `stock:SYM` → GET /api/assets/{sym} → real price + geographic revenue breakdown
+  - `country:CC` → GET /api/countries/{code} → indicators, credit rating, exposed stocks
+  - `trade:EXP-IMP` → GET /api/trade?exporter=X&importer=Y → bilateral trade values
+  - `commodity:NAME` → GET /api/assets?asset_type=commodity
+- Added entity extraction: regex scan of generated content for `/stocks/XX` and `/countries/xx` → API lookup → set related_asset_ids + related_country_ids
+- Added excerpt auto-extraction from first non-heading paragraph
+- payload now includes: related_asset_ids, related_country_ids, excerpt
+
+### publish_blog — also patched
+- Was not setting related_asset_ids / related_country_ids at all
+- Now: same regex extraction from content before POSTing
+- Added `import re,` to handler
+
+### Blog entity backfill
+- All 5 existing posts updated with related_asset_ids + related_country_ids from their body content
+- Key IDs: AAPL=1, NVDA=2, TSLA=7, ASML=77, PG=44, TM=78; US=144, CN=189, TW=86, DE=47
+
+### Frontend: "Explore in MetricsHour" section on blog posts
+- Added after share buttons, before footer in pages/blog/[slug].vue
+- Shows related stocks (emerald chips) + countries (blue chips) from related_* IDs
+- Fetches /api/assets?limit=200 and /api/countries?limit=300 client-side, filters by ID
+- Commit: 3b81614
+
+### Verified live
+- Public API returns related_asset_ids + related_country_ids correctly ✓
+- Sitemap: 2794 URLs, 6 blog (index + 5 posts) ✓
+- Moltis active ✓
+- craft_blog syntax valid ✓ (ast.parse passes)
+- test-blog deleted ✓
+
 ## Session 2026-03-18c — Blog content push ✅
 
 ### Blog cleanup + 3 new posts published
