@@ -1416,7 +1416,7 @@ def _log_content(content_type: str, slot_name: str, entity: str, style: str,
         db.execute(
             text(
                 "INSERT INTO content_log (content_type, slot_name, entity, style, caption, twitter_copy, platform_copies, source) "
-                "VALUES (:ct, :sn, :en, :st, :ca, :tw, :pc::jsonb, :src)"
+                "VALUES (:ct, :sn, :en, :st, :ca, :tw, :pc, :src)"
             ),
             {
                 "ct": content_type, "sn": slot_name, "en": entity, "st": style,
