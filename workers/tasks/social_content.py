@@ -27,6 +27,7 @@ import random
 import time
 from datetime import date, timedelta, datetime, timezone
 
+import redis as _redis_lib
 import requests
 from celery_app import app
 from sqlalchemy import select, func, text
@@ -37,6 +38,30 @@ from app.models.asset import Asset, StockCountryRevenue
 from sqlalchemy.orm import aliased
 
 log = logging.getLogger(__name__)
+
+# ── Redis idempotency lock ────────────────────────────────────────────────────
+# Prevents duplicate post delivery when Celery restores unacknowledged messages
+# (e.g. after worker restart mid-retry). Each slot locks for 2 hours per day.
+def _get_redis():
+    url = os.environ.get("REDIS_URL", "redis://127.0.0.1:6379/0")
+    return _redis_lib.from_url(url, decode_responses=True)
+
+
+def _acquire_slot_lock(slot: str) -> bool:
+    """Try to acquire a per-slot-per-day lock. Returns True if acquired (ok to run),
+    False if another instance already holds it (skip this run)."""
+    key = f"social:lock:{slot}:{date.today().isoformat()}"
+    try:
+        r = _get_redis()
+        acquired = r.set(key, "1", nx=True, ex=7200)  # 2-hour TTL
+        if not acquired:
+            log.warning("Slot %s already locked today — skipping duplicate run", slot)
+        return bool(acquired)
+    except Exception as e:
+        # Redis down — allow the run rather than silently skip it
+        log.warning("Redis lock unavailable (%s) — proceeding without lock", e)
+        return True
+
 
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
@@ -1610,6 +1635,8 @@ def generate_social_drafts(self):
     Rotates daily: country spotlight → stock exposure → trade insight → repeat.
     Keeps morning total at 2 posts (market_open at 8am + this at 9am) + 1 reel (8:30am).
     """
+    if not _acquire_slot_lock("social_drafts"):
+        return "skipped: already completed today"
     db = SessionLocal()
     try:
         # Rotate hook type by day-of-year so it cycles: country → stock → trade
@@ -1646,6 +1673,8 @@ def generate_social_drafts(self):
 @app.task(name='tasks.social_content.generate_market_open_drafts', bind=True, max_retries=2)
 def generate_market_open_drafts(self):
     """Generate market-open draft from top movers. Runs daily at 8am UTC."""
+    if not _acquire_slot_lock("market_open"):
+        return "skipped: already completed today"
     db = SessionLocal()
     try:
         draft = _hook_market_movers(db)
@@ -1672,6 +1701,8 @@ def generate_market_open_drafts(self):
 @app.task(name='tasks.social_content.generate_evening_wrap_drafts', bind=True, max_retries=2)
 def generate_evening_wrap_drafts(self):
     """Generate end-of-day wrap draft. Runs daily at 5pm UTC."""
+    if not _acquire_slot_lock("evening_wrap"):
+        return "skipped: already completed today"
     db = SessionLocal()
     try:
         draft = _hook_day_wrap(db)
@@ -1698,6 +1729,8 @@ def generate_evening_wrap_drafts(self):
 @app.task(name='tasks.social_content.generate_viral_hook_drafts', bind=True, max_retries=2)
 def generate_viral_hook_drafts(self):
     """Generate viral / shocking stat draft. Runs daily at 6pm UTC."""
+    if not _acquire_slot_lock("viral_hook"):
+        return "skipped: already completed today"
     db = SessionLocal()
     try:
         draft = _hook_viral_stat(db)
@@ -1724,6 +1757,8 @@ def generate_viral_hook_drafts(self):
 @app.task(name='tasks.social_content.generate_morning_reel', bind=True, max_retries=2)
 def generate_morning_reel(self):
     """Generate morning market reel via Moltis at 8:30 UTC. Hook is data-driven."""
+    if not _acquire_slot_lock("morning_reel"):
+        return "skipped: already completed today"
     hook = "Markets open: here are today's biggest movers"
     try:
         db = SessionLocal()
@@ -1895,6 +1930,8 @@ def generate_morning_reel_2(self):
     """Generate second morning reel via Moltis at 9:30 UTC.
     Rotates style daily; subject pulled from live DB data.
     """
+    if not _acquire_slot_lock("morning_reel_2"):
+        return "skipped: already completed today"
     db = SessionLocal()
     try:
         style, subject, hook = _pick_reel_subject_morning(db)
@@ -1917,6 +1954,8 @@ def generate_morning_reel_2(self):
 @app.task(name='tasks.social_content.generate_evening_reel', bind=True, max_retries=2)
 def generate_evening_reel(self):
     """Generate evening crypto/wrap reel via Moltis at 17:30 UTC."""
+    if not _acquire_slot_lock("evening_reel"):
+        return "skipped: already completed today"
     try:
         ok = _trigger_reel_via_moltis("crypto_update", "bitcoin", "Today's crypto wrap: biggest moves of the day")
         if not ok:
@@ -1934,6 +1973,8 @@ def generate_evening_reel_2(self):
     """Generate second evening reel via Moltis at 18:30 UTC.
     Rotates style daily; subject pulled from live DB data.
     """
+    if not _acquire_slot_lock("evening_reel_2"):
+        return "skipped: already completed today"
     db = SessionLocal()
     try:
         style, subject, hook = _pick_reel_subject_evening(db)
