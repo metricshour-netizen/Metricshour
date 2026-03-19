@@ -187,7 +187,7 @@ def _call_deepseek(prompt: str) -> dict | None:
         return None
 
 
-# AI slop phrases that indicate low-quality, generic output — trigger a retry
+# AI slop — generic phrases that indicate low-quality output, trigger a retry
 _BANNED_PHRASES = [
     "it's important to note", "it is important to note",
     "in today's fast-paced", "in today's world", "in the current landscape",
@@ -197,21 +197,37 @@ _BANNED_PHRASES = [
     "in conclusion", "to summarize", "as we can see",
     "interestingly enough", "it's worth noting", "it is worth noting",
     "game-changer", "game changer", "paradigm shift",
+    "here's what you need to know", "what you need to know",
+    "why it matters", "here's why", "unpacking", "deep dive",
+    "key takeaway", "bottom line", "make no mistake",
+    "in the world of", "the reality is", "let that sink in",
+    "food for thought", "worth watching", "stay tuned",
+    "more than ever", "unprecedented", "historic levels",
+    "follow for more", "like and share", "drop a comment",
+    "investors should consider", "investors should note",
+    "the markets are", "global markets", "market participants",
 ]
+
+import re as _re
 
 
 def _quality_check(result: dict) -> bool:
-    """Return True if AI output passes quality check (no banned phrases). Logs and rejects if bad."""
-    text = " ".join(str(v) for v in result.values()).lower()
+    """Reject output with banned phrases or missing specific numbers in Twitter copy."""
+    combined = " ".join(str(v) for v in result.values()).lower()
     for phrase in _BANNED_PHRASES:
-        if phrase in text:
-            log.warning("Quality gate rejected output — contains banned phrase: '%s'", phrase)
+        if phrase in combined:
+            log.warning("Quality gate rejected — banned phrase: '%s'", phrase)
             return False
+    # Twitter must contain at least one specific number (%, $, digit) — no vague generalities
+    twitter = result.get("twitter", "")
+    if twitter and not _re.search(r'[\d]+[%$]|[\$£€]\d|[\d]+\.\d', twitter):
+        log.warning("Quality gate rejected — Twitter copy has no specific numbers: %s", twitter[:80])
+        return False
     return True
 
 
 def _call_ai(prompt: str) -> dict | None:
-    """Call Gemini first (fallback DeepSeek). Retries once if output fails quality gate."""
+    """Call Gemini (fallback DeepSeek). Retries once on quality gate failure."""
     for attempt in range(2):
         result = _call_gemini(prompt)
         if not result:
@@ -226,14 +242,19 @@ def _call_ai(prompt: str) -> dict | None:
     return result  # return even if quality gate fails on second attempt (better than None)
 
 
-# Audience persona injected into every content prompt
+# Audience persona — injected into every prompt
 AUDIENCE_PERSONA = (
-    "Audience: retail investor aged 30-45 who follows stocks and macro on Twitter/Reddit. "
-    "They are information-saturated and skip anything that states the obvious. "
-    "The ONLY posts they share are ones that make them say 'I didn't know that' or 'that's not what I expected.' "
-    "Tone: sharp, confident, data-grounded, slightly provocative. No filler, no diplomacy. "
-    "MANDATORY: every post must open with the most COUNTERINTUITIVE or SURPRISING angle — never the obvious headline. "
-    "Goal: make them want to share this with one friend."
+    "AUDIENCE: Retail investor, 30-45, follows macro and stocks on Twitter/Reddit/LinkedIn. "
+    "Information-saturated — skips anything obvious, generic, or preachy. "
+    "Shares ONLY posts that make them say 'I didn't know that' or 'that changes my view'. "
+    "TONE RULES (non-negotiable):\n"
+    "  - Every number MUST appear as a specific figure (e.g. 58.5%, $427B, -0.5pp) — NEVER 'high', 'low', 'significant'\n"
+    "  - Name specific assets, currencies, sectors, rates — NEVER 'the markets' or 'investors'\n"
+    "  - Twitter: statements only — NO questions, NO 'Did you know'\n"
+    "  - No emojis before the first word of copy\n"
+    "  - No preamble ('In today's...', 'As we navigate...', 'It's important to note...')\n"
+    "  - Open with the MOST SURPRISING or COUNTERINTUITIVE angle — never the obvious headline\n"
+    "GOAL: one post that one person screenshots and sends to a friend."
 )
 
 
@@ -294,57 +315,103 @@ def _compute_angle(history_rows, current_val: float, unit: str) -> str:
 
 def _pick_best_country_indicator(db) -> tuple | None:
     """
-    Scan G20 countries × spotlight indicators and return the (country_code, indicator_key, label, unit)
-    with the largest absolute YoY change. Falls back to random if query fails.
+    Pick the G20 country+indicator most worth posting about.
+    Scoring: % YoY change, filtered by minimum absolute thresholds per indicator
+    to avoid mathematical noise from near-zero baseline values.
+    Bonus points for extreme absolute values (e.g. inflation > 20%, debt > 100%).
     """
+    # Minimum absolute change required per indicator to be considered meaningful
+    MIN_ABS = {
+        "inflation_pct": 1.5,
+        "gdp_growth_pct": 0.7,
+        "government_debt_gdp_pct": 3.0,
+        "unemployment_pct": 0.7,
+        "budget_balance_gdp_pct": 1.2,
+        "current_account_gdp_pct": 1.2,
+        "foreign_reserves_usd": 0.0,  # handled separately via rel_change
+        "fdi_inflows_gdp_pct": 0.4,
+    }
     try:
         rows = db.execute(text("""
             WITH ranked AS (
-                SELECT
-                    c.code, c.name, ci.indicator,
-                    ci.value,
-                    ci.period_date,
-                    LAG(ci.value) OVER (
-                        PARTITION BY c.id, ci.indicator ORDER BY ci.period_date
-                    ) AS prev_value
+                SELECT c.code, c.name, ci.indicator, ci.value, ci.period_date,
+                       LAG(ci.value) OVER (
+                           PARTITION BY c.id, ci.indicator ORDER BY ci.period_date
+                       ) AS prev_value
                 FROM country_indicators ci
                 JOIN countries c ON c.id = ci.country_id
                 WHERE c.code = ANY(:codes)
                   AND ci.indicator = ANY(:inds)
                   AND ci.period_date >= NOW() - INTERVAL '5 years'
             )
-            SELECT code, name, indicator, value, prev_value,
-                   ABS(value - prev_value) AS abs_change
+            SELECT code, name, indicator, value, prev_value, period_date,
+                   ABS(value - prev_value) AS abs_change,
+                   CASE WHEN prev_value != 0
+                        THEN ABS((value - prev_value) / prev_value)
+                        ELSE 0 END AS rel_change
             FROM ranked
             WHERE prev_value IS NOT NULL
-            ORDER BY abs_change DESC
-            LIMIT 20
+            ORDER BY period_date DESC, rel_change DESC
+            LIMIT 60
         """), {
             "codes": G20_CODES,
             "inds": [i[0] for i in SPOTLIGHT_INDICATORS],
         }).fetchall()
         if not rows:
             return None
-        # Normalise by pct change so large economies (US) don't always dominate
+
+        # Filter by minimum absolute thresholds then score
         scored = []
         for r in rows:
-            if r.prev_value and r.prev_value != 0:
-                pct = abs((r.value - r.prev_value) / r.prev_value)
-                scored.append((pct, r))
+            min_abs = MIN_ABS.get(r.indicator, 1.0)
+            if r.indicator == "foreign_reserves_usd":
+                # For reserves, require 10%+ relative change
+                if r.rel_change < 0.10:
+                    continue
+            elif float(r.abs_change) < min_abs:
+                continue
+
+            score = float(r.rel_change)
+
+            # Bonus for extreme absolute values that are inherently newsworthy
+            v = float(r.value)
+            if r.indicator == "inflation_pct" and v > 15:
+                score *= 2.0
+            elif r.indicator == "inflation_pct" and v < 0:
+                score *= 1.8  # deflation is rare and important
+            elif r.indicator == "government_debt_gdp_pct" and v > 100:
+                score *= 1.5
+            elif r.indicator == "gdp_growth_pct" and v < -1:
+                score *= 1.8  # recession
+            elif r.indicator == "gdp_growth_pct" and v > 6:
+                score *= 1.4  # boom
+            elif r.indicator == "budget_balance_gdp_pct" and v < -6:
+                score *= 1.5  # fiscal crisis territory
+            elif r.indicator == "unemployment_pct" and v > 12:
+                score *= 1.4
+
+            scored.append((score, r))
+
+        if not scored:
+            return None
+
         scored.sort(key=lambda x: x[0], reverse=True)
-        # Exclude last 2 countries used (stored in content_log) to avoid repeats
+
+        # Exclude recently used countries
         try:
             recent = db.execute(text(
                 "SELECT entity FROM content_log WHERE content_type='post' "
-                "AND slot_name='country_spotlight' ORDER BY created_at DESC LIMIT 2"
+                "AND slot_name='country_spotlight' ORDER BY created_at DESC LIMIT 3"
             )).scalars().all()
             recent_set = set(r.upper() for r in recent)
         except Exception:
             recent_set = set()
-        candidates = [r for _, r in scored[:10] if r.name.upper() not in recent_set]
+
+        candidates = [r for _, r in scored[:12] if r.name.upper() not in recent_set]
         if not candidates:
             candidates = [r for _, r in scored[:5]]
-        pick = random.choice(candidates[:5])
+
+        pick = candidates[0]  # take the top scorer, not random — best = most interesting
         ind_meta = {k: (l, u) for k, l, u in SPOTLIGHT_INDICATORS}
         label, unit = ind_meta.get(pick.indicator, (pick.indicator, ""))
         return pick.code, pick.indicator, label, unit
@@ -389,56 +456,71 @@ def _hook_country_spotlight(db) -> dict | None:
         for r in rows
     )
     angle = _compute_angle(rows, current_val, unit)
-    news = _fetch_news_context(f"{country.name} {label}")
+    prev_val = float(rows[1].value) if len(rows) > 1 else None
+    yoy_str = f" (was {_fmt_value(prev_val, unit)} in {rows[1].period_date.year})" if prev_val else ""
+    news = _fetch_news_context(f"{country.name} {label} economy {current_year}")
 
     page_url = f"{SITE_URL}/countries/{country_code.lower()}"
     og_image_url = f"{CDN_URL}/og/countries/{country_code.lower()}.png"
 
-    angle_block = f"\nWhat's notable: {angle}" if angle else ""
-    news_block = f"\nCurrent news context:\n{news}" if news else ""
+    angle_block = f"\nTrend: {angle}" if angle else ""
+    news_block = f"\nRecent headlines:\n{news}" if news else ""
 
-    prompt = f"""
-You are writing finance social media content for MetricsHour (macro intelligence platform).
+    prompt = f"""You are a financial data journalist writing social copy for MetricsHour.
 {AUDIENCE_PERSONA}
 
-Data: {country.name} — {label}: {_fmt_value(current_val, unit)} ({current_year})
-History: {history_str}{angle_block}{news_block}
-Page: {page_url}
+VERIFIED DATA (use exact numbers — do not invent or round differently):
+Country: {country.name}
+Indicator: {label}
+Current value: {_fmt_value(current_val, unit)} ({current_year}){yoy_str}
+5-year history: {history_str}{angle_block}{news_block}
+Page URL: {page_url}
 
-Use the angle and news context to frame WHY this data matters RIGHT NOW — not just what the number is.
-Write FIVE posts about this macro data point:
+YOUR TASK: Write 4 platform posts using the SAME data with platform-specific formats.
+Frame WHY this number matters to investors right now — policy implications, FX signals, sector exposure.
 
-1. TWITTER (max 260 chars, include the number, end with a punchy hook or question, 1-2 relevant emojis, include the URL)
+━━━ TWITTER ━━━
+Max 260 chars. RULES:
+- First word = country name or the number — never an emoji, never a question
+- State the number with its change: "[Country]: [indicator] [value] ([year change])"
+- Follow with ONE specific market consequence: name a rate/currency/sector/stock that is directly affected
+- End with the URL. 1-2 emojis AFTER the text only
+BANNED: questions, "Did you know", opening emojis, "investors should", "markets are"
+EXAMPLE: "Turkey: inflation at 58.5%, up from 19.6% in 2021. Central bank rate at 45% — real yield still deeply negative. Watch TRY depreciation pressure on EM bond spreads. {SITE_URL}/countries/tr 📉"
 
-2. LINKEDIN — Exact format to follow:
-
-[Country] [indicator]: [value] — [1-line insight explaining why it matters]
-
-[2-3 observations, each on its own line, max 20 words each. Cover: historical context, market signal, investor implication. Name specific currencies, sectors, rates.]
-
+━━━ LINKEDIN ━━━
+Format (copy exactly, no deviations):
+Line 1: [Country] [indicator]: [exact value] — [1-sentence insight on what this signals for capital markets]
+[blank line]
+[2-3 observations, ONE per line, max 20 words each]:
+- Cover: what drove the change, what policy/market mechanism it triggers, which asset class reacts first
+- Name specific: central banks, currencies, bond yields, indices, sectors
+[blank line]
 [URL]
+No emojis. No hashtags. No sign-off. Under 90 words total.
+EXAMPLE:
+Germany GDP growth: -0.5% — consecutive negative quarters signal Europe's largest economy is in contraction.
 
-No emojis. No hashtags. No "Follow for more." No sign-off. Under 100 words total.
+Berlin's debt brake prevents stimulus; growth must come from external demand or ECB rate cuts.
+EUR/USD faces downward pressure; Bund yields diverge from Treasuries as Fed/ECB paths split.
+Watch auto and industrial sectors — both are export-dependent and amplify German GDP swings.
+{page_url}
 
-GOOD (write like this):
-Germany debt-to-GDP: 66.4% — above the EU's 60% ceiling for the first time since 2015.
-Berlin's constitutional debt brake limits new borrowing, capping fiscal stimulus.
-Growth forecasts are being cut; the ECB rate cut timeline matters more now.
-Watch EUR and Bund spreads — fiscal drag could outlast the rate cycle.
-metricshour.com/countries/de
+━━━ FACEBOOK ━━━
+One tight paragraph. Pattern: [Shocking stat + country + year]. [One specific real-world consequence, name the mechanism]. [1 emoji] [URL]
+Max 55 words. No questions. No "Did you know."
+EXAMPLE: "Germany's economy shrank -0.5% last year — two consecutive contractions. The debt brake means Berlin can't borrow to stimulate. The ECB's rate-cut pace is now Germany's only lever. 📉 {page_url}"
 
-BAD (never write like this):
-"In today's global economy, understanding fiscal dynamics is crucial. Germany's debt-to-GDP ratio has reached 66.4%, highlighting significant challenges for investors navigating European markets."
+━━━ INSTAGRAM ━━━
+Line 1 (CRITICAL — this is what shows before "more"): Must be a STATEMENT with the specific number. No questions. No emojis on line 1.
+Example first line: "Germany's economy contracted -0.5% last year."
+Body (4-6 lines): Each line = one data-driven observation. Include the 5-year history context. Name specific assets or policies.
+URL: include naturally mid-caption as "Full breakdown: [url]"
+Hashtags (LAST): 7-9 hashtags, ALL specific to this country/indicator/region. BANNED generic hashtags: #investing #finance #economy #stocks #markets
+GOOD hashtags example for Germany GDP: #GermanyEconomy #EuroZone #Bundesbank #ECBPolicy #EuropeanMarkets #MacroEconomics #DAXIndex #GermanStocks
+1-3 emojis max, woven into body, not clustered.
 
-3. FACEBOOK — Single paragraph, no line breaks. [Stat + country + one punchy implication, max 30 words]. [One specific risk or opportunity, max 20 words]. [1 emoji] [URL]
-
-GOOD: Germany's debt hit 66.4% of GDP — above the EU's limit. Budget cuts ahead mean slower growth for Europe's largest economy. 📊 metricshour.com/countries/de
-BAD: "Interesting economic update! Germany's debt-to-GDP ratio has climbed to 66.4%. What do you think about this trend? 📊"
-
-4. INSTAGRAM — punchy first line as hook (before fold), 3-5 relevant emojis woven in naturally, data-led financial angle, include URL naturally in caption body, 5-8 relevant hashtags at end. Max 200 words total.
-
-Return ONLY valid JSON: {{"twitter": "...", "linkedin": "...", "facebook": "...", "instagram": "..."}}
-"""
+Return ONLY valid JSON with no extra text: {{"twitter": "...", "linkedin": "...", "facebook": "...", "instagram": "..."}}"""
     result = _call_ai(prompt)
     if not result:
         return None
@@ -553,56 +635,84 @@ def _hook_stock_exposure(db) -> dict | None:
         .limit(3)
     ).all()
 
-    geo_breakdown = ", ".join(
-        f"{r.code} {float(r.revenue_pct):.0f}%" for r in top_countries
+    # Build detailed geo breakdown with country names
+    RevCountry3 = aliased(Country)
+    top_countries_named = db.execute(
+        select(RevCountry3.code, RevCountry3.name, StockCountryRevenue.revenue_pct, StockCountryRevenue.revenue_usd)
+        .join(Asset, Asset.id == StockCountryRevenue.asset_id)
+        .join(RevCountry3, RevCountry3.id == StockCountryRevenue.country_id)
+        .where(Asset.symbol == ticker, RevCountry3.code != "US")
+        .order_by(StockCountryRevenue.revenue_pct.desc())
+        .limit(4)
+    ).all()
+
+    geo_lines = "\n".join(
+        f"  {r.name} ({r.code}): {float(r.revenue_pct):.1f}%"
+        + (f" (${float(r.revenue_usd)/1e9:.1f}B/yr)" if r.revenue_usd and float(r.revenue_usd) >= 1e9 else "")
+        for r in top_countries_named
     )
+    geo_breakdown = ", ".join(f"{r.code} {float(r.revenue_pct):.0f}%" for r in top_countries_named[:3])
+
     page_url = f"{SITE_URL}/stocks/{ticker.lower()}"
     og_image_url = f"{CDN_URL}/og/stocks/{ticker.lower()}.png"
 
-    news = _fetch_news_context(f"{name} {ticker} stock")
-    news_block = f"\nCurrent news context:\n{news}" if news else ""
+    # Include price move context if stock was selected because it moved
+    move_context = ""
+    if moved_rows:
+        for mr in moved_rows[:10]:
+            if mr.symbol == ticker:
+                move_context = f"\nRecent price move: {ticker} moved {float(mr.abs_pct):+.1f}% this week"
+                break
 
-    prompt = f"""
-You are writing finance social media content for MetricsHour (macro intelligence platform).
+    news = _fetch_news_context(f"{name} {ticker} earnings revenue tariffs China")
+    news_block = f"\nRecent headlines:\n{news}" if news else ""
+
+    prompt = f"""You are a financial data journalist writing social copy for MetricsHour.
 {AUDIENCE_PERSONA}
 
-Data: {name} ({ticker}) earns {intl_pct:.0f}% of revenue outside the US.
-Top international markets: {geo_breakdown}
-Page: {page_url}{news_block}
+VERIFIED DATA (use exact numbers):
+Stock: {name} ({ticker})
+Total non-US revenue: {intl_pct:.0f}% of annual revenue
+Geographic breakdown:
+{geo_lines}{move_context}{news_block}
+Page URL: {page_url}
 
-Use the news context to frame WHY this geographic exposure matters RIGHT NOW — tie the data to current macro events (tariffs, FX moves, geopolitics) where possible.
-Write FIVE posts about this stock's geographic revenue exposure and what it means:
+YOUR TASK: Write 4 platform posts connecting this stock's geographic exposure to current macro risk.
+The angle is NOT "this stock has international revenue" — the angle is WHAT THAT MEANS for EPS, margins, or stock price given today's macro backdrop (tariffs, FX, geopolitics).
 
-1. TWITTER (max 260 chars, include the %, specific countries, hook about macro risk/opportunity, 1-2 emojis, include URL)
+━━━ TWITTER ━━━
+Max 260 chars. RULES:
+- Start with: "{ticker} earns X% from [top country/region]" — ticker first, number second word
+- Connect to a specific current risk: name the tariff rate, FX rate, or policy that directly affects EPS
+- Give a specific quantified estimate of impact if possible ("~$X/share EPS risk")
+- End with URL + max 2 emojis after text
+BANNED: questions, "investors should", "it's important", opening emojis
+EXAMPLE: "AAPL earns 19% from China. Current tariff escalation = ~$0.40/share quarterly EPS risk. China revenue growing while US consumer softens — that geographic bet is now priced wrong. {page_url} 🌏"
 
-2. LINKEDIN — Exact format to follow:
+━━━ LINKEDIN ━━━
+Line 1: {ticker} earns [X]% of revenue from [top region/country] — [1-sentence implication for current quarter/year]
+[blank line]
+[2-3 lines, one observation each, max 20 words]:
+- Specific macro risk: tariff %, FX rate, or regulatory risk with a dollar/EPS estimate
+- Geographic concentration risk vs diversification — which region is growing, which is slowing
+- What the market is likely mispricing or over/underweighting
+[blank line]
+{page_url}
+No emojis. No hashtags. No sign-off. Under 90 words.
 
-[Ticker] earns [X]% of revenue outside the US — [1-line insight on what that exposure means right now]
+━━━ FACEBOOK ━━━
+One paragraph. Pattern: [Ticker + the exact % + top country]. [The specific risk or upside — name the mechanism]. [1 emoji] [URL]
+Max 50 words. Statements only — no questions.
+EXAMPLE: "NVDA earns 52% of revenue from Asia-Pacific — Taiwan 19%, China 17%. US semiconductor export controls are a direct line-item risk. Watch how management guides on China revenue next quarter. 🔬 {page_url}"
 
-[2-3 observations, each on its own line, max 20 words each. Cover: which regions drive growth, specific macro risks (tariffs/FX/policy), what the market may be mispricing.]
+━━━ INSTAGRAM ━━━
+Line 1 (before fold): "[Ticker] earns [X]% from [country/region]." — statement, number, no emojis on line 1
+Body: 4-5 lines. Revenue % by country, the macro risk, EPS/margin implication, what to watch
+URL: "Full breakdown: {page_url}"
+Hashtags: 7-9 SPECIFIC ones — ticker name, sector, region, macro theme. BANNED: #investing #finance #stocks #markets
+EXAMPLE hashtags for NVDA: #NVDA #Semiconductors #AIStocks #TechStocks #USTaiwanTrade #ChinaTech #ChipWar #ExportControls
 
-[URL]
-
-No emojis. No hashtags. No "Follow for more." No sign-off. Under 100 words total.
-
-GOOD (write like this):
-AAPL earns 58% of revenue outside the US — China alone is 19%, making it one of the most geopolitically exposed megacaps.
-A 10% CNY depreciation cuts EPS by ~$0.40 — rarely priced in during calm periods.
-EU Digital Markets Act compliance costs are rising; watch operating margins in Europe next quarter.
-metricshour.com/stocks/aapl
-
-BAD (never write like this):
-"In today's interconnected markets, geographic revenue diversification is more important than ever. Apple's international exposure represents both opportunity and risk for investors seeking global growth."
-
-3. FACEBOOK — Single paragraph, no line breaks. [Ticker + the % + top markets in one punchy line, max 30 words]. [One specific risk or opportunity this creates, max 20 words]. [1 emoji] [URL]
-
-GOOD: Apple earns 58% of revenue outside the US — China is 19%. A trade war escalation hits EPS directly. 🌍 metricshour.com/stocks/aapl
-BAD: "Did you know Apple earns most of its revenue internationally? This is really interesting for investors to consider! 🌍"
-
-4. INSTAGRAM — punchy first line as hook (before fold), 3-5 relevant emojis woven in naturally, data-led financial angle, include URL naturally in caption body, 5-8 relevant hashtags at end. Max 200 words total.
-
-Return ONLY valid JSON: {{"twitter": "...", "linkedin": "...", "facebook": "...", "instagram": "..."}}
-"""
+Return ONLY valid JSON: {{"twitter": "...", "linkedin": "...", "facebook": "...", "instagram": "..."}}"""
     result = _call_ai(prompt)
     if not result:
         return None
@@ -666,51 +776,54 @@ def _hook_trade_insight(db) -> dict | None:
     page_url = f"{SITE_URL}/trade/{exp.code.lower()}-{imp.code.lower()}"
     og_image_url = f"{CDN_URL}/og/trade/{exp.code.lower()}-{imp.code.lower()}.png"
 
-    news = _fetch_news_context(f"{exp.name} {imp.name} trade")
-    news_block = f"\nCurrent news context:\n{news}" if news else ""
+    news = _fetch_news_context(f"{exp.name} {imp.name} trade tariffs sanctions")
+    news_block = f"\nRecent headlines:\n{news}" if news else ""
+    products_line = f"\nTop traded goods: {products}" if products else ""
 
-    prompt = f"""
-You are writing finance social media content for MetricsHour (macro intelligence platform).
+    prompt = f"""You are a financial data journalist writing social copy for MetricsHour.
 {AUDIENCE_PERSONA}
 
-Data: {exp.name}–{imp.name} bilateral trade: {val_str}/year ({pair.year})
-Top traded goods: {products}
-Page: {page_url}{news_block}
+VERIFIED DATA (use exact numbers):
+Trade corridor: {exp.name} → {imp.name}
+Annual trade value: {val_str} ({pair.year} data){products_line}
+Page URL: {page_url}{news_block}
 
-Use the news context to explain WHY this trade corridor is relevant right now — tariffs, diplomatic tensions, sanctions, supply chain shifts. Don't just describe the data; frame it as a live story.
-Write FIVE posts about this trade relationship and why it matters to investors:
+YOUR TASK: 4 platform posts that treat this trade corridor as a live geopolitical/market story — not a description.
+Frame it as: what's at stake, what could disrupt it, which stocks/sectors get hit first.
 
-1. TWITTER (max 260 chars, include the dollar figure, key goods, geopolitical/market angle, 1-2 emojis, URL)
+━━━ TWITTER ━━━
+Max 260 chars. RULES:
+- Start with: "{exp.name}→{imp.name}: {val_str}/yr" — numbers first
+- Name the specific goods being traded
+- Name the specific risk: tariff %, sanctions regime, FX pressure, or supply chain dependency
+- Name one specific stock or sector that is most exposed
+- URL + max 2 emojis after text only
+EXAMPLE: "South Korea→China: $180B/yr — mostly semiconductors and petrochemicals. Export controls on advanced chips put 30% of Korean tech exports at risk. Watch Samsung and SK Hynix margins. {page_url} 🔬"
 
-2. LINKEDIN — Exact format to follow:
+━━━ LINKEDIN ━━━
+Line 1: {exp.name}→{imp.name}: {val_str}/year — [1-sentence on what makes this corridor strategically important or vulnerable NOW]
+[blank line]
+[2-3 lines, one observation each, max 20 words]:
+- What goods dominate the flow and why they're hard to substitute
+- The specific geopolitical/policy risk (name the policy, the tariff rate, or the diplomatic event)
+- Which listed companies or sectors get hit first and why
+[blank line]
+{page_url}
+No emojis. No hashtags. No sign-off. Under 90 words.
 
-[Exporter]→[Importer]: $[value]/year — [1-line insight on why this corridor matters or what's at risk]
+━━━ FACEBOOK ━━━
+One paragraph. [Dollar value + exporter + importer + top goods, punchy]. [The one specific risk that investors are probably underpricing]. [1 emoji] [URL]
+Max 55 words. Statements only.
+EXAMPLE: "South Korea ships $180B to China every year — mostly chips and chemicals. Export control escalation puts a third of that at risk. Samsung's China revenue is the canary in the coal mine. 🔬 {page_url}"
 
-[2-3 observations, each on its own line, max 20 words each. Cover: what's being traded, the geopolitical or policy risk, which sectors/companies are most exposed.]
+━━━ INSTAGRAM ━━━
+Line 1 (before fold): "{exp.name}→{imp.name}: {val_str}/year." — fact statement, no emojis on line 1
+Body: 4-5 lines covering: what's traded, why this corridor exists, the key risk, which companies are exposed
+URL: "Full data: {page_url}"
+Hashtags: 7-9 SPECIFIC — country names, sector, trade policy theme. BANNED: #trade #investing #finance #economy
+EXAMPLE: #SouthKorea #China #SamsungStock #Semiconductors #ExportControls #ChipWar #AsianMarkets #TradeWar
 
-[URL]
-
-No emojis. No hashtags. No "Follow for more." No sign-off. Under 100 words total.
-
-GOOD (write like this):
-China→US: $427B/year — the world's most politically contested trade corridor.
-Electronics and machinery dominate; 60%+ of US consumer tech imports originate here.
-A 25% tariff shock would add ~$180/device to manufacturing costs — largely passed to consumers.
-Watch semiconductor and retail stocks for the first signs of margin compression.
-metricshour.com/trade/cn-us
-
-BAD (never write like this):
-"Trade relationships between nations are a critical component of the global economy. The China-US trade corridor represents a significant economic partnership with important implications for investors worldwide."
-
-3. FACEBOOK — Single paragraph, no line breaks. [Dollar figure + corridor + the key goods in one punchy line, max 30 words]. [One specific risk or who gets hurt if it breaks, max 20 words]. [1 emoji] [URL]
-
-GOOD: China ships $427B to the US annually — mostly electronics and machinery. Tariffs on this corridor hit consumer prices immediately. 🌐 metricshour.com/trade/cn-us
-BAD: "The trade relationship between China and the US is fascinating and has many implications for global markets! 🌐"
-
-4. INSTAGRAM — punchy first line as hook (before fold), 3-5 relevant emojis woven in naturally, data-led financial angle, include URL naturally in caption body, 5-8 relevant hashtags at end. Max 200 words total.
-
-Return ONLY valid JSON: {{"twitter": "...", "linkedin": "...", "facebook": "...", "instagram": "..."}}
-"""
+Return ONLY valid JSON: {{"twitter": "...", "linkedin": "...", "facebook": "...", "instagram": "..."}}"""
     result = _call_ai(prompt)
     if not result:
         return None
@@ -755,37 +868,62 @@ def _hook_market_movers(db) -> dict | None:
     if not rows:
         return None
 
+    # Sort by absolute change to identify the outlier
+    by_abs = sorted(rows, key=lambda r: abs(float(r.change_pct)), reverse=True)
+    top_mover = by_abs[0]
+
     movers_str = "\n".join(
-        f"{r.symbol} | {r.name} | {r.close} | {float(r.change_pct):+.2f}%"
-        for r in rows
+        f"{r.symbol} ({r.name}): {float(r.change_pct):+.2f}% | price: {r.close}"
+        for r in by_abs
     )
     og_image_url = f"{CDN_URL}/og/section/markets.png"
 
-    prompt = f"""
-You are writing finance social media content for MetricsHour (macro intelligence platform).
+    # Fetch news for the top 2 movers specifically — gives AI context for WHY they moved
+    news_items = []
+    for r in by_abs[:2]:
+        n = _fetch_news_context(f"{r.name} {r.symbol} stock earnings")
+        if n:
+            news_items.append(f"{r.symbol} news:\n{n}")
+    news_block = "\n\n".join(news_items) if news_items else ""
+    news_section = f"\nRecent news context:\n{news_block}" if news_block else ""
+
+    prompt = f"""You are a financial data journalist writing social copy for MetricsHour.
 {AUDIENCE_PERSONA}
 
-Today's biggest market movers (price change %):
-{movers_str}
+VERIFIED DATA — today's biggest price movers:
+{movers_str}{news_section}
 
-Write FOUR posts as a market-open hook. Lead with the most surprising or counterintuitive move — don't just list numbers, tell people what it means:
+YOUR TASK: 4 posts as a market-open hook. Focus on the OUTLIER — the move that breaks the pattern or that most people will find surprising. Name WHY it happened if news context is available.
 
-1. TWITTER (max 260 chars, top 3 movers with % change, punchy hook or question, 1-2 emojis, include URL: {SITE_URL}/markets)
+━━━ TWITTER ━━━
+Max 260 chars. RULES:
+- Open with a scoreboard: "📊 [TOP3]: TICKER +X% | TICKER -X% | TICKER ±X%"
+- Follow with ONE sentence on the outlier — name the driver (earnings miss, macro catalyst, sector rotation)
+- End with URL: {SITE_URL}/markets
+EXAMPLE: "📊 NVDA +4.2% | NKE -3.8% | META +2.1%\nNike is the outlier — China consumer weakness, not macro. Q4 guidance is the real question. {SITE_URL}/markets"
 
-2. LINKEDIN — clean 3-observation format, data-led. No emojis. No hashtags. No sign-off. Under 100 words.
-Format:
-[Headline: biggest move + context]
-[Observation 1: what drove it]
-[Observation 2: sector/macro implication]
-[Observation 3: what to watch next]
+━━━ LINKEDIN ━━━
+Line 1: [Biggest mover] [%] — [1-sentence on what drove it and what it signals]
+[blank line]
+[2-3 lines]:
+- The driver behind the top move (earnings, macro, sector-specific)
+- The losing side — what's being rotated out of and why
+- What to watch in the next session (name a data release, earnings report, or Fed event)
+[blank line]
 {SITE_URL}/markets
+No emojis. No hashtags. No sign-off. Under 90 words.
 
-3. FACEBOOK — one punchy paragraph. Dollar/% figures + 1 emoji. Include URL. Max 50 words.
+━━━ FACEBOOK ━━━
+One paragraph. Lead with the top mover ticker + %. One sentence on what drove it. One sentence on the laggard. 1 emoji. URL. Max 50 words.
 
-4. INSTAGRAM — punchy first line as hook (before fold), 3-5 relevant emojis woven in naturally, top movers with % changes, include URL {SITE_URL}/markets naturally in caption, 5-8 relevant hashtags at end. Max 200 words.
+━━━ INSTAGRAM ━━━
+Line 1 (before fold): "[TOP MOVER] [%] — here's what the move is really about." — statement, no emojis on line 1
+Body: scorecard of all movers with %, then 2-3 lines on drivers and what to watch
+URL: {SITE_URL}/markets
+Hashtags: 7-8 SPECIFIC — ticker names, sector, market type. BANNED: #investing #stocks #markets #finance
+EXAMPLE: #NVDA #NVidia #Semiconductors #AIStocks #NKE #Nike #ConsumerStocks #MarketMovers
 
-Return ONLY valid JSON: {{"twitter": "...", "linkedin": "...", "facebook": "...", "instagram": "..."}}
-"""
+Return ONLY valid JSON: {{"twitter": "...", "linkedin": "...", "facebook": "...", "instagram": "..."}}"""
     result = _call_ai(prompt)
     if not result:
         return None
@@ -840,34 +978,54 @@ def _hook_day_wrap(db) -> dict | None:
     )
     og_image_url = f"{CDN_URL}/og/section/markets.png"
 
-    prompt = f"""
-You are writing finance social media content for MetricsHour (macro intelligence platform).
+    # Per-mover news for context
+    news_items = []
+    for r in [gainer, loser]:
+        n = _fetch_news_context(f"{r.name} {r.symbol} stock")
+        if n:
+            news_items.append(f"{r.symbol} news:\n{n}")
+    news_section = f"\nRecent news:\n" + "\n\n".join(news_items) if news_items else ""
+
+    prompt = f"""You are a financial data journalist writing end-of-day social copy for MetricsHour.
 {AUDIENCE_PERSONA}
 
-Today's market wrap — biggest movers:
+VERIFIED DATA — today's closing moves:
 {movers_str}
 
 Biggest gainer: {gainer.symbol} ({gainer.name}) {float(gainer.change_pct):+.2f}%
-Biggest loser: {loser.symbol} ({loser.name}) {float(loser.change_pct):+.2f}%
+Biggest loser: {loser.symbol} ({loser.name}) {float(loser.change_pct):+.2f}%{news_section}
 
-Write FOUR end-of-day wrap posts. Don't just state the moves — explain what they signal about tomorrow and what surprised most people today:
+YOUR TASK: 4 end-of-day wrap posts. Focus on what was SURPRISING about today's session and what it sets up for tomorrow.
 
-1. TWITTER (max 260 chars, biggest gainer AND loser with %, punchy market wrap tone, 1-2 emojis, include URL: {SITE_URL}/markets)
+━━━ TWITTER ━━━
+Max 260 chars. RULES:
+- Start with: "Close: [GAINER] [%] ↑ | [LOSER] [%] ↓"
+- One sentence on the more SURPRISING of the two moves — name the driver
+- One sentence on what this sets up for tomorrow (earnings, data release, or sector watch)
+- URL: {SITE_URL}/markets + max 2 emojis after text
+EXAMPLE: "Close: NVDA +4.2% ↑ | NKE -3.8% ↓\nNike's drop is a China consumer story, not tariffs — that's a sector-specific signal, not macro. Watch adidas tomorrow for confirmation. {SITE_URL}/markets 📉"
 
-2. LINKEDIN — clean 3-observation end-of-day wrap. Data-led. No emojis. No hashtags. No sign-off. Under 100 words.
-Format:
-[Headline: day's biggest swing + context]
-[Observation 1: what drove the biggest mover]
-[Observation 2: what the loser signals]
-[Observation 3: what to watch tomorrow]
+━━━ LINKEDIN ━━━
+Line 1: [Gainer] +X% vs [Loser] -X% — [1-sentence on what the divergence signals about sector rotation or macro]
+[blank line]
+[2-3 lines]:
+- What drove the gainer: earnings, upgrade, macro tailwind — be specific
+- What drove the loser: and whether it's idiosyncratic or a sector signal
+- What to watch tomorrow: name a specific ticker, data release, or Fed event
+[blank line]
 {SITE_URL}/markets
+No emojis. No hashtags. No sign-off. Under 90 words.
 
-3. FACEBOOK — one punchy end-of-day paragraph. Gainer and loser with % figures + 1 emoji. Include URL. Max 50 words.
+━━━ FACEBOOK ━━━
+One paragraph. Gainer + %, loser + %, the surprising takeaway, 1 forward-looking sentence. 1 emoji. URL. Max 55 words.
 
-4. INSTAGRAM — punchy first line as hook (before fold), 3-5 relevant emojis, today's gainer + loser with % changes, include URL {SITE_URL}/markets naturally in caption, 5-8 relevant hashtags at end. Max 200 words.
+━━━ INSTAGRAM ━━━
+Line 1 (before fold): "Today's close: [GAINER] +X% vs [LOSER] -X%." — no emojis on line 1
+Body: 4-5 lines — what drove each move, what it signals, what to watch
+URL: {SITE_URL}/markets
+Hashtags: 7-8 SPECIFIC ticker/sector hashtags. BANNED: #stocks #investing #markets #finance
 
-Return ONLY valid JSON: {{"twitter": "...", "linkedin": "...", "facebook": "...", "instagram": "..."}}
-"""
+Return ONLY valid JSON: {{"twitter": "...", "linkedin": "...", "facebook": "...", "instagram": "..."}}"""
     result = _call_ai(prompt)
     if not result:
         return None
@@ -1160,30 +1318,51 @@ def _try_viral_option(db, option: str) -> dict | None:
     else:
         return None
 
-    news = _fetch_news_context(entity)
-    news_block = f"\nCurrent news context:\n{news}" if news else ""
+    news = _fetch_news_context(f"{entity} economy finance")
+    news_block = f"\nRecent headlines:\n{news}" if news else ""
 
-    prompt = f"""
-You are writing finance social media content for MetricsHour (macro intelligence platform).
+    prompt = f"""You are a financial data journalist writing viral "shocking stat" social copy for MetricsHour.
 {AUDIENCE_PERSONA}
 
-Data: {data_context}
-Angle: {hook_angle}{news_block}
-Page: {page_url}
+VERIFIED DATA:
+{data_context}
+Counterintuitive angle: {hook_angle}{news_block}
+Page URL: {page_url}
 
-Write FIVE "did you know" / shocking stat posts:
+YOUR TASK: 4 posts that drop a number so specific and surprising that the reader pauses mid-scroll.
+The angle is the NUMBER — not a question, not a vague "interesting fact." State the stat, then deliver the implication.
 
-1. TWITTER (max 260 chars, lead with the shocking number, "Did you know?" or similar hook, 1-2 emojis, include URL)
+━━━ TWITTER ━━━
+Max 260 chars. RULES:
+- Open with the raw shocking stat — no "Did you know", no question, no emoji first
+- Second sentence: the implication that most people get wrong or don't know
+- End with URL + max 2 emojis after text
+EXAMPLES:
+"US government debt: 118% of GDP. Japan: 255%. Neither is defaulting. Sovereign debt math is different from household debt — the key variable is who holds it. {page_url} 📊"
+"Turkey's inflation hit 58.5% last year. The central bank responded by raising rates to 45% — still a -13.5% real yield. TRY holders are losing money in real terms every month. {page_url} 📉"
 
-2. LINKEDIN — data-led, no emojis, no hashtags, no sign-off. Under 100 words.
-Start with the shocking stat as headline. 2-3 brief observations on why it matters. Include URL.
+━━━ LINKEDIN ━━━
+Line 1: [The shocking stat as a clean statement — number + context, no fluff]
+[blank line]
+[2-3 observations, one per line, max 20 words each]:
+- Historical context: when was this last seen, or how does it compare to a benchmark/peer
+- The mechanism: what policy or market force is this connected to
+- The investment signal: which asset, rate, or currency is directly affected
+[blank line]
+{page_url}
+No emojis. No hashtags. No sign-off. Under 90 words.
 
-3. FACEBOOK — one punchy paragraph, lead with the surprising number, 1 emoji, include URL. Max 50 words.
+━━━ FACEBOOK ━━━
+One paragraph. Lead with the raw number. One sentence on why it's surprising. One sentence on the implication. 1 emoji. URL. Max 55 words. Statements only — no questions.
 
-4. INSTAGRAM — punchy "Did you know?" hook as first line (before fold), 3-5 relevant emojis woven in, data-led, include URL {page_url} naturally in caption, 5-8 relevant hashtags at end. Max 200 words.
+━━━ INSTAGRAM ━━━
+Line 1 (before fold): State the shocking number as a clean fact — no question, no "Did you know", no emojis on line 1
+EXAMPLE first line: "Turkey's inflation hit 58.5% last year."
+Body: 4-5 lines — historical comparison, mechanism, what it means for an investor holding EM assets
+URL: {page_url}
+Hashtags: 7-9 SPECIFIC — country/asset/indicator specific. BANNED: #investing #finance #economy #money
 
-Return ONLY valid JSON: {{"twitter": "...", "linkedin": "...", "facebook": "...", "instagram": "..."}}
-"""
+Return ONLY valid JSON: {{"twitter": "...", "linkedin": "...", "facebook": "...", "instagram": "..."}}"""
     result = _call_ai(prompt)
     if not result:
         return None
@@ -1544,12 +1723,33 @@ def generate_viral_hook_drafts(self):
 
 @app.task(name='tasks.social_content.generate_morning_reel', bind=True, max_retries=2)
 def generate_morning_reel(self):
-    """Generate morning market reel via Moltis at 8:30 UTC."""
+    """Generate morning market reel via Moltis at 8:30 UTC. Hook is data-driven."""
+    hook = "Markets open: here are today's biggest movers"
     try:
-        ok = _trigger_reel_via_moltis("market_recap", "markets", "Markets open: here are today's biggest movers")
+        db = SessionLocal()
+        try:
+            row = db.execute(text("""
+                SELECT DISTINCT ON (a.id) a.symbol, a.name,
+                       ROUND(CAST((p.close - p.open) / NULLIF(p.open, 0) * 100 AS numeric), 1) AS chg
+                FROM prices p JOIN assets a ON a.id = p.asset_id
+                WHERE p.interval = '1d' AND p.open IS NOT NULL
+                  AND p.timestamp >= NOW() - INTERVAL '36 hours'
+                ORDER BY a.id, p.timestamp DESC
+            """)).fetchall()
+            if row:
+                top = sorted(row, key=lambda r: abs(float(r.chg)), reverse=True)[:3]
+                hook = " | ".join(f"{r.symbol} {float(r.chg):+.1f}%" for r in top)
+        except Exception:
+            pass
+        finally:
+            db.close()
+    except Exception:
+        pass
+    try:
+        ok = _trigger_reel_via_moltis("market_recap", "markets", hook)
         if not ok:
             raise RuntimeError("tg-bridge rejected or unreachable")
-        return "reel triggered"
+        return f"reel triggered: {hook}"
     except self.MaxRetriesExceededError:
         _send_failure_alert("REEL 1 (08:30 market_recap)", "tg-bridge unreachable after 3 attempts — is it running on Contabo?")
         return "error: max retries exceeded"
