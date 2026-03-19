@@ -105,7 +105,7 @@ def _parse_json_response(text: str) -> dict | None:
     # Regex extraction of completed string values
     try:
         partial = {}
-        for key in ("twitter", "linkedin", "facebook", "instagram", "reddit_subreddit", "reddit_title", "reddit_body"):
+        for key in ("twitter", "linkedin", "facebook", "instagram"):
             m = _re.search(rf'"{key}"\s*:\s*"((?:[^"\\]|\\.)*)"', text, _re.DOTALL)
             if m:
                 partial[key] = m.group(1).replace('\\"', '"').replace("\\n", "\n")
@@ -437,12 +437,7 @@ BAD: "Interesting economic update! Germany's debt-to-GDP ratio has climbed to 66
 
 4. INSTAGRAM — punchy first line as hook (before fold), 3-5 relevant emojis woven in naturally, data-led financial angle, include URL naturally in caption body, 5-8 relevant hashtags at end. Max 200 words total.
 
-5. REDDIT — write a genuinely useful discussion post, NOT promotional:
-   - "subreddit": best single subreddit from [investing, economics, worldnews, geopolitics, economy, stocks, MacroEconomics, dataisbeautiful] — pick based on content angle
-   - "title": compelling Reddit title (max 200 chars) — data-led, sparks discussion, no clickbait
-   - "body": 3-4 paragraphs. Open with the raw data and historical context. Second paragraph: what this means for markets/investors with specific implications. Third paragraph: 1-2 contrarian angles or risks people miss. End with a genuine open question to drive comments. Do NOT mention MetricsHour by name in body — only include the URL naturally as "source" or "more data". No marketing language. Write like a knowledgeable community member.
-
-Return ONLY valid JSON: {{"twitter": "...", "linkedin": "...", "facebook": "...", "instagram": "...", "reddit_subreddit": "...", "reddit_title": "...", "reddit_body": "..."}}
+Return ONLY valid JSON: {{"twitter": "...", "linkedin": "...", "facebook": "...", "instagram": "..."}}
 """
     result = _call_ai(prompt)
     if not result:
@@ -459,9 +454,6 @@ Return ONLY valid JSON: {{"twitter": "...", "linkedin": "...", "facebook": "..."
         "linkedin": result.get("linkedin", ""),
         "facebook": result.get("facebook", ""),
         "instagram": result.get("instagram", ""),
-        "reddit_subreddit": result.get("reddit_subreddit", ""),
-        "reddit_title": result.get("reddit_title", ""),
-        "reddit_body": result.get("reddit_body", ""),
     }
 
 
@@ -609,12 +601,7 @@ BAD: "Did you know Apple earns most of its revenue internationally? This is real
 
 4. INSTAGRAM — punchy first line as hook (before fold), 3-5 relevant emojis woven in naturally, data-led financial angle, include URL naturally in caption body, 5-8 relevant hashtags at end. Max 200 words total.
 
-5. REDDIT — write a genuinely useful discussion post, NOT promotional:
-   - "subreddit": best single subreddit from [investing, stocks, SecurityAnalysis, ValueInvesting, StockMarket, geopolitics, economics] — pick based on content angle
-   - "title": compelling Reddit title (max 200 chars) — specific numbers, sparks discussion, no clickbait
-   - "body": 3-4 paragraphs. Open with the geographic breakdown and specific revenue %s. Second paragraph: which macro risks (tariffs, FX, geopolitics) are most relevant for each region and why. Third paragraph: what the market may be mispricing or overlooking. End with a genuine question about how others are thinking about this exposure. Do NOT mention MetricsHour by name in body — only include URL naturally as "source". Write like a thoughtful investor, not a marketer.
-
-Return ONLY valid JSON: {{"twitter": "...", "linkedin": "...", "facebook": "...", "instagram": "...", "reddit_subreddit": "...", "reddit_title": "...", "reddit_body": "..."}}
+Return ONLY valid JSON: {{"twitter": "...", "linkedin": "...", "facebook": "...", "instagram": "..."}}
 """
     result = _call_ai(prompt)
     if not result:
@@ -631,9 +618,6 @@ Return ONLY valid JSON: {{"twitter": "...", "linkedin": "...", "facebook": "..."
         "linkedin": result.get("linkedin", ""),
         "facebook": result.get("facebook", ""),
         "instagram": result.get("instagram", ""),
-        "reddit_subreddit": result.get("reddit_subreddit", ""),
-        "reddit_title": result.get("reddit_title", ""),
-        "reddit_body": result.get("reddit_body", ""),
     }
 
 
@@ -725,12 +709,7 @@ BAD: "The trade relationship between China and the US is fascinating and has man
 
 4. INSTAGRAM — punchy first line as hook (before fold), 3-5 relevant emojis woven in naturally, data-led financial angle, include URL naturally in caption body, 5-8 relevant hashtags at end. Max 200 words total.
 
-5. REDDIT — write a genuinely useful discussion post, NOT promotional:
-   - "subreddit": best single subreddit from [geopolitics, investing, economics, worldnews, StockMarket, MacroEconomics, GlobalPowers] — pick based on content angle
-   - "title": compelling Reddit title (max 200 chars) — specific dollar figure, geopolitical angle, sparks debate, no clickbait
-   - "body": 3-4 paragraphs. Open with the bilateral trade value and what's being traded. Second paragraph: geopolitical or policy risks that could disrupt this corridor (tariffs, sanctions, diplomatic tensions). Third paragraph: which sectors and companies are most exposed — give specific examples if possible. End with a genuine open question about where this corridor is heading. URL as "source" link only. Write like an informed macro analyst sharing knowledge, not promoting a product.
-
-Return ONLY valid JSON: {{"twitter": "...", "linkedin": "...", "facebook": "...", "instagram": "...", "reddit_subreddit": "...", "reddit_title": "...", "reddit_body": "..."}}
+Return ONLY valid JSON: {{"twitter": "...", "linkedin": "...", "facebook": "...", "instagram": "..."}}
 """
     result = _call_ai(prompt)
     if not result:
@@ -747,9 +726,6 @@ Return ONLY valid JSON: {{"twitter": "...", "linkedin": "...", "facebook": "..."
         "linkedin": result.get("linkedin", ""),
         "facebook": result.get("facebook", ""),
         "instagram": result.get("instagram", ""),
-        "reddit_subreddit": result.get("reddit_subreddit", ""),
-        "reddit_title": result.get("reddit_title", ""),
-        "reddit_body": result.get("reddit_body", ""),
     }
 
 
@@ -1206,12 +1182,7 @@ Start with the shocking stat as headline. 2-3 brief observations on why it matte
 
 4. INSTAGRAM — punchy "Did you know?" hook as first line (before fold), 3-5 relevant emojis woven in, data-led, include URL {page_url} naturally in caption, 5-8 relevant hashtags at end. Max 200 words.
 
-5. REDDIT — write a genuinely useful discussion post, NOT promotional:
-   - "subreddit": best single subreddit from [investing, economics, worldnews, geopolitics, MacroEconomics, dataisbeautiful, StockMarket] — pick based on content angle
-   - "title": compelling "Did you know" style title (max 200 chars) — shocking stat, sparks discussion
-   - "body": 3-4 paragraphs. Lead with the surprising data point. Explain why it matters. Historical context or comparison. End with genuine open question. URL as source link only. No marketing language.
-
-Return ONLY valid JSON: {{"twitter": "...", "linkedin": "...", "facebook": "...", "instagram": "...", "reddit_subreddit": "...", "reddit_title": "...", "reddit_body": "..."}}
+Return ONLY valid JSON: {{"twitter": "...", "linkedin": "...", "facebook": "...", "instagram": "..."}}
 """
     result = _call_ai(prompt)
     if not result:
@@ -1228,9 +1199,6 @@ Return ONLY valid JSON: {{"twitter": "...", "linkedin": "...", "facebook": "..."
         "linkedin": result.get("linkedin", ""),
         "facebook": result.get("facebook", ""),
         "instagram": result.get("instagram", ""),
-        "reddit_subreddit": result.get("reddit_subreddit", ""),
-        "reddit_title": result.get("reddit_title", ""),
-        "reddit_body": result.get("reddit_body", ""),
     }
 
 
@@ -1373,30 +1341,6 @@ def _send_draft_to_telegram(draft: dict) -> str | None:
         except Exception as e:
             log.warning("Telegram Instagram message failed: %s", e)
 
-    # 6. Reddit message (only for hook types that include Reddit content)
-    reddit_subreddit = draft.get("reddit_subreddit", "")
-    reddit_title = draft.get("reddit_title", "")
-    reddit_body = draft.get("reddit_body", "")
-    if reddit_subreddit and reddit_title and reddit_body:
-        try:
-            r = requests.post(
-                f"{tg_api}/sendMessage",
-                json={
-                    "chat_id": TELEGRAM_CHAT_ID,
-                    "text": (
-                        f"🔴 REDDIT r/{reddit_subreddit} (copy & post)\n"
-                        "━━━━━━━━━━━━━━━━━━\n"
-                        f"**Title:** {reddit_title}\n\n"
-                        f"{reddit_body}"
-                    ),
-                },
-                timeout=10,
-            )
-            r.raise_for_status()
-            sent_count += 1
-        except Exception as e:
-            log.warning("Telegram Reddit message failed: %s", e)
-
     if sent_count > 0:
         log.info("Draft sent to Telegram: %s (%d messages)", entity, sent_count)
         _log_content(
@@ -1411,9 +1355,6 @@ def _send_draft_to_telegram(draft: dict) -> str | None:
                 "linkedin": draft.get("linkedin", ""),
                 "facebook": draft.get("facebook", ""),
                 "instagram": draft.get("instagram", ""),
-                "reddit_subreddit": draft.get("reddit_subreddit", ""),
-                "reddit_title": draft.get("reddit_title", ""),
-                "reddit_body": draft.get("reddit_body", ""),
             },
         )
         return "ok"
