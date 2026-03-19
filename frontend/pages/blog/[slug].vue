@@ -115,7 +115,16 @@
 </template>
 
 <script setup lang="ts">
-import { marked } from 'marked'
+import { marked, Renderer } from 'marked'
+
+// Custom renderer: add explicit classes to img/a/blockquote so they display
+// correctly without requiring @tailwindcss/typography plugin
+const renderer = new Renderer()
+renderer.image = ({ href, title, text }: { href: string; title?: string | null; text: string }) => {
+  const titleAttr = title ? ` title="${title}"` : ''
+  return `<img src="${href}" alt="${text}"${titleAttr} class="w-full rounded-xl my-6 block" loading="lazy" />`
+}
+marked.use({ renderer })
 
 interface BlogPost {
   id: number
