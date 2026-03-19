@@ -224,7 +224,10 @@ def _call_ai(prompt: str) -> dict | None:
 # Audience persona injected into every content prompt
 AUDIENCE_PERSONA = (
     "Audience: retail investor aged 30-45 who follows stocks and macro on Twitter/Reddit. "
-    "They want to feel smarter than CNBC viewers. Tone: sharp, confident, data-grounded, slightly provocative. "
+    "They are information-saturated and skip anything that states the obvious. "
+    "The ONLY posts they share are ones that make them say 'I didn't know that' or 'that's not what I expected.' "
+    "Tone: sharp, confident, data-grounded, slightly provocative. No filler, no diplomacy. "
+    "MANDATORY: every post must open with the most COUNTERINTUITIVE or SURPRISING angle — never the obvious headline. "
     "Goal: make them want to share this with one friend."
 )
 
@@ -465,7 +468,7 @@ def _hook_stock_exposure(db) -> dict | None:
             JOIN stock_country_revenues scr ON scr.asset_id = rm.id
             JOIN countries c ON c.id = scr.country_id AND c.code != 'US'
             GROUP BY rm.id, rm.symbol, rm.name, rm.abs_pct
-            HAVING SUM(scr.revenue_pct) > 20
+            HAVING SUM(scr.revenue_pct) BETWEEN 20 AND 100
             ORDER BY rm.abs_pct DESC
             LIMIT 10
         """)).fetchall()
@@ -489,6 +492,7 @@ def _hook_stock_exposure(db) -> dict | None:
             .join(RevCountry, RevCountry.id == StockCountryRevenue.country_id)
             .where(RevCountry.code != "US", StockCountryRevenue.revenue_pct > 5)
             .group_by(Asset.id, Asset.symbol, Asset.name)
+            .having(func.sum(StockCountryRevenue.revenue_pct).between(20, 100))
             .order_by(func.sum(StockCountryRevenue.revenue_pct).desc())
             .limit(20)
         ).all()
@@ -599,12 +603,14 @@ def _hook_trade_insight(db) -> dict | None:
         select(TradePair)
         .where(TradePair.trade_value_usd != None)
         .order_by(TradePair.trade_value_usd.desc())
-        .limit(30)
+        .limit(60)
     ).scalars().all()
     if not rows:
         return None
 
-    pair = random.choice(rows[:15])
+    # Skip the top 3 mega-corridors (always US-CN, US-EU, CN-JP) — pick from index 3-35 for variety
+    pool = rows[3:35] if len(rows) > 8 else rows
+    pair = random.choice(pool)
     exp = db.execute(select(Country).where(Country.id == pair.exporter_id)).scalar_one_or_none()
     imp = db.execute(select(Country).where(Country.id == pair.importer_id)).scalar_one_or_none()
     if not exp or not imp:
