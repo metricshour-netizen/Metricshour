@@ -126,14 +126,19 @@ def _call_gemini_with_key(api_key: str, prompt: str) -> dict | None:
                 "contents": [{"parts": [{"text": prompt}]}],
                 "generationConfig": {
                     "temperature": 0.7,
-                    "maxOutputTokens": 2048,
+                    "maxOutputTokens": 4096,
                     "responseMimeType": "application/json",
                 },
             },
             timeout=30,
         )
         resp.raise_for_status()
-        text = resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+        _cands = resp.json().get("candidates", [])
+        _parts = _cands[0].get("content", {}).get("parts", []) if _cands else []
+        text = next((p.get("text", "") for p in _parts if p.get("text")), "")
+        if not text:
+            log.warning("Gemini call failed (key=...%s): empty parts in response", api_key[-6:])
+            return None
         return _parse_json_response(text)
     except Exception as e:
         log.warning("Gemini call failed (key=...%s): %s", api_key[-6:], e)
