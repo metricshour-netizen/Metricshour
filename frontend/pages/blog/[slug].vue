@@ -98,6 +98,22 @@
         </div>
       </div>
 
+      <!-- More articles -->
+      <div v-if="otherPosts.length" class="mb-8 border-t border-[#1f2937] pt-6">
+        <p class="text-xs font-mono text-gray-600 uppercase tracking-widest mb-3">More from MetricsHour</p>
+        <div class="space-y-3">
+          <NuxtLink
+            v-for="p in otherPosts"
+            :key="p.id"
+            :to="`/blog/${p.slug}/`"
+            class="block group"
+          >
+            <p class="text-sm text-gray-300 group-hover:text-white transition-colors leading-snug">{{ p.title }}</p>
+            <p class="text-xs text-gray-600 mt-0.5">{{ fmtDate(p.published_at) }}</p>
+          </NuxtLink>
+        </div>
+      </div>
+
       <!-- Footer -->
       <div class="border-t border-[#1f2937] pt-6">
         <p class="text-xs text-gray-600">Published on MetricsHour · {{ fmtDate(post.published_at) }}</p>
@@ -159,7 +175,7 @@ const { get } = useApi()
 const runtimeConfig = useRuntimeConfig()
 
 const slug = route.params.slug as string
-const articleUrl = `https://metricshour.com/blog/${slug}`
+const articleUrl = `https://metricshour.com/blog/${slug}/`
 
 const { data: post, pending, error } = useAsyncData(
   `blog-${slug}`,
@@ -172,6 +188,19 @@ const { data: post, pending, error } = useAsyncData(
     if (!res || !res.ok) return null
     return res.json() as Promise<BlogPost>
   },
+)
+
+// Fetch other published posts for cross-linking
+const { data: otherPosts } = useAsyncData(
+  `blog-others-${slug}`,
+  async () => {
+    const base = import.meta.server ? runtimeConfig.apiBaseServer : runtimeConfig.public.apiBase
+    const res = await fetch(`${base}/api/blog?limit=6`).catch(() => null)
+    if (!res || !res.ok) return []
+    const all = await res.json() as BlogPost[]
+    return all.filter(p => p.slug !== slug).slice(0, 3)
+  },
+  { default: () => [] as BlogPost[] }
 )
 
 // Fetch related entities when post loads
@@ -221,6 +250,7 @@ useSeoMeta({
   ogUrl: computed(() => `https://metricshour.com/blog/${slug}/`),
   ogType: 'article',
   ogImage: computed(() => post.value?.cover_image_url || 'https://cdn.metricshour.com/og/section/home.png'),
+  ogImageAlt: computed(() => post.value?.title || 'MetricsHour'),
   ogImageWidth: '1200',
   ogImageHeight: '630',
   twitterTitle: computed(() => post.value ? `${post.value.title} — MetricsHour` : 'Article — MetricsHour'),
@@ -244,21 +274,21 @@ useHead({
         publisher: { '@type': 'Organization', name: 'MetricsHour', url: 'https://metricshour.com', logo: { '@type': 'ImageObject', url: 'https://metricshour.com/favicon.svg' } },
         datePublished: post.value.published_at || '',
         dateModified: post.value.published_at || '',
-        mainEntityOfPage: { '@type': 'WebPage', '@id': `https://metricshour.com/blog/${slug}` },
-        url: `https://metricshour.com/blog/${slug}`,
+        mainEntityOfPage: { '@type': 'WebPage', '@id': `https://metricshour.com/blog/${slug}/` },
+        url: `https://metricshour.com/blog/${slug}/`,
       }) : '{}'),
     },
     {
       type: 'application/ld+json',
-      innerHTML: JSON.stringify({
+      innerHTML: computed(() => JSON.stringify({
         '@context': 'https://schema.org',
         '@type': 'BreadcrumbList',
         itemListElement: [
           { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://metricshour.com' },
           { '@type': 'ListItem', position: 2, name: 'Blog', item: 'https://metricshour.com/blog/' },
-          { '@type': 'ListItem', position: 3, name: slug, item: `https://metricshour.com/blog/${slug}/` },
+          { '@type': 'ListItem', position: 3, name: post.value?.title || slug, item: `https://metricshour.com/blog/${slug}/` },
         ],
-      }),
+      })),
     },
   ],
 })
