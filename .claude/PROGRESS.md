@@ -1,5 +1,125 @@
 # MetricsHour — Progress & Session Log
 
+## Session 2026-03-19a — SEO canonical fix deployed ✅
+
+### Google Search Console: "Duplicate, Google chose different canonical than user" — FIXED
+
+**Root cause identified:**
+Every `NuxtLink` across the entire site (AppNav, AppFooter, 16 page components) used
+non-trailing-slash hrefs (`/countries`, `/stocks`, `/trade`, etc.) while all canonical
+tags and the sitemap use trailing-slash versions (`/countries/`, `/stocks/`, etc.).
+Google uses internal link volume as a canonical signal — thousands of links to `/countries`
+overrode the declared canonical `/countries/`.
+
+**Files changed (commit 7f4b18b):**
+- `components/AppNav.vue` — all listing links updated to trailing slash
+- `components/AppFooter.vue` — all listing links updated to trailing slash
+- `pages/index.vue`, `countries/[code].vue`, `stocks/[ticker].vue`, `trade/[pair].vue`,
+  `commodities/[symbol].vue`, `indices/[symbol].vue`, `compare/[slug].vue`,
+  `watchlist/index.vue`, `alerts/index.vue`, `blog/[slug].vue`, `feed/[id].vue`,
+  `join.vue`, `login.vue`, `error.vue` — all internal links fixed
+- `pages/join.vue` — added missing `canonical` tag (`/join/`)
+- `pages/markets/index.vue` — `ogUrl` and JSON-LD `url` aligned with canonical `/markets/`
+- `pages/auth/callback.vue` — added `robots: noindex, nofollow`
+
+**Verified in production:**
+- SSR HTML on homepage shows `/countries/`, `/stocks/`, `/markets/`, `/feed/`, `/join/`,
+  `/login/`, `/trade/`, `/commodities/` — all trailing slash ✓
+- `/countries` 301 → `/countries/` still working (trailing-slash middleware intact) ✓
+- Cloudflare cache purged post-deploy ✓
+
+**Next step:** GSC will clear the issue after Google recrawls (days–weeks).
+Use GSC URL Inspection on affected pages and request re-indexing to accelerate.
+
+## Session 2026-03-18h — Social pipeline bugs fixed + Moltis hardened ✅
+
+### 3 bugs causing 0/8 social tasks to fail today — ALL FIXED
+
+**Bug 1: smart_reel NameError (Contabo mcp_server.py)**
+- Root cause: new AI script step used `os.environ.get()` but smart_reel imports os as `_os`
+- Fix: `os.environ` → `_os.environ` on both GEMINI_API_KEY lines (~line 3335)
+
+**Bug 2: smart_reel Gemini JSON truncated (Contabo mcp_server.py)**
+- Root cause: `maxOutputTokens: 1024` — Gemini filled up before closing JSON brackets
+- Fix: bumped to `2048` at line 3360
+- Verified end-to-end with real GEMINI_API_KEY: Gemini returns valid parsed JSON ✓
+
+**Bug 3: POST 1 SQL error (Netcup social_content.py)**
+- Root cause: `_hook_market_movers` used `p.symbol` — column doesn't exist on prices table
+- Fix: already in commit `9dea4d4` (pushed 08:18 UTC, 8 min after the task failed)
+- Worker restarted 18:13 UTC — tomorrow 08:00 will use fixed code ✓
+
+### Moltis hallucination: "still broken" without calling tool
+- Moltis reported "still broken" 3x without tool_calls=0 — just parroting old context
+- Added BOOT.md R7: "Never assume a tool is broken from prior context — always call it"
+- Added BOOT.md R8: "Report EXACT error text verbatim, never paraphrase"
+
+### BOOT.md SQL patterns corrected (critical)
+- `p.change_pct` → doesn't exist; must compute: `(p.close-p.open)/NULLIF(p.open,0)*100`
+- `ci.indicator_code` → column is `ci.indicator`; `c.iso2` → column is `c.code`
+- All 3 SQL examples now use correct column names (prevents Moltis writing broken queries)
+- BOOT.md now 311 lines, Moltis restarted to load updates
+
+### Verified state (end of session)
+- Contabo: moltis ✓ tg-bridge ✓ mcp_server.py syntax OK ✓
+- Netcup: no p.symbol in social_content.py ✓ worker last restarted 18:13 UTC ✓
+- Tomorrow's 8 slots should all fire: POST1 ✓ REEL1-4 ✓ POST2-4 already worked ✓
+
+## Session 2026-03-18g — Services verified + blog feed fix ✅
+
+### All services confirmed active
+- Netcup: metricshour-api, metricshour-worker, metricshour-beat, metricshour-frontend
+- Contabo: moltis, tg-bridge
+- API health: ok
+
+### Blog posts missing from feed — FIXED
+- Root cause: posts id=5,6,7,8 were inserted via raw SQL, bypassing /api/admin/blogs/{id}/publish
+- That endpoint auto-creates a FeedEvent row — raw SQL inserts skip it → posts invisible in feed
+- Fix: inserted feed_events rows 22078–22081 directly (CAST AS jsonb for related_*_ids)
+- Set feed_event_id on each blog_post row
+- Deleted stale test feed events (id=21232 "Test Blog", id=22040 "test post from contabo")
+- Verified: /api/feed now returns 4 blog events with correct slugs + entity IDs
+
+### Content quality changes verified — 36/36 checks passed
+- social_content.py: all helpers, all hooks, all 4 new viral types confirmed on Netcup
+- mcp_server.py: craft_blog prompt, smart_reel script step confirmed on Contabo
+- BOOT.md: reel quality section confirmed (296 lines)
+
+## Session 2026-03-18f — Content quality overhaul ✅
+
+### social_content.py (Netcup workers) — commit 5ceb5b4
+- Added `AUDIENCE_PERSONA`: retail investor 30-45, share-worthy tone, injected into every prompt
+- Added `_fetch_news_context()`: Google News RSS headlines injected per-prompt (live context)
+- Added `_compute_angle()`: flags multi-year highs/lows, YoY deltas, consecutive trends
+- Added `_pick_best_country_indicator()`: picks G20 country with biggest YoY indicator change (vs random)
+- `_hook_stock_exposure`: now picks most-moved stock this week with intl exposure (vs random)
+- `_hook_trade_insight`: news context injected, instructed to frame live geopolitical angle
+- market_movers + day_wrap: instructed to explain WHY, not just list numbers
+- 4 new viral stat types: `china_exposure`, `big_price_mover`, `commodity_extreme`, `debt_yoy_surge`
+
+### smart_reel (Contabo mcp_server.py)
+- Added AI script-writing step: Gemini writes narrative (hook→facts→implication) from live_data before building slides
+- `title_hook` from script replaces generic title card subtitle
+- Per-frame AI voiceovers override auto-generated fallbacks
+- AI Telegram caption used instead of generic "{style} · MetricsHour"
+
+### craft_blog prompt (Contabo mcp_server.py)
+- Lead with surprising/counterintuitive fact
+- Connect data to NOW (tariffs, rate cycles, elections)
+- Concrete "what to watch" with thresholds instead of generic forward-looking paragraph
+- Added audience persona and banned word "nuanced"
+
+### Moltis BOOT.md (Contabo)
+- Added REEL QUALITY — SCRIPT-FIRST PROTOCOL section (296 lines total)
+- Teaches manual reel creation: data → script → matched slides → create_voiced_reel
+
+## Session 2026-03-18e — Final verification ✅
+- craft_blog: 14/14 checks passed (verified via local Python script reading mcp_server.py from Contabo)
+- publish_blog: `import re,` + entity extraction confirmed
+- Live API confirmed: apple post → asset_ids=[1], country_ids=[189]; tariffs post → 7 assets, 1 country
+- Sitemap: 2794 URLs (blog index + 5 posts)
+- Confirmed non-bugs: R2 DYNAMIC (expected), duplicate Cache-Control (CF Free), CF Pages builds (no traffic)
+
 ## Session 2026-03-18d — Moltis craft_blog fix + blog entity linking ✅
 
 ### Moltis craft_blog — FULLY FIXED (Contabo /root/openclaw/mcp_server.py)
@@ -1290,3 +1410,58 @@ Two modes:
 - Header: X-Telegram-Bot-Api-Secret-Token validates the request
 - tg-bridge forwards command to Moltis → Moltis generates reel → sends video to Telegram
 - User downloads video from Telegram and posts to Instagram/TikTok manually
+
+## Session 2026-03-18i — Moltis hardening + robust content pipeline ✅
+
+### social_content.py (Netcup) — commit 1b4841c
+- Added `_send_failure_alert(slot_name, error_msg)` — sends Telegram message when any slot fails permanently after all retries
+- Fixed `_trigger_reel_via_moltis` return type: `None → bool` — silent failures were masked (task said "reel triggered" even when tg-bridge unreachable)
+- All 4 reel tasks upgraded from bare functions to `bind=True, max_retries=2` with try/except + failure alerts
+- All 4 POST tasks: `MaxRetriesExceededError` now calls `_send_failure_alert` (was silent log-only)
+
+### mcp_server.py (Contabo)
+- Added 3 new model aliases: `deepseek-r1` (DeepSeek Reasoner), `gemini-pro` (Gemini 2.5 Pro), `gemini-pro-exp` (Gemini 2.5 Pro Exp 03-25)
+- `switch_model` inputSchema enum updated to include all 8 models
+- Tool description updated: "ALWAYS ask user for confirmation before calling"
+
+### BOOT.md (Contabo) — now 330 lines
+- R9: smart_reel failure → send exact error to user + retry once. If retry fails → stop and report.
+- R10: NEVER call switch_model without user's explicit YES (show model name + label first)
+- New section: AVAILABLE MODELS table (8 models, aliases, when to use each)
+
+### Services restarted
+- Netcup: metricshour-worker + metricshour-beat ✓
+- Contabo: moltis ✓
+- Telegram update sent to user ✓
+
+### Additional fixes (Session 2026-03-18i continued)
+- social_content.py quality gate (commit b783001): `_quality_check()` + `_BANNED_PHRASES` (23 phrases), auto-retry once if bad output
+- BOOT.md: CONTINUOUS IMPROVEMENT PROTOCOL section added (update_system_context usage guide)
+- BOOT.md R11: API down = auto-switch fallback, no permission needed
+- BOOT.md Smart routing table: which model for which task type
+- BOOT.md now 371 lines
+- Final state: all 8 slots have failure alerts + retry, quality gate, smart model routing, 8 models available
+
+## Session 2026-03-18j — Full verification ✅
+
+### Verified live (all checks passing)
+
+**Netcup services:** metricshour-api ✓ metricshour-worker ✓ metricshour-beat ✓ metricshour-frontend ✓
+**Contabo services:** moltis ✓ tg-bridge ✓
+**API health:** ok ✓
+**Commits:** b783001 (quality gate) + 1b4841c (failure alerts) both pushed to main ✓
+
+**social_content.py (Netcup) — verified:**
+- 22 matches: `_send_failure_alert` (×9), `_quality_check` (×2), `_BANNED_PHRASES` (×2), `max_retries=2` (×8), `-> bool` (×1)
+- All 8 slot names confirmed: POST 1-4 + REEL 1-4
+- Syntax: OK
+
+**mcp_server.py (Contabo) — verified:**
+- New models: `deepseek-r1`, `gemini-pro`, `gemini-pro-exp` + `deepseek-reasoner` ✓
+- 5 matches in file
+- Syntax: OK
+
+**BOOT.md (Contabo) — verified:**
+- R9, R10, R11 all present
+- 9 matches: deepseek-r1(×2), gemini-pro(×3), R9(×1), R10(×1), R11(×1), CONTINUOUS IMPROVEMENT(×1)
+- 367 lines total
