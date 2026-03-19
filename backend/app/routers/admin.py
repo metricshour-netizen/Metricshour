@@ -273,14 +273,21 @@ def publish_blog(
 @router.delete("/blogs/{post_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_blog(
     post_id: int,
+    force: bool = False,
     db: Session = Depends(get_db),
     _: User = Depends(get_admin_user),
 ):
     post = db.get(BlogPost, post_id)
     if post is None:
         raise HTTPException(status_code=404, detail="Blog post not found")
-    if post.status == BlogStatus.published:
-        raise HTTPException(status_code=409, detail="Cannot delete a published post")
+    if post.status == BlogStatus.published and not force:
+        raise HTTPException(status_code=409, detail="Cannot delete a published post. Use ?force=true to override.")
+    # Clean up linked FeedEvent if present
+    if post.feed_event_id:
+        from app.models.feed import FeedEvent as _FeedEvent
+        event = db.get(_FeedEvent, post.feed_event_id)
+        if event:
+            db.delete(event)
     db.delete(post)
     db.commit()
 
