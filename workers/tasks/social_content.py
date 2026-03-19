@@ -1557,25 +1557,158 @@ def generate_morning_reel(self):
         raise self.retry(exc=exc, countdown=120)
 
 
+def _pick_reel_subject_morning(db) -> tuple:
+    """Pick a data-driven subject for the 9:30 morning reel.
+    Rotates style daily; subject is pulled from live DB data — not hardcoded.
+    """
+    day_index = date.today().timetuple().tm_yday % 3
+    if day_index == 0:
+        # country_deep_dive — pick G20 country with biggest recent indicator change
+        best = _pick_best_country_indicator(db)
+        if best:
+            code, _, label, _ = best
+            country = db.execute(select(Country).where(Country.code == code)).scalar_one_or_none()
+            name = country.name if country else code
+            return ("country_deep_dive", code, f"{name}: the macro data moving markets today")
+        return ("country_deep_dive", "DE", "Germany's economy: the numbers behind Europe's slowdown")
+    elif day_index == 1:
+        # stock_analysis — pick top moved stock with international exposure
+        try:
+            row = db.execute(text("""
+                SELECT DISTINCT ON (a.id) a.symbol, a.name,
+                       ABS((p.close - p.open) / NULLIF(p.open, 0) * 100) AS abs_pct
+                FROM prices p
+                JOIN assets a ON a.id = p.asset_id
+                JOIN stock_country_revenues scr ON scr.asset_id = a.id
+                JOIN countries c ON c.id = scr.country_id AND c.code != 'US'
+                WHERE p.interval = '1d' AND p.open IS NOT NULL
+                  AND p.timestamp >= NOW() - INTERVAL '7 days'
+                  AND a.asset_type = 'stock'
+                GROUP BY a.id, a.symbol, a.name, p.close, p.open, p.timestamp
+                HAVING SUM(scr.revenue_pct) BETWEEN 20 AND 100
+                ORDER BY a.id, p.timestamp DESC
+            """)).fetchall()
+            if row:
+                pick = sorted(row, key=lambda r: float(r.abs_pct), reverse=True)[0]
+                return ("stock_analysis", pick.symbol, f"{pick.symbol} moved {float(pick.abs_pct):.1f}% — here's the geographic revenue story")
+        except Exception:
+            pass
+        return ("stock_analysis", "NVDA", "NVDA's international revenue story and what it means for macro risk")
+    else:
+        # trade_spotlight — pick top trade pair (skip top 3 mega-corridors)
+        try:
+            from app.models.country import TradePair as _TP
+            pairs = db.execute(
+                select(_TP).where(_TP.trade_value_usd.isnot(None))
+                .order_by(_TP.trade_value_usd.desc()).limit(20)
+            ).scalars().all()
+            if len(pairs) > 4:
+                pair = random.choice(pairs[3:10])
+                exp = db.execute(select(Country).where(Country.id == pair.exporter_id)).scalar_one_or_none()
+                imp = db.execute(select(Country).where(Country.id == pair.importer_id)).scalar_one_or_none()
+                if exp and imp:
+                    val = pair.trade_value_usd
+                    val_str = f"${val/1e9:.0f}B" if val >= 1e9 else f"${val/1e6:.0f}M"
+                    return ("trade_spotlight", f"{exp.code}-{imp.code}",
+                            f"{exp.name}–{imp.name}: {val_str}/year trade corridor in focus")
+        except Exception:
+            pass
+        return ("trade_spotlight", "JP-CN", "Japan–China trade: Asia's most important bilateral corridor")
+
+
+def _pick_reel_subject_evening(db) -> tuple:
+    """Pick a data-driven subject for the 18:30 evening reel."""
+    day_index = date.today().timetuple().tm_yday % 3
+    if day_index == 0:
+        # commodities — pick commodity nearest 52w high or low
+        try:
+            row = db.execute(text("""
+                WITH weekly AS (
+                    SELECT DISTINCT ON (a.id) a.id, a.symbol, a.name, p.close
+                    FROM prices p JOIN assets a ON a.id = p.asset_id
+                    WHERE a.asset_type = 'commodity' AND p.interval = '1d' AND p.open IS NOT NULL
+                    ORDER BY a.id, p.timestamp DESC
+                ),
+                yearly AS (
+                    SELECT asset_id, MAX(close) AS high_52w, MIN(close) AS low_52w
+                    FROM prices WHERE interval = '1d' AND timestamp >= NOW() - INTERVAL '52 weeks'
+                    GROUP BY asset_id
+                )
+                SELECT w.symbol, w.name,
+                       ROUND(CAST((w.close - y.low_52w) / NULLIF(y.high_52w - y.low_52w, 0) * 100 AS numeric), 1) AS pct_of_range
+                FROM weekly w JOIN yearly y ON y.asset_id = w.id
+                WHERE y.high_52w > y.low_52w
+                ORDER BY ABS(50 - ROUND(CAST((w.close - y.low_52w) / NULLIF(y.high_52w - y.low_52w, 0) * 100 AS numeric), 1)) DESC
+                LIMIT 1
+            """)).fetchone()
+            if row:
+                extreme = "52-week high" if float(row.pct_of_range) >= 80 else "52-week low"
+                return ("commodities", row.symbol.lower(),
+                        f"{row.name} near {extreme} — commodity extremes and what drives the next move")
+        except Exception:
+            pass
+        return ("commodities", "gold", "Gold, oil and metals: today's commodity extremes")
+    elif day_index == 1:
+        # trade_spotlight — different pair from morning rotation
+        try:
+            from app.models.country import TradePair as _TP
+            pairs = db.execute(
+                select(_TP).where(_TP.trade_value_usd.isnot(None))
+                .order_by(_TP.trade_value_usd.desc()).limit(30)
+            ).scalars().all()
+            if len(pairs) > 8:
+                pair = random.choice(pairs[6:15])
+                exp = db.execute(select(Country).where(Country.id == pair.exporter_id)).scalar_one_or_none()
+                imp = db.execute(select(Country).where(Country.id == pair.importer_id)).scalar_one_or_none()
+                if exp and imp:
+                    return ("trade_spotlight", f"{exp.code}-{imp.code}",
+                            f"{exp.name}–{imp.name} trade: the data most investors overlook")
+        except Exception:
+            pass
+        return ("trade_spotlight", "DE-CN", "Germany–China trade: Europe's biggest China dependency")
+    else:
+        # country_deep_dive — pick a different country than morning (offset by 1)
+        try:
+            rows = db.execute(text("""
+                WITH ranked AS (
+                    SELECT c.code, c.name, ci.indicator, ci.value,
+                           LAG(ci.value) OVER (PARTITION BY c.id, ci.indicator ORDER BY ci.period_date) AS prev_value
+                    FROM country_indicators ci JOIN countries c ON c.id = ci.country_id
+                    WHERE c.code = ANY(:codes) AND ci.indicator = ANY(:inds)
+                      AND ci.period_date >= NOW() - INTERVAL '5 years'
+                )
+                SELECT code, name, ABS(value - prev_value) AS abs_change
+                FROM ranked WHERE prev_value IS NOT NULL
+                ORDER BY abs_change DESC LIMIT 5
+            """), {"codes": G20_CODES, "inds": [i[0] for i in SPOTLIGHT_INDICATORS]}).fetchall()
+            if len(rows) >= 2:
+                pick = rows[1]  # second biggest — morning got the top
+                return ("country_deep_dive", pick.code,
+                        f"{pick.name}: the macro numbers that should be on every investor's radar")
+        except Exception:
+            pass
+        return ("country_deep_dive", "IN", "India's economy: the data behind the world's fastest-growing major market")
+
+
 @app.task(name='tasks.social_content.generate_morning_reel_2', bind=True, max_retries=2)
 def generate_morning_reel_2(self):
     """Generate second morning reel via Moltis at 9:30 UTC.
-    Rotates daily: country_deep_dive → stock_analysis → trade_spotlight.
+    Rotates style daily; subject pulled from live DB data.
     """
-    from datetime import date
-    styles = [
-        ("country_deep_dive", "US", "The macro story behind the world's largest economy"),
-        ("stock_analysis", "AAPL", "How global trade shapes this stock's revenue"),
-        ("trade_spotlight", "US-CN", "The world's most important trade relationship"),
-    ]
-    pick = styles[date.today().timetuple().tm_yday % 3]
+    db = SessionLocal()
     try:
-        ok = _trigger_reel_via_moltis(pick[0], pick[1], pick[2])
+        style, subject, hook = _pick_reel_subject_morning(db)
+    except Exception:
+        style, subject, hook = ("stock_analysis", "AAPL", "How global trade shapes this stock's revenue")
+    finally:
+        db.close()
+    try:
+        ok = _trigger_reel_via_moltis(style, subject, hook)
         if not ok:
             raise RuntimeError("tg-bridge rejected or unreachable")
-        return "reel triggered"
+        return f"reel triggered: {style}/{subject}"
     except self.MaxRetriesExceededError:
-        _send_failure_alert(f"REEL 2 (09:30 {pick[0]})", "tg-bridge unreachable after 3 attempts — is it running on Contabo?")
+        _send_failure_alert(f"REEL 2 (09:30 {style})", "tg-bridge unreachable after 3 attempts — is it running on Contabo?")
         return "error: max retries exceeded"
     except Exception as exc:
         raise self.retry(exc=exc, countdown=120)
@@ -1599,22 +1732,22 @@ def generate_evening_reel(self):
 @app.task(name='tasks.social_content.generate_evening_reel_2', bind=True, max_retries=2)
 def generate_evening_reel_2(self):
     """Generate second evening reel via Moltis at 18:30 UTC.
-    Rotates daily: commodities → trade_spotlight → country_deep_dive.
+    Rotates style daily; subject pulled from live DB data.
     """
-    from datetime import date
-    styles = [
-        ("commodities", "gold", "Gold, oil, metals — today's commodity moves"),
-        ("trade_spotlight", "DE-CN", "Europe's biggest trade corridor in focus"),
-        ("country_deep_dive", "CN", "China's economy: the numbers that move markets"),
-    ]
-    pick = styles[date.today().timetuple().tm_yday % 3]
+    db = SessionLocal()
     try:
-        ok = _trigger_reel_via_moltis(pick[0], pick[1], pick[2])
+        style, subject, hook = _pick_reel_subject_evening(db)
+    except Exception:
+        style, subject, hook = ("commodities", "gold", "Gold, oil and metals: today's commodity moves")
+    finally:
+        db.close()
+    try:
+        ok = _trigger_reel_via_moltis(style, subject, hook)
         if not ok:
             raise RuntimeError("tg-bridge rejected or unreachable")
-        return "reel triggered"
+        return f"reel triggered: {style}/{subject}"
     except self.MaxRetriesExceededError:
-        _send_failure_alert(f"REEL 4 (18:30 {pick[0]})", "tg-bridge unreachable after 3 attempts — is it running on Contabo?")
+        _send_failure_alert(f"REEL 4 (18:30 {style})", "tg-bridge unreachable after 3 attempts — is it running on Contabo?")
         return "error: max retries exceeded"
     except Exception as exc:
         raise self.retry(exc=exc, countdown=120)
