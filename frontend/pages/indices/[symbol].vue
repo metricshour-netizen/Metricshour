@@ -3,7 +3,7 @@
     <!-- Hero band -->
     <div class="bg-gradient-to-b from-[#110a1f] to-[#0a0e1a] border-b border-[#1f2937]">
       <div class="max-w-7xl mx-auto px-4 py-8">
-        <NuxtLink to="/markets" class="text-gray-600 text-xs hover:text-gray-400 transition-colors mb-5 inline-flex items-center gap-1">
+        <NuxtLink to="/markets/" class="text-gray-600 text-xs hover:text-gray-400 transition-colors mb-5 inline-flex items-center gap-1">
           ← Markets
         </NuxtLink>
 
@@ -147,7 +147,7 @@
           {{ indexDescription(index.symbol) }}
         </p>
         <div class="mt-4 flex flex-wrap gap-2">
-          <NuxtLink to="/markets" class="text-xs text-purple-400 hover:text-purple-300 border border-purple-800/40 px-3 py-1.5 rounded-lg transition-colors">
+          <NuxtLink to="/markets/" class="text-xs text-purple-400 hover:text-purple-300 border border-purple-800/40 px-3 py-1.5 rounded-lg transition-colors">
             ← All Markets
           </NuxtLink>
           <NuxtLink to="/markets?tab=stock" class="text-xs text-gray-400 hover:text-gray-300 border border-[#1f2937] px-3 py-1.5 rounded-lg transition-colors">

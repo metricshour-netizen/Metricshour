@@ -31,11 +31,11 @@
 
       <!-- Live signal badges -->
       <div class="flex items-center justify-center gap-2 flex-wrap mb-6">
-        <NuxtLink to="/countries" class="inline-flex items-center gap-1.5 bg-[#111827] border border-[#1f2937] hover:border-emerald-800 text-xs text-gray-400 px-3 py-1.5 rounded-full transition-colors">
+        <NuxtLink to="/countries/" class="inline-flex items-center gap-1.5 bg-[#111827] border border-[#1f2937] hover:border-emerald-800 text-xs text-gray-400 px-3 py-1.5 rounded-full transition-colors">
           <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block"></span>
           196 countries tracked
         </NuxtLink>
-        <NuxtLink to="/markets" class="inline-flex items-center gap-1.5 bg-[#111827] border border-[#1f2937] hover:border-sky-800 text-xs text-gray-400 px-3 py-1.5 rounded-full transition-colors">
+        <NuxtLink to="/markets/" class="inline-flex items-center gap-1.5 bg-[#111827] border border-[#1f2937] hover:border-sky-800 text-xs text-gray-400 px-3 py-1.5 rounded-full transition-colors">
           <span class="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse inline-block"></span>
           130+ assets live
         </NuxtLink>
@@ -142,17 +142,17 @@
           to search
         </span>
         <span class="text-gray-700">·</span>
-        <NuxtLink to="/markets" class="hover:text-gray-400 transition-colors font-medium">Browse Markets →</NuxtLink>
+        <NuxtLink to="/markets/" class="hover:text-gray-400 transition-colors font-medium">Browse Markets →</NuxtLink>
         <span class="text-gray-700">·</span>
-        <NuxtLink to="/feed" class="text-emerald-700 hover:text-emerald-500 transition-colors flex items-center gap-1 font-medium">
+        <NuxtLink to="/feed/" class="text-emerald-700 hover:text-emerald-500 transition-colors flex items-center gap-1 font-medium">
           <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse inline-block"></span>
           Live Feed
         </NuxtLink>
       </div>
 
       <div v-if="!isLoggedIn" class="flex items-center justify-center gap-3 mt-5">
-        <NuxtLink to="/join" class="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors">Create Free Account</NuxtLink>
-        <NuxtLink to="/login" class="text-sm text-gray-400 hover:text-white transition-colors">Sign In →</NuxtLink>
+        <NuxtLink to="/join/" class="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors">Create Free Account</NuxtLink>
+        <NuxtLink to="/login/" class="text-sm text-gray-400 hover:text-white transition-colors">Sign In →</NuxtLink>
       </div>
 
     </section>
@@ -164,7 +164,7 @@
           <span class="text-[10px] font-mono font-bold text-gray-600 uppercase tracking-widest">Economic Calendar</span>
           <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block"></span>
         </div>
-        <NuxtLink to="/feed" class="text-xs text-emerald-600 hover:text-emerald-400 transition-colors">View feed →</NuxtLink>
+        <NuxtLink to="/feed/" class="text-xs text-emerald-600 hover:text-emerald-400 transition-colors">View feed →</NuxtLink>
       </div>
       <div class="overflow-x-auto -mx-4 px-4">
         <div class="flex gap-3 min-w-max pb-1">
@@ -196,7 +196,7 @@
 
       <!-- Card 1: Country Risk -->
       <NuxtLink
-        to="/countries"
+        to="/countries/"
         class="bg-[#111827] border border-[#1f2937] hover:border-emerald-700 rounded-xl p-5 transition-all group"
       >
         <div class="flex items-start gap-3 mb-3">
@@ -219,7 +219,7 @@
 
       <!-- Card 2: Trade Wars -->
       <NuxtLink
-        to="/trade"
+        to="/trade/"
         class="bg-[#111827] border border-[#1f2937] hover:border-amber-700 rounded-xl p-5 transition-all group"
       >
         <div class="flex items-start gap-3 mb-3">
@@ -242,7 +242,7 @@
 
       <!-- Card 3: Country Macro -->
       <NuxtLink
-        to="/countries"
+        to="/countries/"
         class="bg-[#111827] border border-[#1f2937] hover:border-blue-700 rounded-xl p-5 transition-all group"
       >
         <div class="flex items-start gap-3 mb-3">
@@ -265,7 +265,7 @@
 
       <!-- Card 4: Commodities chain -->
       <NuxtLink
-        to="/commodities"
+        to="/commodities/"
         class="bg-[#111827] border border-[#1f2937] hover:border-orange-700 rounded-xl p-5 transition-all group"
       >
         <div class="flex items-start gap-3 mb-3">
@@ -295,7 +295,7 @@
       <div>
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-sm font-bold text-white font-mono uppercase tracking-widest">Top Stocks</h2>
-          <NuxtLink to="/stocks" class="text-xs text-emerald-600 hover:text-emerald-400 transition-colors">View all →</NuxtLink>
+          <NuxtLink to="/stocks/" class="text-xs text-emerald-600 hover:text-emerald-400 transition-colors">View all →</NuxtLink>
         </div>
         <div v-if="stocksPending" class="space-y-2">
           <div v-for="i in 5" :key="i" class="h-14 bg-[#111827] rounded-lg animate-pulse"/>
@@ -328,7 +328,7 @@
       <div>
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-sm font-bold text-white font-mono uppercase tracking-widest">G20 Countries</h2>
-          <NuxtLink to="/countries" class="text-xs text-emerald-600 hover:text-emerald-400 transition-colors">View all 196 →</NuxtLink>
+          <NuxtLink to="/countries/" class="text-xs text-emerald-600 hover:text-emerald-400 transition-colors">View all 196 →</NuxtLink>
         </div>
         <div v-if="countriesPending" class="grid grid-cols-4 sm:grid-cols-5 gap-2">
           <div v-for="i in 20" :key="i" class="h-16 bg-[#111827] rounded-lg animate-pulse"/>
@@ -352,7 +352,7 @@
     <section class="mb-12">
       <div class="flex items-center justify-between mb-4">
         <h2 class="text-sm font-bold text-white font-mono uppercase tracking-widest">Major Trade Relationships</h2>
-        <NuxtLink to="/trade" class="text-xs text-emerald-600 hover:text-emerald-400 transition-colors">View all →</NuxtLink>
+        <NuxtLink to="/trade/" class="text-xs text-emerald-600 hover:text-emerald-400 transition-colors">View all →</NuxtLink>
       </div>
       <div v-if="tradesPending" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <div v-for="i in 6" :key="i" class="h-20 bg-[#111827] rounded-lg animate-pulse"/>

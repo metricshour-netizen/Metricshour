@@ -3,7 +3,7 @@
     <!-- Hero -->
     <div class="bg-gradient-to-b from-[#0d1520] to-[#0a0e1a] border-b border-[#1f2937]">
       <div class="max-w-7xl mx-auto px-4 py-8">
-        <NuxtLink to="/countries" class="text-gray-600 text-xs hover:text-gray-400 transition-colors mb-5 inline-flex items-center gap-1">
+        <NuxtLink to="/countries/" class="text-gray-600 text-xs hover:text-gray-400 transition-colors mb-5 inline-flex items-center gap-1">
           ← Countries
         </NuxtLink>
 
@@ -198,7 +198,7 @@
           <NuxtLink v-if="trade" :to="`/trade/${countryA?.slug ?? codeA}--${countryB?.slug ?? codeB}`" class="text-gray-400 hover:text-white transition-colors">
             {{ countryA.name }}–{{ countryB.name }} Trade →
           </NuxtLink>
-          <NuxtLink to="/countries" class="text-gray-500 hover:text-gray-300 transition-colors">
+          <NuxtLink to="/countries/" class="text-gray-500 hover:text-gray-300 transition-colors">
             All Countries →
           </NuxtLink>
         </div>

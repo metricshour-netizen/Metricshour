@@ -23,8 +23,8 @@
         <p class="text-white font-semibold mb-1">Your watchlist is empty</p>
         <p class="text-gray-500 text-sm mb-4">Follow countries and stocks from their detail pages.</p>
         <div class="flex gap-3 justify-center">
-          <NuxtLink to="/countries" class="text-sm text-emerald-400 hover:text-emerald-300 transition-colors">Browse Countries →</NuxtLink>
-          <NuxtLink to="/stocks" class="text-sm text-emerald-400 hover:text-emerald-300 transition-colors">Browse Stocks →</NuxtLink>
+          <NuxtLink to="/countries/" class="text-sm text-emerald-400 hover:text-emerald-300 transition-colors">Browse Countries →</NuxtLink>
+          <NuxtLink to="/stocks/" class="text-sm text-emerald-400 hover:text-emerald-300 transition-colors">Browse Stocks →</NuxtLink>
         </div>
       </div>
 

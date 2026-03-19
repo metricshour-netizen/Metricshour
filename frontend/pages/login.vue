@@ -75,7 +75,7 @@
 
         <p class="text-center text-xs text-gray-600 mt-6">
           No account?
-          <NuxtLink to="/join" class="text-emerald-500 hover:text-emerald-400 transition-colors font-medium">Join free</NuxtLink>
+          <NuxtLink to="/join/" class="text-emerald-500 hover:text-emerald-400 transition-colors font-medium">Join free</NuxtLink>
         </p>
       </div>
     </div>

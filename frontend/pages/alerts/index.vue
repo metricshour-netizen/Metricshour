@@ -87,7 +87,7 @@
       <div class="bg-[#111827] border border-[#1f2937] rounded-xl overflow-hidden mb-6">
         <div class="flex items-center justify-between px-5 py-4 border-b border-[#1f2937]">
           <h2 class="text-sm font-bold text-white">Active Alerts</h2>
-          <NuxtLink to="/stocks" class="text-xs text-emerald-600 hover:text-emerald-400 transition-colors">+ Add from stocks →</NuxtLink>
+          <NuxtLink to="/stocks/" class="text-xs text-emerald-600 hover:text-emerald-400 transition-colors">+ Add from stocks →</NuxtLink>
         </div>
 
         <div v-if="alertsLoading" class="p-5 space-y-3">

@@ -3,7 +3,7 @@
     <!-- Hero band -->
     <div class="bg-gradient-to-b from-[#0d1520] to-[#0a0e1a] border-b border-[#1f2937]">
       <div class="max-w-7xl mx-auto px-4 py-8">
-        <NuxtLink to="/stocks" class="text-gray-600 text-xs hover:text-gray-400 transition-colors mb-5 inline-flex items-center gap-1">
+        <NuxtLink to="/stocks/" class="text-gray-600 text-xs hover:text-gray-400 transition-colors mb-5 inline-flex items-center gap-1">
           ← Stocks
         </NuxtLink>
 

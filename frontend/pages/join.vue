@@ -101,7 +101,7 @@
 
           <p class="text-center text-xs text-gray-600 mt-6">
             Already have an account?
-            <NuxtLink to="/login" class="text-emerald-500 hover:text-emerald-400 transition-colors font-medium">Sign in</NuxtLink>
+            <NuxtLink to="/login/" class="text-emerald-500 hover:text-emerald-400 transition-colors font-medium">Sign in</NuxtLink>
           </p>
         </div>
       </div>
@@ -114,6 +114,9 @@ useSeoMeta({
   title: 'Join MetricsHour — Free Global Markets & Economic Data',
   description: 'Create a free MetricsHour account. Track 250+ country economies, real-time markets, trade flows, price alerts, and AI-powered insights.',
   robots: 'index, follow',
+})
+useHead({
+  link: [{ rel: 'canonical', href: 'https://metricshour.com/join/' }],
 })
 
 const { register, isLoggedIn } = useAuth()

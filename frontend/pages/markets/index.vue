@@ -545,7 +545,7 @@ useSeoMeta({
   description: 'Search crypto, stocks, ETFs, indices, bonds, commodities and FX. Real-time prices and global market data.',
   ogTitle: 'Global Markets: Stocks, Crypto, Commodities & FX — MetricsHour',
   ogDescription: 'Search crypto, stocks, ETFs, indices, bonds, commodities and FX. Real-time prices and global market data.',
-  ogUrl: 'https://metricshour.com/markets',
+  ogUrl: 'https://metricshour.com/markets/',
   ogType: 'website',
   ogImage: 'https://cdn.metricshour.com/og/section/markets.png',
   ogImageWidth: '1200',
@@ -566,7 +566,7 @@ useHead({
         {
           '@type': 'WebPage',
           name: 'Markets — MetricsHour',
-          url: 'https://metricshour.com/markets',
+          url: 'https://metricshour.com/markets/',
           description: 'Search crypto, stocks, ETFs, indices, bonds, commodities and FX. Real-time prices and global market data.',
           isPartOf: { '@type': 'WebSite', name: 'MetricsHour', url: 'https://metricshour.com' },
         },
@@ -574,7 +574,7 @@ useHead({
           '@type': 'BreadcrumbList',
           itemListElement: [
             { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://metricshour.com' },
-            { '@type': 'ListItem', position: 2, name: 'Markets', item: 'https://metricshour.com/markets' },
+            { '@type': 'ListItem', position: 2, name: 'Markets', item: 'https://metricshour.com/markets/' },
           ],
         },
       ],

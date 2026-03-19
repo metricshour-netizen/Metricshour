@@ -5,7 +5,7 @@
     <nav class="text-xs text-gray-600 mb-6 flex items-center gap-1.5">
       <NuxtLink to="/" class="hover:text-gray-400">Home</NuxtLink>
       <span>/</span>
-      <NuxtLink to="/commodities" class="hover:text-gray-400">Commodities</NuxtLink>
+      <NuxtLink to="/commodities/" class="hover:text-gray-400">Commodities</NuxtLink>
       <span>/</span>
       <span class="text-gray-400">{{ meta.name }}</span>
     </nav>

@@ -7,14 +7,14 @@
 
       <!-- Desktop nav (sm+) -->
       <div class="hidden sm:flex items-center gap-4 sm:gap-5 text-sm text-gray-400">
-        <NuxtLink to="/feed" class="hover:text-white transition-colors text-emerald-300 font-semibold flex items-center gap-1">
+        <NuxtLink to="/feed/" class="hover:text-white transition-colors text-emerald-300 font-semibold flex items-center gap-1">
           <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
           {{ isLoggedIn ? 'For You' : 'Feed' }}
         </NuxtLink>
-        <NuxtLink to="/markets" class="hover:text-white transition-colors font-medium">Markets</NuxtLink>
-        <NuxtLink to="/countries" class="hover:text-white transition-colors">Countries</NuxtLink>
-        <NuxtLink to="/trade" class="hover:text-white transition-colors">Trade</NuxtLink>
-        <NuxtLink to="/commodities" class="hover:text-white transition-colors">Commodities</NuxtLink>
+        <NuxtLink to="/markets/" class="hover:text-white transition-colors font-medium">Markets</NuxtLink>
+        <NuxtLink to="/countries/" class="hover:text-white transition-colors">Countries</NuxtLink>
+        <NuxtLink to="/trade/" class="hover:text-white transition-colors">Trade</NuxtLink>
+        <NuxtLink to="/commodities/" class="hover:text-white transition-colors">Commodities</NuxtLink>
 
         <template v-if="isLoggedIn && user">
           <div class="flex items-center gap-3">
@@ -27,8 +27,8 @@
           </div>
         </template>
         <template v-else>
-          <NuxtLink to="/login" class="text-xs text-gray-300 hover:text-white transition-colors font-medium">Sign In</NuxtLink>
-          <NuxtLink to="/join" class="text-xs bg-emerald-700 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg transition-colors font-semibold">Join Free</NuxtLink>
+          <NuxtLink to="/login/" class="text-xs text-gray-300 hover:text-white transition-colors font-medium">Sign In</NuxtLink>
+          <NuxtLink to="/join/" class="text-xs bg-emerald-700 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg transition-colors font-semibold">Join Free</NuxtLink>
         </template>
         <!-- Search trigger -->
         <button
@@ -53,7 +53,7 @@
             <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
           </svg>
         </button>
-        <NuxtLink to="/feed" class="text-emerald-300 font-semibold text-sm flex items-center gap-1">
+        <NuxtLink to="/feed/" class="text-emerald-300 font-semibold text-sm flex items-center gap-1">
           <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
           {{ isLoggedIn ? 'For You' : 'Feed' }}
         </NuxtLink>
@@ -71,10 +71,10 @@
     <!-- Mobile dropdown menu -->
     <div v-if="menuOpen" class="sm:hidden border-t border-[#1f2937] bg-[#0a0e1a] px-4 py-2">
       <NuxtLink to="/"            @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-emerald-400 font-semibold border-b border-[#1f2937]">Home <span class="text-gray-600 text-xs">→</span></NuxtLink>
-      <NuxtLink to="/markets"     @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">Markets <span class="text-gray-600 text-xs">→</span></NuxtLink>
-      <NuxtLink to="/countries"   @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">Countries <span class="text-gray-600 text-xs">→</span></NuxtLink>
-      <NuxtLink to="/trade"       @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">Trade <span class="text-gray-600 text-xs">→</span></NuxtLink>
-      <NuxtLink to="/commodities" @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">Commodities <span class="text-gray-600 text-xs">→</span></NuxtLink>
+      <NuxtLink to="/markets/"     @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">Markets <span class="text-gray-600 text-xs">→</span></NuxtLink>
+      <NuxtLink to="/countries/"   @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">Countries <span class="text-gray-600 text-xs">→</span></NuxtLink>
+      <NuxtLink to="/trade/"       @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">Trade <span class="text-gray-600 text-xs">→</span></NuxtLink>
+      <NuxtLink to="/commodities/" @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">Commodities <span class="text-gray-600 text-xs">→</span></NuxtLink>
 <template v-if="isLoggedIn && user">
         <NuxtLink to="/watchlist"  @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">⭐ Watchlist <span class="text-gray-600 text-xs">→</span></NuxtLink>
         <NuxtLink to="/alerts"    @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-amber-400 hover:text-amber-300 border-b border-[#1f2937]">🔔 Alerts <span class="text-gray-600 text-xs">→</span></NuxtLink>
@@ -95,8 +95,8 @@
         </template>
         <template v-else>
           <div class="flex gap-2">
-            <NuxtLink to="/login" @click="menuOpen = false" class="flex-1 text-center text-sm text-gray-300 border border-[#1f2937] py-2.5 rounded-lg transition-colors hover:text-white font-medium">Sign In</NuxtLink>
-            <NuxtLink to="/join" @click="menuOpen = false" class="flex-1 text-center bg-emerald-700 hover:bg-emerald-600 text-white text-sm font-semibold py-2.5 rounded-lg transition-colors">Join Free</NuxtLink>
+            <NuxtLink to="/login/" @click="menuOpen = false" class="flex-1 text-center text-sm text-gray-300 border border-[#1f2937] py-2.5 rounded-lg transition-colors hover:text-white font-medium">Sign In</NuxtLink>
+            <NuxtLink to="/join/" @click="menuOpen = false" class="flex-1 text-center bg-emerald-700 hover:bg-emerald-600 text-white text-sm font-semibold py-2.5 rounded-lg transition-colors">Join Free</NuxtLink>
           </div>
         </template>
       </div>

@@ -17,8 +17,8 @@
 
       <div class="flex items-center justify-center gap-4 text-sm">
         <NuxtLink to="/" class="text-emerald-500 hover:text-emerald-300 transition-colors">← Home</NuxtLink>
-        <NuxtLink to="/markets" class="text-gray-500 hover:text-gray-300 transition-colors">Markets</NuxtLink>
-        <NuxtLink to="/countries" class="text-gray-500 hover:text-gray-300 transition-colors">Countries</NuxtLink>
+        <NuxtLink to="/markets/" class="text-gray-500 hover:text-gray-300 transition-colors">Markets</NuxtLink>
+        <NuxtLink to="/countries/" class="text-gray-500 hover:text-gray-300 transition-colors">Countries</NuxtLink>
       </div>
     </div>
   </div>

@@ -1,6 +1,6 @@
 <template>
   <main class="max-w-7xl mx-auto px-4 py-10">
-    <NuxtLink to="/countries" class="text-gray-500 text-sm hover:text-gray-300 transition-colors mb-6 inline-block">
+    <NuxtLink to="/countries/" class="text-gray-500 text-sm hover:text-gray-300 transition-colors mb-6 inline-block">
       ← Countries
     </NuxtLink>
 
