@@ -1179,6 +1179,30 @@ Return ONLY valid JSON: {{"twitter": "...", "linkedin": "...", "facebook": "..."
     }
 
 
+def _log_content(content_type: str, slot_name: str, entity: str, style: str,
+                  caption: str, twitter_copy: str, platform_copies: dict, source: str = "celery") -> None:
+    """Write a row to content_log so Moltis can query real history."""
+    try:
+        from app.database import SessionLocal as _SL
+        import json as _json
+        db = _SL()
+        db.execute(
+            text(
+                "INSERT INTO content_log (content_type, slot_name, entity, style, caption, twitter_copy, platform_copies, source) "
+                "VALUES (:ct, :sn, :en, :st, :ca, :tw, :pc::jsonb, :src)"
+            ),
+            {
+                "ct": content_type, "sn": slot_name, "en": entity, "st": style,
+                "ca": caption, "tw": twitter_copy,
+                "pc": _json.dumps(platform_copies), "src": source,
+            },
+        )
+        db.commit()
+        db.close()
+    except Exception as e:
+        log.warning("content_log write failed: %s", e)
+
+
 def _send_draft_to_telegram(draft: dict) -> str | None:
     """Send draft to Telegram as 5 separate copy-ready messages. Returns 'ok' or None."""
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
@@ -1296,6 +1320,20 @@ def _send_draft_to_telegram(draft: dict) -> str | None:
 
     if sent_count > 0:
         log.info("Draft sent to Telegram: %s (%d messages)", entity, sent_count)
+        _log_content(
+            content_type="post",
+            slot_name=draft.get("type", "post"),
+            entity=entity,
+            style=draft.get("hook_type", ""),
+            caption=f"{label} {value}".strip(),
+            twitter_copy=draft.get("twitter", ""),
+            platform_copies={
+                "twitter": draft.get("twitter", ""),
+                "linkedin": draft.get("linkedin", ""),
+                "facebook": draft.get("facebook", ""),
+                "instagram": draft.get("instagram", ""),
+            },
+        )
         return "ok"
     return None
 
@@ -1347,7 +1385,18 @@ def _trigger_reel_via_moltis(style: str, subject: str, hook: str) -> bool:
             timeout=10,
         )
         log.info("Reel trigger (%s/%s) → tg-bridge: HTTP %s", style, subject, r.status_code)
-        return r.status_code < 400
+        success = r.status_code < 400
+        if success:
+            _log_content(
+                content_type="reel",
+                slot_name=f"reel_{style}",
+                entity=subject,
+                style=style,
+                caption=hook,
+                twitter_copy="",
+                platform_copies={},
+            )
+        return success
     except Exception as e:
         log.warning("Reel trigger failed (%s/%s): %s", style, subject, e)
         return False
