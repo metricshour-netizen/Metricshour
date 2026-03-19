@@ -1583,6 +1583,39 @@ def _send_failure_alert(slot_name: str, error_msg: str) -> None:
         pass
 
 
+def _pick_crypto_reel_subject() -> tuple[str, str]:
+    """Pick the biggest crypto mover in last 24h. Returns (symbol_lower, hook_text)."""
+    CRYPTO_SYMBOLS = ["BTC", "ETH", "BNB", "SOL", "XRP", "ADA", "AVAX", "DOGE", "DOT", "MATIC"]
+    try:
+        db = SessionLocal()
+        try:
+            rows = db.execute(text("""
+                SELECT DISTINCT ON (a.symbol) a.symbol, a.name,
+                       ROUND(CAST((p.close - p.open) / NULLIF(p.open, 0) * 100 AS numeric), 2) AS chg_pct,
+                       p.close
+                FROM prices p JOIN assets a ON a.id = p.asset_id
+                WHERE a.asset_type = 'crypto'
+                  AND p.interval = '1d' AND p.open IS NOT NULL
+                  AND p.timestamp >= NOW() - INTERVAL '36 hours'
+                  AND a.symbol = ANY(:symbols)
+                ORDER BY a.symbol, p.timestamp DESC
+            """), {"symbols": CRYPTO_SYMBOLS}).fetchall()
+        finally:
+            db.close()
+        if rows:
+            top = sorted(rows, key=lambda r: abs(float(r.chg_pct)), reverse=True)[0]
+            sym = top.symbol.lower()
+            direction = "up" if float(top.chg_pct) >= 0 else "down"
+            hook = (
+                f"{top.symbol} {direction} {abs(float(top.chg_pct)):.1f}% to "
+                f"${float(top.close):,.0f} — biggest crypto mover today"
+            )
+            return sym, hook
+    except Exception as e:
+        log.warning("_pick_crypto_reel_subject failed: %s", e)
+    return "bitcoin", "Today's crypto wrap: biggest moves of the day"
+
+
 def _trigger_reel_via_moltis(style: str, subject: str, hook: str) -> bool:
     """Trigger a reel generation via tg-bridge injection to Moltis. Returns True on success."""
     if not TELEGRAM_WEBHOOK_SECRET or not TELEGRAM_CHAT_ID:
@@ -1604,6 +1637,7 @@ def _trigger_reel_via_moltis(style: str, subject: str, hook: str) -> bool:
                 ),
         },
     }
+    trigger_time = datetime.now(timezone.utc)
     try:
         r = requests.post(
             TG_BRIDGE_URL,
@@ -1623,10 +1657,54 @@ def _trigger_reel_via_moltis(style: str, subject: str, hook: str) -> bool:
                 twitter_copy="",
                 platform_copies={},
             )
+            # Queue a deferred check — Moltis writes source='moltis' to content_log on completion
+            verify_reel_completion.apply_async(
+                args=[style, subject, trigger_time.isoformat()],
+                countdown=360,  # check 6 min after trigger
+            )
         return success
     except Exception as e:
         log.warning("Reel trigger failed (%s/%s): %s", style, subject, e)
         return False
+
+
+@app.task(name='tasks.social_content.verify_reel_completion')
+def verify_reel_completion(style: str, subject: str, trigger_time_iso: str) -> str:
+    """Confirm Moltis actually generated the reel. Sends alert if missing.
+    Runs 6 min after each reel trigger. Checks content_log for source='moltis' entry.
+    """
+    try:
+        trigger_dt = datetime.fromisoformat(trigger_time_iso)
+        db = SessionLocal()
+        try:
+            row = db.execute(text("""
+                SELECT id FROM content_log
+                WHERE slot_name = :slot
+                  AND source = 'moltis'
+                  AND created_at >= :since
+                LIMIT 1
+            """), {
+                "slot": f"reel_{style}",
+                "since": trigger_dt,
+            }).fetchone()
+        finally:
+            db.close()
+
+        if row:
+            log.info("Reel confirmed: %s/%s (content_log id=%s)", style, subject, row.id)
+            return f"confirmed: reel_{style}/{subject}"
+
+        # Not found — Moltis failed or tg-bridge didn't forward
+        log.error("Reel NOT confirmed: %s/%s — no moltis entry in content_log since %s", style, subject, trigger_time_iso)
+        _send_failure_alert(
+            f"REEL MISSING: {style}/{subject}",
+            f"Triggered at {trigger_time_iso[:16]} UTC but Moltis never wrote to content_log.\n"
+            f"Check: tg-bridge running? Moltis responding? ssh root@10.0.0.3 journalctl -u moltis -n 30",
+        )
+        return f"alert_sent: reel_{style}/{subject} not confirmed"
+    except Exception as e:
+        log.warning("verify_reel_completion failed: %s", e)
+        return f"verify_error: {e}"
 
 
 @app.task(name='tasks.social_content.generate_social_drafts', bind=True, max_retries=2)
@@ -1953,14 +2031,15 @@ def generate_morning_reel_2(self):
 
 @app.task(name='tasks.social_content.generate_evening_reel', bind=True, max_retries=2)
 def generate_evening_reel(self):
-    """Generate evening crypto/wrap reel via Moltis at 17:30 UTC."""
+    """Generate evening crypto reel via Moltis at 17:30 UTC. Subject is live biggest mover."""
     if not _acquire_slot_lock("evening_reel"):
         return "skipped: already completed today"
     try:
-        ok = _trigger_reel_via_moltis("crypto_update", "bitcoin", "Today's crypto wrap: biggest moves of the day")
+        subject, hook = _pick_crypto_reel_subject()
+        ok = _trigger_reel_via_moltis("crypto_update", subject, hook)
         if not ok:
             raise RuntimeError("tg-bridge rejected or unreachable")
-        return "reel triggered"
+        return f"reel triggered: crypto_update/{subject}"
     except self.MaxRetriesExceededError:
         _send_failure_alert("REEL 3 (17:30 crypto_update)", "tg-bridge unreachable after 3 attempts — is it running on Contabo?")
         return "error: max retries exceeded"
