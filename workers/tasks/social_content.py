@@ -173,7 +173,7 @@ def _call_deepseek(prompt: str) -> dict | None:
                     {"role": "system", "content": "You are a financial social media copywriter. Return only valid JSON."},
                     {"role": "user", "content": prompt},
                 ],
-                "max_tokens": 2048,
+                "max_tokens": 4096,
                 "temperature": 0.7,
                 "response_format": {"type": "json_object"},
             },
@@ -338,10 +338,10 @@ def _pick_best_country_indicator(db) -> tuple | None:
                 "SELECT entity FROM content_log WHERE content_type='post' "
                 "AND slot_name='country_spotlight' ORDER BY created_at DESC LIMIT 2"
             )).scalars().all()
-            recent_set = set(r.upper()[:2] for r in recent)
+            recent_set = set(r.upper() for r in recent)
         except Exception:
             recent_set = set()
-        candidates = [r for _, r in scored[:10] if r.code.upper() not in recent_set]
+        candidates = [r for _, r in scored[:10] if r.name.upper() not in recent_set]
         if not candidates:
             candidates = [r for _, r in scored[:5]]
         pick = random.choice(candidates[:5])
@@ -499,8 +499,23 @@ def _hook_stock_exposure(db) -> dict | None:
         moved_rows = []
 
     RevCountry = aliased(Country)
+
+    # Exclude last 2 stocks used to avoid daily repeats
+    try:
+        recent_stocks = db.execute(text(
+            "SELECT entity FROM content_log WHERE content_type='post' "
+            "AND slot_name='stock_exposure' ORDER BY created_at DESC LIMIT 2"
+        )).scalars().all()
+        # entity stored as "AAPL (Apple Inc.)" — extract ticker (first token)
+        recent_tickers = set(r.split()[0].upper() for r in recent_stocks)
+    except Exception:
+        recent_tickers = set()
+
     if moved_rows:
-        pick_row = random.choice(moved_rows[:5])
+        pool = [r for r in moved_rows[:10] if r.symbol.upper() not in recent_tickers]
+        if not pool:
+            pool = moved_rows[:5]
+        pick_row = random.choice(pool[:5])
         ticker = pick_row.symbol
         name = pick_row.name
         intl_pct = float(pick_row.intl_pct)
@@ -521,7 +536,10 @@ def _hook_stock_exposure(db) -> dict | None:
         ).all()
         if not rows:
             return None
-        pick = random.choice(rows[:10])
+        pool = [r for r in rows[:15] if r.symbol.upper() not in recent_tickers]
+        if not pool:
+            pool = rows[:10]
+        pick = random.choice(pool[:10])
         ticker = pick.symbol
         name = pick.name
         intl_pct = float(pick.intl_pct)
@@ -624,7 +642,7 @@ def _hook_trade_insight(db) -> dict | None:
     from app.models.country import TradePair
     rows = db.execute(
         select(TradePair)
-        .where(TradePair.trade_value_usd != None)
+        .where(TradePair.trade_value_usd.isnot(None))
         .order_by(TradePair.trade_value_usd.desc())
         .limit(60)
     ).scalars().all()
@@ -633,7 +651,26 @@ def _hook_trade_insight(db) -> dict | None:
 
     # Skip the top 3 mega-corridors (always US-CN, US-EU, CN-JP) — pick from index 3-35 for variety
     pool = rows[3:35] if len(rows) > 8 else rows
+
+    # Exclude last 2 trade pairs used to avoid daily repeats
+    try:
+        recent_trades = db.execute(text(
+            "SELECT entity FROM content_log WHERE content_type='post' "
+            "AND slot_name='trade_insight' ORDER BY created_at DESC LIMIT 2"
+        )).scalars().all()
+        recent_pairs = set(r.upper() for r in recent_trades)
+    except Exception:
+        recent_pairs = set()
+
     pair = random.choice(pool)
+    if recent_pairs:
+        # Try to find a non-recently-used pair (need exp/imp names to check)
+        exp_tmp = db.execute(select(Country).where(Country.id == pair.exporter_id)).scalar_one_or_none()
+        imp_tmp = db.execute(select(Country).where(Country.id == pair.importer_id)).scalar_one_or_none()
+        if exp_tmp and imp_tmp and f"{exp_tmp.name}–{imp_tmp.name}".upper() in recent_pairs:
+            remaining = [r for r in pool if r.id != pair.id]
+            if remaining:
+                pair = random.choice(remaining[:10])
     exp = db.execute(select(Country).where(Country.id == pair.exporter_id)).scalar_one_or_none()
     imp = db.execute(select(Country).where(Country.id == pair.importer_id)).scalar_one_or_none()
     if not exp or not imp:
@@ -1336,6 +1373,30 @@ def _send_draft_to_telegram(draft: dict) -> str | None:
         except Exception as e:
             log.warning("Telegram Instagram message failed: %s", e)
 
+    # 6. Reddit message (only for hook types that include Reddit content)
+    reddit_subreddit = draft.get("reddit_subreddit", "")
+    reddit_title = draft.get("reddit_title", "")
+    reddit_body = draft.get("reddit_body", "")
+    if reddit_subreddit and reddit_title and reddit_body:
+        try:
+            r = requests.post(
+                f"{tg_api}/sendMessage",
+                json={
+                    "chat_id": TELEGRAM_CHAT_ID,
+                    "text": (
+                        f"🔴 REDDIT r/{reddit_subreddit} (copy & post)\n"
+                        "━━━━━━━━━━━━━━━━━━\n"
+                        f"**Title:** {reddit_title}\n\n"
+                        f"{reddit_body}"
+                    ),
+                },
+                timeout=10,
+            )
+            r.raise_for_status()
+            sent_count += 1
+        except Exception as e:
+            log.warning("Telegram Reddit message failed: %s", e)
+
     if sent_count > 0:
         log.info("Draft sent to Telegram: %s (%d messages)", entity, sent_count)
         _log_content(
@@ -1350,6 +1411,9 @@ def _send_draft_to_telegram(draft: dict) -> str | None:
                 "linkedin": draft.get("linkedin", ""),
                 "facebook": draft.get("facebook", ""),
                 "instagram": draft.get("instagram", ""),
+                "reddit_subreddit": draft.get("reddit_subreddit", ""),
+                "reddit_title": draft.get("reddit_title", ""),
+                "reddit_body": draft.get("reddit_body", ""),
             },
         )
         return "ok"
