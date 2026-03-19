@@ -23,7 +23,7 @@
         <NuxtLink
           v-for="post in posts"
           :key="post.slug"
-          :to="`/blog/${post.slug}`"
+          :to="`/blog/${post.slug}/`"
           class="block group"
         >
           <article class="border border-white/8 rounded-xl p-5 bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/20 transition-all">
@@ -102,9 +102,12 @@ useSeoMeta({
   ogUrl: 'https://metricshour.com/blog/',
   ogType: 'website',
   ogImage: 'https://cdn.metricshour.com/og/section/home.png',
+  ogImageAlt: 'MetricsHour Blog',
   ogImageWidth: '1200',
   ogImageHeight: '630',
   twitterCard: 'summary_large_image',
+  twitterTitle: 'Blog — MetricsHour',
+  twitterDescription: 'Market intelligence articles, data analysis, and financial commentary.',
   twitterImage: 'https://cdn.metricshour.com/og/section/home.png',
 })
 

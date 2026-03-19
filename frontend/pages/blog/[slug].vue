@@ -151,6 +151,7 @@ interface BlogPost {
   cover_image_url?: string
   author_name: string
   published_at?: string
+  updated_at?: string
   related_asset_ids?: number[] | null
   related_country_ids?: number[] | null
 }
@@ -171,58 +172,55 @@ interface RelatedCountry {
 }
 
 const route = useRoute()
-const { get } = useApi()
 const runtimeConfig = useRuntimeConfig()
 
 const slug = route.params.slug as string
 const articleUrl = `https://metricshour.com/blog/${slug}/`
 
-const { data: post, pending, error } = useAsyncData(
+// Single SSR-compatible fetch: post + related entities + other posts in one pass
+const { data: pageData, pending, error } = useAsyncData(
   `blog-${slug}`,
   async () => {
     // On the server, call the API directly (bypasses Cloudflare which strips markdown images)
     const base = import.meta.server
       ? runtimeConfig.apiBaseServer
       : runtimeConfig.public.apiBase
+
     const res = await fetch(`${base}/api/blog/${slug}`).catch(() => null)
     if (!res || !res.ok) return null
-    return res.json() as Promise<BlogPost>
+    const post = await res.json() as BlogPost
+
+    // Fetch related assets + countries server-side so they appear in SSR HTML
+    const [assetList, countryList, otherList] = await Promise.all([
+      post.related_asset_ids?.length
+        ? fetch(`${base}/api/assets?limit=200`).then(r => r.ok ? r.json() : []).catch(() => [])
+        : Promise.resolve([]),
+      post.related_country_ids?.length
+        ? fetch(`${base}/api/countries?limit=300`).then(r => r.ok ? r.json() : []).catch(() => [])
+        : Promise.resolve([]),
+      fetch(`${base}/api/blog?limit=6`).then(r => r.ok ? r.json() : []).catch(() => []),
+    ])
+
+    const assets: RelatedAsset[] = (Array.isArray(assetList) ? assetList : (assetList.items ?? []))
+      .filter((a: RelatedAsset) => post.related_asset_ids?.includes(a.id))
+      .slice(0, 6)
+
+    const countries: RelatedCountry[] = (Array.isArray(countryList) ? countryList : (countryList.items ?? []))
+      .filter((c: RelatedCountry) => post.related_country_ids?.includes(c.id))
+      .slice(0, 8)
+
+    const others: BlogPost[] = (Array.isArray(otherList) ? otherList : [])
+      .filter((p: BlogPost) => p.slug !== slug)
+      .slice(0, 3)
+
+    return { post, assets, countries, others }
   },
 )
 
-// Fetch other published posts for cross-linking
-const { data: otherPosts } = useAsyncData(
-  `blog-others-${slug}`,
-  async () => {
-    const base = import.meta.server ? runtimeConfig.apiBaseServer : runtimeConfig.public.apiBase
-    const res = await fetch(`${base}/api/blog?limit=6`).catch(() => null)
-    if (!res || !res.ok) return []
-    const all = await res.json() as BlogPost[]
-    return all.filter(p => p.slug !== slug).slice(0, 3)
-  },
-  { default: () => [] as BlogPost[] }
-)
-
-// Fetch related entities when post loads
-const relatedAssets = ref<RelatedAsset[]>([])
-const relatedCountries = ref<RelatedCountry[]>([])
-
-watch(() => post.value, async (p) => {
-  if (!p) return
-  const base = import.meta.server ? runtimeConfig.apiBaseServer : runtimeConfig.public.apiBase
-
-  if (p.related_asset_ids?.length) {
-    const listRes = await fetch(`${base}/api/assets?limit=200`).then(r => r.ok ? r.json() : []).catch(() => [])
-    const assetList: RelatedAsset[] = Array.isArray(listRes) ? listRes : (listRes.items ?? [])
-    relatedAssets.value = assetList.filter(a => p.related_asset_ids!.includes(a.id)).slice(0, 6)
-  }
-
-  if (p.related_country_ids?.length) {
-    const listRes = await fetch(`${base}/api/countries?limit=300`).then(r => r.ok ? r.json() : []).catch(() => [])
-    const countryList = Array.isArray(listRes) ? listRes : (listRes.items ?? [])
-    relatedCountries.value = countryList.filter((c: RelatedCountry) => p.related_country_ids!.includes(c.id)).slice(0, 8)
-  }
-}, { immediate: true })
+const post = computed(() => pageData.value?.post ?? null)
+const relatedAssets = computed(() => pageData.value?.assets ?? [])
+const relatedCountries = computed(() => pageData.value?.countries ?? [])
+const otherPosts = computed(() => pageData.value?.others ?? [])
 
 const renderedBody = computed(() => {
   if (!post.value?.body) return ''
@@ -269,11 +267,11 @@ useHead({
         '@type': 'Article',
         headline: post.value.title,
         description: post.value.excerpt || '',
-        image: post.value.cover_image_url || 'https://metricshour.com/og-image.png',
+        image: post.value.cover_image_url || 'https://cdn.metricshour.com/og/section/home.png',
         author: { '@type': 'Person', name: post.value.author_name },
         publisher: { '@type': 'Organization', name: 'MetricsHour', url: 'https://metricshour.com', logo: { '@type': 'ImageObject', url: 'https://metricshour.com/favicon.svg' } },
         datePublished: post.value.published_at || '',
-        dateModified: post.value.published_at || '',
+        dateModified: post.value.updated_at || post.value.published_at || '',
         mainEntityOfPage: { '@type': 'WebPage', '@id': `https://metricshour.com/blog/${slug}/` },
         url: `https://metricshour.com/blog/${slug}/`,
       }) : '{}'),

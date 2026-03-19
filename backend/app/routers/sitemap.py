@@ -167,13 +167,15 @@ def sitemap(db: Session = Depends(get_db)):
 
     # Blog posts → /blog/{slug}/
     blog_posts = db.execute(
-        select(BlogPost.slug, BlogPost.published_at)
+        select(BlogPost.slug, BlogPost.published_at, BlogPost.updated_at)
         .where(BlogPost.status == "published")  # BlogStatus.published
         .order_by(BlogPost.published_at.desc())
     ).all()
     for post in blog_posts:
-        lm = post.published_at.date().isoformat() if post.published_at else today
-        entries.append(_url(f"{BASE}/blog/{post.slug}/", "0.7", "monthly", lm))
+        # Use whichever is more recent: updated_at or published_at
+        dates = [d for d in (post.published_at, post.updated_at) if d is not None]
+        lm = max(dates).date().isoformat() if dates else today
+        entries.append(_url(f"{BASE}/blog/{post.slug}/", "0.8", "weekly", lm))
 
     # Compare pages → /compare/{a}-vs-{b}
     # Only include pairs where BOTH countries have GDP data (avoids thin content).

@@ -45,6 +45,7 @@ class BlogPublicOut(BaseModel):
     author_name: str
     importance_score: float
     published_at: datetime | None
+    updated_at: datetime
     related_asset_ids: list[int] | None
     related_country_ids: list[int] | None
 
@@ -140,10 +141,24 @@ def _unique_slug(db: Session, base: str) -> str:
 
 
 def _auto_excerpt(body: str, max_len: int = 280) -> str:
-    plain = body.strip()
-    if len(plain) <= max_len:
-        return plain
-    return plain[:max_len].rsplit(" ", 1)[0] + "…"
+    """Extract a clean plaintext excerpt from markdown body."""
+    import re as _re
+    # Find first non-empty paragraph that isn't a heading/image/hr
+    for para in body.split("\n\n"):
+        line = para.strip()
+        if not line or line.startswith("#") or line.startswith("!") or line.startswith("---"):
+            continue
+        # Strip inline markdown: bold, italic, code, links
+        line = _re.sub(r"\[([^\]]+)\]\([^\)]+\)", r"\1", line)  # [text](url) → text
+        line = _re.sub(r"`+([^`]+)`+", r"\1", line)             # `code` → code
+        line = _re.sub(r"\*{1,3}([^*]+)\*{1,3}", r"\1", line)   # bold/italic → plain
+        line = _re.sub(r"_{1,3}([^_]+)_{1,3}", r"\1", line)     # _italic_ → plain
+        line = " ".join(line.split())                             # normalise whitespace
+        if len(line) <= max_len:
+            return line
+        return line[:max_len].rsplit(" ", 1)[0] + "…"
+    # Fallback: first max_len chars of body
+    return body.strip()[:max_len].rsplit(" ", 1)[0] + "…"
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
@@ -238,7 +253,7 @@ def publish_blog(
         body=post.excerpt or _auto_excerpt(post.body),
         event_type="blog",
         event_subtype="article",
-        source_url=f"/blog/{post.slug}",
+        source_url=f"/blog/{post.slug}/",
         image_url=post.cover_image_url,
         published_at=now,
         related_asset_ids=post.related_asset_ids,
