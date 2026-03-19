@@ -105,10 +105,11 @@ app.conf.update(
     timezone='UTC',
     enable_utc=True,
     broker_connection_retry_on_startup=True,
-    # Ensure tasks are re-queued if worker is killed mid-execution (SIGTERM/OOM)
-    task_acks_late=True,
-    task_reject_on_worker_lost=True,
-    # One task at a time per worker process — prevents pre-fetched tasks from being lost
+    # acks_late=False (default) — task acknowledged when received, not after execution.
+    # acks_late=True caused duplicate post delivery: after worker restart, Redis
+    # re-delivered unacknowledged social content tasks → same post sent 4-5x to Telegram.
+    task_acks_late=False,
+    task_reject_on_worker_lost=False,
     worker_prefetch_multiplier=1,
     beat_schedule={
         'crypto-every-2min': {

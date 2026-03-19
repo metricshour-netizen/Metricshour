@@ -325,8 +325,26 @@ def _pick_best_country_indicator(db) -> tuple | None:
         }).fetchall()
         if not rows:
             return None
-        # Pick from top 5 — randomise a bit to avoid always same country
-        pick = random.choice(rows[:5])
+        # Normalise by pct change so large economies (US) don't always dominate
+        scored = []
+        for r in rows:
+            if r.prev_value and r.prev_value != 0:
+                pct = abs((r.value - r.prev_value) / r.prev_value)
+                scored.append((pct, r))
+        scored.sort(key=lambda x: x[0], reverse=True)
+        # Exclude last 2 countries used (stored in content_log) to avoid repeats
+        try:
+            recent = db.execute(text(
+                "SELECT entity FROM content_log WHERE content_type='post' "
+                "AND slot_name='country_spotlight' ORDER BY created_at DESC LIMIT 2"
+            )).scalars().all()
+            recent_set = set(r.upper()[:2] for r in recent)
+        except Exception:
+            recent_set = set()
+        candidates = [r for _, r in scored[:10] if r.code.upper() not in recent_set]
+        if not candidates:
+            candidates = [r for _, r in scored[:5]]
+        pick = random.choice(candidates[:5])
         ind_meta = {k: (l, u) for k, l, u in SPOTLIGHT_INDICATORS}
         label, unit = ind_meta.get(pick.indicator, (pick.indicator, ""))
         return pick.code, pick.indicator, label, unit
