@@ -134,13 +134,26 @@ def sitemap(db: Session = Depends(get_db)):
         entries.append(_url(f"{BASE}/commodities/{symbol.lower()}/", "0.7", "daily", lm))
 
     # Countries → /countries/{code}
-    for (code,) in db.execute(select(Country.code).where(Country.code.isnot(None))):
+    # Only include countries that actually have indicator data (excludes ~19 placeholder rows)
+    countries_with_data: set[int] = {
+        row[0] for row in db.execute(
+            select(CountryIndicator.country_id).distinct()
+        )
+    }
+    for (country_id, code) in db.execute(
+        select(Country.id, Country.code).where(Country.code.isnot(None))
+    ):
+        if country_id not in countries_with_data:
+            continue
         lm = lastmod_map.get(("country_insight", code)) or lastmod_map.get(("country", code)) or today
         entries.append(_url(f"{BASE}/countries/{code.lower()}/", "0.7", "weekly", lm))
 
     # Trade pairs → /trade/{exp}-{imp}
     # DB stores both directions (A→B and B→A); include only one per relationship.
-    # Only include pairs with actual bilateral data (exports_usd populated) to avoid thin-content pages.
+    # Only include pairs with ≥$1B trade volume — removes ~1,200 obscure micro-pairs
+    # (e.g. Seychelles-Ireland, Senegal-Guinea-Bissau) that Google won't index due to
+    # thin content and zero search demand. All economically significant relationships
+    # (including Africa ↔ major economies) exceed this threshold.
     Exporter = aliased(Country)
     Importer = aliased(Country)
     seen_trade_pairs: set[tuple[str, str]] = set()
@@ -149,7 +162,7 @@ def sitemap(db: Session = Depends(get_db)):
         .select_from(TradePair)
         .join(Exporter, TradePair.exporter_id == Exporter.id)
         .join(Importer, TradePair.importer_id == Importer.id)
-        .where(TradePair.exports_usd.isnot(None))
+        .where(TradePair.exports_usd >= 1_000_000_000)
         .distinct()
     ):
         if not exp_code or not imp_code:
