@@ -189,6 +189,7 @@ def create_blog(
         body=body.body,
         excerpt=excerpt,
         author_name=body.author_name,
+        cover_image_url=body.cover_image_url,
         status=BlogStatus.draft,
         related_asset_ids=body.related_asset_ids,
         related_country_ids=body.related_country_ids,
