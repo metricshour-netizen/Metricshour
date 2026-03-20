@@ -653,14 +653,14 @@ useHead(computed(() => ({
         },
       }),
     },
-    {
+    ...(buildCountryFaqs(country.value).length ? [{
       type: 'application/ld+json',
       innerHTML: JSON.stringify({
         '@context': 'https://schema.org',
         '@type': 'FAQPage',
         mainEntity: buildCountryFaqs(country.value),
       }),
-    },
+    }] : []),
     {
       type: 'application/ld+json',
       innerHTML: JSON.stringify((() => {
