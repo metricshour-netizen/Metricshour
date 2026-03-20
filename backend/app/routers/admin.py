@@ -85,6 +85,7 @@ class BlogIn(BaseModel):
     body: str
     excerpt: str | None = None
     author_name: str = "MetricsHour Team"
+    cover_image_url: str | None = None
     related_asset_ids: list[int] | None = None
     related_country_ids: list[int] | None = None
     importance_score: float = 5.0
