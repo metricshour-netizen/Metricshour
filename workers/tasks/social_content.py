@@ -44,12 +44,26 @@ log = logging.getLogger(__name__)
 # (e.g. after worker restart mid-retry). Each slot locks for 2 hours per day.
 def _get_redis():
     url = os.environ.get("REDIS_URL", "redis://127.0.0.1:6379/0")
-    return _redis_lib.from_url(url, decode_responses=True)
+    return _redis_lib.from_url(url, decode_responses=True, socket_connect_timeout=2, socket_timeout=3)
+
+
+# Slot → content_log slot_name prefix mapping for DB fallback dedup
+_SLOT_TO_LOG_PREFIX = {
+    "morning_reel": "reel_market_recap",
+    "morning_reel_2": "reel_",
+    "evening_reel": "reel_crypto_update",
+    "evening_reel_2": "reel_trade_spotlight",
+    "market_open": "market_movers",
+    "social_drafts": None,
+    "evening_wrap": "day_wrap",
+    "viral_hook": "viral_stat",
+}
 
 
 def _acquire_slot_lock(slot: str) -> bool:
     """Try to acquire a per-slot-per-day lock. Returns True if acquired (ok to run),
-    False if another instance already holds it (skip this run)."""
+    False if another instance already holds it (skip this run).
+    Falls back to content_log DB check when Redis is unavailable."""
     key = f"social:lock:{slot}:{date.today().isoformat()}"
     try:
         r = _get_redis()
@@ -58,8 +72,24 @@ def _acquire_slot_lock(slot: str) -> bool:
             log.warning("Slot %s already locked today — skipping duplicate run", slot)
         return bool(acquired)
     except Exception as e:
-        # Redis down — allow the run rather than silently skip it
-        log.warning("Redis lock unavailable (%s) — proceeding without lock", e)
+        log.warning("Redis lock unavailable (%s) — falling back to DB dedup check", e)
+        # DB fallback: check if this slot ran in the last 2 hours
+        try:
+            prefix = _SLOT_TO_LOG_PREFIX.get(slot)
+            if prefix:
+                db = SessionLocal()
+                try:
+                    row = db.execute(text(
+                        "SELECT 1 FROM content_log WHERE slot_name LIKE :prefix"
+                        " AND created_at >= NOW() - INTERVAL '2 hours' LIMIT 1"
+                    ), {"prefix": f"{prefix}%"}).fetchone()
+                    if row:
+                        log.warning("Slot %s already in content_log (last 2h) — skipping", slot)
+                        return False
+                finally:
+                    db.close()
+        except Exception as db_e:
+            log.warning("DB dedup check also failed (%s) — allowing run", db_e)
         return True
 
 
