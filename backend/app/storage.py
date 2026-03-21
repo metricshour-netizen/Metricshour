@@ -144,7 +144,7 @@ _kv_log = logging.getLogger(__name__)
 def get_redis() -> redis_lib.Redis:
     """Singleton Redis connection. SSL only for rediss:// (Upstash); plain tcp for redis:// (DragonflyDB)."""
     url = settings.redis_url
-    kwargs: dict = {"decode_responses": True, "socket_connect_timeout": 2}
+    kwargs: dict = {"decode_responses": True, "socket_connect_timeout": 2, "socket_timeout": 5}
     if url.startswith("rediss://"):
         import ssl as _ssl
         kwargs["ssl_cert_reqs"] = _ssl.CERT_NONE
