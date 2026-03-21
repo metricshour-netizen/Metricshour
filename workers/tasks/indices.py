@@ -58,9 +58,9 @@ BOND_YF_MAP: dict[str, str] = {
 MAX_SPIKE_PCT = 20.0  # indices/ETFs can move more than stocks; 20% is a safe guard
 
 
-def _fetch_yf_prices(yf_symbols: list[str]) -> dict[str, float]:
-    """Fetch latest close prices for a list of Yahoo Finance tickers."""
-    result: dict[str, float] = {}
+def _fetch_yf_prices(yf_symbols: list[str]) -> dict[str, dict]:
+    """Fetch latest open+close prices for a list of Yahoo Finance tickers."""
+    result: dict[str, dict] = {}
     CHUNK = 40
     for i in range(0, len(yf_symbols), CHUNK):
         chunk = yf_symbols[i:i + CHUNK]
@@ -72,8 +72,12 @@ def _fetch_yf_prices(yf_symbols: list[str]) -> dict[str, float]:
             for sym in chunk:
                 try:
                     close = df[sym]['Close'].dropna()
+                    open_ = df[sym]['Open'].dropna()
                     if not close.empty:
-                        result[sym] = float(close.iloc[-1])
+                        result[sym] = {
+                            'close': float(close.iloc[-1]),
+                            'open': float(open_.iloc[-1]) if not open_.empty else None,
+                        }
                 except (KeyError, IndexError):
                     pass
         except Exception:
@@ -81,7 +85,7 @@ def _fetch_yf_prices(yf_symbols: list[str]) -> dict[str, float]:
     return result
 
 
-def _upsert_prices(db, symbol_to_asset: dict, prices: dict[str, float], now: datetime) -> int:
+def _upsert_prices(db, symbol_to_asset: dict, prices: dict[str, dict], now: datetime) -> int:
     """Upsert price rows with spike guard."""
     asset_ids = [symbol_to_asset[s].id for s in prices if s in symbol_to_asset]
     last_prices: dict[int, float] = {}
@@ -93,10 +97,11 @@ def _upsert_prices(db, symbol_to_asset: dict, prices: dict[str, float], now: dat
             last_prices[aid] = last
 
     rows = []
-    for sym, price in prices.items():
+    for sym, price_data in prices.items():
         if sym not in symbol_to_asset:
             continue
         asset = symbol_to_asset[sym]
+        price = price_data['close']
         if asset.id in last_prices and last_prices[asset.id] > 0:
             chg = abs((price - last_prices[asset.id]) / last_prices[asset.id]) * 100
             if chg > MAX_SPIKE_PCT:
@@ -107,7 +112,7 @@ def _upsert_prices(db, symbol_to_asset: dict, prices: dict[str, float], now: dat
             'asset_id': asset.id,
             'timestamp': now,
             'interval': '1d',
-            'open': None, 'high': None, 'low': None,
+            'open': price_data.get('open'), 'high': None, 'low': None,
             'close': price,
             'volume': None,
         })
@@ -116,7 +121,7 @@ def _upsert_prices(db, symbol_to_asset: dict, prices: dict[str, float], now: dat
     stmt = pg_insert(Price).values(rows)
     stmt = stmt.on_conflict_do_update(
         constraint='uq_price_asset_time_interval',
-        set_={'close': stmt.excluded.close},
+        set_={'close': stmt.excluded.close, 'open': stmt.excluded.open},
     )
     db.execute(stmt)
     return len(rows)
