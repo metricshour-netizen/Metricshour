@@ -910,9 +910,11 @@ def _hook_market_movers(db) -> dict | None:
                 JOIN assets a ON a.id = p.asset_id
                 WHERE p.interval = '1d'
                   AND p.open IS NOT NULL
+                  AND p.open > 0
                   AND p.timestamp >= NOW() - INTERVAL '36 hours'
                 ORDER BY a.id, p.timestamp DESC
             ) latest
+            WHERE change_pct IS NOT NULL
             ORDER BY ABS(change_pct) DESC
             LIMIT 5
         """)).fetchall()
@@ -924,6 +926,9 @@ def _hook_market_movers(db) -> dict | None:
         return None
 
     # Sort by absolute change to identify the outlier
+    rows = [r for r in rows if r.change_pct is not None]
+    if not rows:
+        return None
     by_abs = sorted(rows, key=lambda r: abs(float(r.change_pct)), reverse=True)
     top_mover = by_abs[0]
 
@@ -1010,9 +1015,11 @@ def _hook_day_wrap(db) -> dict | None:
                 JOIN assets a ON a.id = p.asset_id
                 WHERE p.interval = '1d'
                   AND p.open IS NOT NULL
+                  AND p.open > 0
                   AND p.timestamp >= NOW() - INTERVAL '36 hours'
                 ORDER BY a.id, p.timestamp DESC
             ) latest
+            WHERE change_pct IS NOT NULL
             ORDER BY ABS(change_pct) DESC
             LIMIT 5
         """)).fetchall()
@@ -1024,6 +1031,9 @@ def _hook_day_wrap(db) -> dict | None:
         return None
 
     # Find biggest gainer and loser
+    rows = [r for r in rows if r.change_pct is not None]
+    if not rows:
+        return None
     by_change = sorted(rows, key=lambda r: float(r.change_pct), reverse=True)
     gainer = by_change[0]
     loser = by_change[-1]
