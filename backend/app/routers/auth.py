@@ -179,7 +179,7 @@ def get_current_user(
 # ── Routes ────────────────────────────────────────────────────────────────────
 
 @router.post("/register", response_model=TokenOut, status_code=status.HTTP_201_CREATED)
-@limiter.limit("5/hour")
+@limiter.limit("10/hour")
 def register(request: Request, body: RegisterIn, db: Session = Depends(get_db)):
     _block_test_email(body.email)
 
