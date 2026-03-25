@@ -262,19 +262,31 @@ useHead({
   script: [
     {
       type: 'application/ld+json',
-      innerHTML: computed(() => post.value ? JSON.stringify({
-        '@context': 'https://schema.org',
-        '@type': 'Article',
-        headline: post.value.title,
-        description: post.value.excerpt || '',
-        image: post.value.cover_image_url || 'https://cdn.metricshour.com/og/section/home.png',
-        author: { '@type': 'Person', name: post.value.author_name },
-        publisher: { '@type': 'Organization', name: 'MetricsHour', url: 'https://metricshour.com', logo: { '@type': 'ImageObject', url: 'https://metricshour.com/favicon.svg' } },
-        datePublished: post.value.published_at || '',
-        dateModified: post.value.updated_at || post.value.published_at || '',
-        mainEntityOfPage: { '@type': 'WebPage', '@id': `https://metricshour.com/blog/${slug}/` },
-        url: `https://metricshour.com/blog/${slug}/`,
-      }) : '{}'),
+      innerHTML: computed(() => {
+        if (!post.value) return '{}'
+        const imgUrl = post.value.cover_image_url || 'https://cdn.metricshour.com/og/section/home.png'
+        const words = post.value.body ? post.value.body.split(/\s+/).length : 0
+        return JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'Article',
+          headline: post.value.title,
+          description: post.value.excerpt || '',
+          image: { '@type': 'ImageObject', url: imgUrl, width: 1200, height: 630 },
+          author: { '@type': 'Person', name: post.value.author_name },
+          publisher: {
+            '@type': 'Organization',
+            name: 'MetricsHour',
+            url: 'https://metricshour.com',
+            logo: { '@type': 'ImageObject', url: 'https://metricshour.com/og-image.png', width: 1200, height: 630 },
+          },
+          datePublished: post.value.published_at || '',
+          dateModified: post.value.updated_at || post.value.published_at || '',
+          mainEntityOfPage: { '@type': 'WebPage', '@id': `https://metricshour.com/blog/${slug}/` },
+          url: `https://metricshour.com/blog/${slug}/`,
+          inLanguage: 'en',
+          wordCount: words,
+        })
+      }),
     },
     {
       type: 'application/ld+json',
