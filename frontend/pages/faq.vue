@@ -86,6 +86,11 @@ useSeoMeta({
   ogDescription: 'Answers to common questions about MetricsHour — data sources, pricing, coverage, and how geographic revenue exposure works.',
   ogUrl: 'https://metricshour.com/faq/',
   ogType: 'website',
+  ogImage: 'https://cdn.metricshour.com/og/section/home.png',
+  ogImageWidth: '1200',
+  ogImageHeight: '630',
+  twitterCard: 'summary_large_image',
+  twitterImage: 'https://cdn.metricshour.com/og/section/home.png',
 })
 
 useHead({

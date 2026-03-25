@@ -114,6 +114,15 @@ useSeoMeta({
   title: 'Join MetricsHour — Free Global Markets & Economic Data',
   description: 'Create a free MetricsHour account. Track 250+ country economies, real-time markets, trade flows, price alerts, and AI-powered insights.',
   robots: 'index, follow',
+  ogTitle: 'Join MetricsHour — Free Global Markets & Economic Data',
+  ogDescription: 'Create a free MetricsHour account. Track 250+ country economies, real-time markets, trade flows, price alerts, and AI-powered insights.',
+  ogUrl: 'https://metricshour.com/join/',
+  ogType: 'website',
+  ogImage: 'https://cdn.metricshour.com/og/section/home.png',
+  ogImageWidth: '1200',
+  ogImageHeight: '630',
+  twitterCard: 'summary_large_image',
+  twitterImage: 'https://cdn.metricshour.com/og/section/home.png',
 })
 useHead({
   link: [{ rel: 'canonical', href: 'https://metricshour.com/join/' }],
