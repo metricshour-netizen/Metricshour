@@ -35,6 +35,39 @@ from app.models.user import User, UserTier, LoginEvent
 from app.notifications import send_welcome_email
 from app.storage import redis_json_set, redis_json_get, redis_json_del
 
+# ── Disposable / test email blocking ─────────────────────────────────────────
+
+_BLOCKED_DOMAINS = {
+    "mailinator.com", "guerrillamail.com", "guerrillamail.net", "guerrillamail.org",
+    "throwam.com", "temp-mail.org", "tempmail.com", "tempmail.net", "yopmail.com",
+    "sharklasers.com", "guerrillamailblock.com", "grr.la", "guerrillamail.info",
+    "spam4.me", "trashmail.com", "trashmail.me", "trashmail.net", "trashmail.at",
+    "dispostable.com", "mailnull.com", "spamgourmet.com", "spamgourmet.net",
+    "maildrop.cc", "discard.email", "fakeinbox.com", "mailnesia.com",
+    "spamfree24.org", "throwaway.email", "mailexpire.com",
+    "10minutemail.com", "10minutemail.net", "10minutemail.org",
+    "20minutemail.com", "filzmail.com", "mailmoat.com", "mailscrap.com",
+    "mailzilla.com", "meltmail.com", "mytrashmail.com", "safetymail.info",
+    "trashdevil.com", "wegwerfmail.de", "wegwerfmail.net", "wegwerfmail.org",
+    "tempinbox.com", "tempr.email", "getairmail.com",
+    "example.com", "example.net", "example.org", "test.com", "test.net",
+    "fake.com", "fake.net", "invalid.com", "mailtest.com",
+}
+
+_BLOCKED_LOCAL_PARTS = {
+    "test", "fake", "temp", "temporary", "throwaway", "trash", "spam",
+    "dummy", "noreply", "no-reply", "donotreply", "do-not-reply",
+    "null", "void", "nobody", "nothing", "anonymous", "anon",
+}
+
+
+def _block_test_email(email: str) -> None:
+    local, _, domain = email.lower().partition("@")
+    if domain in _BLOCKED_DOMAINS:
+        raise HTTPException(status_code=422, detail="Please use a permanent email address.")
+    if local in _BLOCKED_LOCAL_PARTS:
+        raise HTTPException(status_code=422, detail="Please use a real email address.")
+
 _GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 _GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 _GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo"
@@ -146,8 +179,10 @@ def get_current_user(
 # ── Routes ────────────────────────────────────────────────────────────────────
 
 @router.post("/register", response_model=TokenOut, status_code=status.HTTP_201_CREATED)
-@limiter.limit("5/minute")
+@limiter.limit("5/hour")
 def register(request: Request, body: RegisterIn, db: Session = Depends(get_db)):
+    _block_test_email(body.email)
+
     if db.execute(select(User).where(User.email == body.email)).scalar_one_or_none():
         raise HTTPException(status_code=409, detail="Email already registered")
 
@@ -365,6 +400,11 @@ def google_callback(
     is_new = user is None
 
     if is_new:
+        try:
+            _block_test_email(email)
+        except HTTPException:
+            return RedirectResponse(f"{_FRONTEND_URL}/auth/callback?error=invalid_email")
+
         user = User(
             email=email,
             password_hash="__google__",   # no password — Google-only account
