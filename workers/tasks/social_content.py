@@ -1674,11 +1674,11 @@ def _trigger_reel_via_moltis(style: str, subject: str, hook: str) -> bool:
             "chat": {"id": int(TELEGRAM_CHAT_ID), "type": "private"},
             "date": int(time.time()),
             "text": (
-                    "[AUTOMATED "
+                    "[SYSTEM AUTOMATION "
                     + datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-                    + "] TOOL CALL REQUIRED - do NOT respond with text first."
-                    f" Call mcp__metricshour__smart_reel immediately."
-                    f" Arguments: style={style} subject={subject} hook={hook}"
+                    + "] NO TEXT RESPONSE. CALL TOOL NOW: mcp__metricshour__smart_reel"
+                    f" style={style} subject={subject} hook={hook}"
+                    " — zero text before tool call, rules forbid it."
                 ),
         },
     }
