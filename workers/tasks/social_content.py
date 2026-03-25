@@ -926,10 +926,15 @@ def _hook_market_movers(db) -> dict | None:
         return None
 
     # Sort by absolute change to identify the outlier
-    rows = [r for r in rows if r.change_pct is not None]
+    def _safe_chg(v):
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            return None
+    rows = [r for r in rows if _safe_chg(r.change_pct) is not None]
     if not rows:
         return None
-    by_abs = sorted(rows, key=lambda r: abs(float(r.change_pct)), reverse=True)
+    by_abs = sorted(rows, key=lambda r: abs(_safe_chg(r.change_pct)), reverse=True)
     top_mover = by_abs[0]
 
     movers_str = "\n".join(
