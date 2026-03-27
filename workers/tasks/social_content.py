@@ -309,6 +309,12 @@ AUDIENCE_PERSONA = (
     "  - No emojis before the first word of copy\n"
     "  - No preamble ('In today's...', 'As we navigate...', 'It's important to note...')\n"
     "  - Open with the MOST SURPRISING or COUNTERINTUITIVE angle — never the obvious headline\n"
+    "ANGLE SELECTION (mandatory before writing): identify 3 possible angles for this data. "
+    "REJECT the obvious one (e.g. 'X has high inflation' is obvious). "
+    "PICK the angle that contradicts expectations, reveals a hidden mechanism, or connects to a live macro trade. "
+    "Examples of WEAK angles: 'X economy is struggling', 'investors are watching Y'. "
+    "Examples of STRONG angles: 'X raised rates to 45% yet real yield is still -13.5% — TRY holders lose money every month', "
+    "'AAPL earns 19% from China but US consumer is the only segment growing — the geographic bet is priced backwards'.\n"
     "GOAL: one post that one person screenshots and sends to a friend."
 )
 
@@ -456,7 +462,7 @@ def _pick_best_country_indicator(db) -> tuple | None:
         try:
             recent = db.execute(text(
                 "SELECT entity FROM content_log WHERE content_type='post' "
-                "AND slot_name='country_spotlight' ORDER BY created_at DESC LIMIT 3"
+                "AND slot_name='country_spotlight' AND created_at >= NOW() - INTERVAL '14 days'"
             )).scalars().all()
             recent_set = set(r.upper() for r in recent)
         except Exception:
@@ -633,7 +639,7 @@ def _hook_stock_exposure(db) -> dict | None:
     try:
         recent_stocks = db.execute(text(
             "SELECT entity FROM content_log WHERE content_type='post' "
-            "AND slot_name='stock_exposure' ORDER BY created_at DESC LIMIT 2"
+            "AND slot_name='stock_exposure' AND created_at >= NOW() - INTERVAL '14 days'"
         )).scalars().all()
         # entity stored as "AAPL (Apple Inc.)" — extract ticker (first token)
         recent_tickers = set(r.split()[0].upper() for r in recent_stocks)
@@ -805,7 +811,7 @@ def _hook_trade_insight(db) -> dict | None:
     try:
         recent_trades = db.execute(text(
             "SELECT entity FROM content_log WHERE content_type='post' "
-            "AND slot_name='trade_insight' ORDER BY created_at DESC LIMIT 2"
+            "AND slot_name='trade_insight' AND created_at >= NOW() - INTERVAL '14 days'"
         )).scalars().all()
         recent_pairs = set(r.upper() for r in recent_trades)
     except Exception:
@@ -1154,7 +1160,11 @@ def _try_viral_option(db, option: str) -> dict | None:
         page_url = f"{SITE_URL}/countries/{code}"
         og_image_url = f"{CDN_URL}/og/countries/{code}.png"
         data_context = f"{entity} has an inflation rate of {val_str}"
-        hook_angle = "Did you know? Hyperinflation / extreme inflation is destroying purchasing power in this country"
+        hook_angle = (
+            f"At {float(row.value):.1f}% inflation the counterintuitive angle is: "
+            "what is the REAL yield on local bonds, what does the central bank actually have room to do, "
+            "and how does this affect the currency vs USD — not just 'inflation is bad'"
+        )
 
     elif option == "high_debt":
         row = db.execute(text("""
@@ -1175,7 +1185,11 @@ def _try_viral_option(db, option: str) -> dict | None:
         page_url = f"{SITE_URL}/countries/{code}"
         og_image_url = f"{CDN_URL}/og/countries/{code}.png"
         data_context = f"{entity} has government debt of {val_str} of GDP"
-        hook_angle = "Did you know? This country owes more than its entire annual economic output"
+        hook_angle = (
+            f"Debt at {float(row.value):.0f}% of GDP — the counterintuitive angle: "
+            "sovereign default risk isn't about the level, it's about who holds the debt and whether the yield spread vs Treasuries "
+            "is widening or compressing. Compare to Japan at 255% — still no default risk."
+        )
 
     elif option == "trade_yoy":
         rows = db.execute(text("""
@@ -1202,7 +1216,11 @@ def _try_viral_option(db, option: str) -> dict | None:
         page_url = f"{SITE_URL}/trade/{exp_code}-{imp_code}"
         og_image_url = f"{CDN_URL}/og/trade/{exp_code}-{imp_code}.png"
         data_context = f"{pick.exp_name} exports {val_str}/year to {pick.imp_name}"
-        hook_angle = "Did you know? The scale of this trade relationship will surprise you"
+        hook_angle = (
+            f"At {val_str}/year this corridor represents a real bilateral dependency — "
+            "the angle: what happens to this flow under tariff escalation, which goods are hardest to substitute, "
+            "and which listed companies (name specific tickers) lose revenue first"
+        )
 
     elif option == "stock_intl":
         RevCountry = aliased(Country)
@@ -1235,7 +1253,11 @@ def _try_viral_option(db, option: str) -> dict | None:
         page_url = f"{SITE_URL}/stocks/{code}"
         og_image_url = f"{CDN_URL}/og/stocks/{code}.png"
         data_context = f"{name} ({ticker}) earns {intl_pct:.0f}% of revenue outside the US"
-        hook_angle = "Did you know? This US-listed stock earns most of its money abroad"
+        hook_angle = (
+            f"At {intl_pct:.0f}% international revenue, {name} ({ticker})'s US listing masks a predominantly non-US earnings stream. "
+            "The angle: retail investors price it as a US stock but its EPS is driven by FX rates, foreign consumer demand, "
+            "and tariff policy — exposure most holders have never modelled"
+        )
 
     elif option == "china_exposure":
         # US stocks with highest China revenue — hot topic given tariffs
@@ -1653,7 +1675,8 @@ def _pick_crypto_reel_subject() -> tuple[str, str]:
             direction = "up" if float(top.chg_pct) >= 0 else "down"
             hook = (
                 f"{top.symbol} {direction} {abs(float(top.chg_pct)):.1f}% to "
-                f"${float(top.close):,.0f} — biggest crypto mover today"
+                f"${float(top.close):,.0f} — what macro catalyst drove this, whether momentum holds or reverses, "
+                f"and what it signals for the broader crypto market tonight"
             )
             return sym, hook
     except Exception as e:
@@ -1762,14 +1785,14 @@ def generate_social_drafts(self):
         return "skipped: already completed today"
     db = SessionLocal()
     try:
-        # Rotate hook type by day-of-year so it cycles: country → stock → trade
+        # Rotate hook type by day-of-year: country → stock → trade → viral_stat → repeat
         from datetime import date
-        day_index = date.today().timetuple().tm_yday % 3
-        hook_fns = [_hook_country_spotlight, _hook_stock_exposure, _hook_trade_insight]
+        day_index = date.today().timetuple().tm_yday % 4
+        hook_fns = [_hook_country_spotlight, _hook_stock_exposure, _hook_trade_insight, _hook_viral_stat]
         # Try primary hook first, fall back to next ones if data unavailable
         draft = None
-        for i in range(3):
-            fn = hook_fns[(day_index + i) % 3]
+        for i in range(4):
+            fn = hook_fns[(day_index + i) % 4]
             draft = fn(db)
             if draft and draft.get("linkedin"):
                 break
@@ -1896,7 +1919,14 @@ def generate_morning_reel(self):
             """)).fetchall()
             if row:
                 top = sorted(row, key=lambda r: abs(float(r.chg)), reverse=True)[:3]
-                hook = " | ".join(f"{r.symbol} {float(r.chg):+.1f}%" for r in top)
+                if top:
+                    outlier = top[0]
+                    move = "surges" if float(outlier.chg) > 0 else "drops"
+                    others = " | ".join(f"{r.symbol} {float(r.chg):+.1f}%" for r in top[1:3])
+                    hook = (
+                        f"{outlier.symbol} {move} {abs(float(outlier.chg)):.1f}% — "
+                        f"what drove it and what it signals: {others}"
+                    ) if others else f"{outlier.symbol} {move} {abs(float(outlier.chg)):.1f}% — the macro story behind today's biggest market move"
         except Exception:
             pass
         finally:
@@ -1924,11 +1954,23 @@ def _pick_reel_subject_morning(db) -> tuple:
         # country_deep_dive — pick G20 country with biggest recent indicator change
         best = _pick_best_country_indicator(db)
         if best:
-            code, _, label, _ = best
+            code, ind_key, label, unit = best[:4]
             country = db.execute(select(Country).where(Country.code == code)).scalar_one_or_none()
             name = country.name if country else code
-            return ("country_deep_dive", code, f"{name}: the macro data moving markets today")
-        return ("country_deep_dive", "DE", "Germany's economy: the numbers behind Europe's slowdown")
+            # Get the actual current value for a more specific hook
+            val_row = db.execute(text(
+                "SELECT ci.value, ci.period_date FROM country_indicators ci "
+                "JOIN countries c ON c.id = ci.country_id "
+                "WHERE c.code = :code AND ci.indicator = :ind ORDER BY ci.period_date DESC LIMIT 1"
+            ), {"code": code, "ind": ind_key}).fetchone()
+            if val_row:
+                val_str = _fmt_value(float(val_row.value), unit)
+                return ("country_deep_dive", code,
+                    f"{name} {label}: {val_str} — what this signals for {name}'s currency, bond yields, and equity risk premium")
+            return ("country_deep_dive", code,
+                f"{name}: {label} at a critical inflection — macro read and which assets are most exposed")
+        return ("country_deep_dive", "DE",
+            "Germany: two consecutive quarters of GDP contraction, ECB rate-cut pace is the only lever — what this means for EUR and European equities")
     elif day_index == 1:
         # stock_analysis — pick top moved stock with international exposure
         try:
@@ -1948,10 +1990,12 @@ def _pick_reel_subject_morning(db) -> tuple:
             """)).fetchall()
             if row:
                 pick = sorted(row, key=lambda r: float(r.abs_pct), reverse=True)[0]
-                return ("stock_analysis", pick.symbol, f"{pick.symbol} moved {float(pick.abs_pct):.1f}% — here's the geographic revenue story")
+                return ("stock_analysis", pick.symbol,
+                    f"{pick.symbol} moved {float(pick.abs_pct):.1f}% — international revenue breakdown: where EPS actually comes from, which geographies are at risk from tariffs or FX, and what Wall Street is likely mispricing")
         except Exception:
             pass
-        return ("stock_analysis", "NVDA", "NVDA's international revenue story and what it means for macro risk")
+        return ("stock_analysis", "NVDA",
+            "NVDA earns 52% outside the US — China 17%, Taiwan 15%. US export controls are a direct line-item EPS risk. Here's what next quarter's guidance is really about")
     else:
         # trade_spotlight — pick top trade pair (skip top 3 mega-corridors)
         try:
@@ -1968,7 +2012,7 @@ def _pick_reel_subject_morning(db) -> tuple:
                     val = pair.trade_value_usd
                     val_str = f"${val/1e9:.0f}B" if val >= 1e9 else f"${val/1e6:.0f}M"
                     return ("trade_spotlight", f"{exp.code}-{imp.code}",
-                            f"{exp.name}–{imp.name}: {val_str}/year trade corridor in focus")
+                            f"{exp.name}→{imp.name}: {val_str}/year — what goods flow, what geopolitical event could disrupt this corridor, and which listed companies are most exposed")
         except Exception:
             pass
         return ("trade_spotlight", "JP-CN", "Japan–China trade: Asia's most important bilateral corridor")
@@ -2001,8 +2045,10 @@ def _pick_reel_subject_evening(db) -> tuple:
             """)).fetchone()
             if row:
                 extreme = "52-week high" if float(row.pct_of_range) >= 80 else "52-week low"
+                pct_of_range = float(row.pct_of_range)
                 return ("commodities", row.symbol.lower(),
-                        f"{row.name} near {extreme} — commodity extremes and what drives the next move")
+                        f"{row.name} at {pct_of_range:.0f}% of its 52-week range — near {extreme}. "
+                        f"What macro force is driving this, whether the extreme holds or reverses, and which producers/consumers get hit")
         except Exception:
             pass
         return ("commodities", "gold", "Gold, oil and metals: today's commodity extremes")
@@ -2019,8 +2065,10 @@ def _pick_reel_subject_evening(db) -> tuple:
                 exp = db.execute(select(Country).where(Country.id == pair.exporter_id)).scalar_one_or_none()
                 imp = db.execute(select(Country).where(Country.id == pair.importer_id)).scalar_one_or_none()
                 if exp and imp:
+                    val = pair.trade_value_usd or 0
+                    val_str_e = f"${val/1e9:.0f}B" if val >= 1e9 else f"${val/1e6:.0f}M"
                     return ("trade_spotlight", f"{exp.code}-{imp.code}",
-                            f"{exp.name}–{imp.name} trade: the data most investors overlook")
+                            f"{exp.name}→{imp.name}: {val_str_e}/year — trade tensions, key goods, and the specific stocks and sectors that carry the most exposure to disruption")
         except Exception:
             pass
         return ("trade_spotlight", "DE-CN", "Germany–China trade: Europe's biggest China dependency")
@@ -2042,7 +2090,7 @@ def _pick_reel_subject_evening(db) -> tuple:
             if len(rows) >= 2:
                 pick = rows[1]  # second biggest — morning got the top
                 return ("country_deep_dive", pick.code,
-                        f"{pick.name}: the macro numbers that should be on every investor's radar")
+                        f"{pick.name}: macro shift in progress — what the latest data signals for {pick.name}'s currency, bond yields, and regional equity risk")
         except Exception:
             pass
         return ("country_deep_dive", "IN", "India's economy: the data behind the world's fastest-growing major market")
