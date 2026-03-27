@@ -62,7 +62,16 @@ export default defineNuxtConfig({
     preset: 'node-server',
   },
 
+  // Security headers applied globally via routeRules catch-all
+  // Cloudflare strips these on the edge — they arrive from Nuxt for direct-access coverage
   routeRules: {
+    '/**': {
+      headers: {
+        'X-Content-Type-Options': 'nosniff',
+        'X-Frame-Options': 'SAMEORIGIN',
+        'Referrer-Policy': 'strict-origin-when-cross-origin',
+      },
+    },
     '/sitemap.xml': { redirect: { to: 'https://api.metricshour.com/sitemap.xml', statusCode: 301 } },
     '/robots.txt': { redirect: { to: 'https://api.metricshour.com/robots.txt', statusCode: 301 } },
 
@@ -121,5 +130,10 @@ export default defineNuxtConfig({
     '/commodities/copper': { redirect: { to: '/commodities/hg/', statusCode: 301 } },
     '/commodities/coffee/': { redirect: { to: '/commodities/kc/', statusCode: 301 } },
     '/commodities/coffee': { redirect: { to: '/commodities/kc/', statusCode: 301 } },
+    // Blog slug cleanup — old numeric-suffix URLs → canonical slugs
+    '/blog/chinas-18-billion-trade-grip-on-nigeria-the-hidden-dependency-that-shapes-africas-largest-economy-3/': { redirect: { to: '/blog/chinas-18-billion-trade-grip-on-nigeria-the-hidden-dependency-that-shapes-africas-largest-economy/', statusCode: 301 } },
+    '/blog/chinas-18-billion-trade-grip-on-nigeria-the-hidden-dependency-that-shapes-africas-largest-economy-3': { redirect: { to: '/blog/chinas-18-billion-trade-grip-on-nigeria-the-hidden-dependency-that-shapes-africas-largest-economy/', statusCode: 301 } },
+    '/blog/nigeria-oil-exports-the-us-stocks-at-risk-from-africa-petro-giant-1/': { redirect: { to: '/blog/nigeria-oil-exports-the-us-stocks-at-risk-from-africa-petro-giant/', statusCode: 301 } },
+    '/blog/nigeria-oil-exports-the-us-stocks-at-risk-from-africa-petro-giant-1': { redirect: { to: '/blog/nigeria-oil-exports-the-us-stocks-at-risk-from-africa-petro-giant/', statusCode: 301 } },
   },
 })
