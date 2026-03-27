@@ -244,23 +244,35 @@ def _call_deepseek(prompt: str) -> dict | None:
 
 # AI slop — generic phrases that indicate low-quality output, trigger a retry
 _BANNED_PHRASES = [
+    # preamble / filler
     "it's important to note", "it is important to note",
     "in today's fast-paced", "in today's world", "in the current landscape",
     "it goes without saying", "needless to say",
     "at the end of the day", "when all is said and done",
-    "nuanced", "multifaceted", "navigating", "leveraging",
     "in conclusion", "to summarize", "as we can see",
     "interestingly enough", "it's worth noting", "it is worth noting",
+    "in the world of", "the reality is", "let that sink in",
+    "food for thought", "worth watching", "stay tuned",
+    "follow for more", "like and share", "drop a comment",
+    # vague analyst-speak
+    "nuanced", "multifaceted", "navigating", "leveraging",
     "game-changer", "game changer", "paradigm shift",
     "here's what you need to know", "what you need to know",
     "why it matters", "here's why", "unpacking", "deep dive",
     "key takeaway", "bottom line", "make no mistake",
-    "in the world of", "the reality is", "let that sink in",
-    "food for thought", "worth watching", "stay tuned",
     "more than ever", "unprecedented", "historic levels",
-    "follow for more", "like and share", "drop a comment",
     "investors should consider", "investors should note",
     "the markets are", "global markets", "market participants",
+    # hedging / weasel words that dilute the claim
+    "price action", "signals a new", "signals that",
+    "amid uncertainty", "amid growing", "amid rising",
+    "could potentially", "may potentially", "might potentially",
+    "headwinds", "tailwinds", "going forward",
+    "macro environment", "broader market", "broader economy",
+    "signals optimism", "signals concern", "signals confidence",
+    "strategic advantage", "competitive advantage", "competitive landscape",
+    "moving forward", "in the near term", "in the short term",
+    "adds to concerns", "raises concerns", "easing concerns",
 ]
 
 import re as _re
@@ -301,20 +313,21 @@ def _call_ai(prompt: str) -> dict | None:
 AUDIENCE_PERSONA = (
     "AUDIENCE: Retail investor, 30-45, follows macro and stocks on Twitter/Reddit/LinkedIn. "
     "Information-saturated — skips anything obvious, generic, or preachy. "
-    "Shares ONLY posts that make them say 'I didn't know that' or 'that changes my view'. "
-    "TONE RULES (non-negotiable):\n"
-    "  - Every number MUST appear as a specific figure (e.g. 58.5%, $427B, -0.5pp) — NEVER 'high', 'low', 'significant'\n"
-    "  - Name specific assets, currencies, sectors, rates — NEVER 'the markets' or 'investors'\n"
-    "  - Twitter: statements only — NO questions, NO 'Did you know'\n"
-    "  - No emojis before the first word of copy\n"
+    "Shares ONLY posts that make them say 'I didn't know that' or 'that changes my view'.\n"
+    "LANGUAGE RULES (non-negotiable — violations will be rejected):\n"
+    "  - Every number MUST be a specific figure (e.g. 58.5%, $427B, -0.5pp) — NEVER 'high', 'low', 'significant'\n"
+    "  - Name specific tickers, currencies, central banks, rates — NEVER 'the markets', 'investors', 'the economy'\n"
+    "  - COMMIT to a specific claim — NEVER hedge with 'could', 'may', 'potentially', 'suggests', 'signals that'\n"
+    "  - Write like a trader explaining their thesis, not an analyst writing a report\n"
+    "  - Twitter: statements only — NO questions, NO 'Did you know', NO opening emojis\n"
     "  - No preamble ('In today's...', 'As we navigate...', 'It's important to note...')\n"
-    "  - Open with the MOST SURPRISING or COUNTERINTUITIVE angle — never the obvious headline\n"
+    "  - Every sentence must contain either a specific number OR a specific named entity (ticker, country, rate, policy)\n"
     "ANGLE SELECTION (mandatory before writing): identify 3 possible angles for this data. "
-    "REJECT the obvious one (e.g. 'X has high inflation' is obvious). "
-    "PICK the angle that contradicts expectations, reveals a hidden mechanism, or connects to a live macro trade. "
-    "Examples of WEAK angles: 'X economy is struggling', 'investors are watching Y'. "
-    "Examples of STRONG angles: 'X raised rates to 45% yet real yield is still -13.5% — TRY holders lose money every month', "
-    "'AAPL earns 19% from China but US consumer is the only segment growing — the geographic bet is priced backwards'.\n"
+    "REJECT the obvious one. PICK the angle that contradicts expectations, reveals a hidden mechanism, or connects to a live macro trade. "
+    "WEAK: 'X economy is struggling', 'investors are watching Y', 'this could impact Z'. "
+    "STRONG: 'Turkey raised rates to 45% — real yield still -13.5%, TRY holders lose money every month', "
+    "'AAPL earns 19% from China but US is the only growing segment — the geographic bet is priced backwards', "
+    "'Germany GDP -0.5%: debt brake prevents stimulus, ECB pace is the only lever — short EUR/long Bunds is the trade'.\n"
     "GOAL: one post that one person screenshots and sends to a friend."
 )
 
@@ -958,13 +971,25 @@ def _hook_market_movers(db) -> dict | None:
     news_block = "\n\n".join(news_items) if news_items else ""
     news_section = f"\nRecent news context:\n{news_block}" if news_block else ""
 
+    _MARKET_ANGLES = [
+        # 0 — outlier deep-dive
+        "Focus on the OUTLIER — the single move that breaks the pattern. Name exactly WHY it happened (earnings beat/miss, upgrade/downgrade, macro catalyst, supply chain event). Everything else is context for the outlier.",
+        # 1 — sector rotation
+        "Frame this as a SECTOR ROTATION story. Which sectors gained, which lost? Is capital moving from growth→value, tech→commodities, US→EM? Name the rotation and what macro signal is driving it.",
+        # 2 — macro correlation
+        "Connect these moves to the MACRO BACKDROP. Which Fed/inflation/geopolitical event is the real driver today? Find the move that contradicts the macro narrative — that contradiction is your lead.",
+        # 3 — the disconnect
+        "Find the DISCONNECT: the stock that moved when it shouldn't have, or the one that didn't move when it should have. That gap between price action and fundamentals is the most actionable signal. Lead with it.",
+    ]
+    angle_instruction = _MARKET_ANGLES[date.today().timetuple().tm_yday % 4]
+
     prompt = f"""You are a financial data journalist writing social copy for MetricsHour.
 {AUDIENCE_PERSONA}
 
 VERIFIED DATA — today's biggest price movers:
 {movers_str}{news_section}
 
-YOUR TASK: 4 posts as a market-open hook. Focus on the OUTLIER — the move that breaks the pattern or that most people will find surprising. Name WHY it happened if news context is available.
+YOUR TASK: 4 posts as a market-open hook. {angle_instruction}
 
 ━━━ TWITTER ━━━
 Max 260 chars. RULES:
@@ -1062,6 +1087,19 @@ def _hook_day_wrap(db) -> dict | None:
             news_items.append(f"{r.symbol} news:\n{n}")
     news_section = f"\nRecent news:\n" + "\n\n".join(news_items) if news_items else ""
 
+    _WRAP_ANGLES = [
+        # 0 — tomorrow's setup
+        "Frame this entirely as a SETUP FOR TOMORROW. What does today's action mean for tomorrow's open? Name a specific earnings release, data print, Fed speaker, or options expiry that makes today's close directionally important.",
+        # 1 — idiosyncratic vs systemic
+        "Your one job: tell readers whether today's moves are IDIOSYNCRATIC (company-specific, ignore the sector) or SYSTEMIC (sector/macro, everything in the group is affected). Commit to the call. Name which it is and why it changes how to trade tomorrow.",
+        # 2 — surprising divergence
+        "Find the most SURPRISING DIVERGENCE in today's data — two assets that should have moved together but didn't, or one that moved opposite to its usual correlation. That divergence is your lead.",
+        # 3 — contrarian read
+        "Give the CONTRARIAN READ on today's session. What is the consensus interpretation, and what does the data actually say? Name a specific ticker or sector the market is mispricing based on today's action.",
+    ]
+    # Offset by 2 from market_movers so they never use the same angle on the same day
+    wrap_angle = _WRAP_ANGLES[(date.today().timetuple().tm_yday + 2) % 4]
+
     prompt = f"""You are a financial data journalist writing end-of-day social copy for MetricsHour.
 {AUDIENCE_PERSONA}
 
@@ -1071,7 +1109,7 @@ VERIFIED DATA — today's closing moves:
 Biggest gainer: {gainer.symbol} ({gainer.name}) {float(gainer.change_pct):+.2f}%
 Biggest loser: {loser.symbol} ({loser.name}) {float(loser.change_pct):+.2f}%{news_section}
 
-YOUR TASK: 4 end-of-day wrap posts. Focus on what was SURPRISING about today's session and what it sets up for tomorrow.
+YOUR TASK: 4 end-of-day wrap posts. {wrap_angle}
 
 ━━━ TWITTER ━━━
 Max 260 chars. RULES:
@@ -1413,6 +1451,18 @@ def _try_viral_option(db, option: str) -> dict | None:
     news = _fetch_news_context(f"{entity} economy finance")
     news_block = f"\nRecent headlines:\n{news}" if news else ""
 
+    _VIRAL_ANGLES = [
+        # 0 — stat + broken assumption
+        "State the number, then BREAK the obvious assumption most people make about it. The assumption is wrong — explain exactly why with a second specific number or comparison.",
+        # 1 — historical context
+        "State the number, then place it in HISTORICAL CONTEXT. When was this last seen? What happened to prices/rates/currencies the last time this level was reached? That history IS the investment signal.",
+        # 2 — who gets hurt / who wins
+        "State the number, then immediately answer: WHO GETS HURT and WHO WINS? Name specific asset classes, sectors, or tickers on each side. No generalities — name the mechanism.",
+        # 3 — what the market is missing
+        "State the number, then make the case that THE MARKET IS MISPRICING IT. What does consensus think? What does this data actually imply? Name the specific asset that is wrong.",
+    ]
+    viral_angle = _VIRAL_ANGLES[date.today().timetuple().tm_yday % 4]
+
     prompt = f"""You are a financial data journalist writing viral "shocking stat" social copy for MetricsHour.
 {AUDIENCE_PERSONA}
 
@@ -1421,8 +1471,7 @@ VERIFIED DATA:
 Counterintuitive angle: {hook_angle}{news_block}
 Page URL: {page_url}
 
-YOUR TASK: 4 posts that drop a number so specific and surprising that the reader pauses mid-scroll.
-The angle is the NUMBER — not a question, not a vague "interesting fact." State the stat, then deliver the implication.
+YOUR TASK: 4 posts that drop a number so specific and surprising that the reader pauses mid-scroll. {viral_angle}
 
 ━━━ TWITTER ━━━
 Max 260 chars. RULES:
@@ -1874,12 +1923,15 @@ def generate_evening_wrap_drafts(self):
 
 @app.task(name='tasks.social_content.generate_viral_hook_drafts', bind=True, max_retries=2)
 def generate_viral_hook_drafts(self):
-    """Generate viral / shocking stat draft. Runs daily at 6pm UTC."""
+    """Generate evening post. Rotates daily: viral_stat → country_spotlight → viral_stat → trade_insight."""
     if not _acquire_slot_lock("viral_hook"):
         return "skipped: already completed today"
     db = SessionLocal()
     try:
-        draft = _hook_viral_stat(db)
+        # Rotate so the 18:00 slot isn't always a viral stat
+        _evening_fns = [_hook_viral_stat, _hook_country_spotlight, _hook_viral_stat, _hook_trade_insight]
+        evening_fn = _evening_fns[date.today().timetuple().tm_yday % 4]
+        draft = evening_fn(db)
         if draft and draft.get("twitter"):
             if _send_draft_to_telegram(draft):
                 log.info("Viral hook draft sent to Telegram")
