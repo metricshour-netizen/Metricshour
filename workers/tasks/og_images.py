@@ -995,7 +995,10 @@ def generate_feed_og_images() -> dict:
         from app.models.feed import FeedEvent
 
         events = db.execute(
-            select(FeedEvent).order_by(FeedEvent.id).with_for_update(skip_locked=True)
+            select(FeedEvent)
+            .where(FeedEvent.image_url.is_(None))
+            .order_by(FeedEvent.id)
+            .with_for_update(skip_locked=True)
         ).scalars().all()
         for ev in events:
             try:
