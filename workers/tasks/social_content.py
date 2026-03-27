@@ -1918,7 +1918,7 @@ def generate_morning_reel(self):
                 ORDER BY a.id, p.timestamp DESC
             """)).fetchall()
             if row:
-                top = sorted(row, key=lambda r: abs(float(r.chg)), reverse=True)[:3]
+                top = sorted([r for r in row if r.chg is not None], key=lambda r: abs(float(r.chg)), reverse=True)[:3]
                 if top:
                     outlier = top[0]
                     move = "surges" if float(outlier.chg) > 0 else "drops"
