@@ -13,6 +13,7 @@
       <NuxtLink to="/trade/"       class="hover:text-gray-400 transition-colors">Trade</NuxtLink>
       <NuxtLink to="/commodities/" class="hover:text-gray-400 transition-colors">Commodities</NuxtLink>
       <NuxtLink to="/feed/"        class="hover:text-gray-400 transition-colors">Feed</NuxtLink>
+      <NuxtLink to="/blog/"        class="hover:text-gray-400 transition-colors">Blog</NuxtLink>
       <NuxtLink to="/login/"       class="hover:text-gray-400 transition-colors">Sign In</NuxtLink>
       <NuxtLink to="/join/"        class="hover:text-emerald-400 text-emerald-600 transition-colors font-medium">Join Free</NuxtLink>
     </div>
