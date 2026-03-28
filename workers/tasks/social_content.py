@@ -1974,11 +1974,19 @@ def generate_morning_reel(self):
                 if top:
                     outlier = top[0]
                     move = "surges" if float(outlier.chg) > 0 else "drops"
-                    others = " | ".join(f"{r.symbol} {float(r.chg):+.1f}%" for r in top[1:3])
+                    def _mv_label(sym: str, name: str) -> str:
+                        # For 2-char commodity codes (CT, KC) or long obscure tickers (SSNLF), use name
+                        if len(sym) <= 2 or len(sym) >= 5:
+                            return (name or sym).split()[0]
+                        return sym
+                    outlier_label = _mv_label(outlier.symbol, outlier.name or "")
+                    others = " | ".join(
+                        f"{_mv_label(r.symbol, r.name or '')} {float(r.chg):+.1f}%" for r in top[1:3]
+                    )
                     hook = (
-                        f"{outlier.symbol} {move} {abs(float(outlier.chg)):.1f}% — "
-                        f"what drove it and what it signals: {others}"
-                    ) if others else f"{outlier.symbol} {move} {abs(float(outlier.chg)):.1f}% — the macro story behind today's biggest market move"
+                        f"{outlier_label} {move} {abs(float(outlier.chg)):.1f}% — "
+                        f"what drove it and what it signals for the session: {others}"
+                    ) if others else f"{outlier_label} {move} {abs(float(outlier.chg)):.1f}% — the macro story behind today's biggest market move"
         except Exception:
             pass
         finally:
@@ -1997,6 +2005,89 @@ def generate_morning_reel(self):
         raise self.retry(exc=exc, countdown=120)
 
 
+def _make_country_reel_hook(name: str, ind_key: str, val_float: float, label: str, val_str: str, prev_val: float | None = None) -> str:
+    """Generate a specific, contextual hook for a country deep-dive reel.
+    Never repeats the country name. Always includes a concrete angle tied to the actual value level."""
+    direction = ""
+    if prev_val is not None:
+        if val_float > prev_val:
+            direction = " (rising)"
+        elif val_float < prev_val:
+            direction = " (falling)"
+
+    if ind_key == "gdp_growth_pct":
+        if val_float < -2.0:
+            return f"{name} GDP: {val_str}{direction} — deep recession territory. Which sectors are contracting, what the central bank can actually do, and whether the bond market has priced this in yet"
+        elif val_float < 0:
+            return f"{name} GDP contracted to {val_str} — technically in recession. Currency is first to reprice; the equity market hasn't caught up yet"
+        elif val_float < 1.0:
+            return f"{name} growing at just {val_str}{direction} — near-stagnation with rates still restrictive. Fiscal space is limited and something has to give"
+        elif val_float < 3.0:
+            return f"{name} GDP at {val_str}{direction} — which sectors are carrying this and which are quietly rolling over. Not all growth signals the same thing"
+        else:
+            return f"{name} growing at {val_str}{direction} — outpacing its peers. What's driving it, whether it sustains, and what the currency is pricing in"
+
+    elif ind_key == "inflation_pct":
+        if val_float > 1000:
+            return f"{name}: {val_str} inflation — hyperinflation. Dollarisation logic, who holds local bonds, and why the central bank rate is functionally meaningless"
+        elif val_float > 50:
+            return f"{name}: {val_str} inflation — well past the threshold of CB credibility. Real yield is deeply negative and the currency tells the real story"
+        elif val_float > 20:
+            return f"{name} inflation at {val_str}{direction} — above the level that forces aggressive rate policy. What the real yield spread says about the exchange rate"
+        elif val_float > 10:
+            return f"{name}: {val_str} inflation{direction} — still above the level where central banks feel safe cutting. Rates, real yield, and the currency trade"
+        elif val_float < 0:
+            return f"{name} in deflation at {val_str} — rare and harder to exit than inflation. What falling prices mean for debt dynamics and central bank credibility"
+        else:
+            return f"{name} inflation at {val_str}{direction} — rate path from here determines the currency trade and equity risk premium"
+
+    elif ind_key == "government_debt_gdp_pct":
+        if val_float > 200:
+            return f"{name}: {val_str} debt-to-GDP{direction} — deeper than Japan. Who holds it, the yield spread vs Treasuries, and why markets still aren't pricing in default risk"
+        elif val_float > 100:
+            return f"{name}: {val_str} debt-to-GDP{direction}. At current rates, the carry cost versus growth determines when this becomes a crisis — here's the math"
+        else:
+            return f"{name} debt at {val_str} of GDP{direction} — rising fast. Who funds it and where the bond market draws the line on fiscal credibility"
+
+    elif ind_key == "unemployment_pct":
+        if val_float > 15:
+            return f"{name} unemployment at {val_str}{direction} — structural, not cyclical. Skills mismatch, youth unemployment, and why rate cuts alone won't fix this"
+        elif val_float > 10:
+            return f"{name}: {val_str} unemployment{direction} — above the level that forces fiscal response. What the government and central bank are actually doing"
+        else:
+            return f"{name} unemployment at {val_str}{direction} — tight labor market. Wage pressure, core inflation risk, and what it means for the next rate decision"
+
+    elif ind_key == "current_account_gdp_pct":
+        if val_float < -5:
+            return f"{name} running a {val_str} current account deficit{direction} — dependent on foreign capital. Who funds it, the currency vulnerability, and how long this can last"
+        elif val_float > 5:
+            return f"{name}'s {val_str} current account surplus{direction} — who absorbs it. Currency appreciation pressure and what the central bank is doing to resist"
+        else:
+            return f"{name} current account at {val_str}{direction} — direct FX implications that are underpriced in the options market"
+
+    elif ind_key == "budget_balance_gdp_pct":
+        if val_float < -8:
+            return f"{name} running a {val_str} budget deficit{direction} — fiscal crisis territory. Bond market stress, rating risk, and what's driving the overshoot"
+        elif val_float < -4:
+            return f"{name}: {val_str} budget deficit{direction} — unsustainable without higher growth or austerity. What the bond term premium is pricing in"
+        else:
+            return f"{name} budget balance at {val_str}{direction} — the fiscal trajectory from here determines the rate and currency outlook for the next 12 months"
+
+    elif ind_key == "fdi_inflows_gdp_pct":
+        if val_float > 5:
+            return f"{name} attracting {val_str} of GDP in FDI{direction} — capital is voting with its feet. Which sectors, which source countries, and what it signals for growth"
+        elif val_float < 0:
+            return f"{name} FDI turned negative at {val_str} — capital flight. What's driving the exodus and which assets are most exposed"
+        else:
+            return f"{name} FDI at {val_str} of GDP{direction} — where global capital is betting on future growth"
+
+    elif ind_key == "foreign_reserves_usd":
+        return f"{name} foreign reserves: {val_str}{direction} — the buffer between here and a currency crisis. Import cover ratio, short-term debt, and where the risk threshold is"
+
+    # Generic fallback
+    return f"{name}: {val_str} {label}{direction} — the rate path, currency risk, and which investors are most exposed to this shift"
+
+
 def _pick_reel_subject_morning(db) -> tuple:
     """Pick a data-driven subject for the 9:30 morning reel.
     Rotates style daily; subject is pulled from live DB data — not hardcoded.
@@ -2009,18 +2100,20 @@ def _pick_reel_subject_morning(db) -> tuple:
             code, ind_key, label, unit = best[:4]
             country = db.execute(select(Country).where(Country.code == code)).scalar_one_or_none()
             name = country.name if country else code
-            # Get the actual current value for a more specific hook
-            val_row = db.execute(text(
+            # Get current + previous value for context-aware hook
+            val_rows = db.execute(text(
                 "SELECT ci.value, ci.period_date FROM country_indicators ci "
                 "JOIN countries c ON c.id = ci.country_id "
-                "WHERE c.code = :code AND ci.indicator = :ind ORDER BY ci.period_date DESC LIMIT 1"
-            ), {"code": code, "ind": ind_key}).fetchone()
-            if val_row:
-                val_str = _fmt_value(float(val_row.value), unit)
+                "WHERE c.code = :code AND ci.indicator = :ind ORDER BY ci.period_date DESC LIMIT 2"
+            ), {"code": code, "ind": ind_key}).fetchall()
+            if val_rows:
+                val_float = float(val_rows[0].value)
+                val_str = _fmt_value(val_float, unit)
+                prev_val = float(val_rows[1].value) if len(val_rows) > 1 else None
                 return ("country_deep_dive", code,
-                    f"{name} {label}: {val_str} — what this signals for {name}'s currency, bond yields, and equity risk premium")
+                    _make_country_reel_hook(name, ind_key, val_float, label, val_str, prev_val))
             return ("country_deep_dive", code,
-                f"{name}: {label} at a critical inflection — macro read and which assets are most exposed")
+                f"{name}: {label} — the data-driven macro read and which assets are most exposed")
         return ("country_deep_dive", "DE",
             "Germany: two consecutive quarters of GDP contraction, ECB rate-cut pace is the only lever — what this means for EUR and European equities")
     elif day_index == 1:
@@ -2135,14 +2228,19 @@ def _pick_reel_subject_evening(db) -> tuple:
                     WHERE c.code = ANY(:codes) AND ci.indicator = ANY(:inds)
                       AND ci.period_date >= NOW() - INTERVAL '5 years'
                 )
-                SELECT code, name, ABS(value - prev_value) AS abs_change
+                SELECT code, name, indicator, value, prev_value, ABS(value - prev_value) AS abs_change
                 FROM ranked WHERE prev_value IS NOT NULL
                 ORDER BY abs_change DESC LIMIT 5
             """), {"codes": G20_CODES, "inds": [i[0] for i in SPOTLIGHT_INDICATORS]}).fetchall()
             if len(rows) >= 2:
                 pick = rows[1]  # second biggest — morning got the top
+                ev_ind_meta = {k: (l, u) for k, l, u in SPOTLIGHT_INDICATORS}
+                ev_label, ev_unit = ev_ind_meta.get(pick.indicator, (pick.indicator, ""))
+                ev_val = float(pick.value)
+                ev_prev = float(pick.prev_value) if pick.prev_value is not None else None
+                ev_val_str = _fmt_value(ev_val, ev_unit)
                 return ("country_deep_dive", pick.code,
-                        f"{pick.name}: macro shift in progress — what the latest data signals for {pick.name}'s currency, bond yields, and regional equity risk")
+                        _make_country_reel_hook(pick.name, pick.indicator, ev_val, ev_label, ev_val_str, ev_prev))
         except Exception:
             pass
         return ("country_deep_dive", "IN", "India's economy: the data behind the world's fastest-growing major market")
