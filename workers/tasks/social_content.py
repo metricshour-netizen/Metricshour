@@ -368,11 +368,12 @@ def _compute_angle(history_rows, current_val: float, unit: str) -> str:
     notes = []
     if len(vals) >= 2:
         yoy = vals[0] - vals[1]
-        direction = "up" if yoy > 0 else "down"
-        if unit == "%":
-            notes.append(f"YoY: {direction} {abs(yoy):.1f}pp from {vals[1]:.1f}%")
-        else:
-            notes.append(f"YoY: {direction} {_fmt_value(abs(yoy), unit)}")
+        if yoy != 0:  # skip when consecutive values are identical — avoids "0.0pp" output
+            direction = "up" if yoy > 0 else "down"
+            if unit == "%":
+                notes.append(f"YoY: {direction} {abs(yoy):.1f}pp from {vals[1]:.1f}%")
+            else:
+                notes.append(f"YoY: {direction} {_fmt_value(abs(yoy), unit)}")
     if len(vals) >= 4:
         if vals[0] >= max(vals):
             notes.append(f"Highest in {len(vals)} years of data")
