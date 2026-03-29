@@ -328,7 +328,10 @@ AUDIENCE_PERSONA = (
     "STRONG: 'Turkey raised rates to 45% — real yield still -13.5%, TRY holders lose money every month', "
     "'AAPL earns 19% from China but US is the only growing segment — the geographic bet is priced backwards', "
     "'Germany GDP -0.5%: debt brake prevents stimulus, ECB pace is the only lever — short EUR/long Bunds is the trade'.\n"
-    "GOAL: one post that one person screenshots and sends to a friend."
+    "GOAL: one post that one person screenshots and sends to a friend.\n"
+    "FRESHNESS RULE: If 'Recent headlines' are listed in the prompt, your Twitter and Instagram "
+    "OPENING LINE must tie the data to one of those headlines — make the stat feel relevant to THIS WEEK, "
+    "not just a historical figure. Do not repeat the headline verbatim — connect the data to its implication.\n"
 )
 
 
@@ -555,44 +558,62 @@ YOUR TASK: Write 4 platform posts using the SAME data with platform-specific for
 Frame WHY this number matters to investors right now — policy implications, FX signals, sector exposure.
 
 ━━━ TWITTER ━━━
-Max 260 chars. RULES:
+Max 250 chars for body text. Then add 1-2 SPECIFIC hashtags + URL + max 2 emojis (total tweet ~280 chars).
+RULES:
 - First word = country name or the number — never an emoji, never a question
-- State the number with its change: "[Country]: [indicator] [value] ([year change])"
+- State the number with its change and the DATA YEAR: "[Country]: [indicator] [value] ([year])"
 - Follow with ONE specific market consequence: name a rate/currency/sector/stock that is directly affected
-- End with the URL. 1-2 emojis AFTER the text only
-BANNED: questions, "Did you know", opening emojis, "investors should", "markets are"
-EXAMPLE: "Turkey: inflation at 58.5%, up from 19.6% in 2021. Central bank rate at 45% — real yield still deeply negative. Watch TRY depreciation pressure on EM bond spreads. {SITE_URL}/countries/tr 📉"
+- End with URL + 1-2 specific hashtags + max 2 emojis (after all text)
+BANNED: questions, "Did you know", opening emojis, "investors should", "markets are", generic hashtags
+EXAMPLE: "Turkey: inflation at 58.5% (2023). Central bank rate at 45% — real yield still deeply negative. TRY depreciation pressure on EM bond spreads. {SITE_URL}/countries/tr #TurkeyEconomy #EmergingMarkets 📉"
 
 ━━━ LINKEDIN ━━━
 Format (copy exactly, no deviations):
-Line 1: [Country] [indicator]: [exact value] — [1-sentence insight on what this signals for capital markets]
+Line 1: [Country] [indicator]: [exact value] ([data year]) — [1-sentence insight on what this signals for capital markets]
 [blank line]
 [2-3 observations, ONE per line, max 20 words each]:
 - Cover: what drove the change, what policy/market mechanism it triggers, which asset class reacts first
 - Name specific: central banks, currencies, bond yields, indices, sectors
 [blank line]
 [URL]
-No emojis. No hashtags. No sign-off. Under 90 words total.
+[blank line]
+3-5 professional hashtags: SPECIFIC to country + indicator + region. BANNED: #investing #finance #economy #stocks #markets
+EXAMPLE for Germany GDP: #GermanyEconomy #EuroZone #Bundesbank #ECBPolicy #DAXIndex
+No emojis. No sign-off. Body under 90 words (hashtags not counted).
 EXAMPLE:
-Germany GDP growth: -0.5% — consecutive negative quarters signal Europe's largest economy is in contraction.
+Germany GDP growth: -0.5% (2023) — consecutive negative quarters signal Europe's largest economy is in contraction.
 
 Berlin's debt brake prevents stimulus; growth must come from external demand or ECB rate cuts.
 EUR/USD faces downward pressure; Bund yields diverge from Treasuries as Fed/ECB paths split.
 Watch auto and industrial sectors — both are export-dependent and amplify German GDP swings.
 {page_url}
 
+#GermanyEconomy #EuroZone #Bundesbank #ECBPolicy #DAXIndex
+
 ━━━ FACEBOOK ━━━
-One tight paragraph. Pattern: [Shocking stat + country + year]. [One specific real-world consequence, name the mechanism]. [1 emoji] [URL]
-Max 55 words. No questions. No "Did you know."
-EXAMPLE: "Germany's economy shrank -0.5% last year — two consecutive contractions. The debt brake means Berlin can't borrow to stimulate. The ECB's rate-cut pace is now Germany's only lever. 📉 {page_url}"
+2-3 short paragraphs. Pattern:
+Para 1: [Lead with the shocking number + country + data year]. [One specific real-world consequence — name the mechanism, name specific rates/currencies/sectors].
+Para 2: [Historical context or peer comparison that makes it concrete — compare to another country, a prior year level, or a real household/investor impact].
+Para 3: [Forward-looking implication — name the policy lever, rate, or sector most affected]. [End with ONE engagement question inviting comment]. [1 emoji] [URL] [2-3 SPECIFIC hashtags]
+Target: 100-150 words total. No "Did you know." Statements + one question at the very end only.
+EXAMPLE:
+"Germany's economy shrank -0.5% in 2023 — two consecutive contractions in Europe's largest economy. The debt brake means Berlin can't borrow to stimulate. The ECB's rate-cut pace is now Germany's only lever.
+
+Compare that to France at +0.9%: same currency, same ECB rate, completely different fiscal position. Germany's manufacturing sector is the drag — auto exports fell 12% as China demand softened.
+
+Do you think ECB rate cuts are enough to reverse this, or is this a structural problem? 📉 {page_url} #GermanyEconomy #EuroZone #ECBPolicy"
 
 ━━━ INSTAGRAM ━━━
-Line 1 (CRITICAL — this is what shows before "more"): Must be a STATEMENT with the specific number. No questions. No emojis on line 1.
-Example first line: "Germany's economy contracted -0.5% last year."
+Line 1 (CRITICAL — this is what shows before "more"): Must be a STATEMENT with the specific number AND data year. No questions. No emojis on line 1.
+Example first line: "Germany's economy contracted -0.5% in 2023."
 Body (4-6 lines): Each line = one data-driven observation. Include the 5-year history context. Name specific assets or policies.
+Second-to-last body line: "Save this for your next portfolio review 📌" — this phrase boosts Instagram reach.
 URL: include naturally mid-caption as "Full breakdown: [url]"
-Hashtags (LAST): 7-9 hashtags, ALL specific to this country/indicator/region. BANNED generic hashtags: #investing #finance #economy #stocks #markets
-GOOD hashtags example for Germany GDP: #GermanyEconomy #EuroZone #Bundesbank #ECBPolicy #EuropeanMarkets #MacroEconomics #DAXIndex #GermanStocks
+Hashtags (LAST — 9-12 total, MIX SIZES for reach):
+- 2-3 NICHE under 100K posts: e.g. #GermanGDP #BundesbankPolicy #EurozonePMI
+- 5-6 MEDIUM 100K–500K posts: e.g. #GermanyEconomy #Bundesbank #ECBPolicy #EuropeanMarkets #MacroEconomics
+- 1-2 BRAND — always include: #MetricsHour #FinancialData
+BANNED: #investing #finance #economy #stocks #markets #money (too broad, kills reach)
 1-3 emojis max, woven into body, not clustered.
 
 Return ONLY valid JSON with no extra text: {{"twitter": "...", "linkedin": "...", "facebook": "...", "instagram": "..."}}"""
@@ -756,13 +777,14 @@ YOUR TASK: Write 4 platform posts connecting this stock's geographic exposure to
 The angle is NOT "this stock has international revenue" — the angle is WHAT THAT MEANS for EPS, margins, or stock price given today's macro backdrop (tariffs, FX, geopolitics).
 
 ━━━ TWITTER ━━━
-Max 260 chars. RULES:
+Max 250 chars for body text. Then add 1-2 SPECIFIC hashtags + URL + max 2 emojis (total tweet ~280 chars).
+RULES:
 - Start with: "{ticker} earns X% from [top country/region]" — ticker first, number second word
 - Connect to a specific current risk: name the tariff rate, FX rate, or policy that directly affects EPS
 - Give a specific quantified estimate of impact if possible ("~$X/share EPS risk")
-- End with URL + max 2 emojis after text
-BANNED: questions, "investors should", "it's important", opening emojis
-EXAMPLE: "AAPL earns 19% from China. Current tariff escalation = ~$0.40/share quarterly EPS risk. China revenue growing while US consumer softens — that geographic bet is now priced wrong. {page_url} 🌏"
+- End with URL + 1-2 specific hashtags (e.g. #{ticker} #sector) + max 2 emojis
+BANNED: questions, "investors should", "it's important", opening emojis, generic hashtags
+EXAMPLE: "AAPL earns 19% from China. Current tariff escalation = ~$0.40/share quarterly EPS risk. China revenue growing while US consumer softens — that geographic bet is now priced wrong. {page_url} #{ticker} #ChinaTrade 🌏"
 
 ━━━ LINKEDIN ━━━
 Line 1: {ticker} earns [X]% of revenue from [top region/country] — [1-sentence implication for current quarter/year]
@@ -773,19 +795,33 @@ Line 1: {ticker} earns [X]% of revenue from [top region/country] — [1-sentence
 - What the market is likely mispricing or over/underweighting
 [blank line]
 {page_url}
-No emojis. No hashtags. No sign-off. Under 90 words.
+[blank line]
+3-5 professional hashtags: SPECIFIC — ticker, sector, region, macro theme. BANNED: #investing #finance #stocks #markets
+EXAMPLE for NVDA: #{ticker} #Semiconductors #ChinaRisk #TechStocks #ExportControls
+No emojis. No sign-off. Body under 90 words (hashtags not counted).
 
 ━━━ FACEBOOK ━━━
-One paragraph. Pattern: [Ticker + the exact % + top country]. [The specific risk or upside — name the mechanism]. [1 emoji] [URL]
-Max 50 words. Statements only — no questions.
-EXAMPLE: "NVDA earns 52% of revenue from Asia-Pacific — Taiwan 19%, China 17%. US semiconductor export controls are a direct line-item risk. Watch how management guides on China revenue next quarter. 🔬 {page_url}"
+2-3 short paragraphs. Pattern:
+Para 1: [Ticker + the exact % + top countries]. [The specific risk or upside — name the mechanism, tariff rate, or FX pressure].
+Para 2: [Context: how does this compare to a peer company, or what does this % mean in dollar terms for EPS]. [Name the specific quarter/event when this risk crystallises].
+Para 3: [Forward look — which sector or analyst call is this data challenging]. [ONE engagement question at the very end]. [1 emoji] [URL] [2-3 SPECIFIC hashtags]
+Target: 100-150 words. Statements + one question at the end only.
+EXAMPLE: "NVDA earns 52% of revenue from Asia-Pacific — Taiwan 19%, China 17%. US semiconductor export controls put a direct line through those numbers.
+
+AMD, by comparison, earns 25% from Asia-Pacific. The geographic concentration difference between these two makes them very different bets on the same AI trade.
+
+Do you think NVDA's China exposure is already priced in, or is the market underestimating the risk? 🔬 {page_url} #{ticker} #Semiconductors #ChipWar"
 
 ━━━ INSTAGRAM ━━━
 Line 1 (before fold): "[Ticker] earns [X]% from [country/region]." — statement, number, no emojis on line 1
-Body: 4-5 lines. Revenue % by country, the macro risk, EPS/margin implication, what to watch
+Body: 4-5 lines. Revenue % by country, the macro risk, EPS/margin implication, what to watch.
+Second-to-last body line: "Save this before earnings season 📌"
 URL: "Full breakdown: {page_url}"
-Hashtags: 7-9 SPECIFIC ones — ticker name, sector, region, macro theme. BANNED: #investing #finance #stocks #markets
-EXAMPLE hashtags for NVDA: #NVDA #Semiconductors #AIStocks #TechStocks #USTaiwanTrade #ChinaTech #ChipWar #ExportControls
+Hashtags (LAST — 9-12 total, MIX SIZES for reach):
+- 2-3 NICHE under 100K posts: e.g. #{ticker}Stock #ChinaRevenueRisk #TaiwanSemiconductors
+- 5-6 MEDIUM 100K–500K posts: e.g. #{ticker} #Semiconductors #AIStocks #TechStocks #ChinaTrade
+- 1-2 BRAND — always include: #MetricsHour #FinancialData
+BANNED: #investing #finance #stocks #markets #money
 
 Return ONLY valid JSON: {{"twitter": "...", "linkedin": "...", "facebook": "...", "instagram": "..."}}"""
     result = _call_ai(prompt)
@@ -867,16 +903,18 @@ YOUR TASK: 4 platform posts that treat this trade corridor as a live geopolitica
 Frame it as: what's at stake, what could disrupt it, which stocks/sectors get hit first.
 
 ━━━ TWITTER ━━━
-Max 260 chars. RULES:
-- Start with: "{exp.name}→{imp.name}: {val_str}/yr" — numbers first
+Max 250 chars for body text. Then add 1-2 SPECIFIC hashtags + URL + max 2 emojis (total tweet ~280 chars).
+RULES:
+- Start with: "{exp.name}→{imp.name}: {val_str}/yr ({pair.year} data)" — numbers first
 - Name the specific goods being traded
 - Name the specific risk: tariff %, sanctions regime, FX pressure, or supply chain dependency
 - Name one specific stock or sector that is most exposed
-- URL + max 2 emojis after text only
-EXAMPLE: "South Korea→China: $180B/yr — mostly semiconductors and petrochemicals. Export controls on advanced chips put 30% of Korean tech exports at risk. Watch Samsung and SK Hynix margins. {page_url} 🔬"
+- End with URL + 1-2 specific hashtags + max 2 emojis
+BANNED: questions, generic hashtags, opening emojis
+EXAMPLE: "South Korea→China: $180B/yr (2023) — mostly semiconductors and petrochemicals. Export controls on advanced chips put 30% of Korean tech exports at risk. Watch Samsung and SK Hynix margins. {page_url} #SouthKorea #ChipWar 🔬"
 
 ━━━ LINKEDIN ━━━
-Line 1: {exp.name}→{imp.name}: {val_str}/year — [1-sentence on what makes this corridor strategically important or vulnerable NOW]
+Line 1: {exp.name}→{imp.name}: {val_str}/year ({pair.year} data) — [1-sentence on what makes this corridor strategically important or vulnerable NOW]
 [blank line]
 [2-3 lines, one observation each, max 20 words]:
 - What goods dominate the flow and why they're hard to substitute
@@ -884,19 +922,33 @@ Line 1: {exp.name}→{imp.name}: {val_str}/year — [1-sentence on what makes th
 - Which listed companies or sectors get hit first and why
 [blank line]
 {page_url}
-No emojis. No hashtags. No sign-off. Under 90 words.
+[blank line]
+3-5 professional hashtags: SPECIFIC — country names, sector, trade policy. BANNED: #trade #investing #finance #economy
+EXAMPLE: #SouthKorea #China #Semiconductors #ExportControls #TradePolicy
+No emojis. No sign-off. Body under 90 words (hashtags not counted).
 
 ━━━ FACEBOOK ━━━
-One paragraph. [Dollar value + exporter + importer + top goods, punchy]. [The one specific risk that investors are probably underpricing]. [1 emoji] [URL]
-Max 55 words. Statements only.
-EXAMPLE: "South Korea ships $180B to China every year — mostly chips and chemicals. Export control escalation puts a third of that at risk. Samsung's China revenue is the canary in the coal mine. 🔬 {page_url}"
+2-3 short paragraphs. Pattern:
+Para 1: [Dollar value + exporter + importer + data year + top goods — punchy, specific]. [The one specific risk investors are underpricing — name the mechanism, tariff rate, or policy].
+Para 2: [Context: what happened to this corridor under a previous trade tension episode, OR who the exposed listed companies are and why]. [Specific dollar or % figure to make it concrete].
+Para 3: [Forward look — what event or policy decision will determine if this corridor shrinks or grows]. [ONE engagement question at the end]. [1 emoji] [URL] [2-3 SPECIFIC hashtags]
+Target: 100-150 words. Statements + one question at the end only.
+EXAMPLE: "South Korea ships $180B to China every year (2023 data) — mostly chips and chemicals. Export control escalation puts a third of that corridor at risk — Samsung and SK Hynix earn combined $40B from Chinese customers.
+
+During the 2019 trade war, Korean chip exports to China dropped 18% in 6 months. That playbook is in motion again with the latest controls on HBM chips.
+
+Do you think semiconductor export controls will hurt Korean stocks more than US ones? 🔬 {page_url} #SouthKorea #Semiconductors #ExportControls"
 
 ━━━ INSTAGRAM ━━━
 Line 1 (before fold): "{exp.name}→{imp.name}: {val_str}/year." — fact statement, no emojis on line 1
-Body: 4-5 lines covering: what's traded, why this corridor exists, the key risk, which companies are exposed
+Body: 4-5 lines covering: what's traded, why this corridor exists, the key risk, which companies are exposed.
+Second-to-last body line: "Save this for your macro watchlist 📌"
 URL: "Full data: {page_url}"
-Hashtags: 7-9 SPECIFIC — country names, sector, trade policy theme. BANNED: #trade #investing #finance #economy
-EXAMPLE: #SouthKorea #China #SamsungStock #Semiconductors #ExportControls #ChipWar #AsianMarkets #TradeWar
+Hashtags (LAST — 9-12 total, MIX SIZES for reach):
+- 2-3 NICHE under 100K posts: e.g. #KoreaChina #SemiconductorTrade #BilateralTrade
+- 5-6 MEDIUM 100K–500K posts: e.g. #SouthKorea #China #Semiconductors #ExportControls #ChipWar
+- 1-2 BRAND — always include: #MetricsHour #FinancialData
+BANNED: #trade #investing #finance #economy #money
 
 Return ONLY valid JSON: {{"twitter": "...", "linkedin": "...", "facebook": "...", "instagram": "..."}}"""
     result = _call_ai(prompt)
@@ -993,11 +1045,13 @@ VERIFIED DATA — today's biggest price movers:
 YOUR TASK: 4 posts as a market-open hook. {angle_instruction}
 
 ━━━ TWITTER ━━━
-Max 260 chars. RULES:
+Max 250 chars for body. Then add 1-2 SPECIFIC hashtags + URL + max 2 emojis (total tweet ~280 chars).
+RULES:
 - Open with a scoreboard: "📊 [TOP3]: TICKER +X% | TICKER -X% | TICKER ±X%"
 - Follow with ONE sentence on the outlier — name the driver (earnings miss, macro catalyst, sector rotation)
-- End with URL: {SITE_URL}/markets
-EXAMPLE: "📊 NVDA +4.2% | NKE -3.8% | META +2.1%\nNike is the outlier — China consumer weakness, not macro. Q4 guidance is the real question. {SITE_URL}/markets"
+- End with URL + 1-2 specific ticker/sector hashtags + max 2 emojis
+BANNED: generic hashtags, opening text emojis (scoreboard emoji is ok)
+EXAMPLE: "📊 NVDA +4.2% | NKE -3.8% | META +2.1%\nNike is the outlier — China consumer weakness, not macro. Q4 guidance is the real question. {SITE_URL}/markets #NKE #ConsumerStocks"
 
 ━━━ LINKEDIN ━━━
 Line 1: [Biggest mover] [%] — [1-sentence on what drove it and what it signals]
@@ -1008,17 +1062,33 @@ Line 1: [Biggest mover] [%] — [1-sentence on what drove it and what it signals
 - What to watch in the next session (name a data release, earnings report, or Fed event)
 [blank line]
 {SITE_URL}/markets
-No emojis. No hashtags. No sign-off. Under 90 words.
+[blank line]
+3-5 professional hashtags: SPECIFIC — ticker names, sector, market type. BANNED: #investing #stocks #markets #finance
+EXAMPLE: #NVDA #Semiconductors #NKE #ConsumerStocks #MarketMovers
+No emojis. No sign-off. Body under 90 words (hashtags not counted).
 
 ━━━ FACEBOOK ━━━
-One paragraph. Lead with the top mover ticker + %. One sentence on what drove it. One sentence on the laggard. 1 emoji. URL. Max 50 words.
+2-3 short paragraphs. Pattern:
+Para 1: [Lead with the scoreboard — top mover + % + what drove it — one punchy sentence each for gainer and loser].
+Para 2: [Zoom out: is this move idiosyncratic (company-specific) or systemic (sector/macro signal)? Name the evidence — earnings, macro data, options flow, analyst action].
+Para 3: [What to watch next — name a specific ticker, earnings date, or data release]. [ONE engagement question]. [1 emoji] [URL] [2-3 SPECIFIC hashtags]
+Target: 100-150 words. Statements + one question at the end.
+EXAMPLE: "Today's scoreboard: NVDA +4.2%, META +2.1%, NKE -3.8%. NVDA's move is AI memory supply chain — not just hype. Nike's drop is a China consumer story.
+
+These aren't correlated moves — they're two separate theses. NVDA reflects HBM demand from Blackwell. NKE reflects Alibaba GMV data from last week.
+
+Which name do you think is more mispriced heading into next quarter? 📊 {SITE_URL}/markets #NVDA #NKE #Semiconductors"
 
 ━━━ INSTAGRAM ━━━
-Line 1 (before fold): "[TOP MOVER] [%] — here's what the move is really about." — statement, no emojis on line 1
-Body: scorecard of all movers with %, then 2-3 lines on drivers and what to watch
+Line 1 (before fold): "Today's top moves: [TOP3 with %]." — no emojis on line 1
+Body: full scorecard of all movers with %, then 2-3 lines on drivers and what to watch.
+Second-to-last body line: "Save this for your watchlist 📌"
 URL: {SITE_URL}/markets
-Hashtags: 7-8 SPECIFIC — ticker names, sector, market type. BANNED: #investing #stocks #markets #finance
-EXAMPLE: #NVDA #NVidia #Semiconductors #AIStocks #NKE #Nike #ConsumerStocks #MarketMovers
+Hashtags (LAST — 9-12 total, MIX SIZES for reach):
+- 2-3 NICHE under 100K posts: e.g. specific ticker tags like #NVDAStock #NikeEarnings
+- 5-6 MEDIUM 100K–500K posts: e.g. #NVDA #Semiconductors #NKE #AIStocks #StockMarket
+- 1-2 BRAND — always include: #MetricsHour #FinancialData
+BANNED: #investing #stocks #markets #finance #money
 
 Return ONLY valid JSON: {{"twitter": "...", "linkedin": "...", "facebook": "...", "instagram": "..."}}"""
     result = _call_ai(prompt)
@@ -1113,12 +1183,14 @@ Biggest loser: {loser.symbol} ({loser.name}) {float(loser.change_pct):+.2f}%{new
 YOUR TASK: 4 end-of-day wrap posts. {wrap_angle}
 
 ━━━ TWITTER ━━━
-Max 260 chars. RULES:
+Max 250 chars for body. Then add 1-2 SPECIFIC hashtags + URL + max 2 emojis (total tweet ~280 chars).
+RULES:
 - Start with: "Close: [GAINER] [%] ↑ | [LOSER] [%] ↓"
 - One sentence on the more SURPRISING of the two moves — name the driver
 - One sentence on what this sets up for tomorrow (earnings, data release, or sector watch)
-- URL: {SITE_URL}/markets + max 2 emojis after text
-EXAMPLE: "Close: NVDA +4.2% ↑ | NKE -3.8% ↓\nNike's drop is a China consumer story, not tariffs — that's a sector-specific signal, not macro. Watch adidas tomorrow for confirmation. {SITE_URL}/markets 📉"
+- End with URL + 1-2 specific hashtags + max 2 emojis
+BANNED: generic hashtags, opening non-scoreboard emojis
+EXAMPLE: "Close: NVDA +4.2% ↑ | NKE -3.8% ↓\nNike's drop is a China consumer story, not tariffs — sector-specific signal. Watch adidas tomorrow for confirmation. {SITE_URL}/markets #NKE #ConsumerStocks 📉"
 
 ━━━ LINKEDIN ━━━
 Line 1: [Gainer] +X% vs [Loser] -X% — [1-sentence on what the divergence signals about sector rotation or macro]
@@ -1129,16 +1201,27 @@ Line 1: [Gainer] +X% vs [Loser] -X% — [1-sentence on what the divergence signa
 - What to watch tomorrow: name a specific ticker, data release, or Fed event
 [blank line]
 {SITE_URL}/markets
-No emojis. No hashtags. No sign-off. Under 90 words.
+[blank line]
+3-5 professional hashtags: SPECIFIC — ticker names, sector, market type. BANNED: #stocks #investing #markets #finance
+No emojis. No sign-off. Body under 90 words (hashtags not counted).
 
 ━━━ FACEBOOK ━━━
-One paragraph. Gainer + %, loser + %, the surprising takeaway, 1 forward-looking sentence. 1 emoji. URL. Max 55 words.
+2-3 short paragraphs. Pattern:
+Para 1: [Gainer ticker + % + what drove it in one punchy sentence]. [Loser ticker + % + whether it's idiosyncratic or a sector signal].
+Para 2: [Zoom out — what does this divergence tell us? Is it a rotation story, a macro story, or company-specific? Name a comparable or historical parallel to make it concrete].
+Para 3: [What to watch tomorrow — specific ticker, earnings, or data print]. [ONE engagement question]. [1 emoji] [URL] [2-3 SPECIFIC hashtags]
+Target: 100-150 words. Statements + one question at the end.
 
 ━━━ INSTAGRAM ━━━
 Line 1 (before fold): "Today's close: [GAINER] +X% vs [LOSER] -X%." — no emojis on line 1
-Body: 4-5 lines — what drove each move, what it signals, what to watch
+Body: 4-5 lines — what drove each move, what it signals for tomorrow, what to watch.
+Second-to-last body line: "Save this for tomorrow's open 📌"
 URL: {SITE_URL}/markets
-Hashtags: 7-8 SPECIFIC ticker/sector hashtags. BANNED: #stocks #investing #markets #finance
+Hashtags (LAST — 9-12 total, MIX SIZES for reach):
+- 2-3 NICHE under 100K posts: e.g. specific ticker tags like #NVDAStock #NikeEarnings
+- 5-6 MEDIUM 100K–500K posts: e.g. #NVDA #NKE #Semiconductors #ConsumerStocks #StockMarket
+- 1-2 BRAND — always include: #MetricsHour #FinancialData
+BANNED: #stocks #investing #markets #finance #money
 
 Return ONLY valid JSON: {{"twitter": "...", "linkedin": "...", "facebook": "...", "instagram": "..."}}"""
     result = _call_ai(prompt)
@@ -1500,9 +1583,14 @@ One paragraph. Lead with the raw number. One sentence on why it's surprising. On
 ━━━ INSTAGRAM ━━━
 Line 1 (before fold): State the shocking number as a clean fact — no question, no "Did you know", no emojis on line 1
 EXAMPLE first line: "Turkey's inflation hit 58.5% last year."
-Body: 4-5 lines — historical comparison, mechanism, what it means for an investor holding EM assets
+Body: 4-5 lines — historical comparison, mechanism, what it means for an investor holding EM assets, what to watch next.
+Second-to-last body line: "Save this for tomorrow's open 📌"
 URL: {page_url}
-Hashtags: 7-9 SPECIFIC — country/asset/indicator specific. BANNED: #investing #finance #economy #money
+Hashtags (LAST — 9-12 total, MIX SIZES for reach):
+- 2-3 NICHE under 100K posts: e.g. specific country/indicator tags like #TurkeyInflation #EMDebt
+- 5-6 MEDIUM 100K–500K posts: e.g. #EmergingMarkets #Inflation #MacroEconomics #GlobalDebt
+- 1-2 BRAND — always include: #MetricsHour #FinancialData
+BANNED: #stocks #investing #markets #finance #money #economy
 
 Return ONLY valid JSON: {{"twitter": "...", "linkedin": "...", "facebook": "...", "instagram": "..."}}"""
     result = _call_ai(prompt)
