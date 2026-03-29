@@ -332,13 +332,18 @@ AUDIENCE_PERSONA = (
     "FRESHNESS RULE: If 'Recent headlines' are listed in the prompt, your Twitter and Instagram "
     "OPENING LINE must tie the data to one of those headlines — make the stat feel relevant to THIS WEEK, "
     "not just a historical figure. Do not repeat the headline verbatim — connect the data to its implication.\n"
+    "FACEBOOK RULES: Never open with 'Today', 'In today's', 'As we', 'Let's', 'It's important', "
+    "'Markets are', 'Investors are'. Never end with 'What do you think?' or 'Let us know in the comments'. "
+    "The ONE engagement question must be specific: 'Does [TICKER] belong in a tariff-exposed portfolio?' not 'What do you think?'.\n"
 )
 
 
-def _fetch_news_context(query: str, max_results: int = 2) -> str:
-    """Fetch recent news headlines for a topic via Google News RSS. Returns '' on failure."""
+def _fetch_news_context(query: str, max_results: int = 3, max_age_hours: int = 48) -> str:
+    """Fetch recent news headlines. Skips items older than max_age_hours. Returns '' on failure."""
     import xml.etree.ElementTree as ET
     import urllib.parse
+    from datetime import timezone
+    from email.utils import parsedate_to_datetime
     try:
         url = (
             "https://news.google.com/rss/search"
@@ -349,18 +354,66 @@ def _fetch_news_context(query: str, max_results: int = 2) -> str:
         if resp.status_code != 200:
             return ""
         root = ET.fromstring(resp.content)
-        items = root.findall(".//item")[:max_results]
+        now = datetime.now(timezone.utc)
         headlines = []
-        for item in items:
+        for item in root.findall(".//item"):
+            if len(headlines) >= max_results:
+                break
             title = item.findtext("title", "").strip()
+            pub_date = item.findtext("pubDate", "").strip()
+            age_label = ""
+            if pub_date:
+                try:
+                    pub_dt = parsedate_to_datetime(pub_date)
+                    age_hours = (now - pub_dt).total_seconds() / 3600
+                    if age_hours > max_age_hours:
+                        continue  # skip stale headlines
+                    age_days = int(age_hours // 24)
+                    age_label = " (today)" if age_days == 0 else f" ({age_days}d ago)"
+                except Exception:
+                    pass  # unparseable date — include without label
             # Strip source suffix e.g. "- Reuters"
             if " - " in title:
                 title = title.rsplit(" - ", 1)[0].strip()
             if title:
-                headlines.append(f"• {title}")
+                headlines.append(f"• {title}{age_label}")
         return "\n".join(headlines) if headlines else ""
     except Exception:
         return ""
+
+
+def _get_market_event_context() -> str:
+    """Return a short string about the current market period (earnings, expiry, etc.)."""
+    from datetime import date as _date, timedelta as _td
+    today = _date.today()
+    month, day, weekday = today.month, today.day, today.weekday()
+    notes = []
+
+    # Earnings season: heavy weeks in Jan/Apr/Jul/Oct (weeks 2–5 of the month)
+    if month in (1, 4, 7, 10) and 7 <= day <= 31:
+        notes.append("Earnings season active")
+
+    # NFP: first Friday of the month (±1 day)
+    first_friday = 1
+    d = _date(today.year, today.month, 1)
+    while d.weekday() != 4:
+        d += _td(days=1)
+    if abs((today - d).days) <= 1:
+        notes.append("NFP week")
+
+    # Options expiry: third Friday (±1 day)
+    third_friday = d + _td(weeks=2)
+    if abs((today - third_friday).days) <= 1:
+        notes.append("Monthly options expiry")
+
+    # End-of-quarter rebalancing: last 3 days of Mar/Jun/Sep/Dec
+    if month in (3, 6, 9, 12):
+        import calendar
+        last_day = calendar.monthrange(today.year, month)[1]
+        if day >= last_day - 2:
+            notes.append("End-of-quarter rebalancing window")
+
+    return ", ".join(notes) if notes else ""
 
 
 def _compute_angle(history_rows, current_val: float, unit: str) -> str:
@@ -542,7 +595,8 @@ def _hook_country_spotlight(db) -> dict | None:
     og_image_url = f"{CDN_URL}/og/countries/{country_code.lower()}.png"
 
     angle_block = f"\nTrend: {angle}" if angle else ""
-    news_block = f"\nRecent headlines:\n{news}" if news else ""
+    _evt = _get_market_event_context()
+    news_block = (f"\nRecent headlines:\n{news}" if news else "") + (f"\nMarket period: {_evt}" if _evt else "")
 
     prompt = f"""You are a financial data journalist writing social copy for MetricsHour.
 {AUDIENCE_PERSONA}
@@ -761,7 +815,8 @@ def _hook_stock_exposure(db) -> dict | None:
                 break
 
     news = _fetch_news_context(f"{name} {ticker} earnings revenue tariffs China")
-    news_block = f"\nRecent headlines:\n{news}" if news else ""
+    _evt = _get_market_event_context()
+    news_block = (f"\nRecent headlines:\n{news}" if news else "") + (f"\nMarket period: {_evt}" if _evt else "")
 
     prompt = f"""You are a financial data journalist writing social copy for MetricsHour.
 {AUDIENCE_PERSONA}
@@ -888,7 +943,8 @@ def _hook_trade_insight(db) -> dict | None:
     og_image_url = f"{CDN_URL}/og/trade/{exp.code.lower()}-{imp.code.lower()}.png"
 
     news = _fetch_news_context(f"{exp.name} {imp.name} trade tariffs sanctions")
-    news_block = f"\nRecent headlines:\n{news}" if news else ""
+    _evt = _get_market_event_context()
+    news_block = (f"\nRecent headlines:\n{news}" if news else "") + (f"\nMarket period: {_evt}" if _evt else "")
     products_line = f"\nTop traded goods: {products}" if products else ""
 
     prompt = f"""You are a financial data journalist writing social copy for MetricsHour.
@@ -1022,7 +1078,8 @@ def _hook_market_movers(db) -> dict | None:
         if n:
             news_items.append(f"{r.symbol} news:\n{n}")
     news_block = "\n\n".join(news_items) if news_items else ""
-    news_section = f"\nRecent news context:\n{news_block}" if news_block else ""
+    _evt = _get_market_event_context()
+    news_section = (f"\nRecent news context:\n{news_block}" if news_block else "") + (f"\nMarket period: {_evt}" if _evt else "")
 
     _MARKET_ANGLES = [
         # 0 — outlier deep-dive
@@ -1156,7 +1213,8 @@ def _hook_day_wrap(db) -> dict | None:
         n = _fetch_news_context(f"{r.name} {r.symbol} stock")
         if n:
             news_items.append(f"{r.symbol} news:\n{n}")
-    news_section = f"\nRecent news:\n" + "\n\n".join(news_items) if news_items else ""
+    _evt = _get_market_event_context()
+    news_section = (f"\nRecent news:\n" + "\n\n".join(news_items) if news_items else "") + (f"\nMarket period: {_evt}" if _evt else "")
 
     _WRAP_ANGLES = [
         # 0 — tomorrow's setup
@@ -1533,7 +1591,8 @@ def _try_viral_option(db, option: str) -> dict | None:
         return None
 
     news = _fetch_news_context(f"{entity} economy finance")
-    news_block = f"\nRecent headlines:\n{news}" if news else ""
+    _evt = _get_market_event_context()
+    news_block = (f"\nRecent headlines:\n{news}" if news else "") + (f"\nMarket period: {_evt}" if _evt else "")
 
     _VIRAL_ANGLES = [
         # 0 — stat + broken assumption
