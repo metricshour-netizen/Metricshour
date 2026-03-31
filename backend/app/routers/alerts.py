@@ -41,6 +41,7 @@ class AlertIn(BaseModel):
     asset_id: int
     condition: str       # 'above' | 'below'
     target_price: float
+    cooldown_hours: int = 24   # how many hours before re-firing (sticky alert)
 
 
 class MacroAlertIn(BaseModel):
@@ -54,6 +55,8 @@ class MacroAlertIn(BaseModel):
 class PrefsIn(BaseModel):
     notify_telegram: bool | None = None
     notify_email: bool | None = None
+    notify_discord: bool | None = None
+    discord_webhook_url: str | None = None
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -69,7 +72,9 @@ def _alert_dict(a: PriceAlert, asset: Asset | None) -> dict:
         "condition": a.condition,
         "target_price": a.target_price,
         "is_active": a.is_active,
-        "triggered_at": a.triggered_at.isoformat() if a.triggered_at else None,
+        "cooldown_hours": a.cooldown_hours,
+        "trigger_count": a.trigger_count,
+        "last_triggered_at": a.triggered_at.isoformat() if a.triggered_at else None,
         "created_at": a.created_at.isoformat(),
     }
 
@@ -125,6 +130,8 @@ def create_alert(
         condition=body.condition,
         target_price=body.target_price,
         is_active=True,
+        cooldown_hours=max(1, min(body.cooldown_hours, 720)),  # 1h–30d
+        trigger_count=0,
         created_at=datetime.now(timezone.utc),
     )
     db.add(alert)
@@ -184,6 +191,8 @@ def get_prefs(
         "notify_telegram": current_user.notify_telegram,
         "notify_email": current_user.notify_email,
         "telegram_connected": bool(current_user.telegram_chat_id),
+        "notify_discord": getattr(current_user, 'notify_discord', False),
+        "discord_connected": bool(getattr(current_user, 'discord_webhook_url', None)),
     }
 
 
@@ -197,11 +206,24 @@ def update_prefs(
         current_user.notify_telegram = body.notify_telegram
     if body.notify_email is not None:
         current_user.notify_email = body.notify_email
+    if body.notify_discord is not None:
+        current_user.notify_discord = body.notify_discord
+    if body.discord_webhook_url is not None:
+        # Basic validation: must be a Discord webhook URL
+        url = body.discord_webhook_url.strip()
+        if url and not url.startswith("https://discord.com/api/webhooks/"):
+            raise HTTPException(status_code=422, detail="Invalid Discord webhook URL")
+        current_user.discord_webhook_url = url or None
+        # Auto-enable Discord when URL is set
+        if url:
+            current_user.notify_discord = True
     db.commit()
     return {
         "notify_telegram": current_user.notify_telegram,
         "notify_email": current_user.notify_email,
         "telegram_connected": bool(current_user.telegram_chat_id),
+        "notify_discord": getattr(current_user, 'notify_discord', False),
+        "discord_connected": bool(getattr(current_user, 'discord_webhook_url', None)),
     }
 
 

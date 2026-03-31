@@ -23,6 +23,10 @@ N8N_NEWSLETTER_WEBHOOK = os.environ.get(
     "N8N_NEWSLETTER_WEBHOOK",
     "https://n8n.metricshour.com/webhook/newsletter-subscribe",
 )
+N8N_PRICE_ALERT_WEBHOOK = os.environ.get(
+    "N8N_PRICE_ALERT_WEBHOOK",
+    "https://n8n.metricshour.com/webhook/price-alert",
+)
 
 
 def send_telegram(chat_id: str, text: str) -> str | None:
@@ -66,6 +70,135 @@ def send_email(to: str, subject: str, html_body: str) -> str | None:
         return None
     except Exception as e:
         return str(e)
+
+
+def send_discord(webhook_url: str, content: str) -> str | None:
+    """POST a message to a Discord webhook. Returns error string or None on success."""
+    if not webhook_url:
+        return "discord_webhook_url not configured"
+    try:
+        r = requests.post(
+            webhook_url,
+            json={"content": content, "username": "MetricsHour Alerts"},
+            timeout=10,
+        )
+        if r.status_code not in (200, 204):
+            return f"Discord {r.status_code}: {r.text[:200]}"
+        return None
+    except Exception as e:
+        return str(e)
+
+
+def build_alert_discord(symbol: str, name: str, condition: str, target: float, current: float) -> str:
+    direction = "above ↑" if condition == "above" else "below ↓"
+    emoji = "🟢" if condition == "above" else "🔴"
+    diff_pct = abs(current - target) / target * 100
+    return (
+        f"{emoji} **Price Alert — {symbol}**\n"
+        f"{name}\n\n"
+        f"**Current:** `${current:,.2f}`\n"
+        f"**Target:** {direction} `${target:,.2f}`\n"
+        f"**Move:** {diff_pct:.1f}% from threshold\n\n"
+        f"https://metricshour.com/stocks/{symbol}"
+    )
+
+
+def send_price_alert_via_n8n(
+    user_email: str,
+    telegram_chat_id: str | None,
+    discord_webhook_url: str | None,
+    notify_telegram: bool,
+    notify_email: bool,
+    notify_discord: bool,
+    symbol: str,
+    name: str,
+    asset_type: str,
+    condition: str,
+    target_price: float,
+    current_price: float,
+    trigger_count: int = 1,
+) -> str | None:
+    """
+    Send price alert via n8n webhook (full execution history + retry built-in).
+    n8n handles Telegram + email + Discord delivery.
+    Falls back to direct delivery if n8n is unreachable.
+    Returns None on success, error string on total failure.
+    """
+    asset_url = f"https://metricshour.com/stocks/{symbol}"
+    payload = {
+        "user_email": user_email,
+        "telegram_chat_id": telegram_chat_id,
+        "discord_webhook_url": discord_webhook_url,
+        "notify_telegram": notify_telegram,
+        "notify_email": notify_email,
+        "notify_discord": notify_discord,
+        "symbol": symbol,
+        "name": name,
+        "asset_type": asset_type,
+        "condition": condition,
+        "target_price": target_price,
+        "current_price": current_price,
+        "diff_pct": round(abs(current_price - target_price) / target_price * 100, 2),
+        "trigger_count": trigger_count,
+        "asset_url": asset_url,
+    }
+    try:
+        r = requests.post(N8N_PRICE_ALERT_WEBHOOK, json=payload, timeout=10)
+        if r.status_code not in (200, 201):
+            logger.error("n8n price alert webhook %s: %s", r.status_code, r.text[:200])
+            return _send_price_alert_direct(
+                user_email, telegram_chat_id, discord_webhook_url,
+                notify_telegram, notify_email, notify_discord,
+                symbol, name, condition, target_price, current_price,
+            )
+        return None
+    except Exception as e:
+        logger.error("n8n price alert webhook unreachable: %s — falling back to direct", e)
+        return _send_price_alert_direct(
+            user_email, telegram_chat_id, discord_webhook_url,
+            notify_telegram, notify_email, notify_discord,
+            symbol, name, condition, target_price, current_price,
+        )
+
+
+def _send_price_alert_direct(
+    user_email: str,
+    telegram_chat_id: str | None,
+    discord_webhook_url: str | None,
+    notify_telegram: bool,
+    notify_email: bool,
+    notify_discord: bool,
+    symbol: str,
+    name: str,
+    condition: str,
+    target_price: float,
+    current_price: float,
+) -> str | None:
+    """Direct fallback — sends Telegram + email + Discord without n8n."""
+    delivered = False
+    if notify_telegram and telegram_chat_id:
+        msg = build_alert_telegram(symbol, name, condition, target_price, current_price)
+        err = send_telegram(telegram_chat_id, msg)
+        if err:
+            logger.error("Direct Telegram fallback failed: %s", err)
+        else:
+            delivered = True
+    if notify_email and user_email:
+        subject = f"🚨 {symbol} Price Alert — MetricsHour"
+        html = build_alert_email(symbol, name, condition, target_price, current_price)
+        err = send_email(user_email, subject, html)
+        if err:
+            logger.error("Direct email fallback failed: %s", err)
+        else:
+            delivered = True
+    if notify_discord and discord_webhook_url:
+        msg = build_alert_discord(symbol, name, condition, target_price, current_price)
+        err = send_discord(discord_webhook_url, msg)
+        if err:
+            logger.error("Direct Discord fallback failed: %s", err)
+        else:
+            delivered = True
+    return None if delivered else "all delivery channels failed"
 
 
 def build_alert_email(symbol: str, name: str, condition: str, target: float, current: float) -> str:

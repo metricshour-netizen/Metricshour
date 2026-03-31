@@ -2,7 +2,9 @@
 Price Alert Checker — runs every minute via Celery Beat.
 
 Loads all active price alerts, compares against latest prices,
-fires Telegram + email notifications, and marks alerts as triggered.
+fires notifications via n8n (with direct fallback), and updates
+last_triggered_at + trigger_count. Alerts are STICKY — they stay
+active and re-fire after cooldown_hours (default 24h).
 """
 import logging
 from datetime import datetime, timedelta, timezone
@@ -14,10 +16,7 @@ from sqlalchemy.orm import Session
 from app.models.user import User, PriceAlert, AlertDelivery
 from app.models.asset import Asset, Price
 from app.database import SessionLocal
-from app.notifications import (
-    send_telegram, send_email,
-    build_alert_telegram, build_alert_email,
-)
+from app.notifications import send_price_alert_via_n8n
 
 logger = logging.getLogger(__name__)
 
@@ -36,16 +35,13 @@ def check_price_alerts(self):
 
 
 def _run_checker(db: Session):
-    # Load all active (not yet triggered) alerts with user eager-loaded
     active_alerts = db.execute(
-        select(PriceAlert)
-        .where(PriceAlert.is_active == True, PriceAlert.triggered_at == None)
+        select(PriceAlert).where(PriceAlert.is_active == True)
     ).scalars().all()
 
     if not active_alerts:
         return
 
-    # Batch-load latest prices for all relevant asset IDs
     asset_ids = list({a.asset_id for a in active_alerts})
     latest_prices: dict[int, float] = _get_latest_prices(db, asset_ids)
 
@@ -64,14 +60,9 @@ def _run_checker(db: Session):
         if not fired:
             continue
 
-        # Prevent duplicate delivery for this alert within 1 hour
-        recent = db.execute(
-            select(AlertDelivery).where(
-                AlertDelivery.alert_id == alert.id,
-                AlertDelivery.triggered_at >= now - timedelta(hours=1),
-            )
-        ).scalar_one_or_none()
-        if recent:
+        # Respect cooldown — skip if fired within cooldown_hours
+        cooldown = timedelta(hours=alert.cooldown_hours)
+        if alert.triggered_at and now - alert.triggered_at < cooldown:
             continue
 
         user = db.get(User, alert.user_id)
@@ -79,27 +70,31 @@ def _run_checker(db: Session):
         if not user or not asset:
             continue
 
-        symbol = asset.symbol
-        name = asset.name
-        condition = alert.condition
-        target = alert.target_price
+        trigger_count = (alert.trigger_count or 0) + 1
 
-        # Send Telegram
-        if user.notify_telegram and user.telegram_chat_id:
-            msg = build_alert_telegram(symbol, name, condition, target, current_price)
-            err = send_telegram(user.telegram_chat_id, msg)
-            _record_delivery(db, alert.id, user.id, "telegram", current_price, now, err)
+        # Route through n8n (with direct fallback built-in)
+        err = send_price_alert_via_n8n(
+            user_email=user.email,
+            telegram_chat_id=user.telegram_chat_id,
+            discord_webhook_url=getattr(user, 'discord_webhook_url', None),
+            notify_telegram=user.notify_telegram,
+            notify_email=user.notify_email,
+            notify_discord=getattr(user, 'notify_discord', False),
+            symbol=asset.symbol,
+            name=asset.name,
+            asset_type=asset.asset_type if hasattr(asset, 'asset_type') else 'stock',
+            condition=alert.condition,
+            target_price=alert.target_price,
+            current_price=current_price,
+            trigger_count=trigger_count,
+        )
 
-        # Send Email
-        if user.notify_email and user.email:
-            subject = f"🚨 {symbol} Price Alert — MetricsHour"
-            html = build_alert_email(symbol, name, condition, target, current_price)
-            err = send_email(user.email, subject, html)
-            _record_delivery(db, alert.id, user.id, "email", current_price, now, err)
+        channel = "n8n"
+        _record_delivery(db, alert.id, user.id, channel, current_price, now, err)
 
-        # Mark alert as triggered (one-shot — user re-creates if they want another)
+        # Sticky: update last fired time + count; keep is_active=True
         alert.triggered_at = now
-        alert.is_active = False
+        alert.trigger_count = trigger_count
         triggered_count += 1
 
     if triggered_count:

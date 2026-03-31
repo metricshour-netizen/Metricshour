@@ -29,6 +29,8 @@ class User(Base):
     telegram_chat_id: Mapped[str | None] = mapped_column(String(50), nullable=True)
     notify_telegram: Mapped[bool] = mapped_column(Boolean, default=True)
     notify_email: Mapped[bool] = mapped_column(Boolean, default=True)
+    discord_webhook_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    notify_discord: Mapped[bool] = mapped_column(Boolean, default=False)
 
     alerts: Mapped[list["PriceAlert"]] = relationship(back_populates="user")
     follows: Mapped[list["UserFollow"]] = relationship(back_populates="user")  # type: ignore[name-defined]
@@ -45,7 +47,10 @@ class PriceAlert(Base):
     condition: Mapped[str] = mapped_column(String(5), nullable=False)           # above, below
     target_price: Mapped[float] = mapped_column(Float, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Sticky (repeatable): triggered_at = last fired time; cooldown_hours controls repeat window
     triggered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
+    cooldown_hours: Mapped[int] = mapped_column(Integer, default=24, nullable=False)
+    trigger_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     user: Mapped["User"] = relationship(back_populates="alerts")
