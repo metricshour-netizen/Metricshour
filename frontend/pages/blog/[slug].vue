@@ -241,9 +241,9 @@ function fmtDate(iso?: string): string {
 }
 
 useSeoMeta({
-  title: computed(() => post.value ? `${post.value.title} — MetricsHour` : 'Article — MetricsHour'),
+  title: computed(() => post.value ? `${post.value.title} | MetricsHour` : 'Article | MetricsHour'),
   description: computed(() => post.value?.excerpt || ''),
-  ogTitle: computed(() => post.value ? `${post.value.title} — MetricsHour` : 'Article — MetricsHour'),
+  ogTitle: computed(() => post.value ? `${post.value.title} | MetricsHour` : 'Article | MetricsHour'),
   ogDescription: computed(() => post.value?.excerpt || ''),
   ogUrl: computed(() => `https://metricshour.com/blog/${slug}/`),
   ogType: 'article',
@@ -251,7 +251,7 @@ useSeoMeta({
   ogImageAlt: computed(() => post.value?.title || 'MetricsHour'),
   ogImageWidth: '1200',
   ogImageHeight: '630',
-  twitterTitle: computed(() => post.value ? `${post.value.title} — MetricsHour` : 'Article — MetricsHour'),
+  twitterTitle: computed(() => post.value ? `${post.value.title} | MetricsHour` : 'Article | MetricsHour'),
   twitterDescription: computed(() => post.value?.excerpt || ''),
   twitterImage: computed(() => post.value?.cover_image_url || 'https://cdn.metricshour.com/og/section/home.png'),
   twitterCard: 'summary_large_image',
