@@ -31,6 +31,24 @@ code, kbd, pre,
 .negative { @apply text-red-400; }
 .neutral  { @apply text-yellow-400; }
 
+/* ─── Entity deep-link color coding ─────────────────────────────────────────
+   Applied to <a> tags injected by deep_links.py (blog posts) and any Vue
+   component that renders internal entity links.
+   !important beats Tailwind prose-a specificity.                             */
+a.link-stock     { color: #60a5fa !important; }   /* blue-400    — stocks      */
+a.link-country   { color: #34d399 !important; }   /* emerald-400 — countries   */
+a.link-corridor  { color: #fbbf24 !important; }   /* amber-400   — trade routes */
+a.link-sector    { color: #a78bfa !important; }   /* violet-400  — sectors     */
+a.link-index     { color: #22d3ee !important; }   /* cyan-400    — indices     */
+a.link-commodity { color: #fb923c !important; }   /* orange-400  — commodities */
+
+a.link-stock:hover,
+a.link-country:hover,
+a.link-corridor:hover,
+a.link-sector:hover,
+a.link-index:hover,
+a.link-commodity:hover { opacity: 0.8; text-decoration: underline; }
+
 /* ─── Light mode — WCAG 2.1 AA (min 4.5:1 contrast) ────────────────────────
    Toggle: add/remove class "light-mode" on <html>.
    Tailwind arbitrary-value classes escape both brackets AND hash:

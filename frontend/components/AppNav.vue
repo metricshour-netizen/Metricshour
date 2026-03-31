@@ -14,6 +14,7 @@
         <NuxtLink to="/markets/" class="hover:text-white transition-colors font-medium">Markets</NuxtLink>
         <NuxtLink to="/countries/" class="hover:text-white transition-colors">Countries</NuxtLink>
         <NuxtLink to="/trade/" class="hover:text-white transition-colors">Trade</NuxtLink>
+        <NuxtLink to="/sectors/" class="hover:text-white transition-colors">Sectors</NuxtLink>
         <NuxtLink to="/commodities/" class="hover:text-white transition-colors">Commodities</NuxtLink>
 
         <template v-if="isLoggedIn && user">
@@ -74,6 +75,7 @@
       <NuxtLink to="/markets/"     @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">Markets <span class="text-gray-600 text-xs">→</span></NuxtLink>
       <NuxtLink to="/countries/"   @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">Countries <span class="text-gray-600 text-xs">→</span></NuxtLink>
       <NuxtLink to="/trade/"       @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">Trade <span class="text-gray-600 text-xs">→</span></NuxtLink>
+      <NuxtLink to="/sectors/"     @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">Sectors <span class="text-gray-600 text-xs">→</span></NuxtLink>
       <NuxtLink to="/commodities/" @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">Commodities <span class="text-gray-600 text-xs">→</span></NuxtLink>
 <template v-if="isLoggedIn && user">
         <NuxtLink to="/watchlist"  @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">⭐ Watchlist <span class="text-gray-600 text-xs">→</span></NuxtLink>

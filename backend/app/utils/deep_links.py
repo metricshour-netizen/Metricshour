@@ -129,6 +129,26 @@ COUNTRIES = {
     "Ghana": "gh", "Greater China": "cn", "Pakistan": "pk",
 }
 
+SECTOR_PHRASES: list[tuple[str, str]] = [
+    ("Technology sector",             "technology"),
+    ("tech sector",                   "technology"),
+    ("semiconductor sector",          "technology"),
+    ("Healthcare sector",             "healthcare"),
+    ("pharma sector",                 "healthcare"),
+    ("biotech sector",                "healthcare"),
+    ("Financial sector",              "financials"),
+    ("banking sector",                "financials"),
+    ("Industrial sector",             "industrials"),
+    ("Energy sector",                 "energy"),
+    ("oil and gas sector",            "energy"),
+    ("Consumer Discretionary sector", "consumer-discretionary"),
+    ("Consumer Staples sector",       "consumer-staples"),
+    ("Communication Services sector", "communication-services"),
+    ("Materials sector",              "materials"),
+    ("Real Estate sector",            "real-estate"),
+    ("Utilities sector",              "utilities"),
+]
+
 CORRIDORS = [
     ("us", "cn", ["US-China trade", "US–China trade", "US and China trade", "China-US trade"]),
     ("us", "de", ["US-Germany trade", "US-EU trade", "US–EU trade"]),
@@ -182,7 +202,7 @@ def _replace_in_html_text(body: str, pattern: str, repl_fn, remaining: list) -> 
 def _inject_stock(body: str, ticker: str, names: list, html: bool) -> str:
     url = f"{BASE}/stocks/{ticker}"
 
-    def make_link_html(t): return f'<a href="{url}">{t}</a>'
+    def make_link_html(t): return f'<a href="{url}" class="link-stock">{t}</a>'
     def make_link_md(t): return f'[{t}]({url})'
 
     # Ticker match (skip ambiguous short tickers)
@@ -234,7 +254,7 @@ def _inject_country(body: str, name: str, code: str, html: bool) -> str:
     if rem[0] <= 0: return body
     pat = r'\b' + re.escape(name) + r'\b'
     if html:
-        def ml(t): return f'<a href="{url}">{t}</a>'
+        def ml(t): return f'<a href="{url}" class="link-country">{t}</a>'
         body = _replace_in_html_text(body, pat, ml, rem)
     else:
         def sub_md(mo, rem=rem):
@@ -255,11 +275,29 @@ def _inject_corridors(body: str, html: bool) -> str:
         for phrase in phrases:
             if phrase not in body: continue
             if html:
-                body = body.replace(phrase, f'<a href="{url}">{phrase}</a>', 1)
+                body = body.replace(phrase, f'<a href="{url}" class="link-corridor">{phrase}</a>', 1)
             else:
                 if f'[{phrase}]' in body: continue
                 body = body.replace(phrase, f'[{phrase}]({url})', 1)
             break
+    return body
+
+
+def _inject_sectors(body: str, html: bool) -> str:
+    """Inject links to sector pages for recognizable sector phrases."""
+    for phrase, slug in SECTOR_PHRASES:
+        url = f"{BASE}/sectors/{slug}"
+        if url in body:
+            continue
+        pat = r'\b' + re.escape(phrase) + r'\b'
+        if html:
+            if re.search(f'class="link-sector"[^>]*>{re.escape(phrase)}', body):
+                continue
+            body = re.sub(pat, f'<a href="{url}" class="link-sector">{phrase}</a>', body, count=1)
+        else:
+            if f'[{phrase}]' in body:
+                continue
+            body = re.sub(pat, f'[{phrase}]({url})', body, count=1)
     return body
 
 
@@ -285,6 +323,7 @@ def inject_deep_links(body: str) -> str:
     for country_name, code in sorted(COUNTRIES.items(), key=lambda x: -len(x[0])):
         body = _inject_country(body, country_name, code, html)
     body = _inject_corridors(body, html)
+    body = _inject_sectors(body, html)
     body = _post_clean(body)
     return body
 

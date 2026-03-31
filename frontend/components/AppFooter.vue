@@ -9,6 +9,7 @@
     <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap gap-x-6 gap-y-2 justify-center text-xs text-gray-600">
       <NuxtLink to="/markets/"     class="hover:text-gray-400 transition-colors">Markets</NuxtLink>
       <NuxtLink to="/stocks/"      class="hover:text-gray-400 transition-colors">Stocks</NuxtLink>
+      <NuxtLink to="/sectors/"     class="hover:text-gray-400 transition-colors">Sectors</NuxtLink>
       <NuxtLink to="/countries/"   class="hover:text-gray-400 transition-colors">Countries</NuxtLink>
       <NuxtLink to="/trade/"       class="hover:text-gray-400 transition-colors">Trade</NuxtLink>
       <NuxtLink to="/commodities/" class="hover:text-gray-400 transition-colors">Commodities</NuxtLink>

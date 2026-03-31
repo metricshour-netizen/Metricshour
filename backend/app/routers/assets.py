@@ -137,6 +137,188 @@ def get_asset_prices(
     ]
 
 
+_SECTOR_META: dict[str, dict] = {
+    "technology": {
+        "name": "Technology",
+        "description": "Software, semiconductors, hardware, and IT services companies driving the digital economy.",
+        "icon": "💻",
+    },
+    "healthcare": {
+        "name": "Healthcare",
+        "description": "Pharmaceuticals, biotechnology, medical devices, and healthcare service providers.",
+        "icon": "🏥",
+    },
+    "financials": {
+        "name": "Financials",
+        "description": "Banks, asset managers, insurance, and capital markets institutions.",
+        "icon": "🏦",
+    },
+    "industrials": {
+        "name": "Industrials",
+        "description": "Aerospace, defense, machinery, construction, and transportation companies.",
+        "icon": "🏭",
+    },
+    "energy": {
+        "name": "Energy",
+        "description": "Oil, gas, refining, pipelines, and diversified energy producers.",
+        "icon": "⚡",
+    },
+    "consumer-discretionary": {
+        "name": "Consumer Discretionary",
+        "description": "Retail, automotive, luxury goods, hospitality, and leisure companies.",
+        "icon": "🛍️",
+    },
+    "consumer-staples": {
+        "name": "Consumer Staples",
+        "description": "Food, beverages, household products, and everyday essential goods.",
+        "icon": "🛒",
+    },
+    "communication-services": {
+        "name": "Communication Services",
+        "description": "Social media, streaming, telecom, and interactive entertainment platforms.",
+        "icon": "📡",
+    },
+    "materials": {
+        "name": "Materials",
+        "description": "Mining, chemicals, construction materials, and specialty materials.",
+        "icon": "⛏️",
+    },
+    "real-estate": {
+        "name": "Real Estate",
+        "description": "REITs, property developers, and real estate services.",
+        "icon": "🏢",
+    },
+    "utilities": {
+        "name": "Utilities",
+        "description": "Electric, gas, and water utilities providing essential services.",
+        "icon": "💡",
+    },
+}
+
+# Canonical name → slug lookup for deep-link injection
+SECTOR_SLUG_MAP: dict[str, str] = {meta["name"]: slug for slug, meta in _SECTOR_META.items()}
+
+
+@router.get("/sectors")
+@limiter.limit("60/minute")
+def list_sectors(request: Request, db: Session = Depends(get_db)) -> list[dict]:
+    cached = cache_get("api:sectors:list:v1")
+    if cached is not None:
+        return cached
+
+    rows = db.execute(
+        select(Asset.sector, func.count().label("stock_count"), func.sum(Asset.market_cap_usd).label("total_cap"))
+        .where(Asset.asset_type == AssetType.stock, Asset.is_active == True, Asset.sector.isnot(None))
+        .group_by(Asset.sector)
+        .order_by(func.sum(Asset.market_cap_usd).desc().nullslast())
+    ).all()
+
+    result = []
+    for row in rows:
+        slug = SECTOR_SLUG_MAP.get(row.sector)
+        if not slug:
+            continue  # skip index/ETF pseudo-sectors
+        meta = _SECTOR_META[slug]
+        result.append({
+            "slug": slug,
+            "name": meta["name"],
+            "description": meta["description"],
+            "icon": meta["icon"],
+            "stock_count": row.stock_count,
+            "total_market_cap_usd": row.total_cap,
+        })
+
+    cache_set("api:sectors:list:v1", result, ttl_seconds=3600)
+    return result
+
+
+@router.get("/sectors/{slug}")
+@limiter.limit("60/minute")
+def get_sector(request: Request, slug: str, db: Session = Depends(get_db)) -> dict:
+    meta = _SECTOR_META.get(slug)
+    if not meta:
+        raise HTTPException(status_code=404, detail="Sector not found")
+
+    cache_key = f"api:sector:{slug}:v1"
+    cached = cache_get(cache_key)
+    if cached is not None:
+        return cached
+
+    sector_name = meta["name"]
+
+    assets = db.execute(
+        select(Asset)
+        .where(Asset.sector == sector_name, Asset.asset_type == AssetType.stock, Asset.is_active == True)
+        .order_by(Asset.market_cap_usd.desc().nullslast())
+    ).scalars().all()
+
+    # Batch-load countries
+    country_ids = {a.country_id for a in assets if a.country_id}
+    countries: dict[int, Country] = {}
+    if country_ids:
+        rows = db.execute(select(Country).where(Country.id.in_(country_ids))).scalars().all()
+        countries = {c.id: c for c in rows}
+
+    # Batch-load latest prices
+    asset_ids = [a.id for a in assets]
+    prices: dict[int, Price] = {}
+    if asset_ids:
+        latest_ts_sq = (
+            select(Price.asset_id, func.max(Price.timestamp).label("max_ts"))
+            .where(Price.asset_id.in_(asset_ids), Price.interval == "1d")
+            .group_by(Price.asset_id)
+            .subquery()
+        )
+        price_rows = db.execute(
+            select(Price).join(
+                latest_ts_sq,
+                (Price.asset_id == latest_ts_sq.c.asset_id) &
+                (Price.timestamp == latest_ts_sq.c.max_ts)
+            ).where(Price.interval == "1d")
+        ).scalars().all()
+        prices = {p.asset_id: p for p in price_rows}
+
+    # Top countries by exposure (aggregate revenue pct across all sector stocks)
+    country_exposure: dict[int, dict] = {}
+    if asset_ids:
+        rev_rows = db.execute(
+            select(StockCountryRevenue, Country)
+            .join(Country, StockCountryRevenue.country_id == Country.id)
+            .where(StockCountryRevenue.asset_id.in_(asset_ids))
+        ).all()
+        for rev, cty in rev_rows:
+            if cty.id not in country_exposure:
+                country_exposure[cty.id] = {"code": cty.code, "name": cty.name, "flag": cty.flag_emoji, "total_pct": 0.0, "stock_count": 0}
+            country_exposure[cty.id]["total_pct"] += rev.revenue_pct
+            country_exposure[cty.id]["stock_count"] += 1
+
+    top_countries = sorted(country_exposure.values(), key=lambda x: x["total_pct"], reverse=True)[:10]
+
+    stock_list = []
+    for a in assets:
+        country = countries.get(a.country_id) if a.country_id else None
+        price = prices.get(a.id)
+        s = _asset_summary(a, country)
+        s["price"] = _price_dict(price) if price else None
+        stock_list.append(s)
+
+    total_cap = sum(a.market_cap_usd or 0 for a in assets)
+
+    result = {
+        "slug": slug,
+        "name": meta["name"],
+        "description": meta["description"],
+        "icon": meta["icon"],
+        "stock_count": len(assets),
+        "total_market_cap_usd": total_cap,
+        "stocks": stock_list,
+        "top_countries": top_countries,
+    }
+
+    cache_set(cache_key, result, ttl_seconds=3600)
+    return result
+
+
 @router.get("/{symbol}")
 @limiter.limit("120/minute")
 def get_asset(request: Request, symbol: str, db: Session = Depends(get_db)) -> dict:
