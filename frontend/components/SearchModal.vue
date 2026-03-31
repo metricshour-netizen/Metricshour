@@ -15,7 +15,7 @@
             ref="inputRef"
             v-model="q"
             type="text"
-            placeholder="Search countries, stocks, commodities…"
+            placeholder="Search countries, stocks, commodities, articles…"
             class="flex-1 bg-transparent text-white placeholder-gray-600 text-sm outline-none"
             autocomplete="off"
             spellcheck="false"
@@ -70,9 +70,25 @@
             </NuxtLink>
           </template>
 
+          <!-- Blog Posts -->
+          <template v-if="results.blogs?.length">
+            <div class="px-4 pt-3 pb-1 text-[10px] font-semibold text-gray-600 uppercase tracking-widest">Articles</div>
+            <NuxtLink
+              v-for="(item, i) in results.blogs"
+              :key="'b-' + item.slug"
+              :to="`/blog/${item.slug}`"
+              :class="['flex items-center gap-3 px-4 py-2.5 hover:bg-[#111827] transition-colors text-sm', focusIndex === countryCount + assetCount + i ? 'bg-[#111827]' : '']"
+              @click="$emit('update:modelValue', false)"
+            >
+              <svg class="w-3.5 h-3.5 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h4M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z"/></svg>
+              <span class="text-white truncate">{{ item.title }}</span>
+              <span class="ml-auto text-xs text-gray-600 flex-shrink-0">Article</span>
+            </NuxtLink>
+          </template>
+
           <!-- Empty hint (no query) -->
           <div v-if="!q" class="px-4 py-5 text-xs text-gray-700 text-center">
-            Type to search countries, stocks, crypto, commodities
+            Type to search countries, stocks, crypto, commodities, articles
           </div>
         </div>
       </div>
@@ -89,12 +105,13 @@ const inputRef = ref<HTMLInputElement | null>(null)
 const q = ref('')
 const loading = ref(false)
 const focusIndex = ref(-1)
-const results = ref<{ countries?: any[]; assets?: any[] }>({})
+const results = ref<{ countries?: any[]; assets?: any[]; blogs?: any[] }>({})
 
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
 const countryCount = computed(() => results.value.countries?.length ?? 0)
-const hasResults = computed(() => countryCount.value > 0 || (results.value.assets?.length ?? 0) > 0)
+const assetCount = computed(() => results.value.assets?.length ?? 0)
+const hasResults = computed(() => countryCount.value > 0 || assetCount.value > 0 || (results.value.blogs?.length ?? 0) > 0)
 
 watch(() => props.modelValue, (open) => {
   if (open) {
@@ -118,7 +135,7 @@ function onInput() {
 async function doSearch() {
   loading.value = true
   try {
-    const data = await get<{ countries?: any[]; assets?: any[] }>(`/api/search`, { q: q.value })
+    const data = await get<{ countries?: any[]; assets?: any[]; blogs?: any[] }>(`/api/search`, { q: q.value })
     results.value = data
   } catch {
     results.value = {}
@@ -128,7 +145,7 @@ async function doSearch() {
 }
 
 function moveFocus(dir: number) {
-  const total = countryCount.value + (results.value.assets?.length ?? 0)
+  const total = countryCount.value + assetCount.value + (results.value.blogs?.length ?? 0)
   if (!total) return
   focusIndex.value = (focusIndex.value + dir + total) % total
 }

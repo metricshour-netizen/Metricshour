@@ -5,6 +5,7 @@ from sqlalchemy import select
 from app.database import get_db
 from app.limiter import limiter
 from app.models import Country, Asset
+from app.models.feed import BlogPost, BlogStatus
 from app.config import settings
 
 router = APIRouter(prefix="/search", tags=["search"])
@@ -71,6 +72,16 @@ def _pg_search(q: str, db: Session) -> dict:
         .limit(5)
     ).scalars().all()
 
+    blogs = db.execute(
+        select(BlogPost)
+        .where(
+            BlogPost.status == BlogStatus.published,
+            BlogPost.title.ilike(f"%{term}%"),
+        )
+        .order_by(BlogPost.published_at.desc())
+        .limit(4)
+    ).scalars().all()
+
     return {
         "countries": [
             {"code": c.code, "name": c.name, "flag": c.flag_emoji, "type": "country"}
@@ -86,6 +97,15 @@ def _pg_search(q: str, db: Session) -> dict:
             }
             for a in assets
         ],
+        "blogs": [
+            {
+                "slug": b.slug,
+                "title": b.title,
+                "excerpt": b.excerpt or "",
+                "type": "blog",
+            }
+            for b in blogs
+        ],
     }
 
 
@@ -93,9 +113,12 @@ def _pg_search(q: str, db: Session) -> dict:
 @limiter.limit("60/minute")
 def search(request: Request, q: str = Query(default="", max_length=100), db: Session = Depends(get_db)) -> dict:
     if not q or len(q.strip()) < 2:
-        return {"countries": [], "assets": []}
+        return {"countries": [], "assets": [], "blogs": []}
 
     result = _meili_search(q.strip())
     if result is not None:
+        # Meilisearch doesn't index blogs — fetch from Postgres and merge
+        pg = _pg_search(q.strip(), db)
+        result["blogs"] = pg["blogs"]
         return result
     return _pg_search(q.strip(), db)
