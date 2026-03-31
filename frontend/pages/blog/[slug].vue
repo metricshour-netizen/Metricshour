@@ -222,9 +222,22 @@ const relatedAssets = computed(() => pageData.value?.assets ?? [])
 const relatedCountries = computed(() => pageData.value?.countries ?? [])
 const otherPosts = computed(() => pageData.value?.others ?? [])
 
+function addLinkClasses(html: string): string {
+  // Add color-coded CSS classes to internal links based on URL pattern.
+  // Handles both HTML bodies (stored with <a> tags) and markdown-rendered HTML.
+  return html
+    .replace(/<a href="([^"]*\/stocks\/[^"]*)"(?![^>]*class=)/g, '<a href="$1" class="link-stock"')
+    .replace(/<a href="([^"]*\/countries\/[^"]*)"(?![^>]*class=)/g, '<a href="$1" class="link-country"')
+    .replace(/<a href="([^"]*\/trade\/[^"]*)"(?![^>]*class=)/g, '<a href="$1" class="link-corridor"')
+    .replace(/<a href="([^"]*\/sectors\/[^"]*)"(?![^>]*class=)/g, '<a href="$1" class="link-sector"')
+    .replace(/<a href="([^"]*\/indices\/[^"]*)"(?![^>]*class=)/g, '<a href="$1" class="link-index"')
+    .replace(/<a href="([^"]*\/commodities\/[^"]*)"(?![^>]*class=)/g, '<a href="$1" class="link-commodity"')
+}
+
 const renderedBody = computed(() => {
   if (!post.value?.body) return ''
-  return marked.parse(post.value.body, { async: false }) as string
+  const html = marked.parse(post.value.body, { async: false }) as string
+  return addLinkClasses(html)
 })
 
 const readingTime = computed(() => {
