@@ -198,7 +198,8 @@ def _inject_stock(body: str, ticker: str, names: list, html: bool) -> str:
                     if rem[0] <= 0: return mo.group()
                     start = mo.start()
                     before = body[:start]
-                    if before.endswith('[') or re.search(r'\]\([^)]*$', before): return mo.group()
+                    # skip if inside existing link text [... or inside link URL ](url
+                    if re.search(r'\[[^\]]*$', before) or re.search(r'\]\([^)]*$', before): return mo.group()
                     rem[0] -= 1
                     return make_link_md(mo.group())
                 body = re.sub(pat, sub_md, body)
@@ -217,7 +218,7 @@ def _inject_stock(body: str, ticker: str, names: list, html: bool) -> str:
                 if rem[0] <= 0: return mo.group()
                 start = mo.start()
                 before = body[:start]
-                if before.endswith('[') or re.search(r'\]\([^)]*$', before): return mo.group()
+                if re.search(r'\[[^\]]*$', before) or re.search(r'\]\([^)]*$', before): return mo.group()
                 rem[0] -= 1
                 return f'[{n}]({url})'
             body = re.sub(pat, sub_md2, body)
@@ -240,7 +241,7 @@ def _inject_country(body: str, name: str, code: str, html: bool) -> str:
             if rem[0] <= 0: return mo.group()
             start = mo.start()
             before = body[:start]
-            if before.endswith('[') or re.search(r'\]\([^)]*$', before): return mo.group()
+            if re.search(r'\[[^\]]*$', before) or re.search(r'\]\([^)]*$', before): return mo.group()
             rem[0] -= 1
             return f'[{name}]({url})'
         body = re.sub(pat, sub_md, body)
