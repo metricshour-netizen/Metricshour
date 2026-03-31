@@ -27,6 +27,7 @@ from app.routers.auth import get_admin_user, get_current_user
 from app.models.user import User, LoginEvent, PageView
 from app.storage import r2_public_url, r2_upload
 from app.limiter import limiter
+from app.utils.deep_links import inject_deep_links
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -245,6 +246,7 @@ def publish_blog(
         raise HTTPException(status_code=409, detail="Post already published")
 
     now = datetime.now(timezone.utc)
+    post.body = inject_deep_links(post.body or "")
     post.status = BlogStatus.published
     post.published_at = now
     post.updated_at = now
