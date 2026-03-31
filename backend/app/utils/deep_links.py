@@ -1,0 +1,290 @@
+"""
+Auto deep-link injector for blog post bodies.
+Called during publish to ensure every post has internal links
+to stock pages, country pages, and trade corridors.
+Max 2 links per entity to avoid over-linking.
+"""
+import re
+
+BASE = "https://www.metricshour.com"
+MAX_PER_ENTITY = 2
+
+STOCKS = {
+    "AAPL":  ["Apple"],
+    "ABBV":  ["AbbVie"],
+    "ADBE":  ["Adobe"],
+    "AMAT":  ["Applied Materials"],
+    "AMD":   ["Advanced Micro Devices"],
+    "AMGN":  ["Amgen"],
+    "AMZN":  ["Amazon"],
+    "ARM":   ["Arm Holdings"],
+    "ASML":  ["ASML"],
+    "AVGO":  ["Broadcom"],
+    "AXP":   ["American Express"],
+    "AZN":   ["AstraZeneca"],
+    "BA":    ["Boeing"],
+    "BABA":  ["Alibaba"],
+    "BAC":   ["Bank of America"],
+    "BHP":   ["BHP"],
+    "BIDU":  ["Baidu"],
+    "BLK":   ["BlackRock"],
+    "BMY":   ["Bristol-Myers Squibb"],
+    "CAT":   ["Caterpillar"],
+    "CMCSA": ["Comcast"],
+    "COP":   ["ConocoPhillips"],
+    "COST":  ["Costco"],
+    "CRM":   ["Salesforce"],
+    "CSCO":  ["Cisco"],
+    "CVX":   ["Chevron"],
+    "DE":    ["John Deere"],
+    "DIS":   ["Disney", "Walt Disney"],
+    "DUK":   ["Duke Energy"],
+    "GE":    ["GE Aerospace"],
+    "GILD":  ["Gilead"],
+    "GOOGL": ["Alphabet", "Google"],
+    "GS":    ["Goldman Sachs"],
+    "GSK":   ["GSK"],
+    "HD":    ["Home Depot"],
+    "HDB":   ["HDFC Bank"],
+    "HON":   ["Honeywell"],
+    "HSBC":  ["HSBC"],
+    "IBM":   ["IBM"],
+    "INFY":  ["Infosys"],
+    "INTC":  ["Intel"],
+    "JD":    ["JD.com"],
+    "JNJ":   ["Johnson & Johnson"],
+    "JPM":   ["JPMorgan", "JPMorgan Chase"],
+    "KO":    ["Coca-Cola"],
+    "KLAC":  ["KLA Corporation", "KLA"],
+    "LRCX":  ["Lam Research"],
+    "LLY":   ["Eli Lilly", "Lilly"],
+    "LMT":   ["Lockheed Martin"],
+    "LVS":   ["Las Vegas Sands"],
+    "MA":    ["Mastercard"],
+    "MCD":   ["McDonald's"],
+    "META":  ["Meta", "Facebook"],
+    "MGM":   ["MGM Resorts"],
+    "MRK":   ["Merck"],
+    "MSFT":  ["Microsoft"],
+    "MU":    ["Micron"],
+    "NFLX":  ["Netflix"],
+    "NKE":   ["Nike"],
+    "NOC":   ["Northrop Grumman"],
+    "NVDA":  ["NVIDIA", "Nvidia"],
+    "NVO":   ["Novo Nordisk"],
+    "ORCL":  ["Oracle"],
+    "PBR":   ["Petrobras"],
+    "PDD":   ["PDD Holdings", "Pinduoduo"],
+    "PEP":   ["PepsiCo", "Pepsi"],
+    "PFE":   ["Pfizer"],
+    "PG":    ["Procter & Gamble", "P&G"],
+    "PLD":   ["Prologis"],
+    "PM":    ["Philip Morris"],
+    "QCOM":  ["Qualcomm"],
+    "RIO":   ["Rio Tinto"],
+    "RTX":   ["RTX", "Raytheon"],
+    "SAP":   ["SAP"],
+    "SBUX":  ["Starbucks"],
+    "SHEL":  ["Shell"],
+    "SLB":   ["Schlumberger"],
+    "SONY":  ["Sony"],
+    "SSNLF": ["Samsung"],
+    "TM":    ["Toyota"],
+    "TMO":   ["Thermo Fisher"],
+    "TSLA":  ["Tesla"],
+    "TSM":   ["TSMC", "Taiwan Semiconductor"],
+    "TTE":   ["TotalEnergies"],
+    "TXN":   ["Texas Instruments"],
+    "UNH":   ["UnitedHealth"],
+    "UPS":   ["UPS"],
+    "VALE":  ["Vale"],
+    "VZ":    ["Verizon"],
+    "WFC":   ["Wells Fargo"],
+    "WMT":   ["Walmart"],
+    "WYNN":  ["Wynn Resorts", "Wynn"],
+    "XOM":   ["ExxonMobil", "Exxon"],
+    "QCOM":  ["Qualcomm"],
+    "C":     [],  # skip — too ambiguous
+    "V":     [],  # skip — too ambiguous
+}
+
+# Short tickers skip auto-match by ticker text
+SKIP_TICKER_MATCH = {"C", "V", "T", "BA", "DE", "GE", "MS", "BP", "MA"}
+
+COUNTRIES = {
+    "China": "cn", "Germany": "de", "Japan": "jp", "India": "in",
+    "United Kingdom": "gb", "UK": "gb", "France": "fr", "South Korea": "kr",
+    "Italy": "it", "Canada": "ca", "Mexico": "mx", "Brazil": "br",
+    "Australia": "au", "Netherlands": "nl", "Spain": "es", "Switzerland": "ch",
+    "Taiwan": "tw", "Saudi Arabia": "sa", "Nigeria": "ng", "Vietnam": "vn",
+    "Indonesia": "id", "Russia": "ru", "Turkey": "tr", "Poland": "pl",
+    "Belgium": "be", "Sweden": "se", "Argentina": "ar", "South Africa": "za",
+    "Thailand": "th", "Malaysia": "my", "Philippines": "ph", "Singapore": "sg",
+    "Israel": "il", "UAE": "ae", "United Arab Emirates": "ae", "Egypt": "eg",
+    "Guyana": "gy", "Colombia": "co", "Chile": "cl", "Peru": "pe",
+    "Czech Republic": "cz", "Romania": "ro", "Hungary": "hu",
+    "Denmark": "dk", "Finland": "fi", "Norway": "no", "Greece": "gr",
+    "Portugal": "pt", "Ireland": "ie", "Austria": "at", "New Zealand": "nz",
+    "Hong Kong": "hk", "Macau": "mo", "Morocco": "ma", "Kenya": "ke",
+    "Ghana": "gh", "Greater China": "cn", "Pakistan": "pk",
+}
+
+CORRIDORS = [
+    ("us", "cn", ["US-China trade", "US–China trade", "US and China trade", "China-US trade"]),
+    ("us", "de", ["US-Germany trade", "US-EU trade", "US–EU trade"]),
+    ("us", "jp", ["US-Japan trade", "US–Japan trade"]),
+    ("us", "gb", ["US-UK trade", "US–UK trade"]),
+    ("us", "mx", ["US-Mexico trade", "US–Mexico trade"]),
+    ("us", "in", ["US-India trade", "US–India trade"]),
+    ("cn", "jp", ["China-Japan trade", "China–Japan trade"]),
+    ("gb", "ng", ["UK-Nigeria trade", "UK–Nigeria trade"]),
+]
+
+
+def _is_html(body: str) -> bool:
+    return bool(re.search(r'<(p|h[1-6]|ul|ol|table|div)\b', body[:500], re.IGNORECASE))
+
+
+def _count_linked(body: str, text: str, html: bool) -> int:
+    if html:
+        return sum(1 for m in re.finditer(r'<a\b[^>]*>.*?</a>', body, re.DOTALL | re.IGNORECASE)
+                   if re.search(re.escape(text), m.group(), re.IGNORECASE))
+    return len(re.findall(r'\[' + re.escape(text) + r'\]', body))
+
+
+def _replace_in_html_text(body: str, pattern: str, repl_fn, remaining: list) -> str:
+    result = []
+    pos = 0
+    for m in re.finditer(r'(<a\b[^>]*>.*?</a>|<[^>]+>)', body, re.DOTALL | re.IGNORECASE):
+        seg = body[pos:m.start()]
+        if seg and remaining[0] > 0:
+            def sub(mo, rem=remaining):
+                if rem[0] <= 0:
+                    return mo.group()
+                rem[0] -= 1
+                return repl_fn(mo.group())
+            seg = re.sub(pattern, sub, seg)
+        result.append(seg)
+        result.append(m.group())
+        pos = m.end()
+    seg = body[pos:]
+    if seg and remaining[0] > 0:
+        def sub2(mo, rem=remaining):
+            if rem[0] <= 0:
+                return mo.group()
+            rem[0] -= 1
+            return repl_fn(mo.group())
+        seg = re.sub(pattern, sub2, seg)
+    result.append(seg)
+    return "".join(result)
+
+
+def _inject_stock(body: str, ticker: str, names: list, html: bool) -> str:
+    url = f"{BASE}/stocks/{ticker}"
+
+    def make_link_html(t): return f'<a href="{url}">{t}</a>'
+    def make_link_md(t): return f'[{t}]({url})'
+
+    # Ticker match (skip ambiguous short tickers)
+    if ticker not in SKIP_TICKER_MATCH:
+        existing = _count_linked(body, ticker, html)
+        rem = [max(0, MAX_PER_ENTITY - existing)]
+        if rem[0] > 0:
+            pat = r'\b' + re.escape(ticker) + r'\b(?!\s*[\"\)\(])'
+            if html:
+                body = _replace_in_html_text(body, pat, make_link_html, rem)
+            else:
+                def sub_md(mo, rem=rem):
+                    if rem[0] <= 0: return mo.group()
+                    start = mo.start()
+                    before = body[:start]
+                    if before.endswith('[') or re.search(r'\]\([^)]*$', before): return mo.group()
+                    rem[0] -= 1
+                    return make_link_md(mo.group())
+                body = re.sub(pat, sub_md, body)
+
+    # Name matches
+    for name in names:
+        if not name or len(name) < 4: continue
+        existing = _count_linked(body, name, html)
+        rem = [max(0, MAX_PER_ENTITY - existing)]
+        if rem[0] <= 0: continue
+        pat = r'\b' + re.escape(name) + r'\b'
+        if html:
+            body = _replace_in_html_text(body, pat, make_link_html, rem)
+        else:
+            def sub_md2(mo, rem=rem, n=name):
+                if rem[0] <= 0: return mo.group()
+                start = mo.start()
+                before = body[:start]
+                if before.endswith('[') or re.search(r'\]\([^)]*$', before): return mo.group()
+                rem[0] -= 1
+                return f'[{n}]({url})'
+            body = re.sub(pat, sub_md2, body)
+
+    return body
+
+
+def _inject_country(body: str, name: str, code: str, html: bool) -> str:
+    if name == "United States": return body
+    url = f"{BASE}/countries/{code}"
+    existing = _count_linked(body, name, html)
+    rem = [max(0, MAX_PER_ENTITY - existing)]
+    if rem[0] <= 0: return body
+    pat = r'\b' + re.escape(name) + r'\b'
+    if html:
+        def ml(t): return f'<a href="{url}">{t}</a>'
+        body = _replace_in_html_text(body, pat, ml, rem)
+    else:
+        def sub_md(mo, rem=rem):
+            if rem[0] <= 0: return mo.group()
+            start = mo.start()
+            before = body[:start]
+            if before.endswith('[') or re.search(r'\]\([^)]*$', before): return mo.group()
+            rem[0] -= 1
+            return f'[{name}]({url})'
+        body = re.sub(pat, sub_md, body)
+    return body
+
+
+def _inject_corridors(body: str, html: bool) -> str:
+    for exp, imp, phrases in CORRIDORS:
+        url = f"{BASE}/trade/{exp}-{imp}"
+        if url in body: continue
+        for phrase in phrases:
+            if phrase not in body: continue
+            if html:
+                body = body.replace(phrase, f'<a href="{url}">{phrase}</a>', 1)
+            else:
+                if f'[{phrase}]' in body: continue
+                body = body.replace(phrase, f'[{phrase}]({url})', 1)
+            break
+    return body
+
+
+
+def _post_clean(body):
+    """Remove double-link artifacts from the injector."""
+    import re as _r
+    body = _r.sub(r'\[(\[[^\]]+\]\([^\)]+\))\]\([^\)]+\)', lambda m: m.group(1), body)
+    body = _r.sub(r'\[([^\[\]]+?)\s*\([^\)]*\[[^\]]+\]\([^\)]+\)[^\)]*\)\]\(([^\)]+)\)', lambda m: '[' + m.group(1) + '](' + m.group(2) + ')', body)
+    body = _r.sub(r'\[([A-Za-z][^\[\]]+?)\s+\([A-Z]{2,5}\)\]\(([^\)]+)\)', lambda m: '[' + m.group(1) + '](' + m.group(2) + ')', body)
+    return body
+
+def inject_deep_links(body: str) -> str:
+    """
+    Main entry point. Call this on blog post body during publish.
+    Returns body with deep internal links injected.
+    """
+    if not body:
+        return body
+    html = _is_html(body)
+    for ticker, names in STOCKS.items():
+        body = _inject_stock(body, ticker, names, html)
+    for country_name, code in sorted(COUNTRIES.items(), key=lambda x: -len(x[0])):
+        body = _inject_country(body, country_name, code, html)
+    body = _inject_corridors(body, html)
+    body = _post_clean(body)
+    return body
+
+
