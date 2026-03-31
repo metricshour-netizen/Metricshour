@@ -273,6 +273,8 @@ useHead({
           description: post.value.excerpt || '',
           image: { '@type': 'ImageObject', url: imgUrl, width: 1200, height: 630 },
           author: { '@type': 'Person', name: post.value.author_name },
+          creator: { '@type': 'Organization', name: 'MetricsHour', url: 'https://metricshour.com' },
+          license: 'https://metricshour.com/terms',
           publisher: {
             '@type': 'Organization',
             name: 'MetricsHour',
