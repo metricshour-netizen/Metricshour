@@ -176,11 +176,15 @@ _SHARED_SYSTEM = (
     "Active voice only. Assert — never hedge. Do not use: could, may, might, would likely, "
     "appears to, seems to, is expected to, is likely to, is poised to. "
     "Zero filler. Begin writing immediately with the first data point. "
-    "BANNED WORDS (never use): navigates, robust, resilient, notable, significant, landscape, "
+    "BANNED WORDS AND PHRASES (never use any of these): "
+    "navigates, robust, resilient, notable, significant, landscape, "
     "remains, amid, complex, dynamic, headwinds, tailwinds, uncertainty, poised, well-positioned, "
     "strategic, synergies, leverage, ecosystem, stakeholders, underscores, highlights, reflects, "
     "showcases, demonstrates, continues to, going forward, in conclusion, furthermore, moreover, "
-    "it is worth noting, it should be noted, plays a key role, plays a crucial role, "
+    "additionally, importantly, as such, hence, thus, it is worth noting, it should be noted, "
+    "it is essential, it is crucial, one must consider, comprehensive, pivotal, paramount, "
+    "tapestry, unprecedented, delve, shed light, hallmark, paint a picture, "
+    "plays a key role, plays a crucial role, "
     "boasts, boasting, bolsters, bolstering, underpins, underpinning, spurs, spurring."
 )
 _DS_SYSTEM = _SHARED_SYSTEM

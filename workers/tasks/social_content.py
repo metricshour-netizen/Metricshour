@@ -273,6 +273,14 @@ _BANNED_PHRASES = [
     "strategic advantage", "competitive advantage", "competitive landscape",
     "moving forward", "in the near term", "in the short term",
     "adds to concerns", "raises concerns", "easing concerns",
+    # transition filler words
+    "furthermore", "moreover", "additionally", "importantly,",
+    "as such,", "hence,", "thus,", "therefore,",
+    "it is essential", "it is crucial", "one must consider",
+    "it should be noted", "comprehensive", "robust",
+    "ecosystem", "landscape", "pivotal", "paramount",
+    "tapestry", "synergy", "unprecedented", "delve",
+    "shed light", "paint a picture", "hallmark of",
 ]
 
 import re as _re
