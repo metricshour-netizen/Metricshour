@@ -7,7 +7,7 @@ Max 2 links per entity to avoid over-linking.
 import re
 
 BASE = "https://www.metricshour.com"
-MAX_PER_ENTITY = 2
+MAX_PER_ENTITY = 999  # link every occurrence
 
 STOCKS = {
     "AAPL":  ["Apple"],
