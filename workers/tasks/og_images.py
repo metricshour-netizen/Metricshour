@@ -1037,6 +1037,7 @@ def generate_section_images() -> dict:
         ("indices",     "Global Indices",       "S&P 500 · DAX · Nikkei · FTSE"),
         ("feed",        "Market Intelligence",  "Real-time Economic Events"),
         ("pricing",     "Pricing",              "Plans · Features · Compare"),
+        ("sectors",     "Market Sectors",       "Technology · Healthcare · Energy · Finance"),
     ]
     count = 0
     for key, title, subtitle in sections:

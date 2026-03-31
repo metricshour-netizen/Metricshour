@@ -68,6 +68,8 @@ function fmtCap(v: number | null): string {
   return `$${(v / 1e6).toFixed(0)}M`
 }
 
+const { public: { r2PublicUrl } } = useRuntimeConfig()
+
 useSeoMeta({
   title: 'Market Sectors — MetricsHour',
   description: 'Browse stocks by GICS sector. Technology, Healthcare, Financials, Energy, and more — with geographic revenue data from SEC EDGAR.',
@@ -75,6 +77,12 @@ useSeoMeta({
   ogDescription: 'Browse stocks by GICS sector with geographic revenue exposure from SEC EDGAR 10-K filings.',
   ogUrl: 'https://metricshour.com/sectors/',
   ogType: 'website',
+  ogImage: `${r2PublicUrl || 'https://cdn.metricshour.com'}/og/section/sectors.png`,
+  ogImageWidth: '1200',
+  ogImageHeight: '630',
+  ogImageType: 'image/png',
+  twitterCard: 'summary_large_image',
+  twitterImage: `${r2PublicUrl || 'https://cdn.metricshour.com'}/og/section/sectors.png`,
 })
 
 useHead({
