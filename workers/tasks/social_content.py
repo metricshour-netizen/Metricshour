@@ -884,7 +884,7 @@ Return ONLY valid JSON: {{"twitter": "...", "linkedin": "...", "facebook": "..."
         return None
     return {
         "type": "stock_exposure",
-        "entity": f"{ticker} ({name})",
+        "entity": name,
         "entity_code": ticker.lower(),
         "label": "Geographic Revenue",
         "value": f"{intl_pct:.0f}% international",
@@ -1427,7 +1427,7 @@ def _try_viral_option(db, option: str) -> dict | None:
         name = pick.name
         intl_pct = float(pick.intl_pct)
         code = ticker.lower()
-        entity = f"{ticker} ({name})"
+        entity = name
         val_str = f"{intl_pct:.0f}% international revenue"
         label = "Geographic Revenue"
         page_url = f"{SITE_URL}/stocks/{code}"
@@ -1458,7 +1458,7 @@ def _try_viral_option(db, option: str) -> dict | None:
         china_pct = float(row.revenue_pct)
         china_usd = row.revenue_usd
         code = ticker.lower()
-        entity = f"{ticker} ({name})"
+        entity = name
         val_str = f"{china_pct:.1f}% China revenue"
         if china_usd and china_usd >= 1e9:
             val_str += f" (${china_usd/1e9:.1f}B)"
@@ -1495,7 +1495,7 @@ def _try_viral_option(db, option: str) -> dict | None:
         chg = float(pick.change_pct)
         direction = "surged" if chg > 0 else "crashed"
         code = ticker.lower()
-        entity = f"{ticker} ({name})"
+        entity = name
         val_str = f"{chg:+.1f}% this week"
         label = "Weekly Move"
         page_url = f"{SITE_URL}/stocks/{code}"
@@ -1548,7 +1548,7 @@ def _try_viral_option(db, option: str) -> dict | None:
         pct_range = float(row.pct_of_range)
         extreme = "52-week HIGH" if pct_range >= 80 else "52-week LOW"
         code = ticker.lower()
-        entity = f"{ticker} ({name})"
+        entity = name
         val_str = f"${price:.2f} — near {extreme}"
         label = "52-Week Extreme"
         page_url = f"{SITE_URL}/commodities/{code}"
