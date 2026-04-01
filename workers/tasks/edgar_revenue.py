@@ -233,12 +233,14 @@ def _r_file_has_geo(text: str) -> bool:
 
 def _find_geo_r_file(cik: str, accn: str, max_r: int = 200) -> Optional[str]:
     """
-    Scan R1..R{max_r}.htm. Return the HTML of the first R-file that:
-    1. passes _r_file_has_geo (has a table with geo headers + numbers), AND
-    2. _parse_geo_table produces valid data from it.
-    This avoids false positives (e.g. R12 has geo headers but wrong structure).
+    Scan R1..R{max_r}.htm. Among all R-files that pass _r_file_has_geo AND
+    yield valid data from _parse_geo_table, return the one with the HIGHEST
+    total_revenue_usd.  This ensures we pick the net-sales geo table over
+    smaller inventory/assets tables that share the same geographic structure.
     """
     base_cik = str(int(cik))
+    best_html: Optional[str] = None
+    best_rev: float = 0
     for n in range(1, max_r + 1):
         url = SEC_R_FILE.format(cik=base_cik, accn=accn, n=n)
         r = _get(url, timeout=15)
@@ -246,10 +248,15 @@ def _find_geo_r_file(cik: str, accn: str, max_r: int = 200) -> Optional[str]:
             break
         if _r_file_has_geo(r.text):
             table = _find_geo_table(r.text)
-            if table and _parse_geo_table(table) is not None:
-                return r.text
+            if table:
+                parsed = _parse_geo_table(table)
+                if parsed is not None:
+                    rev = parsed.get("total_revenue_usd", 0)
+                    if rev > best_rev:
+                        best_rev = rev
+                        best_html = r.text
         time.sleep(0.1)
-    return None
+    return best_html
 
 
 # ── Revenue parser ────────────────────────────────────────────────────────────
@@ -440,9 +447,10 @@ def _parse_geo_table(table) -> Optional[dict]:
         resolved = _resolve_seg(row[0])
         if resolved is None:
             continue
-        # Leftmost numeric value = most-recent year
+        # Leftmost numeric value = most-recent year.
+        # \d{1,3},\d{3} captures $1B+ segments (e.g. "1,907" for CA or MX).
         for cell in row[1:]:
-            m = re.search(r"(\d{2,3},\d{3})", cell)
+            m = re.search(r"(\d{1,3},\d{3})", cell)
             if m:
                 v = int(m.group(1).replace(",", "")) * 1_000_000
                 if v > 50_000_000:
@@ -461,13 +469,13 @@ def _parse_geo_table(table) -> Optional[dict]:
         r"Canada|Mexico|Brazil|India|Australia|South\s+Korea|Korea|Singapore|"
         r"Taiwan|Hong\s+Kong|Netherlands|Switzerland|Italy|Spain|Sweden|"
         r"Israel|Saudi\s+Arabia|UAE|International|Rest\s+of\s+World)"
-        r"[\s\(\d\)]*(?:\$\s*)?(\d{2,3},\d{3})", re.IGNORECASE
+        r"[\s\(\d\)]*(?:\$\s*)?(\d{1,3},\d{3})", re.IGNORECASE
     )
     raw: dict[str, float] = {}
     for m in country_re.finditer(full_text):
         seg = m.group(1).strip()
         val = int(m.group(2).replace(",", "")) * 1_000_000
-        if val > 100_000_000:
+        if val > 50_000_000:
             norm = _normalize_seg(seg)
             if norm not in raw:
                 raw[norm] = float(val)
