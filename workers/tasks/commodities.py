@@ -17,7 +17,9 @@ from tasks.market_hours import is_commodity_market_open
 
 # Max single-run price change before a tick is rejected as bad source data.
 # yfinance futures occasionally return stale weekend prices or bad ticks.
-MAX_COMMODITY_SPIKE_PCT = 12.0
+# 20% allows real commodity shocks (coffee, oil, ags can move 10-15% on supply news)
+# while still catching clearly erroneous API ticks (50%+).
+MAX_COMMODITY_SPIKE_PCT = 20.0
 
 log = logging.getLogger(__name__)
 
