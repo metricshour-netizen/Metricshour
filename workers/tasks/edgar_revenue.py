@@ -300,7 +300,7 @@ def _find_geo_table(html: str):
     soup = BeautifulSoup(html, "html.parser")
     skip_norms = {"corporate", "total", "eliminations", "other", "worldwide"}
     candidates = []
-    for table in soup.find_all("table"):
+    for i, table in enumerate(soup.find_all("table")):
         table_text = table.get_text(" ", strip=True)
         # Skip non-revenue tables (long-lived assets, PP&E, balance sheet items)
         if re.search(r"long.?lived\s+assets|property.*plant.*equipment|total\s+assets"
@@ -317,12 +317,13 @@ def _find_geo_table(html: str):
                 num_count += 1
         if geo_count >= 2 and num_count >= 3:
             text_len = len(table_text)
-            # Sort key: most geo cells first (most granular breakdown), then shortest text
-            candidates.append((-geo_count, text_len, table))
+            # Sort key: most geo cells first, then shortest text, then original order (i)
+            # i as tiebreaker prevents TypeError comparing BeautifulSoup Tag objects
+            candidates.append((-geo_count, text_len, i, table))
     if not candidates:
         return None
     candidates.sort()          # most geo cells first, then shortest (most specific)
-    return candidates[0][2]
+    return candidates[0][3]
 
 
 def _parse_table_rows(table) -> list[list[str]]:
