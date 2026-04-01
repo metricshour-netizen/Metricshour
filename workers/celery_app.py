@@ -173,9 +173,9 @@ app.conf.update(
             'schedule': crontab(minute=0, hour='*/2'),   # :00 every 2h  (12x/day × 25 = 300 slots for 250 countries)
             'kwargs': {'insight_type': 'country'},
         },
-        'stock-insights-every-2h': {
+        'stock-insights-every-3h': {
             'task': 'tasks.summaries.run_insight_batch',
-            'schedule': crontab(minute=15, hour='*/2'),  # :15 every 2h  (12x/day × 45 = 540 slots for ~500 stocks)
+            'schedule': crontab(minute=15, hour='*/3'),  # :15 every 3h  (8x/day × 30 = 240 slots for ~500 stocks)
             'kwargs': {'insight_type': 'stock'},
         },
         'commodity-insights-every-4h': {
