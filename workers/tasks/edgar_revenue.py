@@ -317,11 +317,12 @@ def _find_geo_table(html: str):
                 num_count += 1
         if geo_count >= 2 and num_count >= 3:
             text_len = len(table_text)
-            candidates.append((text_len, table))
+            # Sort key: most geo cells first (most granular breakdown), then shortest text
+            candidates.append((-geo_count, text_len, table))
     if not candidates:
         return None
-    candidates.sort()          # shortest text first = most specific table
-    return candidates[0][1]
+    candidates.sort()          # most geo cells first, then shortest (most specific)
+    return candidates[0][2]
 
 
 def _parse_table_rows(table) -> list[list[str]]:
