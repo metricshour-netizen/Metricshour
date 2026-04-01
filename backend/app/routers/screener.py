@@ -229,7 +229,7 @@ def screener(
     }
 
     if cache_key:
-        cache_set(cache_key, out, ttl=CACHE_TTL)
+        cache_set(cache_key, out, ttl_seconds=CACHE_TTL)
     return out
 
 
@@ -244,5 +244,5 @@ def screener_sectors(db: Session = Depends(get_db)) -> list[str]:
         "SELECT DISTINCT sector FROM assets WHERE asset_type='stock' AND is_active=true AND sector IS NOT NULL ORDER BY sector"
     )).scalars().all()
     result = list(rows)
-    cache_set("screener:sectors:v1", result, ttl=3600)
+    cache_set("screener:sectors:v1", result, ttl_seconds=3600)
     return result
