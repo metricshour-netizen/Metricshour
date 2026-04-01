@@ -193,6 +193,21 @@ app.conf.update(
             'schedule': crontab(minute=0, hour='*/6'),   # :00 every 6h  (4x/day × 6 = 24 slots for 18 indices)
             'kwargs': {'insight_type': 'index'},
         },
+        'crypto-insights-every-4h': {
+            'task': 'tasks.summaries.run_insight_batch',
+            'schedule': crontab(minute=20, hour='*/4'),  # :20 every 4h  (6x/day × 5 = 30 slots for 10 coins)
+            'kwargs': {'insight_type': 'crypto'},
+        },
+        'etf-insights-every-6h': {
+            'task': 'tasks.summaries.run_insight_batch',
+            'schedule': crontab(minute=40, hour='*/6'),  # :40 every 6h  (4x/day × 5 = 20 slots for 21 ETFs)
+            'kwargs': {'insight_type': 'etf'},
+        },
+        'fx-insights-every-6h': {
+            'task': 'tasks.summaries.run_insight_batch',
+            'schedule': crontab(minute=50, hour='*/6'),  # :50 every 6h  (4x/day × 5 = 20 slots for 10 pairs)
+            'kwargs': {'insight_type': 'fx'},
+        },
         'spotlight-refresh-every-3hr': {
             'task': 'tasks.summaries.refresh_spotlight',
             'schedule': crontab(minute=0, hour='*/3'),

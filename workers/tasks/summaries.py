@@ -1699,6 +1699,180 @@ _INDEX_ANGLES = [
 ]
 
 
+def _crypto_insight_text(asset: Asset, db=None) -> str | None:
+    if not _has_ai_key():
+        return None
+
+    price_line = ""
+    if db:
+        prices = db.execute(
+            select(Price.close, Price.timestamp)
+            .where(Price.asset_id == asset.id, Price.interval == "1d")
+            .order_by(Price.timestamp.desc())
+            .limit(2)
+        ).all()
+        if prices:
+            latest = prices[0].close
+            prior = prices[1].close if len(prices) > 1 else None
+            pct = f" ({((latest - prior) / prior * 100):+.1f}% prev session)" if prior else ""
+            price_line = f"Latest close: ${latest:,.2f}{pct}\n"
+
+    cap_line = ""
+    if asset.market_cap_usd:
+        if asset.market_cap_usd >= 1e12:
+            cap_line = f"Market cap: ${asset.market_cap_usd/1e12:.1f}T\n"
+        elif asset.market_cap_usd >= 1e9:
+            cap_line = f"Market cap: ${asset.market_cap_usd/1e9:.0f}B\n"
+
+    _CRYPTO_ANGLES = [
+        (50, 65,
+         f"Open with the single biggest price driver for {asset.name} right now — "
+         f"name a specific on-chain metric, exchange flow, or whale wallet movement. "
+         f"State whether spot or derivatives are leading. "
+         f"Close with the next catalyst that could shift direction."),
+        (45, 60,
+         f"Open with how the current macro regime (Fed expectations, DXY, risk-on/off) "
+         f"is affecting {asset.name} price. Be concrete — name the specific indicator or event. "
+         f"Close with the macro release that matters most for this asset this week."),
+        (50, 65,
+         f"Open with a specific adoption signal, protocol update, regulatory development, "
+         f"or institutional flow affecting {asset.name}. Name the entity, country, or protocol. "
+         f"Close with the key support or resistance level traders are watching."),
+    ]
+    angle = _daily_angle(asset.symbol, len(_CRYPTO_ANGLES))
+    min_w, max_w, focus = _CRYPTO_ANGLES[angle]
+
+    prompt = (
+        f"Daily crypto brief — {asset.name} ({asset.symbol}) — {min_w}–{max_w} words. "
+        f"Audience: crypto traders who need sharp signals, not background.\n\n"
+        f"{asset.symbol} | Cryptocurrency\n"
+        f"{price_line}{cap_line}"
+        f"Date: {date.today().strftime('%B %d, %Y')}\n\n"
+        f"{focus}\n\n"
+        f"Rules: opening sentence names the price or a specific on-chain number. "
+        f"Every assertion is declarative — no 'could', 'may', 'might'. "
+        f"No clichés ('navigating', 'landscape', 'headwinds'). "
+        f"Do not mention MetricsHour. Plain text only, no markdown."
+    )
+    return _call_ai(prompt, min_words=min_w, max_words=max_w)
+
+
+def _etf_insight_text(asset: Asset, db=None) -> str | None:
+    if not _has_ai_key():
+        return None
+
+    price_line = ""
+    if db:
+        prices = db.execute(
+            select(Price.close, Price.timestamp)
+            .where(Price.asset_id == asset.id, Price.interval == "1d")
+            .order_by(Price.timestamp.desc())
+            .limit(2)
+        ).all()
+        if prices:
+            latest = prices[0].close
+            prior = prices[1].close if len(prices) > 1 else None
+            pct = f" ({((latest - prior) / prior * 100):+.1f}% prev session)" if prior else ""
+            price_line = f"Latest close: ${latest:,.2f}{pct}\n"
+
+    aum_line = ""
+    if asset.market_cap_usd:
+        if asset.market_cap_usd >= 1e12:
+            aum_line = f"AUM: ~${asset.market_cap_usd/1e12:.1f}T\n"
+        elif asset.market_cap_usd >= 1e9:
+            aum_line = f"AUM: ~${asset.market_cap_usd/1e9:.0f}B\n"
+
+    category = asset.sector or "diversified"
+
+    _ETF_ANGLES = [
+        (50, 65,
+         f"Open with how the top holdings or dominant sector in {asset.name} ({asset.symbol}) "
+         f"are performing. Name a specific stock, sector rotation, or earnings result driving the move. "
+         f"Close with what could push inflows or outflows this week."),
+        (45, 60,
+         f"Open with the macro driver that matters most for {asset.name} right now — "
+         f"interest rates, inflation, dollar, or economic cycle. "
+         f"Name the specific data release or Fed event. "
+         f"Close with where the ETF stands relative to its 52-week range."),
+        (50, 65,
+         f"Open with how {asset.name} ({asset.symbol}) is performing relative to its benchmark "
+         f"or closest peer ETF. Name a specific spread or tracking difference. "
+         f"Close with the key level where passive rebalancing flows would kick in."),
+    ]
+    angle = _daily_angle(asset.symbol, len(_ETF_ANGLES))
+    min_w, max_w, focus = _ETF_ANGLES[angle]
+
+    prompt = (
+        f"Daily ETF brief — {asset.name} ({asset.symbol}) — {min_w}–{max_w} words. "
+        f"Audience: fund investors and active traders who track {category.lower()} exposure.\n\n"
+        f"{asset.symbol} | {category} ETF | {asset.exchange or 'NYSE/NASDAQ'}\n"
+        f"{price_line}{aum_line}"
+        f"Date: {date.today().strftime('%B %d, %Y')}\n\n"
+        f"{focus}\n\n"
+        f"Rules: opening sentence names the current price or a specific percentage move. "
+        f"Every assertion is declarative — no 'could', 'may', 'might'. "
+        f"No clichés ('navigating', 'landscape', 'headwinds'). "
+        f"Do not mention MetricsHour. Plain text only, no markdown."
+    )
+    return _call_ai(prompt, min_words=min_w, max_words=max_w)
+
+
+def _fx_insight_text(asset: Asset, db=None) -> str | None:
+    if not _has_ai_key():
+        return None
+
+    price_line = ""
+    if db:
+        prices = db.execute(
+            select(Price.close, Price.timestamp)
+            .where(Price.asset_id == asset.id, Price.interval == "1d")
+            .order_by(Price.timestamp.desc())
+            .limit(2)
+        ).all()
+        if prices:
+            latest = prices[0].close
+            prior = prices[1].close if len(prices) > 1 else None
+            pct = f" ({((latest - prior) / prior * 100):+.4f}% prev session)" if prior else ""
+            price_line = f"Latest rate: {latest:.4f}{pct}\n"
+
+    base = asset.symbol[:3]
+    quote = asset.symbol[3:6]
+
+    _FX_ANGLES = [
+        (50, 65,
+         f"Open with the central bank divergence driving {asset.symbol} right now — "
+         f"name the specific policy decision, rate differential, or guidance language. "
+         f"Name the next central bank meeting or inflation print that could reprice this pair. "
+         f"Close with the key support or resistance level."),
+        (45, 60,
+         f"Open with the macro data or risk sentiment driver moving {asset.symbol} today — "
+         f"name the PMI, CPI, payrolls number, or geopolitical event. "
+         f"State whether {base} or {quote} is the stronger currency right now and why. "
+         f"Close with the next scheduled release that matters most."),
+        (50, 65,
+         f"Open with a specific technical level or trend in {asset.symbol} — "
+         f"name the support, resistance, or moving average in play. "
+         f"Connect it to a fundamental driver (rate differential, trade balance, positioning). "
+         f"Close with the scenario that would break the current range."),
+    ]
+    angle = _daily_angle(asset.symbol, len(_FX_ANGLES))
+    min_w, max_w, focus = _FX_ANGLES[angle]
+
+    prompt = (
+        f"Daily FX brief — {asset.name} ({asset.symbol}) — {min_w}–{max_w} words. "
+        f"Audience: forex traders who need rate signals and macro context.\n\n"
+        f"{asset.symbol} | {base}/{quote} | FOREX\n"
+        f"{price_line}"
+        f"Date: {date.today().strftime('%B %d, %Y')}\n\n"
+        f"{focus}\n\n"
+        f"Rules: opening sentence names the current rate or a specific pip/percentage move. "
+        f"Every assertion is declarative — no 'could', 'may', 'might'. "
+        f"No clichés ('navigating', 'landscape', 'headwinds'). "
+        f"Do not mention MetricsHour. Plain text only, no markdown."
+    )
+    return _call_ai(prompt, min_words=min_w, max_words=max_w)
+
+
 def _index_insight_text(asset: Asset, db=None) -> str | None:
     if not _has_ai_key():
         return None
@@ -1908,7 +2082,7 @@ def generate_daily_insights(self):
 
 
 # Batch sizes per run — tuned so all entities cycle once per day across multiple runs
-_INSIGHT_BATCH = {"country": 25, "stock": 30, "commodity": 5, "trade": 25, "index": 6}
+_INSIGHT_BATCH = {"country": 25, "stock": 30, "commodity": 5, "trade": 25, "index": 6, "crypto": 5, "etf": 5, "fx": 5}
 
 
 @app.task(name="tasks.summaries.run_insight_batch", bind=True, max_retries=2)
@@ -1965,6 +2139,8 @@ def run_insight_batch(self, insight_type: str):
                         all_codes.append(code)
         elif insight_type == "index":
             all_codes = [row[0] for row in db.execute(select(Asset.symbol).where(Asset.asset_type == "index")).all()]
+        elif insight_type in ("crypto", "etf", "fx"):
+            all_codes = [row[0] for row in db.execute(select(Asset.symbol).where(Asset.asset_type == insight_type)).all()]
         else:
             log.error("run_insight_batch: unknown type %s", insight_type)
             return {"error": "unknown_type"}
@@ -2124,6 +2300,75 @@ def run_insight_batch(self, insight_type: str):
                             entity_flag=meta.get("emoji", "📈"),
                             related_asset_ids=[idx.id],
                             importance_score=_insight_importance("index", idx),
+                        )
+                        count += 1
+
+                elif insight_type == "crypto":
+                    a = db.execute(select(Asset).where(Asset.symbol == entity_code, Asset.asset_type == "crypto")).scalars().first()
+                    if not a:
+                        continue
+                    insight = _crypto_insight_text(a, db)
+                    if insight and _insight_is_duplicate(insight, existing_texts.get(entity_code)):
+                        log.debug("Skipping %s — insight too similar to previous", entity_code)
+                        continue
+                    if insight:
+                        _upsert_summary(db, summary_type, entity_code, insight)
+                        _insert_insight(db, "crypto", entity_code, insight)
+                        _upsert_feed_insight(db, now,
+                            title=f"🪙 {a.name} ({entity_code}) — Daily Crypto Insight",
+                            body=insight,
+                            source_url=f"/crypto/{entity_code.lower()}",
+                            entity_type="crypto",
+                            entity_name=a.name,
+                            entity_flag="🪙",
+                            related_asset_ids=[a.id],
+                            importance_score=_insight_importance("index", a),
+                        )
+                        count += 1
+
+                elif insight_type == "etf":
+                    a = db.execute(select(Asset).where(Asset.symbol == entity_code, Asset.asset_type == "etf")).scalars().first()
+                    if not a:
+                        continue
+                    insight = _etf_insight_text(a, db)
+                    if insight and _insight_is_duplicate(insight, existing_texts.get(entity_code)):
+                        log.debug("Skipping %s — insight too similar to previous", entity_code)
+                        continue
+                    if insight:
+                        _upsert_summary(db, summary_type, entity_code, insight)
+                        _insert_insight(db, "etf", entity_code, insight)
+                        _upsert_feed_insight(db, now,
+                            title=f"📊 {a.name} ({entity_code}) — Daily ETF Insight",
+                            body=insight,
+                            source_url=f"/etfs/{entity_code.lower()}",
+                            entity_type="etf",
+                            entity_name=a.name,
+                            entity_flag="📊",
+                            related_asset_ids=[a.id],
+                            importance_score=_insight_importance("index", a),
+                        )
+                        count += 1
+
+                elif insight_type == "fx":
+                    a = db.execute(select(Asset).where(Asset.symbol == entity_code, Asset.asset_type == "fx")).scalars().first()
+                    if not a:
+                        continue
+                    insight = _fx_insight_text(a, db)
+                    if insight and _insight_is_duplicate(insight, existing_texts.get(entity_code)):
+                        log.debug("Skipping %s — insight too similar to previous", entity_code)
+                        continue
+                    if insight:
+                        _upsert_summary(db, summary_type, entity_code, insight)
+                        _insert_insight(db, "fx", entity_code, insight)
+                        _upsert_feed_insight(db, now,
+                            title=f"💱 {a.name} ({entity_code}) — Daily FX Insight",
+                            body=insight,
+                            source_url=f"/fx/{entity_code.lower()}",
+                            entity_type="fx",
+                            entity_name=a.name,
+                            entity_flag="💱",
+                            related_asset_ids=[a.id],
+                            importance_score=_insight_importance("index", a),
                         )
                         count += 1
 
