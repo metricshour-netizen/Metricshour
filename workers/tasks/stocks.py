@@ -269,12 +269,30 @@ def fetch_stock_prices(self):
         if missed:
             yf_prices = _fetch_yfinance(missed)
 
-        prices: dict[str, dict | tuple | float] = {**ms_prices, **yf_prices}
+        # Secondary Marketstack fallback: covers symbols yfinance consistently
+        # cannot fetch (pending acquisitions, odd tickers, data gaps).
+        # Throttled to once per 4h via Redis to avoid burning API quota.
+        ms_fallback: dict[str, dict] = {}
+        yf_empty = [s for s in missed if s not in yf_prices]
+        if yf_empty and not _marketstack_disabled and MARKETSTACK_KEY:
+            _fallback_key = f'marketstack:yf_fallback:{today_str}:{int(now.strftime("%H")) // 4 * 4:02d}'
+            try:
+                from app.storage import get_redis
+                r = get_redis()
+                if not r.exists(_fallback_key):
+                    ms_fallback = _fetch_marketstack(yf_empty)
+                    if ms_fallback:
+                        r.setex(_fallback_key, 4 * 3600, '1')
+                        log.info('Marketstack fallback: fetched %d yfinance-resistant symbols', len(ms_fallback))
+            except Exception:
+                ms_fallback = _fetch_marketstack(yf_empty)
+
+        prices: dict[str, dict | tuple | float] = {**ms_prices, **ms_fallback, **yf_prices}
         count = _upsert_prices(db, symbol_to_asset, prices, now)
         db.commit()
         log.info(
-            'Stocks: upserted %d/%d prices (marketstack=%d, yfinance=%d)',
-            count, len(symbols), len(ms_prices), len(yf_prices),
+            'Stocks: upserted %d/%d prices (marketstack=%d, yfinance=%d, ms_fallback=%d)',
+            count, len(symbols), len(ms_prices), len(yf_prices), len(ms_fallback),
         )
 
     except Exception as exc:
