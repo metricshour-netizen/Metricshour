@@ -426,6 +426,33 @@ def _parse_geo_table(table) -> Optional[dict]:
             if pairs:
                 return _build_result(pairs, total_rev, fiscal_year)
 
+    # ── Strategy 3: row-major table (each segment is a row label) ───────────
+    # For transposed tables: [North America | $X | $Y | $Z]
+    # Strategy 1 requires segments in column headers; this handles the inverse.
+    seg_pairs: list[tuple] = []
+    for row in rows:
+        if len(row) < 2:
+            continue
+        norm = _normalize_seg(row[0])
+        if any(s in norm for s in {"corporate", "total", "eliminations",
+                                   "other", "worldwide", "total net sales"}):
+            continue
+        resolved = _resolve_seg(row[0])
+        if resolved is None:
+            continue
+        # Leftmost numeric value = most-recent year
+        for cell in row[1:]:
+            m = re.search(r"(\d{2,3},\d{3})", cell)
+            if m:
+                v = int(m.group(1).replace(",", "")) * 1_000_000
+                if v > 50_000_000:
+                    seg_pairs.append((resolved, float(v)))
+                    break
+    if seg_pairs:
+        result = _build_result(seg_pairs, total_rev, fiscal_year)
+        if result:
+            return result
+
     # ── Strategy 2: country-level regex scan ────────────────────────────────
     country_re = re.compile(
         r"(U\.S\.|United\s+States|China|Japan|Germany|France|United\s+Kingdom|"
