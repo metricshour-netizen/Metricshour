@@ -78,10 +78,10 @@ SEG_MAP: dict[str, str] = {
     "international":           "INTL",
     "other international":     "INTL",
     "other int'l":             "INTL",
-    "all other":               "INTL",
-    "other countries":         "INTL",
     "other":                   None,
+    "all other":               None,
     "corporate":               None,
+    "other countries":         None,
     "worldwide":               None,
 
     # Individual countries
