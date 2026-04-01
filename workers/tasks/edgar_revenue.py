@@ -243,7 +243,7 @@ def _find_geo_r_file(cik: str, accn: str, max_r: int = 200) -> Optional[str]:
     """
     base_cik = str(int(cik))
     best_html: Optional[str] = None
-    best_rev: float = 0
+    best_score: tuple = (0, 0)   # (num_segments, total_revenue_usd)
     for n in range(1, max_r + 1):
         url = SEC_R_FILE.format(cik=base_cik, accn=accn, n=n)
         r = _get(url, timeout=15)
@@ -254,9 +254,10 @@ def _find_geo_r_file(cik: str, accn: str, max_r: int = 200) -> Optional[str]:
             if table:
                 parsed = _parse_geo_table(table)
                 if parsed is not None:
-                    rev = parsed.get("total_revenue_usd", 0)
-                    if rev > best_rev:
-                        best_rev = rev
+                    score = (len(parsed.get("segments", [])),
+                             parsed.get("total_revenue_usd", 0))
+                    if score > best_score:
+                        best_score = score
                         best_html = r.text
         time.sleep(0.1)
     return best_html
