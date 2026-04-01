@@ -448,7 +448,9 @@ def _parse_geo_table(table) -> Optional[dict]:
                 if v > 50_000_000:
                     seg_pairs.append((resolved, float(v)))
                     break
-    if seg_pairs:
+    # Require >= 2 to avoid stopping _find_geo_r_file at a shallow table
+    # (e.g. a single "United States" row in a footnote) before the real geo file.
+    if len(seg_pairs) >= 2:
         result = _build_result(seg_pairs, total_rev, fiscal_year)
         if result:
             return result
