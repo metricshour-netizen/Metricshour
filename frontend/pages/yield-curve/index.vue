@@ -69,57 +69,20 @@
         </div>
       </div>
 
-      <!-- SVG yield curve chart -->
+      <!-- Yield curve chart -->
       <div class="bg-[#0d1520] border border-[#1f2937] rounded-xl p-6 mb-8">
         <h2 class="text-sm font-semibold text-gray-400 mb-4 uppercase tracking-widest">Current Yield Curve</h2>
-        <div v-if="chartPoints.length >= 2" class="w-full overflow-x-auto">
-          <svg :viewBox="`0 0 ${SVG_W} ${SVG_H}`" class="w-full" style="min-height:180px;max-height:260px">
-            <!-- Grid lines -->
-            <line v-for="y in gridYs" :key="y"
-              :x1="MARGIN_L" :y1="toSvgY(y)" :x2="SVG_W - MARGIN_R" :y2="toSvgY(y)"
-              stroke="#1f2937" stroke-width="1"/>
-            <!-- Y labels -->
-            <text v-for="y in gridYs" :key="'yl'+y"
-              :x="MARGIN_L - 8" :y="toSvgY(y) + 4"
-              text-anchor="end" fill="#4b5563" font-size="11">{{ y.toFixed(1) }}%</text>
-            <!-- Curve fill -->
-            <path :d="fillPath" fill="url(#blueGrad)" opacity="0.25"/>
-            <!-- Curve line -->
-            <polyline :points="svgPoints" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linejoin="round"/>
-            <!-- Dots -->
-            <circle v-for="(pt, i) in chartPoints" :key="i"
-              :cx="pt.x" :cy="pt.y" r="5" fill="#3b82f6" stroke="#0d1520" stroke-width="2"/>
-            <!-- X labels -->
-            <text v-for="(pt, i) in chartPoints" :key="'xl'+i"
-              :x="pt.x" :y="SVG_H - 8"
-              text-anchor="middle" fill="#6b7280" font-size="12">{{ pt.label }}</text>
-            <!-- Gradient def -->
-            <defs>
-              <linearGradient id="blueGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="#3b82f6"/>
-                <stop offset="100%" stop-color="#3b82f6" stop-opacity="0"/>
-              </linearGradient>
-            </defs>
-          </svg>
-        </div>
+        <EChartLine v-if="yieldCurveOption" :option="yieldCurveOption" height="220px" aria-label="US Treasury yield curve" />
         <div v-else class="py-10 text-center text-gray-600 text-sm">Chart data loading...</div>
       </div>
 
-      <!-- 10Y historical sparkline -->
+      <!-- 10Y historical chart -->
       <div v-if="data.history.DGS10?.length" class="bg-[#0d1520] border border-[#1f2937] rounded-xl p-6 mb-8">
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-widest">10-Year Treasury — 2 Year History</h2>
           <div class="text-xs text-gray-600">{{ data.history.DGS10.length }} observations</div>
         </div>
-        <svg :viewBox="`0 0 800 80`" class="w-full" style="height:80px">
-          <polyline
-            :points="sparklinePoints(data.history.DGS10)"
-            fill="none" stroke="#3b82f6" stroke-width="1.5"/>
-        </svg>
-        <div class="flex justify-between text-[10px] text-gray-600 mt-1">
-          <span>{{ data.history.DGS10[0]?.date }}</span>
-          <span>{{ data.history.DGS10[data.history.DGS10.length - 1]?.date }}</span>
-        </div>
+        <EChartLine :option="dgs10HistoryOption" height="100px" aria-label="10-year Treasury yield 2-year history" />
       </div>
 
       <!-- Series comparison table -->
@@ -168,16 +131,6 @@ const { data, pending } = await useAsyncData('yield-curve',
   () => $fetch<any>('/api/rates/yield-curve?days=730').catch(() => null),
 )
 
-const SVG_W = 600
-const SVG_H = 200
-const MARGIN_L = 44
-const MARGIN_R = 16
-const MARGIN_T = 10
-const MARGIN_B = 28
-
-// Yield curve maturities in order
-const MATURITIES = ['DGS3MO', 'DGS2', 'DGS5', 'DGS10', 'DGS30']
-
 const yieldValues = computed<Record<string, number | null>>(() => {
   if (!data.value?.current) return {}
   return Object.fromEntries(data.value.current.map((c: any) => [c.series_id, c.value]))
@@ -194,72 +147,72 @@ const spread = computed(() => {
 const isInverted = computed(() => spread.value != null && spread.value < 0)
 const dff = computed(() => null) // DFF not in yield curve endpoint — shown on /rates/
 
-// SVG chart points
-const chartPoints = computed(() => {
-  if (!data.value?.current) return []
+const yieldCurveOption = computed(() => {
+  if (!data.value?.current) return null
   const items = data.value.current.filter((c: any) => c.value != null)
-  if (items.length < 2) return []
-  const vals = items.map((c: any) => c.value as number)
-  const minV = Math.min(...vals) - 0.3
-  const maxV = Math.max(...vals) + 0.3
-  const innerW = SVG_W - MARGIN_L - MARGIN_R
-  const innerH = SVG_H - MARGIN_T - MARGIN_B
-  return items.map((c: any, i: number) => ({
-    x: MARGIN_L + (i / (items.length - 1)) * innerW,
-    y: MARGIN_T + (1 - (c.value - minV) / (maxV - minV)) * innerH,
-    label: data.value.labels[c.series_id] ?? c.series_id,
-    value: c.value,
-  }))
+  if (items.length < 2) return null
+  const labels = items.map((c: any) => data.value.labels?.[c.series_id] ?? c.series_id)
+  const values = items.map((c: any) => c.value)
+  return {
+    backgroundColor: 'transparent',
+    grid: { top: 8, right: 12, bottom: 28, left: 48, containLabel: false },
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: '#0d1117',
+      borderColor: '#1f2937',
+      textStyle: { color: '#e5e7eb', fontSize: 12 },
+      formatter: (params: any[]) => {
+        const p = params[0]
+        return `<span style="color:#6b7280;font-size:11px">${p.axisValue}</span><br/><span style="color:#93c5fd;font-weight:600">${(p.value as number).toFixed(2)}%</span>`
+      },
+    },
+    xAxis: {
+      type: 'category',
+      data: labels,
+      axisLine: { lineStyle: { color: '#1f2937' } },
+      axisTick: { show: false },
+      axisLabel: { color: '#6b7280', fontSize: 12 },
+    },
+    yAxis: {
+      type: 'value',
+      scale: true,
+      splitLine: { lineStyle: { color: '#1a2235', type: 'dashed' } },
+      axisLabel: { color: '#4b5563', fontSize: 10, formatter: (v: number) => `${v.toFixed(1)}%` },
+    },
+    series: [{
+      type: 'line',
+      data: values,
+      smooth: false,
+      symbolSize: 8,
+      symbol: 'circle',
+      itemStyle: { color: '#3b82f6', borderColor: '#0d1520', borderWidth: 2 },
+      lineStyle: { color: '#3b82f6', width: 2.5 },
+      areaStyle: {
+        color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+          colorStops: [{ offset: 0, color: 'rgba(59,130,246,0.25)' }, { offset: 1, color: 'rgba(59,130,246,0)' }] },
+      },
+    }],
+  }
 })
 
-const svgPoints = computed(() =>
-  chartPoints.value.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')
-)
-
-const fillPath = computed(() => {
-  if (!chartPoints.value.length) return ''
-  const pts = chartPoints.value
-  const bottom = SVG_H - MARGIN_B
-  const first = pts[0], last = pts[pts.length - 1]
-  const line = pts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')
-  return `M ${first.x},${bottom} L ${line.replace(/\d+\.\d+,\d+\.\d+/g, (m) => m)} L ${last.x},${bottom} Z`
-    .replace('L L', 'L')
+const dgs10HistoryOption = computed(() => {
+  const series: { date: string; value: number }[] = data.value?.history?.DGS10 ?? []
+  if (!series.length) return {}
+  return {
+    backgroundColor: 'transparent',
+    grid: { top: 4, right: 4, bottom: 4, left: 4 },
+    tooltip: { show: false },
+    xAxis: { type: 'category', data: series.map(r => r.date), show: false },
+    yAxis: { type: 'value', scale: true, show: false },
+    series: [{
+      type: 'line',
+      data: series.map(r => r.value),
+      smooth: true,
+      symbol: 'none',
+      lineStyle: { color: '#3b82f6', width: 1.5 },
+    }],
+  }
 })
-
-// Grid Y values
-const gridYs = computed(() => {
-  if (!data.value?.current) return []
-  const vals = data.value.current.filter((c: any) => c.value != null).map((c: any) => c.value as number)
-  if (!vals.length) return []
-  const lo = Math.floor(Math.min(...vals) - 0.5)
-  const hi = Math.ceil(Math.max(...vals) + 0.5)
-  const out = []
-  for (let y = lo; y <= hi; y += 0.5) out.push(y)
-  return out
-})
-
-function toSvgY(v: number): number {
-  if (!data.value?.current) return 0
-  const vals = data.value.current.filter((c: any) => c.value != null).map((c: any) => c.value as number)
-  const minV = Math.min(...vals) - 0.3
-  const maxV = Math.max(...vals) + 0.3
-  const innerH = SVG_H - MARGIN_T - MARGIN_B
-  return MARGIN_T + (1 - (v - minV) / (maxV - minV)) * innerH
-}
-
-function sparklinePoints(series: { date: string; value: number }[]): string {
-  if (!series.length) return ''
-  const vals = series.map(r => r.value)
-  const minV = Math.min(...vals)
-  const maxV = Math.max(...vals)
-  const range = maxV - minV || 1
-  const W = 800, H = 80, PAD = 4
-  return series.map((r, i) => {
-    const x = (i / (series.length - 1)) * W
-    const y = PAD + (1 - (r.value - minV) / range) * (H - PAD * 2)
-    return `${x.toFixed(1)},${y.toFixed(1)}`
-  }).join(' ')
-}
 
 function getHistoricalValue(seriesId: string, daysAgo: number): string {
   const hist = data.value?.history?.[seriesId]

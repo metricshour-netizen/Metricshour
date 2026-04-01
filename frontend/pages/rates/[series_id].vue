@@ -56,30 +56,7 @@
           </div>
         </div>
 
-        <div v-if="data.data?.length >= 2" class="w-full overflow-x-auto">
-          <svg :viewBox="`0 0 800 160`" class="w-full" style="height:160px">
-            <!-- Grid -->
-            <line v-for="y in svgGridYs" :key="y"
-              :x1="48" :y1="toY(y, svgMinV, svgMaxV, 10, 130)"
-              :x2="792" :y2="toY(y, svgMinV, svgMaxV, 10, 130)"
-              stroke="#1f2937" stroke-width="1"/>
-            <text v-for="y in svgGridYs" :key="'yl'+y"
-              :x="44" :y="toY(y, svgMinV, svgMaxV, 10, 130) + 4"
-              text-anchor="end" fill="#4b5563" font-size="10">
-              {{ data.unit === '$B' ? '$'+fmtB(y) : y.toFixed(1) }}
-            </text>
-            <!-- Area fill -->
-            <path :d="svgAreaPath" fill="url(#blueGrad2)" opacity="0.2"/>
-            <!-- Line -->
-            <polyline :points="svgLinePoints" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linejoin="round"/>
-            <defs>
-              <linearGradient id="blueGrad2" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="#3b82f6"/>
-                <stop offset="100%" stop-color="#3b82f6" stop-opacity="0"/>
-              </linearGradient>
-            </defs>
-          </svg>
-        </div>
+        <EChartLine v-if="data.data?.length >= 2" :option="ratesChartOption" height="200px" :aria-label="`${data.label} chart`" />
         <div v-else class="py-8 text-center text-gray-600 text-sm">Not enough data for chart</div>
       </div>
 
@@ -159,58 +136,55 @@ const change1y = computed(() => {
   return +(latest - past.value).toFixed(3)
 })
 
-// SVG chart helpers
-const SVG_PAD_L = 48, SVG_PAD_R = 8, SVG_PAD_T = 10, SVG_PAD_B = 30
-const SVG_W = 800, SVG_H = 160
-
-const svgMinV = computed(() => {
-  const vals = (data.value?.data ?? []).map((r: any) => r.value as number)
-  return Math.min(...vals) - 0.2
-})
-const svgMaxV = computed(() => {
-  const vals = (data.value?.data ?? []).map((r: any) => r.value as number)
-  return Math.max(...vals) + 0.2
-})
-
-const svgGridYs = computed(() => {
-  const lo = Math.floor(svgMinV.value)
-  const hi = Math.ceil(svgMaxV.value)
-  const out = []
-  for (let y = lo; y <= hi; y += 0.5) out.push(y)
-  return out.slice(0, 8)
-})
-
-function toY(v: number, minV: number, maxV: number, padT: number, height: number): number {
-  const range = maxV - minV || 1
-  return padT + (1 - (v - minV) / range) * height
-}
-
-const svgLinePoints = computed(() => {
-  const rows = data.value?.data ?? []
-  if (!rows.length) return ''
-  const W = SVG_W - SVG_PAD_L - SVG_PAD_R
-  const H = SVG_H - SVG_PAD_T - SVG_PAD_B
-  return rows.map((r: any, i: number) => {
-    const x = SVG_PAD_L + (i / (rows.length - 1)) * W
-    const y = toY(r.value, svgMinV.value, svgMaxV.value, SVG_PAD_T, H)
-    return `${x.toFixed(1)},${y.toFixed(1)}`
-  }).join(' ')
-})
-
-const svgAreaPath = computed(() => {
-  const rows = data.value?.data ?? []
-  if (rows.length < 2) return ''
-  const W = SVG_W - SVG_PAD_L - SVG_PAD_R
-  const H = SVG_H - SVG_PAD_T - SVG_PAD_B
-  const bottom = SVG_PAD_T + H
-  const pts = rows.map((r: any, i: number) => {
-    const x = SVG_PAD_L + (i / (rows.length - 1)) * W
-    const y = toY(r.value, svgMinV.value, svgMaxV.value, SVG_PAD_T, H)
-    return `${x.toFixed(1)},${y.toFixed(1)}`
-  })
-  const firstX = SVG_PAD_L
-  const lastX = SVG_W - SVG_PAD_R
-  return `M ${firstX},${bottom} L ${pts.join(' L ')} L ${lastX},${bottom} Z`
+const ratesChartOption = computed(() => {
+  const rows: any[] = data.value?.data ?? []
+  const unit: string = data.value?.unit ?? '%'
+  const dates = rows.map((r: any) => r.date)
+  const values = rows.map((r: any) => r.value)
+  const yFmt = (v: number) => {
+    if (unit === '$B') return v >= 1000 ? `$${(v / 1000).toFixed(0)}T` : `$${v.toFixed(0)}B`
+    if (unit === 'K') return `${(v / 1000).toFixed(0)}K`
+    if (unit === 'index') return v.toFixed(1)
+    return `${v.toFixed(2)}%`
+  }
+  return {
+    backgroundColor: 'transparent',
+    grid: { top: 8, right: 12, bottom: 28, left: 56, containLabel: false },
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: '#0d1117',
+      borderColor: '#1f2937',
+      textStyle: { color: '#e5e7eb', fontSize: 12 },
+      formatter: (params: any[]) => {
+        const p = params[0]
+        return `<span style="color:#6b7280;font-size:11px">${p.axisValue}</span><br/><span style="color:#93c5fd;font-weight:600">${yFmt(p.value)}</span>`
+      },
+    },
+    xAxis: {
+      type: 'category',
+      data: dates,
+      axisLine: { lineStyle: { color: '#1f2937' } },
+      axisTick: { show: false },
+      axisLabel: { color: '#4b5563', fontSize: 10, interval: 'auto' },
+    },
+    yAxis: {
+      type: 'value',
+      scale: true,
+      splitLine: { lineStyle: { color: '#1a2235', type: 'dashed' } },
+      axisLabel: { color: '#4b5563', fontSize: 10, formatter: yFmt },
+    },
+    series: [{
+      type: 'line',
+      data: values,
+      smooth: true,
+      symbol: 'none',
+      lineStyle: { color: '#3b82f6', width: 2 },
+      areaStyle: {
+        color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+          colorStops: [{ offset: 0, color: 'rgba(59,130,246,0.25)' }, { offset: 1, color: 'rgba(59,130,246,0)' }] },
+      },
+    }],
+  }
 })
 
 function fmtValue(v: number | null | undefined, unit: string): string {
@@ -222,11 +196,6 @@ function fmtValue(v: number | null | undefined, unit: string): string {
   if (unit === 'K') return `${(v / 1000).toFixed(0)}K`
   if (unit === 'index') return v.toFixed(1)
   return `${v.toFixed(2)}%`
-}
-
-function fmtB(v: number): string {
-  if (Math.abs(v) >= 1000) return `${(v / 1000).toFixed(0)}T`
-  return `${v.toFixed(0)}B`
 }
 
 function fmtDate(iso: string): string {
