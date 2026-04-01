@@ -234,14 +234,20 @@ def _r_file_has_geo(text: str) -> bool:
     return False
 
 
+_REVENUE_RE = re.compile(
+    r'net\s+(operating\s+)?revenues?|net\s+sales?|total\s+revenues?', re.I
+)
+
+
 def _find_geo_r_file(cik: str, accn: str, max_r: int = 200) -> Optional[str]:
     """
-    Scan R1..R{max_r}.htm. Among all R-files that pass _r_file_has_geo AND
-    yield valid data from _parse_geo_table, return the one with the HIGHEST
-    total_revenue_usd.  This ensures we pick the net-sales geo table over
-    smaller inventory/assets tables that share the same geographic structure.
+    Scan R1..R{max_r}.htm.  Two passes:
+    1. Return the first R-file that has geo segments AND revenue keywords
+       (net revenues / net sales) — avoids earnings/inventory geo tables.
+    2. If no revenue-keyword file found, return the first valid geo file.
     """
     base_cik = str(int(cik))
+    candidates: list[str] = []          # all valid geo R-file htmls
     for n in range(1, max_r + 1):
         url = SEC_R_FILE.format(cik=base_cik, accn=accn, n=n)
         r = _get(url, timeout=15)
@@ -250,9 +256,14 @@ def _find_geo_r_file(cik: str, accn: str, max_r: int = 200) -> Optional[str]:
         if _r_file_has_geo(r.text):
             table = _find_geo_table(r.text)
             if table and _parse_geo_table(table) is not None:
-                return r.text
+                candidates.append(r.text)
         time.sleep(0.1)
-    return None
+
+    # Prefer a file that explicitly mentions net revenues / net sales
+    for html in candidates:
+        if _REVENUE_RE.search(html):
+            return html
+    return candidates[0] if candidates else None
 
 
 # ── Revenue parser ────────────────────────────────────────────────────────────
