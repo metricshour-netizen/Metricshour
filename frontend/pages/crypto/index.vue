@@ -85,7 +85,7 @@
         No cryptocurrencies match "{{ search }}"
       </div>
 
-      <p class="text-xs text-gray-700 mt-6">Source: CoinGecko · Prices update every 2 minutes</p>
+      <p class="text-xs text-gray-700 mt-6">Prices update every 2 minutes</p>
     </template>
   </main>
 </template>

@@ -43,8 +43,8 @@
           <p class="text-xs text-gray-400">Geographic revenue breakdowns for 100+ publicly-listed US companies, extracted from annual and quarterly filings. FY2023/FY2024 data. Updated quarterly as filings are published.</p>
         </div>
         <div class="bg-[#111827] border border-[#1f2937] rounded-lg p-4">
-          <div class="text-sm font-semibold text-emerald-400 mb-1">REST Countries API + CoinGecko + Marketstack</div>
-          <p class="text-xs text-gray-400">Country metadata, flags, ISO codes, and currency data via REST Countries. Crypto prices via CoinGecko (updated every 1 minute). Stock and FX prices via Marketstack (updated every 15 minutes during market hours).</p>
+          <div class="text-sm font-semibold text-emerald-400 mb-1">REST Countries API + Marketstack</div>
+          <p class="text-xs text-gray-400">Country metadata, flags, ISO codes, and currency data via REST Countries. Crypto, stock, and FX prices via Marketstack (updated every 15 minutes during market hours, crypto every 2 minutes).</p>
         </div>
       </div>
     </section>

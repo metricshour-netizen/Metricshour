@@ -46,7 +46,7 @@
 
     <!-- Data sources + copyright -->
     <div class="border-t border-[#1a2332] px-4 py-4 text-center text-[10px] text-gray-700 space-y-1">
-      <p>Data: World Bank · SEC EDGAR · UN Comtrade · REST Countries · IMF · CoinGecko · Marketstack</p>
+      <p>Data: World Bank · SEC EDGAR · UN Comtrade · REST Countries · IMF · Marketstack</p>
       <p>© {{ new Date().getFullYear() }} MetricsHour · All rights reserved</p>
     </div>
   </footer>

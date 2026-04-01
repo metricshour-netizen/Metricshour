@@ -147,7 +147,7 @@
         </div>
       </div>
 
-      <p class="text-xs text-gray-700 text-center mb-8">Data: CoinGecko · Marketstack</p>
+      <p class="text-xs text-gray-700 text-center mb-8">Data: Marketstack</p>
 
       <!-- Newsletter -->
       <div class="border border-gray-800 rounded-xl p-6 bg-gray-900/40">

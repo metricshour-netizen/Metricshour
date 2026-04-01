@@ -398,7 +398,7 @@
 
     <!-- ── Data sources ───────────────────────────────────────────────────── -->
     <p class="text-center text-[11px] text-gray-700 pb-6">
-      Data: World Bank · SEC EDGAR · UN Comtrade · REST Countries · IMF · CoinGecko
+      Data: World Bank · SEC EDGAR · UN Comtrade · REST Countries · IMF · Marketstack
     </p>
 
   </main>

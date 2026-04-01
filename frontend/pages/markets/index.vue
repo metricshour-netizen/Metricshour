@@ -302,7 +302,7 @@
         No assets match "{{ search }}"
       </div>
 
-      <p class="text-xs text-gray-700 mt-2">Data: Marketstack · CoinGecko · FRED · SEC EDGAR · ECB</p>
+      <p class="text-xs text-gray-700 mt-2">Data: Marketstack · FRED · SEC EDGAR · ECB</p>
 
       </template><!-- end card view -->
     </template>

@@ -14,7 +14,7 @@
 
       <section>
         <h2 class="text-base font-semibold text-white mb-3">2. Description of Service</h2>
-        <p>MetricsHour provides financial data aggregation and intelligence tools, including macro-economic indicators, stock market data, bilateral trade flow analysis, commodity prices, and related content. Data is sourced from public APIs including World Bank, IMF, UN Comtrade, SEC EDGAR, REST Countries, CoinGecko, and licensed data providers.</p>
+        <p>MetricsHour provides financial data aggregation and intelligence tools, including macro-economic indicators, stock market data, bilateral trade flow analysis, commodity prices, and related content. Data is sourced from public APIs including World Bank, IMF, UN Comtrade, SEC EDGAR, REST Countries, Marketstack, and licensed data providers.</p>
       </section>
 
       <section>
