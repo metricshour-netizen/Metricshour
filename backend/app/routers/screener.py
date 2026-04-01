@@ -172,8 +172,9 @@ def screener(
     db: Session   = Depends(get_db),
 ) -> dict[str, Any]:
     # Cache key — only for unfiltered default request
-    no_filters = not any([china_max, china_min, us_min, us_max, sector,
-                          market_cap_min, market_cap_max, country_code])
+    # Use `is None` checks — 0 is a valid filter value (e.g. china_max=0)
+    no_filters = all(v is None for v in [china_max, china_min, us_min, us_max,
+                                          market_cap_min, market_cap_max]) and not sector and not country_code
     cache_key = f"screener:v1:{sort_by}:{sort_dir}:{limit}:{offset}" if no_filters else None
     if cache_key:
         cached = cache_get(cache_key)
