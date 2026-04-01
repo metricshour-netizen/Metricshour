@@ -394,6 +394,20 @@ def _parse_geo_table(table) -> Optional[dict]:
                     if v > 100_000_000:
                         values.append(float(v))
 
+            # Detect multi-year interleaving: colspan headers produce N values per
+            # segment (e.g. 3 fiscal years → [A_Y1,A_Y2,A_Y3, B_Y1,B_Y2,B_Y3, …]).
+            # Count resolvable geo segments in the header (skip Total/Corporate/etc.)
+            # and use that to compute stride = len(values) // total_cols.
+            expected_segs = sum(
+                1 for seg in header_row
+                if _resolve_seg(seg) is not None
+                and not any(s in _normalize_seg(seg) for s in skip_segs)
+            )
+            total_cols = expected_segs + 1  # +1 accounts for the Total column
+            if total_cols > 1 and len(values) > total_cols and len(values) % total_cols == 0:
+                stride = len(values) // total_cols
+                values = [values[i * stride] for i in range(total_cols)]
+
             pairs: list[tuple] = []
             val_idx = 0
             for seg_label in header_row:
