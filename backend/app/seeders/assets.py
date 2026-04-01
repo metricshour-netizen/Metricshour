@@ -759,10 +759,7 @@ BONDS: list[tuple] = [
     ("FR10Y",  "France OAT 10-Year",            "ECB",    "10Y",  None),
     ("IT10Y",  "Italy BTP 10-Year",             "ECB",    "10Y",  None),
     ("JP10Y",  "Japan JGB 10-Year",             "BoJ",    "10Y",  None),
-    # Corporate / EM bond ETFs — yfinance uses ticker directly
-    ("HYG",   "US High Yield Corporate Bond",   "NYSE",   "ETF",  None),
-    ("LQD",   "Investment Grade Corp Bond",     "NYSE",   "ETF",  None),
-    ("EMB",   "Emerging Markets Bond",          "NYSE",   "ETF",  None),
+    # Note: HYG, LQD, EMB are seeded as ETFs in ETFS list above
 ]
 
 # (symbol, name, base_currency, quote_currency)
