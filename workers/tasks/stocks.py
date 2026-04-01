@@ -1,9 +1,7 @@
 """
-Stock price ingestion — Marketstack (primary, EOD + intraday) + yfinance fallback.
-Runs every 15 minutes.
-
-Marketstack handles global exchanges and is available 24/7 for EOD data.
-yfinance used as fallback when Marketstack misses a symbol.
+Stock price ingestion — Marketstack (primary, EOD) + yfinance fallback.
+Runs every 15 minutes but Marketstack is called at most ONCE per trading day
+via a Redis cache key. yfinance handles intraday updates.
 """
 
 import logging
@@ -31,10 +29,38 @@ MARKETSTACK_KEY = os.environ.get('MARKETSTACK_API_KEY', '')
 # Reject any single-period price change > this threshold (bad yfinance/Marketstack ticks)
 MAX_STOCK_SPIKE_PCT = 15.0
 MARKETSTACK_URL = 'http://api.marketstack.com/v1'
-CHUNK_SIZE = 50   # marketstack accepts up to 100 symbols per call; 50 is safe
+CHUNK_SIZE = 100  # Marketstack accepts up to 100 symbols per call
 
 # Set to True if Marketstack key is confirmed invalid — skips all calls silently
 _marketstack_disabled = False
+
+# Redis cache key: set after a successful EOD fetch so we call Marketstack
+# exactly once per trading day instead of on every 15-min task run.
+_MS_CACHE_KEY_PREFIX = 'marketstack:eod:fetched:'
+_MS_CACHE_TTL = 6 * 3600  # 6h — expires well before next day's window
+
+
+def _ms_cache_key(date_str: str) -> str:
+    return f'{_MS_CACHE_KEY_PREFIX}{date_str}'
+
+
+def _already_fetched_today(date_str: str) -> bool:
+    """Returns True if we already have a successful Marketstack EOD fetch for today."""
+    try:
+        from app.storage import get_redis
+        r = get_redis()
+        return r.exists(_ms_cache_key(date_str)) == 1
+    except Exception:
+        return False  # Redis unavailable — allow the fetch
+
+
+def _mark_fetched_today(date_str: str) -> None:
+    try:
+        from app.storage import get_redis
+        r = get_redis()
+        r.setex(_ms_cache_key(date_str), _MS_CACHE_TTL, '1')
+    except Exception:
+        pass
 
 
 def _check_marketstack_key() -> bool:
@@ -49,7 +75,8 @@ def _check_marketstack_key() -> bool:
             params={'access_key': MARKETSTACK_KEY, 'symbols': 'AAPL', 'limit': 1},
             timeout=10,
         )
-        if resp.status_code == 401 or resp.json().get('error', {}).get('code') == 'invalid_access_key':
+        data = resp.json()
+        if resp.status_code == 401 or data.get('error', {}).get('code') == 'invalid_access_key':
             log.warning('Marketstack API key invalid — falling back to yfinance for all symbols')
             _marketstack_disabled = True
             return False
@@ -58,15 +85,16 @@ def _check_marketstack_key() -> bool:
     return True
 
 
-def _fetch_marketstack(symbols: list[str]) -> dict[str, float]:
+def _fetch_marketstack(symbols: list[str]) -> dict[str, dict]:
     """
-    Fetch latest EOD close prices for a batch of symbols via Marketstack.
-    Returns {symbol: close_price}. Skips symbols that fail quietly.
+    Fetch latest EOD OHLCV for a batch of symbols via Marketstack.
+    Returns {symbol: {open, high, low, close, volume}}. Skips failures quietly.
+    Batches in chunks of CHUNK_SIZE to stay within per-request limits.
     """
     if _marketstack_disabled or not MARKETSTACK_KEY:
         return {}
 
-    result: dict[str, float] = {}
+    result: dict[str, dict] = {}
     for i in range(0, len(symbols), CHUNK_SIZE):
         chunk = symbols[i:i + CHUNK_SIZE]
         try:
@@ -83,10 +111,17 @@ def _fetch_marketstack(symbols: list[str]) -> dict[str, float]:
             data = resp.json()
             for row in data.get('data', []):
                 sym = row.get('symbol', '').split('.')[0]  # strip exchange suffix
-                if sym and row.get('close'):
-                    result[sym] = float(row['close'])
+                close = row.get('adj_close') or row.get('close')
+                if sym and close:
+                    result[sym] = {
+                        'open':   row.get('adj_open') or row.get('open'),
+                        'high':   row.get('adj_high') or row.get('high'),
+                        'low':    row.get('adj_low') or row.get('low'),
+                        'close':  float(close),
+                        'volume': row.get('adj_volume') or row.get('volume'),
+                    }
         except Exception:
-            log.warning(f'Marketstack batch {i}-{i+CHUNK_SIZE} failed')
+            log.warning('Marketstack batch %d-%d failed', i, i + CHUNK_SIZE)
 
     return result
 
@@ -118,13 +153,17 @@ def _fetch_yfinance(symbols: list[str]) -> dict[str, tuple[float | None, float]]
 def _upsert_prices(
     db,
     symbol_to_asset: dict,
-    prices: dict[str, tuple[float | None, float] | float],
+    prices: dict[str, dict | tuple | float],
     now: datetime,
 ) -> int:
     """
-    Upsert daily prices. `prices` values can be (open, close) tuples or bare close floats.
+    Upsert daily prices.
+    Accepts three price formats:
+      - dict: {open, high, low, close, volume}   (Marketstack full OHLCV)
+      - tuple: (open, close)                      (yfinance)
+      - float: close only                         (legacy)
     Timestamp must already be day-truncated by the caller.
-    On conflict, updates close but preserves the day's first open.
+    On conflict, updates all OHLCV fields so Marketstack data enriches yfinance rows.
     """
     asset_ids = [symbol_to_asset[s].id for s in prices if s in symbol_to_asset]
     last_prices: dict[int, float] = {}
@@ -139,7 +178,21 @@ def _upsert_prices(
     for sym, price_data in prices.items():
         if sym not in symbol_to_asset:
             continue
-        open_val, close_val = price_data if isinstance(price_data, tuple) else (None, price_data)
+
+        if isinstance(price_data, dict):
+            open_val  = price_data.get('open')
+            high_val  = price_data.get('high')
+            low_val   = price_data.get('low')
+            close_val = float(price_data['close'])
+            vol_val   = price_data.get('volume')
+        elif isinstance(price_data, tuple):
+            open_val, close_val = price_data
+            high_val = low_val = vol_val = None
+            close_val = float(close_val)
+        else:
+            open_val = high_val = low_val = vol_val = None
+            close_val = float(price_data)
+
         asset = symbol_to_asset[sym]
         if asset.id in last_prices and last_prices[asset.id] > 0:
             chg = abs((close_val - last_prices[asset.id]) / last_prices[asset.id]) * 100
@@ -153,19 +206,21 @@ def _upsert_prices(
             'asset_id': asset.id,
             'timestamp': now,
             'interval': '1d',
-            'open': open_val, 'high': None, 'low': None,
+            'open': open_val, 'high': high_val, 'low': low_val,
             'close': close_val,
-            'volume': None,
+            'volume': vol_val,
         })
     if not rows:
         return 0
     stmt = pg_insert(Price).values(rows)
-    # On conflict: update close (intraday updates) but preserve the day's first open
     stmt = stmt.on_conflict_do_update(
         constraint='uq_price_asset_time_interval',
         set_={
-            'close': stmt.excluded.close,
-            'open': stmt.excluded.open,  # overwrite open only if new open is not null
+            'close':  stmt.excluded.close,
+            'open':   stmt.excluded.open,
+            'high':   stmt.excluded.high,
+            'low':    stmt.excluded.low,
+            'volume': stmt.excluded.volume,
         },
     )
     db.execute(stmt)
@@ -187,6 +242,7 @@ def fetch_stock_prices(self):
 
         # Truncate to day-start so every run upserts the same daily row
         now = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+        today_str = now.strftime('%Y-%m-%d')
 
         # Skip entirely on weekends — no exchange has settled EOD data
         if not is_trading_day(now):
@@ -197,12 +253,14 @@ def fetch_stock_prices(self):
         if not _marketstack_disabled and MARKETSTACK_KEY:
             _check_marketstack_key()
 
-        # Primary: Marketstack — only call after US close (21:00 UTC) when EOD
-        # data is fresh. During market hours /eod/latest returns yesterday's close,
-        # so calling it every 15 min is pure waste.
-        ms_prices: dict[str, float] = {}
-        if should_call_marketstack_eod(now):
+        # Primary: Marketstack EOD — called once per trading day (after US close 21:00 UTC).
+        # A Redis cache key prevents redundant calls on the 12 subsequent 15-min task runs.
+        ms_prices: dict[str, dict] = {}
+        if should_call_marketstack_eod(now) and not _already_fetched_today(today_str):
             ms_prices = _fetch_marketstack(symbols)
+            if ms_prices:
+                _mark_fetched_today(today_str)
+                log.info('Marketstack EOD: fetched %d/%d symbols, cached for today', len(ms_prices), len(symbols))
 
         # Fallback / intraday: yfinance covers anything Marketstack missed and
         # keeps prices updating throughout the trading day.
@@ -211,8 +269,7 @@ def fetch_stock_prices(self):
         if missed:
             yf_prices = _fetch_yfinance(missed)
 
-        # Marketstack returns bare close floats; yfinance returns (open, close) tuples
-        prices: dict[str, tuple[float | None, float] | float] = {**ms_prices, **yf_prices}
+        prices: dict[str, dict | tuple | float] = {**ms_prices, **yf_prices}
         count = _upsert_prices(db, symbol_to_asset, prices, now)
         db.commit()
         log.info(
