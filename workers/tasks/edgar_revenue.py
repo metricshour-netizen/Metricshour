@@ -205,11 +205,19 @@ def _latest_10k_accession(cik: str) -> Optional[tuple[str, int]]:
 # ── R-file scanner ────────────────────────────────────────────────────────────
 
 def _r_file_has_geo(text: str) -> bool:
+    """File must have geographic keywords AND financial data (dollar amounts in millions)."""
     text_l = text.lower()
+    has_geo = False
     for kws in GEO_KEYWORDS:
         if all(kw.lower() in text_l for kw in kws):
-            return True
-    return False
+            has_geo = True
+            break
+    if not has_geo:
+        return False
+    # Must also have tabular numeric data — at least 3 dollar amounts >= $1,000M
+    dollars = re.findall(r"\$\s*([\d,]{5,})", text)
+    big_dollars = [d for d in dollars if int(d.replace(",", "")) >= 1_000]
+    return len(big_dollars) >= 3
 
 
 def _find_geo_r_file(cik: str, accn: str, max_r: int = 200) -> Optional[str]:
