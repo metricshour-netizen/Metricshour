@@ -62,10 +62,14 @@ def _fetch_series(series_id: str, since: date | None = None) -> list[tuple[date,
 
     rows: list[tuple[date, float]] = []
     reader = csv.DictReader(StringIO(resp.text))
+    fieldnames = reader.fieldnames or []
+    # FRED CSV uses "observation_date" as the date column; value column is the series_id
+    date_col = "observation_date" if "observation_date" in fieldnames else "DATE"
+    value_col = series_id if series_id in fieldnames else "VALUE"
     for row in reader:
         try:
-            d = date.fromisoformat(row["DATE"])
-            v = row.get("VALUE", "").strip()
+            d = date.fromisoformat(row[date_col])
+            v = row.get(value_col, "").strip()
             if v == "." or not v:  # FRED uses "." for missing
                 continue
             if since and d < since:
