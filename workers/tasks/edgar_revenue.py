@@ -281,24 +281,30 @@ def _resolve_seg(label: str) -> Optional[str | list[tuple[str, float]]]:
 
 def _find_geo_table(html: str):
     """
-    Return the BeautifulSoup table element with geo keywords + revenue numbers.
-    Prefers tables with the most big numbers AND shortest text (most specific).
+    Return the BeautifulSoup table element with geo segment headers AND revenue numbers.
+    Prefers the SHORTEST qualifying table — avoids outer wrapper tables that contain
+    multiple years of nested sub-tables.
     """
     soup = BeautifulSoup(html, "html.parser")
+    skip_norms = {"corporate", "total", "eliminations", "other", "worldwide"}
     candidates = []
     for table in soup.find_all("table"):
-        text = table.get_text(" ", strip=True)
-        text_l = text.lower()
-        has_geo = any(all(kw.lower() in text_l for kw in kws) for kws in GEO_KEYWORDS)
-        if not has_geo:
-            continue
-        big_nums = re.findall(r"\b\d{2,3},\d{3}\b", text)
-        if len(big_nums) >= 3:
-            candidates.append((len(big_nums), -len(text), table))
+        geo_count = 0
+        num_count = 0
+        for td in table.find_all(["td", "th"]):
+            cell = td.get_text(" ", strip=True)
+            if len(cell) <= 40 and _resolve_seg(cell) is not None:
+                if _normalize_seg(cell) not in skip_norms:
+                    geo_count += 1
+            if re.match(r"^\$?\s*\(?\d{2,3},\d{3}\)?$", cell):
+                num_count += 1
+        if geo_count >= 2 and num_count >= 3:
+            text_len = len(table.get_text())
+            candidates.append((text_len, table))
     if not candidates:
         return None
-    candidates.sort(reverse=True)
-    return candidates[0][2]
+    candidates.sort()          # shortest text first = most specific table
+    return candidates[0][1]
 
 
 def _parse_table_rows(table) -> list[list[str]]:
