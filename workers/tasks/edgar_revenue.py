@@ -76,9 +76,12 @@ SEG_MAP: dict[str, str] = {
     "rest of world":           "ROW",
     "rest of the world":       "ROW",
     "international":           "INTL",
+    "other international":     "INTL",
+    "other int'l":             "INTL",
+    "all other":               "INTL",
+    "other countries":         "INTL",
     "other":                   None,
     "corporate":               None,
-    "other countries":         None,
     "worldwide":               None,
 
     # Individual countries
@@ -408,7 +411,7 @@ def _parse_geo_table(table) -> Optional[dict]:
             expected_segs = sum(
                 1 for seg in header_row
                 if _resolve_seg(seg) is not None
-                and not any(s in _normalize_seg(seg) for s in skip_segs)
+                and _normalize_seg(seg) not in skip_segs
             )
             total_cols = expected_segs + 1  # +1 accounts for the Total column
             if total_cols > 1 and len(values) > total_cols and len(values) % total_cols == 0:
@@ -419,7 +422,7 @@ def _parse_geo_table(table) -> Optional[dict]:
             val_idx = 0
             for seg_label in header_row:
                 norm = _normalize_seg(seg_label)
-                if any(s in norm for s in skip_segs):
+                if norm in skip_segs:
                     val_idx += 1
                     continue
                 resolved = _resolve_seg(seg_label)
@@ -441,8 +444,8 @@ def _parse_geo_table(table) -> Optional[dict]:
         if len(row) < 2:
             continue
         norm = _normalize_seg(row[0])
-        if any(s in norm for s in {"corporate", "total", "eliminations",
-                                   "other", "worldwide", "total net sales"}):
+        if norm in {"corporate", "total", "eliminations",
+                    "other", "worldwide", "total net sales"}:
             continue
         resolved = _resolve_seg(row[0])
         if resolved is None:
