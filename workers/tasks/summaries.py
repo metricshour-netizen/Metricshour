@@ -1908,7 +1908,7 @@ def generate_daily_insights(self):
 
 
 # Batch sizes per run — tuned so all entities cycle once per day across multiple runs
-_INSIGHT_BATCH = {"country": 25, "stock": 6, "commodity": 5, "trade": 25, "index": 6}
+_INSIGHT_BATCH = {"country": 25, "stock": 30, "commodity": 5, "trade": 25, "index": 6}
 
 
 @app.task(name="tasks.summaries.run_insight_batch", bind=True, max_retries=2)
