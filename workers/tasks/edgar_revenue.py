@@ -212,6 +212,11 @@ def _r_file_has_geo(text: str) -> bool:
     soup = BeautifulSoup(text, "html.parser")
     skip_norms = {"corporate", "total", "eliminations", "other", "worldwide"}
     for table in soup.find_all("table"):
+        table_text = table.get_text(" ", strip=True)
+        # Skip non-revenue tables (long-lived assets, PP&E, etc.)
+        if re.search(r"long.?lived\s+assets|property.*plant.*equipment|total\s+assets"
+                     r"|capital\s+expenditure|right.of.use|operating\s+lease", table_text, re.I):
+            continue
         geo_count = 0
         num_count = 0
         for td in table.find_all(["td", "th"]):
@@ -296,6 +301,11 @@ def _find_geo_table(html: str):
     skip_norms = {"corporate", "total", "eliminations", "other", "worldwide"}
     candidates = []
     for table in soup.find_all("table"):
+        table_text = table.get_text(" ", strip=True)
+        # Skip non-revenue tables (long-lived assets, PP&E, balance sheet items)
+        if re.search(r"long.?lived\s+assets|property.*plant.*equipment|total\s+assets"
+                     r"|capital\s+expenditure|right.of.use|operating\s+lease", table_text, re.I):
+            continue
         geo_count = 0
         num_count = 0
         for td in table.find_all(["td", "th"]):
@@ -306,7 +316,7 @@ def _find_geo_table(html: str):
             if re.match(r"^\$?\s*\(?\d{2,3},\d{3}\)?$", cell):
                 num_count += 1
         if geo_count >= 2 and num_count >= 3:
-            text_len = len(table.get_text())
+            text_len = len(table_text)
             candidates.append((text_len, table))
     if not candidates:
         return None
