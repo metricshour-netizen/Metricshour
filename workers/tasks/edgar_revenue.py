@@ -369,8 +369,9 @@ def _parse_geo_table(table) -> Optional[dict]:
     header_idx = -1
     for i, row in enumerate(rows):
         matches = sum(1 for cell in row if _resolve_seg(cell) is not None
-                      and _normalize_seg(cell) not in
-                      {"corporate", "total", "eliminations", "other", "worldwide"})
+                      and not (_normalize_seg(cell) in
+                               {"corporate", "total", "eliminations", "other", "worldwide"}
+                               or _normalize_seg(cell).startswith("total")))
         if matches >= 2:
             header_row = row
             header_idx = i
@@ -405,6 +406,7 @@ def _parse_geo_table(table) -> Optional[dict]:
                 1 for seg in header_row
                 if _resolve_seg(seg) is not None
                 and _normalize_seg(seg) not in skip_segs
+                and not _normalize_seg(seg).startswith("total")
             )
             total_cols = expected_segs + 1  # +1 accounts for the Total column
             if total_cols > 1 and len(values) > total_cols and len(values) % total_cols == 0:
@@ -415,7 +417,7 @@ def _parse_geo_table(table) -> Optional[dict]:
             val_idx = 0
             for seg_label in header_row:
                 norm = _normalize_seg(seg_label)
-                if norm in skip_segs:
+                if norm in skip_segs or norm.startswith("total"):
                     val_idx += 1
                     continue
                 resolved = _resolve_seg(seg_label)
@@ -438,7 +440,7 @@ def _parse_geo_table(table) -> Optional[dict]:
             continue
         norm = _normalize_seg(row[0])
         if norm in {"corporate", "total", "eliminations",
-                    "other", "worldwide", "total net sales"}:
+                    "other", "worldwide", "total net sales"} or norm.startswith("total"):
             continue
         resolved = _resolve_seg(row[0])
         if resolved is None:
