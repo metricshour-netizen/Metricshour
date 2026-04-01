@@ -28,10 +28,11 @@
           </div>
 
           <div class="space-y-1.5">
-            <div
+            <NuxtLink
               v-for="pair in group.items"
               :key="pair.symbol"
-              class="grid grid-cols-[2fr_1fr_1fr] sm:grid-cols-[2fr_1fr_1fr_1fr] gap-4 items-center bg-[#111827] border border-[#1f2937] rounded-xl px-4 py-3.5"
+              :to="`/fx/${pair.symbol.toLowerCase()}/`"
+              class="grid grid-cols-[2fr_1fr_1fr] sm:grid-cols-[2fr_1fr_1fr_1fr] gap-4 items-center bg-[#111827] border border-[#1f2937] hover:border-emerald-500/50 rounded-xl px-4 py-3.5 transition-all hover:bg-[#0d1a14] group"
             >
               <!-- Flags + name -->
               <div class="flex items-center gap-3">
@@ -65,7 +66,7 @@
               <div class="hidden sm:block text-right text-sm text-gray-500 tabular-nums">
                 {{ apiMap[pair.symbol]?.price?.open != null ? fmtRate(pair.symbol, apiMap[pair.symbol].price.open) : '—' }}
               </div>
-            </div>
+            </NuxtLink>
           </div>
         </div>
       </template>

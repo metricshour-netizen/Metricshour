@@ -378,6 +378,56 @@ def _index_summary(symbol: str, db: Session) -> str | None:
     )
 
 
+def _crypto_summary(symbol: str, db: Session) -> str | None:
+    asset = db.execute(
+        select(Asset).where(Asset.symbol == symbol.upper(), Asset.asset_type == "crypto")
+    ).scalar_one_or_none()
+    if not asset:
+        return None
+    cap = ""
+    if asset.market_cap_usd:
+        if asset.market_cap_usd >= 1e12:
+            cap = f" with a market cap of ${asset.market_cap_usd/1e12:.1f}T"
+        elif asset.market_cap_usd >= 1e9:
+            cap = f" with a market cap of ${asset.market_cap_usd/1e9:.0f}B"
+    return (
+        f"{asset.name} ({asset.symbol}) is a cryptocurrency traded 24/7 on global markets{cap}. "
+        f"Price history, market cap, and trading volume are tracked in real time on MetricsHour."
+    )
+
+
+def _etf_summary(symbol: str, db: Session) -> str | None:
+    asset = db.execute(
+        select(Asset).where(Asset.symbol == symbol.upper(), Asset.asset_type == "etf")
+    ).scalar_one_or_none()
+    if not asset:
+        return None
+    category = asset.sector or "diversified"
+    cap = ""
+    if asset.market_cap_usd:
+        if asset.market_cap_usd >= 1e12:
+            cap = f" with approximately ${asset.market_cap_usd/1e12:.1f}T in assets under management"
+        elif asset.market_cap_usd >= 1e9:
+            cap = f" with approximately ${asset.market_cap_usd/1e9:.0f}B in assets under management"
+    return (
+        f"{asset.name} ({asset.symbol}) is a {category.lower()} exchange-traded fund"
+        f" listed on {asset.exchange or 'a major exchange'}{cap}. "
+        f"ETF price and performance data are tracked daily on MetricsHour."
+    )
+
+
+def _fx_summary(symbol: str, db: Session) -> str | None:
+    asset = db.execute(
+        select(Asset).where(Asset.symbol == symbol.upper(), Asset.asset_type == "fx")
+    ).scalar_one_or_none()
+    if not asset:
+        return None
+    return (
+        f"{asset.name} ({asset.symbol}) is a currency pair tracked on the global foreign exchange market. "
+        f"Exchange rates are updated every 15 minutes during weekday trading hours on MetricsHour."
+    )
+
+
 def _trade_summary(pair: str, db: Session) -> str | None:
     parts = pair.upper().split("-")
     if len(parts) != 2:
@@ -510,7 +560,7 @@ def get_spotlight(
     return cards
 
 
-SUMMARY_TYPES = ("country", "stock", "commodity", "trade", "index")
+SUMMARY_TYPES = ("country", "stock", "commodity", "trade", "index", "crypto", "etf", "fx")
 INSIGHT_TYPES = ("country_insight", "stock_insight", "commodity_insight", "trade_insight", "index_insight")
 ALL_ENTITY_TYPES = SUMMARY_TYPES + INSIGHT_TYPES
 
@@ -561,6 +611,12 @@ def get_summary(request: Request, entity_type: str, entity_code: str, db: Sessio
         summary_text = _index_summary(entity_code, db)
     elif entity_type == "trade":
         summary_text = _trade_summary(entity_code, db)
+    elif entity_type == "crypto":
+        summary_text = _crypto_summary(entity_code, db)
+    elif entity_type == "etf":
+        summary_text = _etf_summary(entity_code, db)
+    elif entity_type == "fx":
+        summary_text = _fx_summary(entity_code, db)
 
     if not summary_text:
         raise HTTPException(status_code=404, detail="Entity not found")
@@ -583,7 +639,7 @@ def get_summary(request: Request, entity_type: str, entity_code: str, db: Sessio
     }
 
 
-INSIGHT_ENTITY_TYPES = ("country", "stock", "commodity", "trade", "index")
+INSIGHT_ENTITY_TYPES = ("country", "stock", "commodity", "trade", "index", "crypto", "etf", "fx")
 
 
 @router.get("/insights/{entity_type}/{entity_code}")

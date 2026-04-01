@@ -45,7 +45,7 @@
             <NuxtLink
               v-for="etf in group.items"
               :key="etf.symbol"
-              :to="`/stocks/${etf.symbol.toLowerCase()}/`"
+              :to="`/etfs/${etf.symbol.toLowerCase()}/`"
               class="grid grid-cols-[2fr_1fr_1fr] sm:grid-cols-[2fr_1fr_1fr_1fr] gap-4 items-center bg-[#111827] border border-[#1f2937] hover:border-sky-500/50 rounded-xl px-4 py-3.5 transition-all hover:bg-[#131d2e] group"
             >
               <!-- Name + symbol -->

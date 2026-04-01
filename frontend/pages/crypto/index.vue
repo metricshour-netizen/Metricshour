@@ -37,7 +37,7 @@
         <NuxtLink
           v-for="(coin, idx) in filtered"
           :key="coin.symbol"
-          :to="`/stocks/${coin.symbol.toLowerCase()}/`"
+          :to="`/crypto/${coin.symbol.toLowerCase()}/`"
           class="grid grid-cols-[2fr_1fr_1fr] sm:grid-cols-[2fr_1fr_1fr_1fr_1fr] gap-4 items-center bg-[#111827] border border-[#1f2937] hover:border-orange-500/50 rounded-xl px-4 py-3.5 transition-all hover:bg-[#131d2e] group"
         >
           <!-- Rank + Name -->
