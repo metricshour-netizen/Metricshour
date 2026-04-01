@@ -272,10 +272,10 @@ def _resolve_seg(label: str) -> Optional[str | list[tuple[str, float]]]:
     return code  # direct ISO2
 
 
-def _extract_text_blob(html: str) -> str:
+def _find_geo_table(html: str):
     """
-    Return text from the table that best combines geo keywords + revenue numbers.
-    Prefers smaller/cleaner tables (the financial data tables) over the narrative wrapper.
+    Return the BeautifulSoup table element with geo keywords + revenue numbers.
+    Prefers tables with the most big numbers AND shortest text (most specific).
     """
     soup = BeautifulSoup(html, "html.parser")
     candidates = []
@@ -287,118 +287,146 @@ def _extract_text_blob(html: str) -> str:
             continue
         big_nums = re.findall(r"\b\d{2,3},\d{3}\b", text)
         if len(big_nums) >= 3:
-            candidates.append((len(big_nums), -len(text), text))  # more nums, shorter = better
-    if candidates:
-        candidates.sort(reverse=True)  # most numbers first, then shortest
-        return candidates[0][2]
-    # Fallback: full body text
-    body = soup.find("body")
-    return body.get_text(" ", strip=True) if body else html
+            candidates.append((len(big_nums), -len(text), table))
+    if not candidates:
+        return None
+    candidates.sort(reverse=True)
+    return candidates[0][2]
 
 
-def _parse_geo_from_text(text: str) -> Optional[dict]:
+def _parse_table_rows(table) -> list[list[str]]:
+    """Extract rows as list-of-cell-strings, dropping blank cells."""
+    rows = []
+    for tr in table.find_all("tr"):
+        cells = [td.get_text(" ", strip=True) for td in tr.find_all(["td", "th"])]
+        cells = [c for c in cells if c]
+        if cells:
+            rows.append(cells)
+    return rows
+
+
+def _parse_geo_table(table) -> Optional[dict]:
     """
-    Parse geographic revenue from the EDGAR note text blob.
-    Returns {fiscal_year, total_revenue_usd, segments: [(iso2, pct)]} or None.
-    """
-    # ── Try to find a "Net sales" line with segments ────────────────────────
-    # Pattern 1: regional table  "AmericasEuropeGreater ChinaJapanRest of Asia PacificTotal Net sales $X $Y..."
-    # Pattern 2: country table   "Net sales: U.S. $X China $Y Other countries $Z Total $T"
+    Parse geographic revenue from a BeautifulSoup table element.
 
-    # Step 1: find years mentioned
-    years = re.findall(r"\b(202[0-9]|201[5-9])\b", text)
+    Strategy 1 — structured header rows (most companies):
+      Find the row listing segment names (Americas, Europe…), then find the
+      Net sales / Revenue row and pair values positionally.
+
+    Strategy 2 — country-level table (U.S. $X China $Y…):
+      Use regex to extract (country, value) pairs directly from the text.
+    """
+    full_text = table.get_text(" ", strip=True)
+
+    # Fiscal year
+    years = re.findall(r"\b(202[0-9]|201[5-9])\b", full_text)
     fiscal_year = int(years[0]) if years else 2024
 
-    # Dollar pattern that handles "$ 178,353" (space between $ and digits)
-    DOLLAR_RE = re.compile(r"\$\s*([\d,]+)")
-
-    # Step 2: find total revenue (largest dollar figure)
-    all_dollars = [_parse_usd(m) for m in DOLLAR_RE.findall(text)]
-    all_dollars = [v for v in all_dollars if v and v > 1_000_000_000]  # > $1B
-    if not all_dollars:
+    # Total revenue = largest number in table (millions assumed)
+    big_nums = [int(n.replace(",", "")) for n in re.findall(r"\b(\d{2,3},\d{3})\b", full_text)]
+    if not big_nums:
         return None
-    total_rev = max(all_dollars)
+    total_rev = max(big_nums) * 1_000_000
 
-    # Step 3: look for "Net sales" followed by dollar values
-    # Common patterns:
-    # a) "Americas Europe Greater China Japan ... Net sales $ 178,353 $ 111,032 ..."
-    # b) "United States International Total Net sales $ 100,000 $ 50,000 $ 150,000"
-    # c) "U.S. $138,573 China $72,559 Other countries $172,153 Total $383,285"
+    # ── Strategy 1: find header row with segment names ──────────────────────
+    rows = _parse_table_rows(table)
+    header_row = None
+    header_idx = -1
+    for i, row in enumerate(rows):
+        matches = sum(1 for cell in row if _resolve_seg(cell) is not None
+                      and _normalize_seg(cell) not in
+                      {"corporate", "total", "eliminations", "other", "worldwide"})
+        if matches >= 2:
+            header_row = row
+            header_idx = i
+            break
 
+    if header_row is not None:
+        # Find Net sales / Revenue row after header
+        netsales_row = None
+        for row in rows[header_idx:]:
+            if any(re.search(r"^net.?sales$|^revenues?$|^net.?revenues?$", c, re.I)
+                   for c in row):
+                netsales_row = row
+                break
+
+        if netsales_row:
+            # Extract ordered numeric values (skip label + lone "$" cells)
+            skip_segs = {"corporate", "total", "eliminations", "other", "worldwide",
+                         "total net sales"}
+            values: list[float] = []
+            for cell in netsales_row:
+                m = re.search(r"(\d{2,3},\d{3})", cell)
+                if m:
+                    v = int(m.group(1).replace(",", "")) * 1_000_000
+                    if v > 100_000_000:
+                        values.append(float(v))
+
+            pairs: list[tuple] = []
+            val_idx = 0
+            for seg_label in header_row:
+                norm = _normalize_seg(seg_label)
+                if any(s in norm for s in skip_segs):
+                    val_idx += 1
+                    continue
+                resolved = _resolve_seg(seg_label)
+                if resolved is None:
+                    val_idx += 1
+                    continue
+                if val_idx < len(values):
+                    pairs.append((resolved, values[val_idx]))
+                val_idx += 1
+
+            if pairs:
+                return _build_result(pairs, total_rev, fiscal_year)
+
+    # ── Strategy 2: country-level regex scan ────────────────────────────────
+    country_re = re.compile(
+        r"(U\.S\.|United\s+States|China|Japan|Germany|France|United\s+Kingdom|"
+        r"Canada|Mexico|Brazil|India|Australia|South\s+Korea|Korea|Singapore|"
+        r"Taiwan|Hong\s+Kong|Netherlands|Switzerland|Italy|Spain|Sweden|"
+        r"Israel|Saudi\s+Arabia|UAE|International|Rest\s+of\s+World)"
+        r"[\s\(\d\)]*(?:\$\s*)?(\d{2,3},\d{3})", re.IGNORECASE
+    )
     raw: dict[str, float] = {}
-
-    # Pattern: country-level table — "U.S. $151,790" or "China(1) 64,377"
-    country_pattern = re.compile(
-        r"(U\.S\.|United States|China|Japan|Germany|France|United Kingdom|UK|Canada|"
-        r"Mexico|Brazil|India|Australia|South Korea|Korea|Singapore|Taiwan|Hong Kong|"
-        r"Netherlands|Switzerland|Italy|Spain|Sweden|Israel|Saudi Arabia|UAE|"
-        r"Rest of World|International|Other countries)"
-        r"[\s\(\d\)]*\$?\s*([\d,]+)", re.IGNORECASE
-    )
-    for m in country_pattern.finditer(text):
+    for m in country_re.finditer(full_text):
         seg = m.group(1).strip()
-        val = _parse_usd(m.group(2))
-        if val and val > 100_000_000:
+        val = int(m.group(2).replace(",", "")) * 1_000_000
+        if val > 100_000_000:
             norm = _normalize_seg(seg)
-            raw[norm] = val
+            if norm not in raw:
+                raw[norm] = float(val)
 
-    # Pattern: regional table — find "Net sales" then extract ordered values + preceding headers
-    netsales_match = re.search(
-        r"Net sales\s*(?:\$\s*[\d,]+(?:[^N]*?\$\s*[\d,]+){1,10})", text, re.IGNORECASE
-    )
-    if netsales_match and not raw:
-        values_str = netsales_match.group(0)
-        values = [_parse_usd(v) for v in DOLLAR_RE.findall(values_str)]
-        values = [v for v in values if v and v > 100_000_000]
+    if raw:
+        pairs = [(_resolve_seg(seg), val) for seg, val in raw.items()
+                 if _resolve_seg(seg) is not None]
+        return _build_result(pairs, total_rev, fiscal_year)
 
-        # Find segment labels in the text before "Net sales"
-        before = text[:netsales_match.start()]
-        seg_labels = [seg for seg in SEG_MAP if seg in before.lower()[-800:]]
+    return None
 
-        if seg_labels and values:
-            for label, val in zip(seg_labels, values):
-                raw[label] = val
 
-    if not raw:
-        return None
-
-    # Remove "other countries", "total", "worldwide" etc.
-    skip_keys = {"other countries", "other", "total", "worldwide", "total net sales",
-                 "corporate", "eliminations", None}
-
-    # Build country-level map
+def _build_result(pairs, total_rev: float, fiscal_year: int) -> Optional[dict]:
+    """Convert (resolved_seg, value) pairs → standard result dict."""
     country_vals: dict[str, float] = {}
-    for seg, val in raw.items():
-        resolved = _resolve_seg(seg)
-        if resolved is None or seg in skip_keys:
-            continue
+    for resolved, val in pairs:
         if isinstance(resolved, list):
             for iso, weight in resolved:
                 country_vals[iso] = country_vals.get(iso, 0) + val * weight
-        else:
+        elif isinstance(resolved, str):
             country_vals[resolved] = country_vals.get(resolved, 0) + val
 
     if not country_vals:
         return None
-
-    # Compute percentages relative to total_rev
     seg_total = sum(country_vals.values())
-    if seg_total < total_rev * 0.3:
-        # Segment total is too small relative to reported total — data mismatch
+    if seg_total < total_rev * 0.25:
         return None
-
     segments = [
         (iso, round(val / total_rev * 100, 2))
         for iso, val in country_vals.items()
         if val / total_rev * 100 >= 0.5
     ]
     segments.sort(key=lambda x: -x[1])
-
-    return {
-        "fiscal_year": fiscal_year,
-        "total_revenue_usd": total_rev,
-        "segments": segments,
-    }
+    return {"fiscal_year": fiscal_year, "total_revenue_usd": total_rev, "segments": segments}
 
 
 # ── Main per-ticker function ──────────────────────────────────────────────────
@@ -416,10 +444,14 @@ def _fetch_geo_revenue(cik: str, ticker: str) -> Optional[dict]:
         log.debug("%s: no geographic R-file found", ticker)
         return None
 
-    text = _extract_text_blob(html)
-    data = _parse_geo_from_text(text)
+    table = _find_geo_table(html)
+    if not table:
+        log.debug("%s: no geo table in R-file", ticker)
+        return None
+
+    data = _parse_geo_table(table)
     if not data:
-        log.debug("%s: could not parse geo revenue from R-file", ticker)
+        log.debug("%s: could not parse geo revenue from table", ticker)
     return data
 
 
@@ -523,18 +555,20 @@ def fetch_edgar_revenue(self, force_all: bool = False):
 if __name__ == "__main__":
     import sys
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-    ticker = (sys.argv[1] if len(sys.argv) > 1 else "AAPL").upper()
+    tickers = sys.argv[1:] if len(sys.argv) > 1 else ["AAPL", "MSFT", "NVDA", "JPM", "KO"]
 
     cik_map = _fetch_cik_map()
-    cik = cik_map.get(ticker)
-    if not cik:
-        print(f"No CIK for {ticker}")
-        sys.exit(1)
-    print(f"{ticker} CIK={cik}")
-    data = _fetch_geo_revenue(cik, ticker)
-    if data:
-        print(f"FY{data['fiscal_year']} total=${data['total_revenue_usd']:,.0f}")
-        for iso, pct in data["segments"]:
-            print(f"  {iso}: {pct:.1f}%")
-    else:
-        print("No geographic revenue data found")
+    for ticker in tickers:
+        ticker = ticker.upper()
+        cik = cik_map.get(ticker)
+        if not cik:
+            print(f"{ticker}: no CIK"); continue
+        print(f"\n{ticker} (CIK={cik})")
+        data = _fetch_geo_revenue(cik, ticker)
+        if data:
+            print(f"  FY{data['fiscal_year']} total=${data['total_revenue_usd']/1e9:.1f}B")
+            for iso, pct in data["segments"][:8]:
+                print(f"    {iso}: {pct:.1f}%")
+        else:
+            print("  No geographic revenue data found")
+        time.sleep(0.3)
