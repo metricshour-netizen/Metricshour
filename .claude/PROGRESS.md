@@ -1,5 +1,97 @@
 # MetricsHour — Progress & Session Log
 
+## Session 2026-04-01 — S&P 500 expansion + Marketstack caching + new asset pages ✅
+
+### Marketstack API key updated + smart caching
+- New key: `e91123b9111c0e39fbdeedade073bc51` set in `/root/metricshour/backend/.env`
+- `workers/tasks/stocks.py`: Redis day-cache (`marketstack:eod:fetched:YYYY-MM-DD`, 6h TTL) — calls Marketstack once/day not 12×/day
+- Full OHLCV from Marketstack (open/high/low/close/volume via adj_* fields); yfinance fallback handles intraday
+- `_upsert_prices()` now handles 3 formats: dict (Marketstack), tuple (yfinance), float (legacy)
+
+### S&P 500 expansion: 90 → 465 active stocks
+- `backend/app/seeders/assets.py`: ~375 new stocks added across all 11 GICS sectors
+- `NI` symbol collision fixed: CME Nickel deactivated by `(symbol, exchange)` tuple, NiSource NYSE preserved
+- `backend/app/seeders/edgar.py`: 147 new EDGAR entries (24 → 171 companies), 3,283 rows in `stock_country_revenues`
+- 453/465 stocks have live price data; 12 will fill on next yfinance run
+
+### New frontend pages (all live, all 200)
+- `/crypto/` — ranked by market cap, orange accent, table with price/24h-change/market-cap/volume
+- `/etfs/` — grouped by category (Broad Market/Sector/International/Fixed Income/Commodities), sky accent
+- `/fx/` — grouped Majors/Emerging Markets, correct decimal precision per pair
+- AppNav: Crypto, ETFs, FX links added to desktop + mobile menus
+- nuxt.config.ts: cache rules added (`/crypto` 2min, `/etfs`+`/fx` 15min edge)
+- stocks/index.vue: subtitle → "S&P 500"; sector filter auto-generates from data (all 11 GICS)
+
+### AI summaries triggered for new stocks
+- 308 stocks had no summary, 367 had no insights
+- `generate_page_summaries` + `generate_daily_insights` triggered manually at 17:38 UTC
+- Both run daily automatically (2am + 5am UTC) — all 465 stocks covered going forward
+
+## Session 2026-03-21 — Full security hardening + Moltis aggression mode + blog from screenshots ✅
+
+### Security hardening — ALL 3 SERVERS
+
+**Critical bug found & fixed:**
+- Netcup DOCKER-USER rule used `-i eth0` but interface is `ens3` — Coolify (8090) + Traefik dashboard (8080) were publicly exposed. Fixed to interface-agnostic rule covering 8080,8090,8999,9443,6001,6002,9100.
+
+**Subnet blocks (permanent, persisted):**
+- Netcup: `34.91.0.0/24` (Google Cloud), `45.148.10.0/24` — iptables + netfilter-persistent
+- Hetzner: above + `52.168.141.0/24` (Azure), `2.57.121.0/24`, `2.57.122.0/24` — iptables + netfilter-persistent
+- Contabo: same 4 subnets — UFW insert (auto-persistent)
+- Attack confirmed: `34.91.0.68` = Google Cloud NL VM doing SSH credential stuffing Mar 19–21 (usernames: central, test_user, hduser, ashok). `52.168.141.47` = Azure.
+
+**Port 3000 locked:**
+- Netcup: `iptables -I INPUT -i ens3 -p tcp --dport 3000 -j DROP` — Docker bridge unaffected, Traefik still routes fine
+- Hetzner: same with `-i eth0` — nginx still routes fine
+- Both persisted via netfilter-persistent
+
+**fail2ban hardened (all 3 servers):**
+- `bantime 24h → 7d`, `findtime 10m → 5m`
+- New `[recidive]` jail: 2nd offense within 7d = **180-day full port ban**
+- Both `sshd` + `recidive` jails confirmed active on all 3
+
+**Morning crons fixed (SSH timeout root cause):**
+- `morning_pulse.py`: 9 SSH calls → 1 batched SQL. timeout 30s → 60s
+- `morning_crypto.py`: 2 SSH calls → 1 combined query. timeout 30s → 60s
+- Both tested live, Telegram cards sent successfully
+
+**Moltis BOOT.md — security aggression mode:**
+- R18b rewritten: cloud provider IPs (34.x Google, 52.168.x Azure) = CRITICAL, block /24 immediately. Severity scale: 1-5=LOW, 6-20=MEDIUM, 21-50=HIGH, 51+=CRITICAL
+- R18c added: SUBNET AUTO-BLOCK PROTOCOL — executes iptables/ufw block without waiting when ≥3 IPs from same /24 or any cloud provider IP banned
+- Incident table updated: SSH brute-force now AUTO not ASK; cloud IP = AUTO; subnet pattern = AUTO
+
+**security_watcher.py upgraded:**
+- New `classify_ips()` detects cloud provider IPs (34.x, 35.x, 52.x, 104.x, 13.x, 18.x, 20.x, 40.x) and subnet concentrations
+- Cloud IP banned → CRITICAL alert + subnet to block
+- ≥3 IPs from same /24 → HIGH alert + hot subnets listed
+- SSH brute-force severity now scales: ≥500/h=CRITICAL, ≥200/h=HIGH
+- Overall severity now includes CRITICAL tier
+
+### Blog from Telegram screenshots (id=52, published)
+
+**New workflow established:**
+- User sends screenshots to Moltis Telegram → downloaded to `/tmp/image_for_blog.jpg` + `/tmp/image_2.jpg` on Contabo (NOT `/tmp/moltis_images/`)
+- Pull to Hetzner with scp, pass to Gemini 2.5 Pro with inline_data (jpeg)
+- Gemini returns JSON: title, slug, excerpt, body with [IMAGE_1]/[IMAGE_2] placeholders
+- Script on Netcup: upload to R2, replace placeholders, create draft, upload cover, publish
+- Admin token: `METRICSHOUR_ADMIN_TOKEN` in Contabo `/root/.config/moltis/.env`
+
+**Blog post id=52:**
+- Title: "UK Backs £746M Nigerian Port Overhaul, Cementing £8.1B Trade Tie"
+- Slug: `uk-backs-746m-nigerian-port-overhaul-cementing-81b-trade-tie`
+- Source: UK Export Finance + Chris Bryant MP tweets on UK-Nigeria port deal
+- Cover: UKEF deal tweet card (R2 CDN) → OG image working ✓
+- Body images: both embedded with figcaptions ✓
+- Internal links: /trade/gb-ng, /countries/ng, /countries/gb ✓
+- Live 200 ✓, all CDN assets 200 ✓
+
+**Blog count: 52 posts total (drafts 43–50 still pending publish)**
+
+### Current DB snapshot (2026-03-21)
+- Users: 40
+- Blog posts: 52 total (published: ~43, drafts: 43–50 + any others)
+- Page views 7d: 3,314
+
 ## Session 2026-03-19e — Blog SEO deep fix + security_watcher critical fix + Moltis learning ✅
 
 ### Blog SEO fixes (commits 5f8fb2e + 5ea7708)

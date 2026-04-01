@@ -83,6 +83,8 @@ app = Celery('metricshour', include=[
     'tasks.data_quality_monitor',
     'tasks.search_index',
     'tasks.watchdog',
+    'tasks.fred_rates',
+    'tasks.earnings_calendar',
 ])
 
 # Use SSL only for rediss:// URLs (Upstash); skip for local redis:// (DragonflyDB)
@@ -261,6 +263,18 @@ app.conf.update(
         'central-bank-rates-daily': {
             'task': 'tasks.central_bank_rates.fetch_central_bank_rates',
             'schedule': crontab(hour=6, minute=15),
+        },
+
+        # Earnings calendar — yfinance earnings_dates, top 100 stocks — daily 7:30am
+        'earnings-calendar-daily-730am': {
+            'task': 'earnings_calendar.fetch_earnings_dates',
+            'schedule': crontab(hour=7, minute=30),
+        },
+
+        # FRED macro series — yield curve, CPI, M2, jobless claims, mortgage — daily 6:30am
+        'fred-rates-daily-630am': {
+            'task': 'fred_rates.fetch_fred_rates',
+            'schedule': crontab(hour=6, minute=30),
         },
 
         # Government bond yields — FRED (US 2Y, DE/GB/FR/IT/JP 10Y) — daily 6:30am

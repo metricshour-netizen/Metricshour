@@ -5,6 +5,8 @@ from .user import User, UserTier, PriceAlert, LoginEvent, PageView
 from .feed import FeedEvent, UserFollow, UserInteraction, FollowEntityType, InteractionType
 from .summary import PageSummary, PageInsight
 from .user import AlertDelivery, MacroAlert
+from .macro import MacroSeries
+from .earnings import EarningsEvent
 
 __all__ = [
     "Base",
@@ -29,4 +31,6 @@ __all__ = [
     "PageInsight",
     "LoginEvent",
     "PageView",
+    "MacroSeries",
+    "EarningsEvent",
 ]

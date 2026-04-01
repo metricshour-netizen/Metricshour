@@ -1890,61 +1890,83 @@ def _pick_crypto_reel_subject() -> tuple[str, str]:
 
 
 def _trigger_reel_via_moltis(style: str, subject: str, hook: str) -> bool:
-    """Trigger a reel generation via tg-bridge injection to Moltis. Returns True on success."""
-    if not TELEGRAM_WEBHOOK_SECRET or not TELEGRAM_CHAT_ID:
-        log.warning("Reel trigger skipped — TELEGRAM_WEBHOOK_SECRET or TELEGRAM_CHAT_ID not set")
-        return False
-    payload = {
-        "update_id": 999999,
-        "message": {
-            "message_id": 999999,
-            "from": {"id": int(TELEGRAM_CHAT_ID), "is_bot": False, "first_name": "Scheduler"},
-            "chat": {"id": int(TELEGRAM_CHAT_ID), "type": "private"},
-            "date": int(time.time()),
-            "text": (
-                    "[SYSTEM AUTOMATION "
-                    + datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-                    + "] NO TEXT RESPONSE. CALL TOOL NOW: mcp__metricshour__smart_reel"
-                    f" style={style} subject={subject} hook={hook}"
-                    " — zero text before tool call, rules forbid it."
-                ),
-        },
-    }
+    """Trigger reel generation via tg-bridge /run-reel endpoint on Contabo.
+    Bypasses Moltis chat layer — runs run_smart_reel.py directly.
+    Falls back to tg-bridge → Moltis injection if /run-reel fails.
+    """
     trigger_time = datetime.now(timezone.utc)
+    hook_safe = hook.replace("'", "").replace('"', '').replace(';', '')[:200]
+    success = False
+
+    # Primary: POST to /run-reel on Contabo tg-bridge (direct execution)
     try:
         r = requests.post(
-            TG_BRIDGE_URL,
-            json=payload,
+            TG_BRIDGE_URL.replace("/webhook", "/run-reel"),
+            json={"style": style, "subject": subject, "hook": hook_safe},
             headers={"X-Telegram-Bot-Api-Secret-Token": TELEGRAM_WEBHOOK_SECRET},
             timeout=10,
         )
-        log.info("Reel trigger (%s/%s) → tg-bridge: HTTP %s", style, subject, r.status_code)
         success = r.status_code < 400
-        if success:
-            _log_content(
-                content_type="reel",
-                slot_name=f"reel_{style}",
-                entity=subject,
-                style=style,
-                caption=hook,
-                twitter_copy="",
-                platform_copies={},
-            )
-            # Queue a deferred check — Moltis writes source='moltis' to content_log on completion
-            verify_reel_completion.apply_async(
-                args=[style, subject, trigger_time.isoformat()],
-                countdown=360,  # check 6 min after trigger
-            )
-        return success
+        log.info("Reel direct (%s/%s) → /run-reel: HTTP %s", style, subject, r.status_code)
     except Exception as e:
-        log.warning("Reel trigger failed (%s/%s): %s", style, subject, e)
-        return False
+        log.warning("Reel /run-reel failed (%s/%s): %s — falling back to tg-bridge", style, subject, e)
+
+    if not success:
+        # Fallback: original tg-bridge → Moltis injection
+        if not TELEGRAM_WEBHOOK_SECRET or not TELEGRAM_CHAT_ID:
+            log.warning("Reel fallback skipped — TELEGRAM_WEBHOOK_SECRET or TELEGRAM_CHAT_ID not set")
+            return False
+        payload = {
+            "update_id": 999999,
+            "message": {
+                "message_id": 999999,
+                "from": {"id": int(TELEGRAM_CHAT_ID), "is_bot": False, "first_name": "Scheduler"},
+                "chat": {"id": int(TELEGRAM_CHAT_ID), "type": "private"},
+                "date": int(time.time()),
+                "text": (
+                        "[SYSTEM AUTOMATION "
+                        + datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+                        + "] NO TEXT RESPONSE. CALL TOOL NOW: mcp__metricshour__smart_reel"
+                        f" style={style} subject={subject} hook={hook_safe}"
+                        " — zero text before tool call, rules forbid it."
+                    ),
+            },
+        }
+        try:
+            r = requests.post(
+                TG_BRIDGE_URL,
+                json=payload,
+                headers={"X-Telegram-Bot-Api-Secret-Token": TELEGRAM_WEBHOOK_SECRET},
+                timeout=10,
+            )
+            log.info("Reel fallback tg-bridge (%s/%s): HTTP %s", style, subject, r.status_code)
+            success = r.status_code < 400
+        except Exception as e2:
+            log.warning("Reel fallback tg-bridge failed (%s/%s): %s", style, subject, e2)
+            return False
+
+    if success:
+        _log_content(
+            content_type="reel",
+            slot_name=f"reel_{style}",
+            entity=subject,
+            style=style,
+            caption=hook,
+            twitter_copy="",
+            platform_copies={},
+        )
+        # Reel takes 5-15 min — check 25 min after trigger
+        verify_reel_completion.apply_async(
+            args=[style, subject, trigger_time.isoformat()],
+            countdown=1500,  # check 25 min after trigger
+        )
+    return success
 
 
 @app.task(name='tasks.social_content.verify_reel_completion')
 def verify_reel_completion(style: str, subject: str, trigger_time_iso: str) -> str:
-    """Confirm Moltis actually generated the reel. Sends alert if missing.
-    Runs 6 min after each reel trigger. Checks content_log for source='moltis' entry.
+    """Confirm reel was generated. Sends alert if missing.
+    Runs 25 min after trigger. Checks content_log for source='moltis' entry.
     """
     try:
         trigger_dt = datetime.fromisoformat(trigger_time_iso)

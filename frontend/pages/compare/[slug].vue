@@ -234,9 +234,9 @@ const [canonA, canonB] = [rawA, rawB].sort()
 const codeA = canonA.toLowerCase()
 const codeB = canonB.toLowerCase()
 
-// Redirect non-canonical URLs
+// Redirect non-canonical URLs (301 — permanent, passes PageRank)
 if (rawA !== canonA || rawB !== canonB) {
-  await navigateTo(`/compare/${codeA}-vs-${codeB}`, { replace: true })
+  await navigateTo(`/compare/${codeA}-vs-${codeB}/`, { redirectCode: 301 })
 }
 
 const [{ data: dataA, pending: pA, error: errA }, { data: dataB, pending: pB, error: errB }] = await Promise.all([

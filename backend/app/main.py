@@ -15,6 +15,8 @@ from app.routers import telegram_webhook
 from app.routers.admin import public_router as blog_router, track_router
 from app.routers import intelligence
 from app.routers import feedback
+from app.routers import rates as rates_router
+from app.routers import earnings as earnings_router
 from app.routers import newsletter
 
 if settings.sentry_dsn:
@@ -121,6 +123,8 @@ app.include_router(telegram_webhook.router)  # social draft helpers (no routes �
 app.include_router(track_router)   # POST /api/track — page view analytics
 app.include_router(snapshots.router)  # GET /snapshots/{key} — R2 CDN proxy, CF-cached at edge
 app.include_router(newsletter.router, prefix="/api")  # POST /api/newsletter/subscribe, GET /api/newsletter/unsubscribe
+app.include_router(rates_router.router, prefix="/api")  # GET /api/rates/, /api/rates/yield-curve, /api/rates/{series_id}
+app.include_router(earnings_router.router, prefix="/api")  # GET /api/earnings/upcoming, /api/earnings/recent
 
 
 Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)

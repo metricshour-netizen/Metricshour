@@ -13,6 +13,9 @@
       <NuxtLink to="/countries/"   class="hover:text-gray-400 transition-colors">Countries</NuxtLink>
       <NuxtLink to="/trade/"       class="hover:text-gray-400 transition-colors">Trade</NuxtLink>
       <NuxtLink to="/commodities/" class="hover:text-gray-400 transition-colors">Commodities</NuxtLink>
+      <NuxtLink to="/rates/"        class="hover:text-gray-400 transition-colors">Rates</NuxtLink>
+      <NuxtLink to="/yield-curve/" class="hover:text-gray-400 transition-colors">Yield Curve</NuxtLink>
+      <NuxtLink to="/earnings/"    class="hover:text-gray-400 transition-colors">Earnings</NuxtLink>
       <NuxtLink to="/feed/"        class="hover:text-gray-400 transition-colors">Feed</NuxtLink>
       <NuxtLink to="/blog/"        class="hover:text-gray-400 transition-colors">Blog</NuxtLink>
       <NuxtLink to="/login/"       class="hover:text-gray-400 transition-colors">Sign In</NuxtLink>
@@ -46,7 +49,7 @@
 
     <!-- Data sources + copyright -->
     <div class="border-t border-[#1a2332] px-4 py-4 text-center text-[10px] text-gray-700 space-y-1">
-      <p>Data: World Bank · SEC EDGAR · UN Comtrade · REST Countries · IMF · Marketstack</p>
+      <p>Data: World Bank · SEC EDGAR · UN Comtrade · REST Countries · IMF · Marketstack · FRED</p>
       <p>© {{ new Date().getFullYear() }} MetricsHour · All rights reserved</p>
     </div>
   </footer>

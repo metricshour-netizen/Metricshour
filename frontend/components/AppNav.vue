@@ -19,6 +19,8 @@
         <NuxtLink to="/crypto/" class="hover:text-white transition-colors">Crypto</NuxtLink>
         <NuxtLink to="/etfs/" class="hover:text-white transition-colors">ETFs</NuxtLink>
         <NuxtLink to="/fx/" class="hover:text-white transition-colors">FX</NuxtLink>
+        <NuxtLink to="/rates/" class="hover:text-white transition-colors">Rates</NuxtLink>
+        <NuxtLink to="/earnings/" class="hover:text-white transition-colors">Earnings</NuxtLink>
 
         <template v-if="isLoggedIn && user">
           <div class="flex items-center gap-3">
@@ -83,6 +85,8 @@
       <NuxtLink to="/crypto/"     @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">Crypto <span class="text-gray-600 text-xs">→</span></NuxtLink>
       <NuxtLink to="/etfs/"       @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">ETFs <span class="text-gray-600 text-xs">→</span></NuxtLink>
       <NuxtLink to="/fx/"         @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">FX <span class="text-gray-600 text-xs">→</span></NuxtLink>
+      <NuxtLink to="/rates/"      @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">Rates <span class="text-gray-600 text-xs">→</span></NuxtLink>
+      <NuxtLink to="/earnings/"   @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">Earnings <span class="text-gray-600 text-xs">→</span></NuxtLink>
 <template v-if="isLoggedIn && user">
         <NuxtLink to="/watchlist"  @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">⭐ Watchlist <span class="text-gray-600 text-xs">→</span></NuxtLink>
         <NuxtLink to="/alerts"    @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-amber-400 hover:text-amber-300 border-b border-[#1f2937]">🔔 Alerts <span class="text-gray-600 text-xs">→</span></NuxtLink>
