@@ -206,24 +206,24 @@ def _latest_10k_accession(cik: str) -> Optional[tuple[str, int]]:
 
 def _r_file_has_geo(text: str) -> bool:
     """
-    File must have SHORT table cells that are exactly geographic segment names
-    (i.e. column headers) AND large revenue numbers in the table.
-    This prevents false matches where geo keywords appear only in narrative blobs.
+    True only if a SINGLE table contains BOTH geo segment header cells AND revenue numbers.
+    Prevents false positives where geo keywords/numbers appear in different tables.
     """
     soup = BeautifulSoup(text, "html.parser")
-    geo_header_count = 0
-    has_big_nums = False
-    for td in soup.find_all(["td", "th"]):
-        cell = td.get_text(" ", strip=True)
-        # Short cell (≤40 chars) that matches a known geographic segment
-        if len(cell) <= 40 and _resolve_seg(cell) is not None:
-            norm = _normalize_seg(cell)
-            if norm not in {"corporate", "total", "other", "worldwide", "eliminations"}:
-                geo_header_count += 1
-        # Big revenue number in a standalone cell
-        if re.match(r"^\$?\s*\(?\d{2,3},\d{3}\)?$", cell.strip()):
-            has_big_nums = True
-    return geo_header_count >= 2 and has_big_nums
+    skip_norms = {"corporate", "total", "eliminations", "other", "worldwide"}
+    for table in soup.find_all("table"):
+        geo_count = 0
+        num_count = 0
+        for td in table.find_all(["td", "th"]):
+            cell = td.get_text(" ", strip=True)
+            if len(cell) <= 40 and _resolve_seg(cell) is not None:
+                if _normalize_seg(cell) not in skip_norms:
+                    geo_count += 1
+            if re.match(r"^\$?\s*\(?\d{2,3},\d{3}\)?$", cell):
+                num_count += 1
+        if geo_count >= 2 and num_count >= 3:
+            return True
+    return False
 
 
 def _find_geo_r_file(cik: str, accn: str, max_r: int = 200) -> Optional[str]:
