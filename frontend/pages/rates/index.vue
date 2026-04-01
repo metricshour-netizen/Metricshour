@@ -84,8 +84,9 @@
 </template>
 
 <script setup lang="ts">
+const { get } = useApi()
 const { data, pending } = await useAsyncData('rates-dashboard',
-  () => $fetch<any>('/api/rates/').catch(() => null),
+  () => get<any>('/api/rates/').catch(() => null),
 )
 
 const CATEGORY_META: Record<string, { label: string; icon: string }> = {

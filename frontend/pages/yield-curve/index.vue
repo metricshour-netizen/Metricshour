@@ -127,8 +127,9 @@
 </template>
 
 <script setup lang="ts">
+const { get } = useApi()
 const { data, pending } = await useAsyncData('yield-curve',
-  () => $fetch<any>('/api/rates/yield-curve?days=730').catch(() => null),
+  () => get<any>('/api/rates/yield-curve?days=730').catch(() => null),
 )
 
 const yieldValues = computed<Record<string, number | null>>(() => {

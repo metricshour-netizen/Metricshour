@@ -136,14 +136,15 @@
 </template>
 
 <script setup lang="ts">
+const { get } = useApi()
 const tab = ref<'upcoming' | 'recent'>('upcoming')
 
 const { data: upcomingData, pending: pendingUp } = await useAsyncData('earnings-upcoming',
-  () => $fetch<any>('/api/earnings/upcoming?days=30').catch(() => null),
+  () => get<any>('/api/earnings/upcoming?days=30').catch(() => null),
 )
 
 const { data: recentData, pending: pendingRec } = await useAsyncData('earnings-recent',
-  () => $fetch<any>('/api/earnings/recent?days=14').catch(() => null),
+  () => get<any>('/api/earnings/recent?days=14').catch(() => null),
 )
 
 function fmtDate(iso: string): string {

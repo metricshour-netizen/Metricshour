@@ -96,12 +96,13 @@
 <script setup lang="ts">
 const route = useRoute()
 const seriesId = (route.params.series_id as string).toUpperCase()
+const { get } = useApi()
 
 const activeDays = ref(365)
 
 const { data, pending, refresh } = await useAsyncData(
   `rates-${seriesId}-${activeDays.value}`,
-  () => $fetch<any>(`/api/rates/${seriesId}?days=${activeDays.value}`).catch(() => null),
+  () => get<any>(`/api/rates/${seriesId}?days=${activeDays.value}`).catch(() => null),
 )
 
 async function setDays(d: number) {
