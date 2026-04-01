@@ -206,17 +206,24 @@ def _latest_10k_accession(cik: str) -> Optional[tuple[str, int]]:
 
 def _r_file_has_geo(text: str) -> bool:
     """
-    File must have geographic keywords AND large revenue numbers (5+ digit, comma-separated).
-    The $ sign and number are often in separate <td> cells, so we check for the number alone.
+    File must have SHORT table cells that are exactly geographic segment names
+    (i.e. column headers) AND large revenue numbers in the table.
+    This prevents false matches where geo keywords appear only in narrative blobs.
     """
-    text_l = text.lower()
-    has_geo = any(all(kw.lower() in text_l for kw in kws) for kws in GEO_KEYWORDS)
-    if not has_geo:
-        return False
-    # Look for numbers in the millions/billions range: e.g. "178,353" or "1,234,567"
-    # At least 3 such numbers must appear (one for each geographic segment)
-    big_nums = re.findall(r"\b\d{2,3},\d{3}\b", text)
-    return len(big_nums) >= 3
+    soup = BeautifulSoup(text, "html.parser")
+    geo_header_count = 0
+    has_big_nums = False
+    for td in soup.find_all(["td", "th"]):
+        cell = td.get_text(" ", strip=True)
+        # Short cell (≤40 chars) that matches a known geographic segment
+        if len(cell) <= 40 and _resolve_seg(cell) is not None:
+            norm = _normalize_seg(cell)
+            if norm not in {"corporate", "total", "other", "worldwide", "eliminations"}:
+                geo_header_count += 1
+        # Big revenue number in a standalone cell
+        if re.match(r"^\$?\s*\(?\d{2,3},\d{3}\)?$", cell.strip()):
+            has_big_nums = True
+    return geo_header_count >= 2 and has_big_nums
 
 
 def _find_geo_r_file(cik: str, accn: str, max_r: int = 200) -> Optional[str]:
