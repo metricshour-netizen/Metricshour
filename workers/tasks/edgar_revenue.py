@@ -227,15 +227,22 @@ def _r_file_has_geo(text: str) -> bool:
 
 
 def _find_geo_r_file(cik: str, accn: str, max_r: int = 200) -> Optional[str]:
-    """Scan R1..R{max_r}.htm and return text of first file with geographic revenue."""
-    base_cik = str(int(cik))  # strip leading zeros for URL path
+    """
+    Scan R1..R{max_r}.htm. Return the HTML of the first R-file that:
+    1. passes _r_file_has_geo (has a table with geo headers + numbers), AND
+    2. _parse_geo_table produces valid data from it.
+    This avoids false positives (e.g. R12 has geo headers but wrong structure).
+    """
+    base_cik = str(int(cik))
     for n in range(1, max_r + 1):
         url = SEC_R_FILE.format(cik=base_cik, accn=accn, n=n)
         r = _get(url, timeout=15)
         if r is None:
-            break  # 404 → no more R files
+            break
         if _r_file_has_geo(r.text):
-            return r.text
+            table = _find_geo_table(r.text)
+            if table and _parse_geo_table(table) is not None:
+                return r.text
         time.sleep(0.1)
     return None
 
