@@ -85,6 +85,7 @@ app = Celery('metricshour', include=[
     'tasks.watchdog',
     'tasks.fred_rates',
     'tasks.earnings_calendar',
+    'tasks.edgar_revenue',
 ])
 
 # Use SSL only for rediss:// URLs (Upstash); skip for local redis:// (DragonflyDB)
@@ -275,6 +276,12 @@ app.conf.update(
         'fred-rates-daily-630am': {
             'task': 'fred_rates.fetch_fred_rates',
             'schedule': crontab(hour=6, minute=30),
+        },
+
+        # EDGAR geographic revenue — all stocks missing data — weekly Sunday 02:00 UTC
+        'edgar-revenue-weekly-sun-0200': {
+            'task': 'edgar_revenue.fetch_all',
+            'schedule': crontab(hour=2, minute=0, day_of_week=0),
         },
 
         # Government bond yields — FRED (US 2Y, DE/GB/FR/IT/JP 10Y) — daily 6:30am
