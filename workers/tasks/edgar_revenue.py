@@ -205,19 +205,14 @@ def _latest_10k_accession(cik: str) -> Optional[tuple[str, int]]:
 # ── R-file scanner ────────────────────────────────────────────────────────────
 
 def _r_file_has_geo(text: str) -> bool:
-    """File must have geographic keywords AND financial data (dollar amounts in millions)."""
+    """File must have a cell with geographic keywords AND dollar-amount data."""
+    # Quick pre-check on raw HTML for speed
     text_l = text.lower()
-    has_geo = False
-    for kws in GEO_KEYWORDS:
-        if all(kw.lower() in text_l for kw in kws):
-            has_geo = True
-            break
+    has_geo = any(all(kw.lower() in text_l for kw in kws) for kws in GEO_KEYWORDS)
     if not has_geo:
         return False
-    # Must also have tabular numeric data — at least 3 dollar amounts >= $1,000M
-    dollars = re.findall(r"\$\s*([\d,]{5,})", text)
-    big_dollars = [d for d in dollars if int(d.replace(",", "")) >= 1_000]
-    return len(big_dollars) >= 3
+    # Must also have dollar amounts in millions format inside a TD cell
+    return bool(re.search(r"\$\s*[\d,]{5,}", text))
 
 
 def _find_geo_r_file(cik: str, accn: str, max_r: int = 200) -> Optional[str]:
@@ -274,12 +269,31 @@ def _resolve_seg(label: str) -> Optional[str | list[tuple[str, float]]]:
 
 
 def _extract_text_blob(html: str) -> str:
-    """Return the largest text cell from the R-file (contains the full note text)."""
+    """
+    Return the text cell that contains both geographic keywords AND dollar-amount data.
+    Falls back to the largest cell if no specific match is found.
+    """
     soup = BeautifulSoup(html, "html.parser")
-    texts = [td.get_text(" ", strip=True) for td in soup.find_all("td")]
-    if not texts:
-        return html
-    return max(texts, key=len)
+    best = ""
+    for td in soup.find_all("td"):
+        text = td.get_text(" ", strip=True)
+        # Must have geo keywords
+        text_l = text.lower()
+        has_geo = any(
+            all(kw.lower() in text_l for kw in kws)
+            for kws in GEO_KEYWORDS
+        )
+        if not has_geo:
+            continue
+        # Must have dollar amounts in millions format ($178,353 or $ 178,353)
+        has_data = bool(re.search(r"\$\s*[\d,]{5,}", text))
+        if has_data and len(text) > len(best):
+            best = text
+    if best:
+        return best
+    # Fallback: largest cell
+    cells = [td.get_text(" ", strip=True) for td in soup.find_all("td")]
+    return max(cells, key=len) if cells else html
 
 
 def _parse_geo_from_text(text: str) -> Optional[dict]:
