@@ -3,7 +3,7 @@
     <div class="mb-6 flex items-center justify-between gap-4">
       <div>
         <h1 class="text-xl sm:text-2xl font-bold text-white">Stocks</h1>
-        <p class="text-gray-500 text-sm mt-1">Top global stocks · Geographic revenue exposure · SEC EDGAR filings</p>
+        <p class="text-gray-500 text-sm mt-1">S&amp;P 500 · Geographic revenue exposure · SEC EDGAR filings</p>
       </div>
       <!-- Terminal View toggle -->
       <button
