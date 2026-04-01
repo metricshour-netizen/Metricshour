@@ -733,6 +733,18 @@ ETFS: list[tuple] = [
     ("VNQ",   "Vanguard Real Estate ETF",             "NYSE",   "Real Estate",        30_000_000_000),
     ("IYR",   "iShares U.S. Real Estate ETF",         "NYSE",   "Real Estate",         4_000_000_000),
     ("REM",   "iShares Mortgage Real Estate ETF",     "NYSE",   "Mortgage REITs",      1_000_000_000),
+    # ── Additional Broad / Factor ────────────────────────────────────────────
+    ("IEMG",  "iShares Core MSCI Emerging Markets ETF","NYSE", "Emerging Markets",    68_000_000_000),
+    ("ACWI",  "iShares MSCI ACWI ETF",               "NASDAQ", "Global Equity",       21_000_000_000),
+    ("VXUS",  "Vanguard Total International Stock",  "NASDAQ", "International",       70_000_000_000),
+    ("VIG",   "Vanguard Dividend Appreciation ETF",  "NYSE",   "Dividends",           75_000_000_000),
+    ("USMV",  "iShares MSCI Min Vol USA ETF",        "BATS",   "Low Volatility",      28_000_000_000),
+    ("QUAL",  "iShares MSCI USA Quality Factor ETF", "BATS",   "Quality Factor",      30_000_000_000),
+    ("BNDX",  "Vanguard Total International Bond",   "NASDAQ", "International Bonds", 55_000_000_000),
+    ("BIL",   "SPDR Bloomberg 1-3 Month T-Bill ETF", "NYSE",   "Short-Term Bonds",    35_000_000_000),
+    ("VGT",   "Vanguard Information Technology ETF", "NYSE",   "Technology",          60_000_000_000),
+    ("SPEM",  "SPDR Portfolio Emerging Markets ETF", "NYSE",   "Emerging Markets",     8_000_000_000),
+    ("GDX",   "VanEck Gold Miners ETF",              "NYSE",   "Gold Mining",         15_000_000_000),
     # ── Volatility / Inverse ─────────────────────────────────────────────────
     ("UVXY",  "ProShares Ultra VIX Short-Term Futures","NYSE",  "Volatility",          1_000_000_000),
     ("SQQQ",  "ProShares UltraPro Short QQQ",         "NASDAQ", "Inverse",             3_000_000_000),

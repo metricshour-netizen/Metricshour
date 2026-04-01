@@ -18,6 +18,7 @@ from app.routers import feedback
 from app.routers import rates as rates_router
 from app.routers import earnings as earnings_router
 from app.routers import newsletter
+from app.routers import screener as screener_router
 
 if settings.sentry_dsn:
     sentry_sdk.init(
@@ -125,6 +126,7 @@ app.include_router(snapshots.router)  # GET /snapshots/{key} — R2 CDN proxy, C
 app.include_router(newsletter.router, prefix="/api")  # POST /api/newsletter/subscribe, GET /api/newsletter/unsubscribe
 app.include_router(rates_router.router, prefix="/api")  # GET /api/rates/, /api/rates/yield-curve, /api/rates/{series_id}
 app.include_router(earnings_router.router, prefix="/api")  # GET /api/earnings/upcoming, /api/earnings/recent
+app.include_router(screener_router.router, prefix="/api")  # GET /api/screener, /api/screener/sectors
 
 
 Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
