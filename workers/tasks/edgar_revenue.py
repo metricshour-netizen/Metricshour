@@ -274,12 +274,12 @@ def _resolve_seg(label: str) -> Optional[str | list[tuple[str, float]]]:
 
 def _extract_text_blob(html: str) -> str:
     """
-    Return the full text of the 'report' table that contains geographic keywords AND
-    multi-digit numbers (revenue values). Falls back to full page text.
+    Return text from the table that best combines geo keywords + revenue numbers.
+    Prefers smaller/cleaner tables (the financial data tables) over the narrative wrapper.
     """
     soup = BeautifulSoup(html, "html.parser")
-    # Try each table with class "report"
-    for table in soup.find_all("table", {"class": "report"}):
+    candidates = []
+    for table in soup.find_all("table"):
         text = table.get_text(" ", strip=True)
         text_l = text.lower()
         has_geo = any(all(kw.lower() in text_l for kw in kws) for kws in GEO_KEYWORDS)
@@ -287,8 +287,11 @@ def _extract_text_blob(html: str) -> str:
             continue
         big_nums = re.findall(r"\b\d{2,3},\d{3}\b", text)
         if len(big_nums) >= 3:
-            return text
-    # Fallback: return full body text
+            candidates.append((len(big_nums), -len(text), text))  # more nums, shorter = better
+    if candidates:
+        candidates.sort(reverse=True)  # most numbers first, then shortest
+        return candidates[0][2]
+    # Fallback: full body text
     body = soup.find("body")
     return body.get_text(" ", strip=True) if body else html
 
@@ -306,24 +309,25 @@ def _parse_geo_from_text(text: str) -> Optional[dict]:
     years = re.findall(r"\b(202[0-9]|201[5-9])\b", text)
     fiscal_year = int(years[0]) if years else 2024
 
+    # Dollar pattern that handles "$ 178,353" (space between $ and digits)
+    DOLLAR_RE = re.compile(r"\$\s*([\d,]+)")
+
     # Step 2: find total revenue (largest dollar figure)
-    all_dollars = [_parse_usd(m) for m in re.findall(r"\$[\d,]+", text)]
+    all_dollars = [_parse_usd(m) for m in DOLLAR_RE.findall(text)]
     all_dollars = [v for v in all_dollars if v and v > 1_000_000_000]  # > $1B
     if not all_dollars:
         return None
     total_rev = max(all_dollars)
 
     # Step 3: look for "Net sales" followed by dollar values
-    # Try to find a segment block: header labels + "Net sales" row with values
     # Common patterns:
-    # a) "AmericasEuropeGreater ChinaJapanRest of Asia PacificNet sales$178,353$111,032$64,377$28,703$33,696"
+    # a) "Americas Europe Greater China Japan ... Net sales $ 178,353 $ 111,032 ..."
     # b) "United States International Total Net sales $ 100,000 $ 50,000 $ 150,000"
     # c) "U.S. $138,573 China $72,559 Other countries $172,153 Total $383,285"
 
-    # Extract all (label, value) pairs by scanning for known segment names near dollar amounts
     raw: dict[str, float] = {}
 
-    # Pattern: "U.S. $151,790" or "China(1) 64,377" country-level table
+    # Pattern: country-level table — "U.S. $151,790" or "China(1) 64,377"
     country_pattern = re.compile(
         r"(U\.S\.|United States|China|Japan|Germany|France|United Kingdom|UK|Canada|"
         r"Mexico|Brazil|India|Australia|South Korea|Korea|Singapore|Taiwan|Hong Kong|"
@@ -332,28 +336,24 @@ def _parse_geo_from_text(text: str) -> Optional[dict]:
         r"[\s\(\d\)]*\$?\s*([\d,]+)", re.IGNORECASE
     )
     for m in country_pattern.finditer(text):
-        seg   = m.group(1).strip()
-        val   = _parse_usd(m.group(2))
-        if val and val > 100_000_000:  # > $100M
+        seg = m.group(1).strip()
+        val = _parse_usd(m.group(2))
+        if val and val > 100_000_000:
             norm = _normalize_seg(seg)
             raw[norm] = val
 
-    # Pattern: regional labels in text before dollar amounts
-    # Find "Net sales" followed by a sequence of dollar values, then match to nearby segment headers
+    # Pattern: regional table — find "Net sales" then extract ordered values + preceding headers
     netsales_match = re.search(
-        r"Net sales[^\$]*(\$[\d,]+(?:[^\$]*\$[\d,]+){1,10})", text, re.IGNORECASE
+        r"Net sales\s*(?:\$\s*[\d,]+(?:[^N]*?\$\s*[\d,]+){1,10})", text, re.IGNORECASE
     )
     if netsales_match and not raw:
-        values_str = netsales_match.group(1)
-        values = [_parse_usd(v) for v in re.findall(r"\$[\d,]+", values_str)]
+        values_str = netsales_match.group(0)
+        values = [_parse_usd(v) for v in DOLLAR_RE.findall(values_str)]
         values = [v for v in values if v and v > 100_000_000]
 
-        # Find segment labels preceding this match
+        # Find segment labels in the text before "Net sales"
         before = text[:netsales_match.start()]
-        seg_labels = []
-        for seg_name in SEG_MAP:
-            if seg_name in before.lower()[-500:]:
-                seg_labels.append(seg_name)
+        seg_labels = [seg for seg in SEG_MAP if seg in before.lower()[-800:]]
 
         if seg_labels and values:
             for label, val in zip(seg_labels, values):
