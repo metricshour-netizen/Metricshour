@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func, or_, case
 
@@ -17,6 +17,7 @@ def list_trade_pairs(
     request: Request,
     exporter: str | None = None,
     importer: str | None = None,
+    limit: int = Query(default=100, ge=1, le=500),
     db: Session = Depends(get_db),
 ) -> list[dict]:
     # Subquery: best year per (exporter, importer) pair.
@@ -43,7 +44,7 @@ def list_trade_pairs(
             & (TradePair.year == best_year_sq.c.best_year),
         )
         .order_by(TradePair.trade_value_usd.desc())
-        .limit(100)
+        .limit(limit)
     )
 
     if exporter:

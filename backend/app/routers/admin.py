@@ -54,7 +54,21 @@ class BlogPublicOut(BaseModel):
         from_attributes = True
 
 
-@public_router.get("", response_model=list[BlogPublicOut])
+class BlogListOut(BaseModel):
+    """Lightweight blog list item — excludes body to avoid sending 10KB× N posts over the wire."""
+    id: int
+    title: str
+    slug: str
+    excerpt: str | None
+    cover_image_url: str | None
+    author_name: str
+    published_at: datetime | None
+
+    class Config:
+        from_attributes = True
+
+
+@public_router.get("", response_model=list[BlogListOut])
 def list_blog_posts(limit: int = 20, offset: int = 0, db: Session = Depends(get_db)):
     """Public blog listing — published posts only, newest first."""
     posts = db.execute(

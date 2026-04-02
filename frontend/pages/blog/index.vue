@@ -101,14 +101,14 @@ useSeoMeta({
   ogDescription: 'Market intelligence articles, data analysis, and financial commentary.',
   ogUrl: 'https://metricshour.com/blog/',
   ogType: 'website',
-  ogImage: 'https://cdn.metricshour.com/og/section/home.png',
+  ogImage: 'https://cdn.metricshour.com/og/section/blog.png',
   ogImageAlt: 'MetricsHour Blog',
   ogImageWidth: '1200',
   ogImageHeight: '630',
   twitterCard: 'summary_large_image',
   twitterTitle: 'Blog — MetricsHour',
   twitterDescription: 'Market intelligence articles, data analysis, and financial commentary.',
-  twitterImage: 'https://cdn.metricshour.com/og/section/home.png',
+  twitterImage: 'https://cdn.metricshour.com/og/section/blog.png',
 })
 
 useHead({

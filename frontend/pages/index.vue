@@ -442,13 +442,13 @@ const G20_FALLBACK = [
 // ── Top Stocks ────────────────────────────────────────────────────────────────
 const { data: allStocks, pending: stocksPending, error: stocksError } = useAsyncData(
   'top-stocks',
-  () => get<any[]>('/api/assets', { type: 'stock' }).catch(() => []),
+  () => get<any[]>('/api/assets', { type: 'stock', limit: '10' }).catch(() => []),
 )
 
 // ── Trade pairs ───────────────────────────────────────────────────────────────
 const { data: trades, pending: tradesPending } = useAsyncData(
   'top-trades',
-  () => get<any[]>('/api/trade').catch(() => []),
+  () => get<any[]>('/api/trade', { limit: '8' }).catch(() => []),
 )
 
 const topStocks = computed(() => (allStocks.value ?? []).slice(0, 5))
