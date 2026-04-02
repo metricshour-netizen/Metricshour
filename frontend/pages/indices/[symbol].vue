@@ -126,7 +126,7 @@
           <h2 class="text-base font-bold text-white">Price History</h2>
           <div class="flex gap-1">
             <button
-              v-for="r in RANGES"
+              v-for="r in availableRanges"
               :key="r.label"
               @click="activeRange = r.days"
               class="text-xs px-2 py-0.5 rounded transition-colors"
@@ -136,7 +136,7 @@
         </div>
         <EChartLine v-if="chartOption" :option="chartOption" height="260px" />
         <div v-else class="h-[260px] flex items-center justify-center text-gray-600 text-sm">
-          No price history yet — ingestion runs every 30 minutes during market hours.
+          {{ pricesRaw?.length ? 'Price history building — check back in a few days.' : 'No price data yet.' }}
         </div>
       </div>
 
@@ -207,9 +207,14 @@ const RANGES = [
 ]
 const activeRange = ref(90)
 
+const availableRanges = computed(() => {
+  const n = pricesRaw.value?.length ?? 0
+  return RANGES.filter(r => n >= r.days || (r === RANGES[0] && n >= 5))
+})
+
 const chartOption = computed(() => {
   const p = pricesRaw.value
-  if (!p?.length) return null
+  if (!p?.length || p.length < 7) return null
   const slice = p.slice(-activeRange.value)
   const dates  = slice.map((x: any) => x.t?.slice(0, 10))
   const closes = slice.map((x: any) => x.c)
