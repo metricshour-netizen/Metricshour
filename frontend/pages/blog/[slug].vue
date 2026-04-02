@@ -256,13 +256,13 @@ useSeoMeta({
   ogDescription: computed(() => post.value?.excerpt || ''),
   ogUrl: computed(() => `https://metricshour.com/blog/${slug}/`),
   ogType: 'article',
-  ogImage: computed(() => post.value?.cover_image_url || 'https://cdn.metricshour.com/og/section/home.png'),
+  ogImage: computed(() => post.value?.cover_image_url || 'https://cdn.metricshour.com/og/section/blog.png'),
   ogImageAlt: computed(() => post.value?.title || 'MetricsHour'),
   ogImageWidth: '1200',
   ogImageHeight: '630',
   twitterTitle: computed(() => post.value ? `${post.value.title} | MetricsHour` : 'Article | MetricsHour'),
   twitterDescription: computed(() => post.value?.excerpt || ''),
-  twitterImage: computed(() => post.value?.cover_image_url || 'https://cdn.metricshour.com/og/section/home.png'),
+  twitterImage: computed(() => post.value?.cover_image_url || 'https://cdn.metricshour.com/og/section/blog.png'),
   twitterCard: 'summary_large_image',
 })
 

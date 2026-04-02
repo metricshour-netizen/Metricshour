@@ -1038,6 +1038,7 @@ def generate_section_images() -> dict:
         ("feed",        "Market Intelligence",  "Real-time Economic Events"),
         ("pricing",     "Pricing",              "Plans · Features · Compare"),
         ("sectors",     "Market Sectors",       "Technology · Healthcare · Energy · Finance"),
+        ("blog",        "MetricsHour Blog",     "Macro Analysis · Trade · Markets · Geopolitics"),
     ]
     count = 0
     for key, title, subtitle in sections:

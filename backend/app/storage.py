@@ -19,13 +19,14 @@ def get_r2_client():
     )
 
 
-def r2_upload(key: str, body: bytes, content_type: str = "application/octet-stream") -> str:
+def r2_upload(key: str, body: bytes, content_type: str = "application/octet-stream", cache_control: str = "public, max-age=86400, s-maxage=86400, stale-while-revalidate=3600") -> str:
     """Upload bytes to R2. Returns the object key."""
     get_r2_client().put_object(
         Bucket=settings.r2_bucket_name,
         Key=key,
         Body=body,
         ContentType=content_type,
+        CacheControl=cache_control,
     )
     return key
 
