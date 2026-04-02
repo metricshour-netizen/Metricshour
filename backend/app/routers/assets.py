@@ -423,7 +423,7 @@ def get_asset(request: Request, symbol: str, db: Session = Depends(get_db)) -> d
 def _price_dict(p: Price) -> dict:
     """Serialize a Price row including computed change_pct from open/close."""
     chg = None
-    if p.open and p.open > 0 and p.close is not None:
+    if p.open and p.open > 0 and p.close is not None and p.close != p.open:
         chg = round((p.close - p.open) / p.open * 100, 4)
     return {
         "close": p.close,
