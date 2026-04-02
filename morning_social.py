@@ -827,106 +827,92 @@ def _get_trend(exp_code: str, imp_code: str) -> list[float]:
     return vals if vals else [0.0]
 
 
+def _exporters_type_config(rank_type: int, data_year: int, limit: int) -> tuple:
+    """Returns (sql, title, subtitle, metric, source) for a ranking type."""
+    src_map = {0: "UN Comtrade", 1: "UN Comtrade", 2: "World Bank", 3: "World Bank",
+               4: "IMF", 5: "World Bank", 6: "World Bank", 7: "World Bank"}
+    source = src_map.get(rank_type, "World Bank")
+    if rank_type == 0:
+        return (f"""SELECT c.name, c.code, SUM(tp.trade_value_usd) AS total
+            FROM trade_pairs tp JOIN countries c ON c.id = tp.exporter_id
+            WHERE tp.year = (SELECT MAX(year) FROM trade_pairs)
+            GROUP BY c.name, c.code ORDER BY total DESC LIMIT {limit}""",
+            "World's Top Exporters", f"by total export volume · {data_year}", "Export volume", source)
+    elif rank_type == 1:
+        return (f"""SELECT c.name, c.code, SUM(tp.trade_value_usd) AS total
+            FROM trade_pairs tp JOIN countries c ON c.id = tp.importer_id
+            WHERE tp.year = (SELECT MAX(year) FROM trade_pairs)
+            GROUP BY c.name, c.code ORDER BY total DESC LIMIT {limit}""",
+            "World's Top Importers", f"by total import volume · {data_year}", "Import volume", source)
+    elif rank_type == 2:
+        return (f"""SELECT c.name, c.code, ci.value AS total
+            FROM country_indicators ci JOIN countries c ON c.id = ci.country_id
+            WHERE ci.indicator = 'gdp_usd' AND c.is_g20 = TRUE AND ci.period_date <= CURRENT_DATE
+            ORDER BY ci.period_date DESC, ci.value DESC LIMIT {limit}""",
+            "Largest G20 Economies", "by GDP · World Bank", "GDP", source)
+    elif rank_type == 3:
+        return (f"""SELECT c.name, c.code, ci.value AS total
+            FROM country_indicators ci JOIN countries c ON c.id = ci.country_id
+            WHERE ci.indicator = 'gdp_growth_pct' AND ci.period_date <= CURRENT_DATE
+            ORDER BY ci.period_date DESC, ci.value DESC LIMIT {limit}""",
+            "Fastest Growing Economies", "GDP growth rate · World Bank", "GDP growth %", source)
+    elif rank_type == 4:
+        return (f"""SELECT c.name, c.code, ci.value AS total
+            FROM country_indicators ci JOIN countries c ON c.id = ci.country_id
+            WHERE ci.indicator = 'government_debt_gdp_pct' AND ci.period_date <= CURRENT_DATE
+            ORDER BY ci.period_date DESC, ci.value DESC LIMIT {limit}""",
+            "Highest Government Debt", "debt as % of GDP · IMF", "Debt/GDP %", source)
+    elif rank_type == 5:
+        return (f"""SELECT c.name, c.code, ci.value AS total
+            FROM country_indicators ci JOIN countries c ON c.id = ci.country_id
+            WHERE ci.indicator = 'inflation_cpi_pct' AND ci.value > 0 AND ci.period_date <= CURRENT_DATE
+            ORDER BY ci.period_date DESC, ci.value DESC LIMIT {limit}""",
+            "Highest Inflation Rates", "CPI inflation · World Bank", "Inflation %", source)
+    elif rank_type == 6:
+        return (f"""SELECT c.name, c.code, ci.value AS total
+            FROM country_indicators ci JOIN countries c ON c.id = ci.country_id
+            WHERE ci.indicator = 'unemployment_rate_pct' AND ci.period_date <= CURRENT_DATE
+            ORDER BY ci.period_date DESC, ci.value DESC LIMIT {limit}""",
+            "Highest Unemployment", "unemployment rate · World Bank", "Unemployment %", source)
+    else:
+        return (f"""SELECT c.name, c.code, ci.value AS total
+            FROM country_indicators ci JOIN countries c ON c.id = ci.country_id
+            WHERE ci.indicator = 'gdp_per_capita_usd' AND ci.period_date <= CURRENT_DATE
+            ORDER BY ci.period_date DESC, ci.value DESC LIMIT {limit}""",
+            "Highest GDP Per Capita", "GDP per person · World Bank", "GDP per capita", source)
+
+
 def _find_top_exporters(limit: int = 10, recent_types: list | None = None) -> list[dict]:
     data_year = _DATA_CURRENCY.get("trade_year", 2023)
     day = datetime.now(timezone.utc).timetuple().tm_yday
     recent_t = set(str(x) for x in (recent_types or [])[-6:])
-    rank_type = next((((day + i) % 8) for i in range(8) if str((day + i) % 8) not in recent_t), day % 8)
 
-    if rank_type == 0:
-        title = "World's Top Exporters"; subtitle = f"by total export volume · {data_year}"
-        sql = f"""
-            SELECT c.name, c.code, SUM(tp.trade_value_usd) AS total
-            FROM trade_pairs tp JOIN countries c ON c.id = tp.exporter_id
-            WHERE tp.year = (SELECT MAX(year) FROM trade_pairs)
-            GROUP BY c.name, c.code ORDER BY total DESC LIMIT {limit}
-        """
-        metric = "Export volume"
-    elif rank_type == 1:
-        title = "World's Top Importers"; subtitle = f"by total import volume · {data_year}"
-        sql = f"""
-            SELECT c.name, c.code, SUM(tp.trade_value_usd) AS total
-            FROM trade_pairs tp JOIN countries c ON c.id = tp.importer_id
-            WHERE tp.year = (SELECT MAX(year) FROM trade_pairs)
-            GROUP BY c.name, c.code ORDER BY total DESC LIMIT {limit}
-        """
-        metric = "Import volume"
-    elif rank_type == 2:
-        title = "Largest G20 Economies"; subtitle = "by GDP · World Bank"
-        sql = f"""
-            SELECT c.name, c.code, ci.value AS total
-            FROM country_indicators ci JOIN countries c ON c.id = ci.country_id
-            WHERE ci.indicator = 'gdp_usd' AND c.is_g20 = TRUE
-              AND ci.period_date <= CURRENT_DATE
-            ORDER BY ci.period_date DESC, ci.value DESC LIMIT {limit}
-        """
-        metric = "GDP"
-    elif rank_type == 3:
-        title = "Fastest Growing Economies"; subtitle = "GDP growth rate · World Bank"
-        sql = f"""
-            SELECT c.name, c.code, ci.value AS total
-            FROM country_indicators ci JOIN countries c ON c.id = ci.country_id
-            WHERE ci.indicator = 'gdp_growth_pct' AND ci.period_date <= CURRENT_DATE
-            ORDER BY ci.period_date DESC, ci.value DESC LIMIT {limit}
-        """
-        metric = "GDP growth %"
-    elif rank_type == 4:
-        title = "Highest Government Debt"; subtitle = "debt as % of GDP · IMF"
-        sql = f"""
-            SELECT c.name, c.code, ci.value AS total
-            FROM country_indicators ci JOIN countries c ON c.id = ci.country_id
-            WHERE ci.indicator = 'government_debt_gdp_pct' AND ci.period_date <= CURRENT_DATE
-            ORDER BY ci.period_date DESC, ci.value DESC LIMIT {limit}
-        """
-        metric = "Debt/GDP %"
-    elif rank_type == 5:
-        title = "Highest Inflation Rates"; subtitle = "CPI inflation · World Bank"
-        sql = f"""
-            SELECT c.name, c.code, ci.value AS total
-            FROM country_indicators ci JOIN countries c ON c.id = ci.country_id
-            WHERE ci.indicator = 'inflation_cpi_pct' AND ci.value > 0
-              AND ci.period_date <= CURRENT_DATE
-            ORDER BY ci.period_date DESC, ci.value DESC LIMIT {limit}
-        """
-        metric = "Inflation %"
-    elif rank_type == 6:
-        title = "Highest Unemployment"; subtitle = "unemployment rate · World Bank"
-        sql = f"""
-            SELECT c.name, c.code, ci.value AS total
-            FROM country_indicators ci JOIN countries c ON c.id = ci.country_id
-            WHERE ci.indicator = 'unemployment_rate_pct' AND ci.period_date <= CURRENT_DATE
-            ORDER BY ci.period_date DESC, ci.value DESC LIMIT {limit}
-        """
-        metric = "Unemployment %"
-    else:
-        title = "Highest GDP Per Capita"; subtitle = "GDP per person · World Bank"
-        sql = f"""
-            SELECT c.name, c.code, ci.value AS total
-            FROM country_indicators ci JOIN countries c ON c.id = ci.country_id
-            WHERE ci.indicator = 'gdp_per_capita_usd' AND ci.period_date <= CURRENT_DATE
-            ORDER BY ci.period_date DESC, ci.value DESC LIMIT {limit}
-        """
-        metric = "GDP per capita"
+    # Build candidate order: non-recent first, then recent as fallback
+    all_types = [((day + i) % 8) for i in range(8)]
+    non_recent = [r for r in all_types if str(r) not in recent_t]
+    fallbacks  = [r for r in range(8) if r not in non_recent]
+    candidates = non_recent + fallbacks
 
-    src_map = {0: "UN Comtrade", 1: "UN Comtrade", 2: "World Bank", 3: "World Bank",
-               4: "IMF", 5: "World Bank", 6: "World Bank", 7: "World Bank"}
-    item_source = src_map.get(rank_type, "World Bank")
-
-    rows = _ssh(sql)
-    items = []
-    for i, row in enumerate(rows, 1):
-        try:
-            total = float(row[2])
-            dollar_types = (0, 1, 2, 7)
-            val_str = _fmt(total) if rank_type in dollar_types else f"{total:.1f}%"
-            items.append({"rank": i, "label": row[0], "iso": row[1],
-                          "value": val_str, "raw": total / (1e9 if rank_type in dollar_types else 1),
-                          "_title": title, "_subtitle": subtitle, "_metric": metric,
-                          "_source": item_source, "_rank_type": rank_type})
-        except (ValueError, IndexError):
-            pass
-    return items
-
+    dollar_types = (0, 1, 2, 7)
+    for rank_type in candidates:
+        sql, title, subtitle, metric, item_source = _exporters_type_config(rank_type, data_year, limit)
+        rows = _ssh(sql)
+        if not rows:
+            continue  # no data for this type — try next
+        items = []
+        for i, row in enumerate(rows, 1):
+            try:
+                total = float(row[2])
+                val_str = _fmt(total) if rank_type in dollar_types else f"{total:.1f}%"
+                items.append({"rank": i, "label": row[0], "iso": row[1],
+                              "value": val_str, "raw": total / (1e9 if rank_type in dollar_types else 1),
+                              "_title": title, "_subtitle": subtitle, "_metric": metric,
+                              "_source": item_source, "_rank_type": rank_type})
+            except (ValueError, IndexError):
+                pass
+        if items:
+            return items
+    return []
 
 def _find_macro_fact(recent_indicators: list | None = None) -> dict | None:
     ind_year = _DATA_CURRENCY.get("ind_year", 2024)
@@ -936,8 +922,8 @@ def _find_macro_fact(recent_indicators: list | None = None) -> dict | None:
         ("exports_usd",              "Exports",       "World Bank", "DESC"),
         ("government_debt_gdp_pct",  "Debt/GDP",      "IMF",        "DESC"),
         ("gini_coefficient",         "Inequality",    "World Bank", "DESC"),
-        ("inflation_cpi_pct",        "Inflation",     "World Bank", "DESC"),
-        ("unemployment_rate_pct",    "Unemployment",  "World Bank", "DESC"),
+        ("inflation_cpi_pct",           "Inflation",     "World Bank", "DESC"),
+        ("unemployment_rate_pct",        "Unemployment",  "World Bank", "DESC"),
         ("current_account_gdp_pct",  "Current Acct",  "World Bank", "DESC"),
         ("gdp_per_capita_usd",       "GDP per Capita","World Bank", "DESC"),
         ("gdp_growth_pct",           "GDP Contraction","World Bank","ASC"),
@@ -960,8 +946,32 @@ def _find_macro_fact(recent_indicators: list | None = None) -> dict | None:
         ORDER BY ci.period_date DESC, ci.value {order}
         LIMIT 5
     """)
+    # If no rows for this indicator, find the next valid combo
     if not rows or len(rows) <= rank_offset:
-        return None
+        for j in range(1, len(indicators) * 3):
+            idx2  = (chosen_idx + j) % len(indicators)
+            rank2 = (chosen_rank + j) % 3
+            k2, l2, s2, o2 = indicators[idx2]
+            combo2 = f"{k2}_{rank2}"
+            rows2 = _ssh(f"""
+                SELECT c.name, c.code, ci.value
+                FROM country_indicators ci JOIN countries c ON c.id = ci.country_id
+                WHERE ci.indicator = '{k2}' AND ci.period_date <= CURRENT_DATE
+                ORDER BY ci.period_date DESC, ci.value {o2}
+                LIMIT 5
+            """)
+            if rows2 and len(rows2) > rank2:
+                rows        = rows2
+                ind_key     = k2
+                ind_label   = l2
+                source      = s2
+                order       = o2
+                rank_offset = rank2
+                chosen_rank = rank2
+                chosen_idx  = idx2
+                break
+        else:
+            return None
     try:
         top = rows[rank_offset]
         next_row = rows[rank_offset + 1] if len(rows) > rank_offset + 1 else None
