@@ -273,7 +273,7 @@ useHead({
       type: 'application/ld+json',
       innerHTML: computed(() => {
         if (!post.value) return '{}'
-        const imgUrl = post.value.cover_image_url || 'https://cdn.metricshour.com/og/section/home.png'
+        const imgUrl = post.value.cover_image_url || 'https://cdn.metricshour.com/og/section/blog.png'
         const words = post.value.body ? post.value.body.split(/\s+/).length : 0
         return JSON.stringify({
           '@context': 'https://schema.org',
