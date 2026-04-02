@@ -368,7 +368,9 @@ function fmtPrice(v: number | null | undefined): string {
 
 function fmtTs(t: string | null | undefined): string {
   if (!t) return '—'
-  return new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  const d = new Date(t)
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+    + ' · ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC', hour12: false }) + ' UTC'
 }
 
 // ── Stats ──────────────────────────────────────────────────────────────────────
