@@ -193,21 +193,17 @@ const { data: pageData, pending, error } = useAsyncData(
     // Fetch related assets + countries server-side so they appear in SSR HTML
     const [assetList, countryList, otherList] = await Promise.all([
       post.related_asset_ids?.length
-        ? fetch(`${base}/api/assets?limit=200`).then(r => r.ok ? r.json() : []).catch(() => [])
+        ? fetch(`${base}/api/assets?ids=${post.related_asset_ids.join(',')}`).then(r => r.ok ? r.json() : []).catch(() => [])
         : Promise.resolve([]),
       post.related_country_ids?.length
-        ? fetch(`${base}/api/countries?limit=300`).then(r => r.ok ? r.json() : []).catch(() => [])
+        ? fetch(`${base}/api/countries?ids=${post.related_country_ids.join(',')}`).then(r => r.ok ? r.json() : []).catch(() => [])
         : Promise.resolve([]),
       fetch(`${base}/api/blog?limit=6`).then(r => r.ok ? r.json() : []).catch(() => []),
     ])
 
     const assets: RelatedAsset[] = (Array.isArray(assetList) ? assetList : (assetList.items ?? []))
-      .filter((a: RelatedAsset) => post.related_asset_ids?.includes(a.id))
-      .slice(0, 6)
 
     const countries: RelatedCountry[] = (Array.isArray(countryList) ? countryList : (countryList.items ?? []))
-      .filter((c: RelatedCountry) => post.related_country_ids?.includes(c.id))
-      .slice(0, 8)
 
     const others: BlogPost[] = (Array.isArray(otherList) ? otherList : [])
       .filter((p: BlogPost) => p.slug !== slug)

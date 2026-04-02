@@ -17,10 +17,43 @@ def list_assets(
     type: str | None = None,
     sector: str | None = None,
     country_code: str | None = None,
+    ids: str | None = None,
     limit: int = Query(default=500, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
 ) -> list[dict]:
+    # ID-scoped fetches bypass cache (specific set of assets)
+    if ids:
+        id_list = [int(i) for i in ids.split(',') if i.strip().isdigit()]
+        if not id_list:
+            return []
+        assets = db.execute(
+            select(Asset).where(Asset.id.in_(id_list), Asset.is_active == True)
+        ).scalars().all()
+        # preserve requested order
+        id_order = {aid: i for i, aid in enumerate(id_list)}
+        assets = sorted(assets, key=lambda a: id_order.get(a.id, 999))
+        country_ids = {a.country_id for a in assets if a.country_id}
+        country_map = {}
+        if country_ids:
+            for c in db.execute(select(Country).where(Country.id.in_(country_ids))).scalars().all():
+                country_map[c.id] = c
+        asset_ids = [a.id for a in assets]
+        price_map = {}
+        if asset_ids:
+            for p in db.execute(
+                select(Price).where(Price.asset_id.in_(asset_ids), Price.interval == "1d")
+                .order_by(Price.timestamp.desc())
+            ).scalars().all():
+                if p.asset_id not in price_map:
+                    price_map[p.asset_id] = p
+        result = []
+        for a in assets:
+            row = _asset_summary(a, country_map.get(a.country_id) if a.country_id else None)
+            row["price"] = _price_dict(price_map[a.id]) if a.id in price_map else None
+            result.append(row)
+        return result
+
     # country_code-scoped queries are never cached (too many combinations)
     cache_key = f"assets:list:v4:{type or 'all'}:{sector or 'all'}" if not country_code else None
     if cache_key:

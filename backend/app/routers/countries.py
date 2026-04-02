@@ -17,10 +17,23 @@ def list_countries(
     request: Request,
     region: str | None = None,
     is_g20: bool | None = None,
+    ids: str | None = None,
     limit: int = Query(default=500, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
 ) -> list[dict]:
+    # ID-scoped fetches bypass cache
+    if ids:
+        id_list = [int(i) for i in ids.split(',') if i.strip().isdigit()]
+        if not id_list:
+            return []
+        countries = db.execute(
+            select(Country).where(Country.id.in_(id_list))
+        ).scalars().all()
+        id_order = {cid: i for i, cid in enumerate(id_list)}
+        countries = sorted(countries, key=lambda c: id_order.get(c.id, 999))
+        return [_country_summary(c) for c in countries]
+
     # Key encodes filters so different combos are cached separately (excludes pagination)
     cache_key = f"countries:list:{region or 'all'}:{is_g20}"
     cached = cache_get(cache_key)
