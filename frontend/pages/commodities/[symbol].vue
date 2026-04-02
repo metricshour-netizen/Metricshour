@@ -105,6 +105,21 @@
             </NuxtLink>
           </div>
         </div>
+
+        <div v-if="meta.companies?.length" class="bg-[#111827] border border-[#1f2937] rounded-xl p-5">
+          <h2 class="text-xs text-gray-500 uppercase tracking-widest mb-3">Key Listed Companies</h2>
+          <div class="space-y-1.5">
+            <NuxtLink
+              v-for="co in meta.companies"
+              :key="co.ticker"
+              :to="`/stocks/${co.ticker.toLowerCase()}/`"
+              class="flex items-center justify-between text-xs py-1.5 border-b border-[#1f2937] last:border-0 hover:text-emerald-300 transition-colors group"
+            >
+              <span class="text-gray-300 group-hover:text-emerald-300">{{ co.flag }} {{ co.name }}</span>
+              <span class="text-gray-600 font-mono text-[10px]">{{ co.ticker }} · {{ co.exchange }}</span>
+            </NuxtLink>
+          </div>
+        </div>
       </div>
 
       <!-- Related trade corridors -->
@@ -303,6 +318,20 @@ const COMMODITY_META: Record<string, any> = {
     icon: '🌴', name: 'Palm Oil', category: 'Agriculture', unit: 'USD/MT',
     description: 'Palm oil is the world\'s most widely consumed vegetable oil, used in food, cosmetics, and biofuels. Indonesia and Malaysia together produce over 85% of global palm oil supply. Prices are sourced from CME Crude Palm Oil futures (CPO=F), quoted in US dollars per metric tonne. Prices are influenced by weather (El Niño), biodiesel mandates, and demand from India and China.',
     producers: [{ code: 'ID', name: 'Indonesia', flag: '🇮🇩' }, { code: 'MY', name: 'Malaysia', flag: '🇲🇾' }, { code: 'TH', name: 'Thailand', flag: '🇹🇭' }, { code: 'CO', name: 'Colombia', flag: '🇨🇴' }, { code: 'NG', name: 'Nigeria', flag: '🇳🇬' }, { code: 'PG', name: 'Papua New Guinea', flag: '🇵🇬' }, { code: 'GT', name: 'Guatemala', flag: '🇬🇹' }],
+    companies: [
+      { ticker: 'OKOMUOIL',   name: 'Okomu Oil Palm',       flag: '🇳🇬', exchange: 'NGX'  },
+      { ticker: 'PRESCO',     name: 'Presco Plc',            flag: '🇳🇬', exchange: 'NGX'  },
+      { ticker: 'ELLAHLAKES', name: 'Ellah Lakes',           flag: '🇳🇬', exchange: 'NGX'  },
+      { ticker: '5285.KL',    name: 'Sime Darby Plantation', flag: '🇲🇾', exchange: 'KLSE' },
+      { ticker: '1961.KL',    name: 'IOI Corporation',       flag: '🇲🇾', exchange: 'KLSE' },
+      { ticker: '2445.KL',    name: 'KL Kepong',             flag: '🇲🇾', exchange: 'KLSE' },
+      { ticker: '5222.KL',    name: 'FGV Holdings',          flag: '🇲🇾', exchange: 'KLSE' },
+      { ticker: 'AALI.JK',   name: 'Astra Agro Lestari',   flag: '🇮🇩', exchange: 'IDX'  },
+      { ticker: 'SIMP.JK',   name: 'Salim Ivomas Pratama', flag: '🇮🇩', exchange: 'IDX'  },
+      { ticker: 'WIL.SI',    name: 'Wilmar International',  flag: '🇸🇬', exchange: 'SGX'  },
+      { ticker: 'GGR.SI',    name: 'Golden Agri-Resources', flag: '🇸🇬', exchange: 'SGX'  },
+      { ticker: 'UVAN.BK',   name: 'Univanich Palm Oil',    flag: '🇹🇭', exchange: 'SET'  },
+    ],
     tradeFlows: [{ pair: 'id-cn', label: 'Indonesia ↔ China' }, { pair: 'my-in', label: 'Malaysia ↔ India' }, { pair: 'id-in', label: 'Indonesia ↔ India' }],
     related: [{ symbol: 'ZS', label: 'Soybeans', path: '/commodities/zs' }, { symbol: 'KC', label: 'Coffee', path: '/commodities/kc' }],
   },
@@ -311,7 +340,7 @@ const COMMODITY_META: Record<string, any> = {
 const DEFAULT_META = {
   icon: '📊', name: symbol.toUpperCase(), category: 'Commodity', unit: 'USD',
   description: `${symbol.toUpperCase()} is a globally traded commodity. Track live prices, historical data, and market analysis on MetricsHour.`,
-  producers: [], tradeFlows: [], related: [],
+  producers: [], companies: [], tradeFlows: [], related: [],
 }
 
 const meta = computed(() => COMMODITY_META[symbol.toUpperCase()] ?? DEFAULT_META)
