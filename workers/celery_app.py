@@ -54,6 +54,8 @@ def handle_task_success(sender=None, result=None, **kw):
 
 app = Celery('metricshour', include=[
     'tasks.crypto',
+    'tasks.iex_intraday',
+    'tasks.china_stocks',
     'tasks.stocks',
     'tasks.indices',
     'tasks.bond_yields',
@@ -118,6 +120,16 @@ app.conf.update(
         'crypto-every-2min': {
             'task': 'tasks.crypto.fetch_crypto_prices',
             'schedule': 120.0,
+        },
+        # Tiingo IEX real-time quotes — 1 min during US market hours only
+        'iex-intraday-every-1min': {
+            'task': 'tasks.iex_intraday.fetch_intraday_quotes',
+            'schedule': 60.0,
+        },
+        # China A-shares EOD — daily 09:00 UTC (SHE/SHG close ~07:00 UTC)
+        'china-stocks-daily-9am': {
+            'task': 'tasks.china_stocks.fetch_china_prices',
+            'schedule': crontab(hour=9, minute=0),
         },
         'price-alert-checker-every-1min': {
             'task': 'tasks.price_alert_checker.check_price_alerts',

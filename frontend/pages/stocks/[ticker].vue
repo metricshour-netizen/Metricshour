@@ -245,6 +245,34 @@
         </div>
       </div>
 
+      <!-- News Feed -->
+      <div v-if="newsItems?.length" class="bg-[#111827] border border-[#1f2937] rounded-xl p-5 mb-6">
+        <h2 class="text-base font-bold text-white mb-4">Latest News</h2>
+        <div class="space-y-3">
+          <a
+            v-for="article in newsItems"
+            :key="article.id"
+            :href="article.url"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="block group"
+          >
+            <div class="flex items-start gap-3 p-3 rounded-lg hover:bg-[#0d1117] transition-colors">
+              <div class="flex-1 min-w-0">
+                <p class="text-sm text-gray-200 group-hover:text-emerald-400 transition-colors leading-snug line-clamp-2">{{ article.title }}</p>
+                <div class="flex items-center gap-2 mt-1">
+                  <span class="text-[10px] text-gray-600 font-medium">{{ article.source }}</span>
+                  <span class="text-[10px] text-gray-700">·</span>
+                  <span class="text-[10px] text-gray-600">{{ new Date(article.published_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) }}</span>
+                </div>
+              </div>
+              <span class="text-gray-700 group-hover:text-emerald-600 transition-colors text-xs shrink-0 mt-0.5">↗</span>
+            </div>
+          </a>
+        </div>
+        <p class="text-[10px] text-gray-700 mt-3 pt-3 border-t border-[#1f2937]">Source: Tiingo News</p>
+      </div>
+
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <!-- Country Context -->
         <div v-if="stock.country" class="bg-[#111827] border border-[#1f2937] rounded-xl p-6">
@@ -432,6 +460,14 @@ const { data: pageInsights } = useAsyncData(
     return get<any[]>(`/api/insights/${t}/${ticker}`).catch(() => [])
   },
   { server: false, watch: [insightBaseType] },
+)
+
+// ─── News ────────────────────────────────────────────────────────────────────
+
+const { data: newsItems } = useAsyncData(
+  `news-${ticker}`,
+  () => get<any[]>(`/api/news/${ticker}`).catch(() => []),
+  { server: false },
 )
 
 // ─── Price chart ──────────────────────────────────────────────────────────────

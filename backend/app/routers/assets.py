@@ -17,6 +17,7 @@ def list_assets(
     type: str | None = None,
     sector: str | None = None,
     country_code: str | None = None,
+    exchange: str | None = None,
     ids: str | None = None,
     limit: int = Query(default=500, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
@@ -54,8 +55,8 @@ def list_assets(
             result.append(row)
         return result
 
-    # country_code-scoped queries are never cached (too many combinations)
-    cache_key = f"assets:list:v4:{type or 'all'}:{sector or 'all'}" if not country_code else None
+    # country_code/exchange-scoped queries are never cached (too many combinations)
+    cache_key = f"assets:list:v4:{type or 'all'}:{sector or 'all'}" if not country_code and not exchange else None
     if cache_key:
         cached = cache_get(cache_key)
         if cached is not None:
@@ -75,6 +76,9 @@ def list_assets(
 
     if sector:
         query = query.where(Asset.sector == sector)
+
+    if exchange:
+        query = query.where(Asset.exchange == exchange.upper())
 
     if country_code:
         # Join to Country and filter by ISO code (case-insensitive)

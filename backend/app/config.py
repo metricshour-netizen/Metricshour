@@ -47,6 +47,8 @@ class Settings:
     resend_from_email: str = os.environ.get("RESEND_FROM_EMAIL", "alerts@metricshour.com")
     # Unsplash (cover image auto-fetch)
     unsplash_access_key: str = os.environ.get("UNSPLASH_ACCESS_KEY", "")
+    # Tiingo financial data
+    tiingo_api_key: str = os.environ.get("TIINGO_API_KEY", "")
 
 
 settings = Settings()
