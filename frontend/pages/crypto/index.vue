@@ -146,7 +146,10 @@ useSeoMeta({
   ogUrl: 'https://metricshour.com/crypto/',
   ogType: 'website',
   ogImage: 'https://cdn.metricshour.com/og/section/crypto.png',
+  ogImageWidth: '1200',
+  ogImageHeight: '630',
   twitterCard: 'summary_large_image',
+  twitterImage: 'https://cdn.metricshour.com/og/section/crypto.png',
   robots: 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1',
 })
 

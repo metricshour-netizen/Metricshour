@@ -196,7 +196,10 @@ useSeoMeta({
   ogUrl: 'https://metricshour.com/etfs/',
   ogType: 'website',
   ogImage: 'https://cdn.metricshour.com/og/section/etfs.png',
+  ogImageWidth: '1200',
+  ogImageHeight: '630',
   twitterCard: 'summary_large_image',
+  twitterImage: 'https://cdn.metricshour.com/og/section/etfs.png',
   robots: 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1',
 })
 

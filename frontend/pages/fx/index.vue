@@ -134,7 +134,10 @@ useSeoMeta({
   ogUrl: 'https://metricshour.com/fx/',
   ogType: 'website',
   ogImage: 'https://cdn.metricshour.com/og/section/fx.png',
+  ogImageWidth: '1200',
+  ogImageHeight: '630',
   twitterCard: 'summary_large_image',
+  twitterImage: 'https://cdn.metricshour.com/og/section/fx.png',
   robots: 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1',
 })
 
