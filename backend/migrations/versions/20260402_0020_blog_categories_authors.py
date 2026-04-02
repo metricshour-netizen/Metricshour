@@ -52,11 +52,16 @@ def upgrade() -> None:
         ),
     )
 
-    # Backfill author_slug for all existing posts that use "MetricsHour Team"
+    # Backfill author_slug for all existing posts
     op.execute("""
         UPDATE blog_posts
         SET author_slug = 'metricshour-team'
         WHERE author_name = 'MetricsHour Team' AND author_slug IS NULL
+    """)
+    op.execute("""
+        UPDATE blog_posts
+        SET author_slug = 'metricshour-research'
+        WHERE author_name = 'MetricsHour Research' AND author_slug IS NULL
     """)
 
     op.create_index('ix_blog_posts_category', 'blog_posts', ['category'])
