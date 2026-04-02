@@ -54,7 +54,7 @@
                   {{ stock.price.change_pct >= 0 ? '▲' : '▼' }} {{ Math.abs(stock.price.change_pct).toFixed(2) }}% today
                 </div>
                 <div class="text-xs text-gray-600 mt-1">
-                  <template v-if="stock.price">Last updated · <span class="font-mono text-emerald-700">{{ fmtPriceTs(stock.price.timestamp) }}</span></template>
+                  <template v-if="stock.price">Last updated · <span class="font-mono text-emerald-700">{{ fmtPriceTs(stock.price.fetched_at || stock.price.timestamp) }}</span></template>
                   <template v-else>Awaiting price feed</template>
                 </div>
                 <div class="text-sm font-semibold text-gray-400 mt-1">{{ fmtCap(stock.market_cap_usd) }} market cap</div>

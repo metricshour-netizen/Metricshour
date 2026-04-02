@@ -133,13 +133,14 @@ def fetch_commodity_prices(self):
                 'open': open_val, 'high': None, 'low': None,
                 'close': close_val,
                 'volume': None,
+                'fetched_at': datetime.now(timezone.utc),
             })
 
         if rows:
             stmt = pg_insert(Price).values(rows)
             stmt = stmt.on_conflict_do_update(
                 constraint='uq_price_asset_time_interval',
-                set_={'close': stmt.excluded.close, 'open': stmt.excluded.open},
+                set_={'close': stmt.excluded.close, 'open': stmt.excluded.open, 'fetched_at': stmt.excluded.fetched_at},
             )
             db.execute(stmt)
             db.commit()

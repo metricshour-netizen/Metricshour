@@ -125,12 +125,14 @@ def fetch_fx_rates(self):
             if yf_sym not in yf_to_asset:
                 continue
             asset_id = yf_to_asset[yf_sym].id
+            fetched = datetime.now(timezone.utc)
             rows_15m.append({
                 'asset_id': asset_id,
                 'timestamp': now_minute,
                 'interval': '15m',
                 'open': None, 'high': None, 'low': None,
                 'close': price, 'volume': None,
+                'fetched_at': fetched,
             })
             rows_1d.append({
                 'asset_id': asset_id,
@@ -138,13 +140,14 @@ def fetch_fx_rates(self):
                 'interval': '1d',
                 'open': daily_open.get(yf_sym), 'high': None, 'low': None,
                 'close': price, 'volume': None,
+                'fetched_at': fetched,
             })
 
         if rows_15m:
             stmt = pg_insert(Price).values(rows_15m)
             stmt = stmt.on_conflict_do_update(
                 constraint='uq_price_asset_time_interval',
-                set_={'close': stmt.excluded.close},
+                set_={'close': stmt.excluded.close, 'fetched_at': stmt.excluded.fetched_at},
             )
             db.execute(stmt)
 
@@ -152,7 +155,7 @@ def fetch_fx_rates(self):
             stmt = pg_insert(Price).values(rows_1d)
             stmt = stmt.on_conflict_do_update(
                 constraint='uq_price_asset_time_interval',
-                set_={'close': stmt.excluded.close, 'open': stmt.excluded.open},
+                set_={'close': stmt.excluded.close, 'open': stmt.excluded.open, 'fetched_at': stmt.excluded.fetched_at},
             )
             db.execute(stmt)
 

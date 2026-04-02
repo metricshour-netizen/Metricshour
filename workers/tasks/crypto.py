@@ -113,6 +113,7 @@ def fetch_crypto_prices(self):
             # Reconstruct 24h-ago price as a proxy for today's open
             open_val = close / (1 + change_pct / 100) if change_pct is not None else None
 
+            fetched = datetime.now(timezone.utc)
             rows_1m.append({
                 'asset_id': symbol_to_asset[sym].id,
                 'timestamp': now_minute,
@@ -120,6 +121,7 @@ def fetch_crypto_prices(self):
                 'open': None, 'high': None, 'low': None,
                 'close': close,
                 'volume': vals.get('usd_24h_vol'),
+                'fetched_at': fetched,
             })
             rows_1d.append({
                 'asset_id': symbol_to_asset[sym].id,
@@ -128,13 +130,14 @@ def fetch_crypto_prices(self):
                 'open': open_val, 'high': None, 'low': None,
                 'close': close,
                 'volume': vals.get('usd_24h_vol'),
+                'fetched_at': fetched,
             })
 
         if rows_1m:
             stmt = pg_insert(Price).values(rows_1m)
             stmt = stmt.on_conflict_do_update(
                 constraint='uq_price_asset_time_interval',
-                set_={'close': stmt.excluded.close, 'volume': stmt.excluded.volume},
+                set_={'close': stmt.excluded.close, 'volume': stmt.excluded.volume, 'fetched_at': stmt.excluded.fetched_at},
             )
             db.execute(stmt)
 
@@ -142,7 +145,7 @@ def fetch_crypto_prices(self):
             stmt = pg_insert(Price).values(rows_1d)
             stmt = stmt.on_conflict_do_update(
                 constraint='uq_price_asset_time_interval',
-                set_={'close': stmt.excluded.close, 'volume': stmt.excluded.volume, 'open': stmt.excluded.open},
+                set_={'close': stmt.excluded.close, 'volume': stmt.excluded.volume, 'open': stmt.excluded.open, 'fetched_at': stmt.excluded.fetched_at},
             )
             db.execute(stmt)
 

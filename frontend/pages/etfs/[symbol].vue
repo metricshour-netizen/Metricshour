@@ -42,7 +42,7 @@
                 <span class="text-gray-600 font-normal ml-1">today</span>
               </div>
               <div class="text-xs text-gray-600 mt-1">
-                {{ asset.price?.timestamp ? 'Updated ' + fmtTs(asset.price.timestamp) : 'Awaiting price feed' }}
+                {{ asset.price?.timestamp ? 'Updated ' + fmtTs(asset.price.fetched_at || asset.price.timestamp) : 'Awaiting price feed' }}
               </div>
             </div>
           </div>

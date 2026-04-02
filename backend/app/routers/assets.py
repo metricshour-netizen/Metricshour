@@ -432,6 +432,7 @@ def _price_dict(p: Price) -> dict:
         "low": p.low,
         "change_pct": chg,
         "timestamp": p.timestamp.isoformat(),
+        "fetched_at": p.fetched_at.isoformat() if p.fetched_at else None,
     }
 
 

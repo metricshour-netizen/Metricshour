@@ -44,7 +44,7 @@
                 {{ Math.abs(((index.price.close - index.price.open) / index.price.open) * 100).toFixed(2) }}%
               </div>
               <div class="text-xs text-gray-600 mt-1">
-                {{ index.price?.timestamp ? 'Updated ' + fmtTs(index.price.timestamp) : 'Awaiting price feed' }}
+                {{ index.price?.timestamp ? 'Updated ' + fmtTs(index.price.fetched_at || index.price.timestamp) : 'Awaiting price feed' }}
               </div>
             </div>
           </div>

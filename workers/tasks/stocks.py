@@ -209,6 +209,7 @@ def _upsert_prices(
             'open': open_val, 'high': high_val, 'low': low_val,
             'close': close_val,
             'volume': vol_val,
+            'fetched_at': datetime.now(timezone.utc),
         })
     if not rows:
         return 0
@@ -216,11 +217,12 @@ def _upsert_prices(
     stmt = stmt.on_conflict_do_update(
         constraint='uq_price_asset_time_interval',
         set_={
-            'close':  stmt.excluded.close,
-            'open':   stmt.excluded.open,
-            'high':   stmt.excluded.high,
-            'low':    stmt.excluded.low,
-            'volume': stmt.excluded.volume,
+            'close':      stmt.excluded.close,
+            'open':       stmt.excluded.open,
+            'high':       stmt.excluded.high,
+            'low':        stmt.excluded.low,
+            'volume':     stmt.excluded.volume,
+            'fetched_at': stmt.excluded.fetched_at,
         },
     )
     db.execute(stmt)

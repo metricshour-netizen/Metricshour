@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import String, Float, DateTime, ForeignKey, Enum, Integer, UniqueConstraint, Index, Boolean
+from sqlalchemy import String, Float, DateTime, ForeignKey, Enum, Integer, UniqueConstraint, Index, Boolean, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
@@ -71,6 +71,7 @@ class Price(Base):
     low: Mapped[float] = mapped_column(Float, nullable=True)
     close: Mapped[float] = mapped_column(Float, nullable=False)
     volume: Mapped[float] = mapped_column(Float, nullable=True)
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True, server_default=func.now())
 
     asset: Mapped["Asset"] = relationship(back_populates="prices")
 
