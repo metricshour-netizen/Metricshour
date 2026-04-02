@@ -115,13 +115,14 @@ def _upsert_prices(db, symbol_to_asset: dict, prices: dict[str, dict], now: date
             'open': price_data.get('open'), 'high': None, 'low': None,
             'close': price,
             'volume': None,
+            'fetched_at': datetime.now(timezone.utc),
         })
     if not rows:
         return 0
     stmt = pg_insert(Price).values(rows)
     stmt = stmt.on_conflict_do_update(
         constraint='uq_price_asset_time_interval',
-        set_={'close': stmt.excluded.close, 'open': stmt.excluded.open},
+        set_={'close': stmt.excluded.close, 'open': stmt.excluded.open, 'fetched_at': stmt.excluded.fetched_at},
     )
     db.execute(stmt)
     return len(rows)
@@ -132,7 +133,8 @@ def fetch_index_etf_prices(self):
     """Fetch prices for indices, ETFs, and bond yields."""
     db = SessionLocal()
     try:
-        now = datetime.now(timezone.utc).replace(second=0, microsecond=0)
+        # Truncate to day-start so every run upserts the same daily row
+        now = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
         if not is_trading_day(now):
             log.debug('Index/ETF fetch skipped — weekend')
             return
