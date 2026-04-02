@@ -22,7 +22,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models.feed import BlogPost, BlogStatus, FeedEvent
+from app.models.feed import BlogPost, BlogAuthor, BlogStatus, FeedEvent, BLOG_CATEGORIES
 from app.routers.auth import get_admin_user, get_current_user
 from app.models.user import User, LoginEvent, PageView
 from app.storage import r2_public_url, r2_upload
@@ -36,6 +36,18 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 public_router = APIRouter(prefix="/blog", tags=["blog"])
 
 
+class AuthorPublicOut(BaseModel):
+    slug: str
+    name: str
+    title: str | None
+    bio: str | None
+    avatar_url: str | None
+    twitter_handle: str | None
+
+    class Config:
+        from_attributes = True
+
+
 class BlogPublicOut(BaseModel):
     id: int
     title: str
@@ -44,6 +56,9 @@ class BlogPublicOut(BaseModel):
     excerpt: str | None
     cover_image_url: str | None
     author_name: str
+    author_slug: str | None
+    author: AuthorPublicOut | None
+    category: str | None
     importance_score: float
     published_at: datetime | None
     updated_at: datetime
@@ -62,21 +77,53 @@ class BlogListOut(BaseModel):
     excerpt: str | None
     cover_image_url: str | None
     author_name: str
+    author_slug: str | None
+    category: str | None
     published_at: datetime | None
 
     class Config:
         from_attributes = True
 
 
-@public_router.get("", response_model=list[BlogListOut])
-def list_blog_posts(limit: int = 20, offset: int = 0, db: Session = Depends(get_db)):
-    """Public blog listing — published posts only, newest first."""
+@public_router.get("/categories", response_model=list[str])
+def list_blog_categories():
+    """Return the ordered list of valid blog categories."""
+    return BLOG_CATEGORIES
+
+
+@public_router.get("/authors/{author_slug}", response_model=AuthorPublicOut)
+def get_blog_author(author_slug: str, db: Session = Depends(get_db)):
+    author = db.get(BlogAuthor, author_slug)
+    if author is None:
+        raise HTTPException(status_code=404, detail="Author not found")
+    return author
+
+
+@public_router.get("/authors/{author_slug}/posts", response_model=list[BlogListOut])
+def get_author_posts(author_slug: str, limit: int = 20, offset: int = 0, db: Session = Depends(get_db)):
     posts = db.execute(
         select(BlogPost)
-        .where(BlogPost.status == BlogStatus.published)
+        .where(BlogPost.author_slug == author_slug, BlogPost.status == BlogStatus.published)
         .order_by(BlogPost.published_at.desc())
         .offset(offset)
         .limit(limit)
+    ).scalars().all()
+    return posts
+
+
+@public_router.get("", response_model=list[BlogListOut])
+def list_blog_posts(
+    limit: int = 20,
+    offset: int = 0,
+    category: str | None = None,
+    db: Session = Depends(get_db),
+):
+    """Public blog listing — published posts only, newest first. Filter by ?category=macro etc."""
+    q = select(BlogPost).where(BlogPost.status == BlogStatus.published)
+    if category:
+        q = q.where(BlogPost.category == category)
+    posts = db.execute(
+        q.order_by(BlogPost.published_at.desc()).offset(offset).limit(limit)
     ).scalars().all()
     return posts
 
@@ -100,6 +147,8 @@ class BlogIn(BaseModel):
     body: str
     excerpt: str | None = None
     author_name: str = "MetricsHour Team"
+    author_slug: str | None = "metricshour-team"
+    category: str | None = None
     cover_image_url: str | None = None
     related_asset_ids: list[int] | None = None
     related_country_ids: list[int] | None = None
@@ -111,6 +160,8 @@ class BlogUpdate(BaseModel):
     body: str | None = None
     excerpt: str | None = None
     author_name: str | None = None
+    author_slug: str | None = None
+    category: str | None = None
     related_asset_ids: list[int] | None = None
     related_country_ids: list[int] | None = None
     importance_score: float | None = None
@@ -124,6 +175,8 @@ class BlogOut(BaseModel):
     excerpt: str | None
     cover_image_url: str | None
     author_name: str
+    author_slug: str | None
+    category: str | None
     status: str
     related_asset_ids: list[int] | None
     related_country_ids: list[int] | None
@@ -135,6 +188,23 @@ class BlogOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class AuthorIn(BaseModel):
+    slug: str
+    name: str
+    title: str | None = None
+    bio: str | None = None
+    avatar_url: str | None = None
+    twitter_handle: str | None = None
+
+
+class AuthorUpdate(BaseModel):
+    name: str | None = None
+    title: str | None = None
+    bio: str | None = None
+    avatar_url: str | None = None
+    twitter_handle: str | None = None
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -205,6 +275,8 @@ def create_blog(
         body=body.body,
         excerpt=excerpt,
         author_name=body.author_name,
+        author_slug=body.author_slug,
+        category=body.category,
         cover_image_url=body.cover_image_url,
         status=BlogStatus.draft,
         related_asset_ids=body.related_asset_ids,
@@ -373,6 +445,75 @@ async def upload_cover(
     db.commit()
 
     return {"url": url, "key": key}
+
+
+# ── Admin author management ───────────────────────────────────────────────────
+
+@router.get("/authors", response_model=list[AuthorPublicOut])
+def list_authors(db: Session = Depends(get_db), _: User = Depends(get_admin_user)):
+    return db.execute(select(BlogAuthor)).scalars().all()
+
+
+@router.post("/authors", response_model=AuthorPublicOut, status_code=status.HTTP_201_CREATED)
+def create_author(body: AuthorIn, db: Session = Depends(get_db), _: User = Depends(get_admin_user)):
+    if db.get(BlogAuthor, body.slug):
+        raise HTTPException(status_code=409, detail="Author slug already exists")
+    from datetime import timezone as _tz
+    author = BlogAuthor(
+        slug=body.slug,
+        name=body.name,
+        title=body.title,
+        bio=body.bio,
+        avatar_url=body.avatar_url,
+        twitter_handle=body.twitter_handle,
+        created_at=datetime.now(timezone.utc),
+    )
+    db.add(author)
+    db.commit()
+    db.refresh(author)
+    return author
+
+
+@router.put("/authors/{author_slug}", response_model=AuthorPublicOut)
+def update_author(
+    author_slug: str,
+    body: AuthorUpdate,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_admin_user),
+):
+    author = db.get(BlogAuthor, author_slug)
+    if author is None:
+        raise HTTPException(status_code=404, detail="Author not found")
+    for field, value in body.model_dump(exclude_none=True).items():
+        setattr(author, field, value)
+    db.commit()
+    db.refresh(author)
+    return author
+
+
+@router.post("/authors/{author_slug}/avatar", response_model=dict)
+async def upload_author_avatar(
+    author_slug: str,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    _: User = Depends(get_admin_user),
+):
+    author = db.get(BlogAuthor, author_slug)
+    if author is None:
+        raise HTTPException(status_code=404, detail="Author not found")
+    _ALLOWED_TYPES = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}
+    if file.content_type not in _ALLOWED_TYPES:
+        raise HTTPException(status_code=400, detail="Only JPEG/PNG/WebP allowed")
+    ext = _ALLOWED_TYPES[file.content_type]
+    key = f"author-avatars/{author_slug}/{uuid.uuid4().hex}.{ext}"
+    data = await file.read()
+    if len(data) > 2 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="File too large — maximum 2 MB")
+    r2_upload(key, data, content_type=file.content_type)
+    url = r2_public_url(key)
+    author.avatar_url = url
+    db.commit()
+    return {"url": url}
 
 
 # ── Admin stats dashboard ──────────────────────────────────────────────────────

@@ -132,6 +132,35 @@ class UserInteraction(Base):
     event: Mapped["FeedEvent"] = relationship(back_populates="interactions")
 
 
+# Valid blog category slugs — add new ones here + update BLOG_CATEGORIES in admin router
+BLOG_CATEGORIES = [
+    "macro",        # central banks, rates, inflation, GDP
+    "trade",        # trade flows, tariffs, exports/imports
+    "markets",      # stocks, indices, equity
+    "crypto",       # digital assets
+    "commodities",  # oil, gold, metals, agriculture
+    "fx",           # currencies, forex
+    "geopolitics",  # sanctions, political risk
+    "data",         # data deep-dives, statistics
+]
+
+
+class BlogAuthor(Base):
+    """Named author profile — referenced by BlogPost.author_slug."""
+
+    __tablename__ = "blog_authors"
+
+    slug: Mapped[str] = mapped_column(String(100), primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    title: Mapped[str] = mapped_column(String(150), nullable=True)
+    bio: Mapped[str] = mapped_column(Text, nullable=True)
+    avatar_url: Mapped[str] = mapped_column(String(500), nullable=True)
+    twitter_handle: Mapped[str] = mapped_column(String(50), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    posts: Mapped[list["BlogPost"]] = relationship(back_populates="author")
+
+
 class BlogStatus(str, enum.Enum):
     draft = "draft"
     published = "published"
@@ -147,6 +176,8 @@ class BlogPost(Base):
     __table_args__ = (
         Index("ix_blog_posts_status", "status"),
         Index("ix_blog_posts_published_at", "published_at"),
+        Index("ix_blog_posts_category", "category"),
+        Index("ix_blog_posts_author_slug", "author_slug"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -156,6 +187,10 @@ class BlogPost(Base):
     excerpt: Mapped[str] = mapped_column(String(300), nullable=True)
     cover_image_url: Mapped[str] = mapped_column(String(500), nullable=True)
     author_name: Mapped[str] = mapped_column(String(50), nullable=False, default="MetricsHour Team")
+    author_slug: Mapped[str] = mapped_column(
+        String(100), ForeignKey("blog_authors.slug", ondelete="SET NULL"), nullable=True
+    )
+    category: Mapped[str] = mapped_column(String(50), nullable=True)
     status: Mapped[BlogStatus] = mapped_column(
         Enum(BlogStatus, name="blogstatus"), nullable=False, default=BlogStatus.draft
     )
@@ -169,3 +204,5 @@ class BlogPost(Base):
     feed_event_id: Mapped[int] = mapped_column(
         ForeignKey("feed_events.id", ondelete="SET NULL"), nullable=True
     )
+
+    author: Mapped["BlogAuthor"] = relationship(back_populates="posts", foreign_keys=[author_slug])

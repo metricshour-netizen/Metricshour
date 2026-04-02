@@ -26,11 +26,25 @@
       <div class="mb-6">
         <div class="flex items-center gap-2 mb-3">
           <span class="text-xs bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full font-bold">ARTICLE</span>
+          <NuxtLink
+            v-if="post.category"
+            :to="`/blog/?category=${post.category}`"
+            class="text-xs font-bold px-2 py-0.5 rounded-full uppercase tracking-wide transition-opacity hover:opacity-80"
+            :style="`background:${categoryColor(post.category)}22; color:${categoryColor(post.category)}`"
+          >{{ post.category }}</NuxtLink>
           <span v-if="post.published_at" class="text-xs text-gray-500">{{ fmtDate(post.published_at) }}</span>
           <span class="text-xs text-gray-600">· {{ readingTime }} min read</span>
         </div>
         <h1 class="text-2xl sm:text-3xl font-bold text-white leading-tight mb-2">{{ post.title }}</h1>
-        <p class="text-gray-500 text-sm">By {{ post.author_name }}</p>
+        <p class="text-gray-500 text-sm">
+          By
+          <NuxtLink
+            v-if="post.author_slug"
+            :to="`/blog/authors/${post.author_slug}/`"
+            class="text-gray-400 hover:text-white transition-colors"
+          >{{ post.author_name }}</NuxtLink>
+          <span v-else>{{ post.author_name }}</span>
+        </p>
       </div>
 
       <!-- Body -->
@@ -142,6 +156,14 @@ renderer.image = ({ href, title, text }: { href: string; title?: string | null; 
 }
 marked.use({ renderer })
 
+const CATEGORY_COLORS: Record<string, string> = {
+  macro: '#a78bfa', trade: '#34d399', markets: '#60a5fa', crypto: '#f59e0b',
+  commodities: '#fb923c', fx: '#e879f9', geopolitics: '#f87171', data: '#94a3b8',
+}
+function categoryColor(slug: string): string {
+  return CATEGORY_COLORS[slug] ?? '#6b7280'
+}
+
 interface BlogPost {
   id: number
   title: string
@@ -150,6 +172,8 @@ interface BlogPost {
   excerpt?: string
   cover_image_url?: string
   author_name: string
+  author_slug?: string | null
+  category?: string | null
   published_at?: string
   updated_at?: string
   related_asset_ids?: number[] | null

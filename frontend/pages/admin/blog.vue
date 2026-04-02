@@ -40,6 +40,7 @@
                 class="text-xs font-bold px-2 py-0.5 rounded-full"
                 :class="post.status === 'published' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-gray-500/20 text-gray-400'"
               >{{ post.status.toUpperCase() }}</span>
+              <span v-if="post.category" class="text-xs font-semibold px-2 py-0.5 rounded-full bg-white/5 text-white/50">{{ post.category }}</span>
               <span class="text-xs text-gray-500">Score: {{ post.importance_score }}/10</span>
               <span v-if="post.published_at" class="text-xs text-gray-600">{{ fmtDate(post.published_at) }}</span>
             </div>
@@ -129,6 +130,29 @@
             </div>
           </div>
 
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="text-xs text-gray-500 block mb-1">Category</label>
+              <select
+                v-model="form.category"
+                class="w-full bg-[#111827] border border-[#1f2937] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500 transition-colors"
+              >
+                <option value="">— no category —</option>
+                <option v-for="cat in CATEGORIES" :key="cat" :value="cat">{{ cat }}</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-xs text-gray-500 block mb-1">Author slug (for profile link)</label>
+              <select
+                v-model="form.author_slug"
+                class="w-full bg-[#111827] border border-[#1f2937] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500 transition-colors"
+              >
+                <option value="">— none —</option>
+                <option v-for="a in authors" :key="a.slug" :value="a.slug">{{ a.name }}</option>
+              </select>
+            </div>
+          </div>
+
           <div>
             <label class="text-xs text-gray-500 block mb-1">Importance score (0–10)</label>
             <input
@@ -183,6 +207,8 @@ interface BlogPost {
   excerpt?: string
   cover_image_url?: string
   author_name: string
+  author_slug?: string | null
+  category?: string | null
   status: string
   importance_score: number
   published_at?: string
@@ -190,11 +216,21 @@ interface BlogPost {
   feed_event_id?: number
 }
 
+interface Author {
+  slug: string
+  name: string
+}
+
+const CATEGORIES = [
+  'macro', 'trade', 'markets', 'crypto', 'commodities', 'fx', 'geopolitics', 'data',
+]
+
 const { get, post: apiPost, put, del } = useApi()
 const { isLoggedIn, isAdmin } = useAuth()
 
 const showAuth = ref(false)
 const posts = ref<BlogPost[]>([])
+const authors = ref<Author[]>([])
 const loadingPosts = ref(false)
 const error = ref('')
 const publishing = ref<number | null>(null)
@@ -212,6 +248,8 @@ const form = reactive({
   body: '',
   excerpt: '',
   author_name: 'MetricsHour Team',
+  author_slug: 'metricshour-team',
+  category: '' as string,
   importance_score: 5,
 })
 
@@ -220,6 +258,8 @@ function resetForm() {
   form.body = ''
   form.excerpt = ''
   form.author_name = 'MetricsHour Team'
+  form.author_slug = 'metricshour-team'
+  form.category = ''
   form.importance_score = 5
 }
 
@@ -236,6 +276,8 @@ function openEdit(p: BlogPost) {
   form.body = p.body
   form.excerpt = p.excerpt || ''
   form.author_name = p.author_name
+  form.author_slug = p.author_slug || ''
+  form.category = p.category || ''
   form.importance_score = p.importance_score
   formOpen.value = true
   formError.value = ''
@@ -250,6 +292,8 @@ async function savePost() {
       body: form.body,
       excerpt: form.excerpt || null,
       author_name: form.author_name,
+      author_slug: form.author_slug || null,
+      category: form.category || null,
       importance_score: form.importance_score,
     }
     if (editingPost.value) {
@@ -333,7 +377,12 @@ async function loadPosts() {
   if (!isLoggedIn.value) return
   loadingPosts.value = true
   try {
-    posts.value = await get<BlogPost[]>('/api/admin/blogs')
+    const [postsData, authorsData] = await Promise.all([
+      get<BlogPost[]>('/api/admin/blogs'),
+      get<Author[]>('/api/admin/authors').catch(() => []),
+    ])
+    posts.value = postsData
+    authors.value = authorsData
   } catch (e: any) {
     error.value = e.message || 'Failed to load posts'
   } finally {
