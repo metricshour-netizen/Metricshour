@@ -310,6 +310,41 @@ def _post_clean(body):
     body = _r.sub(r'\[([A-Za-z][^\[\]]+?)\s+\([A-Z]{2,5}\)\]\(([^\)]+)\)', lambda m: '[' + m.group(1) + '](' + m.group(2) + ')', body)
     return body
 
+def detect_entities(body: str) -> tuple[set[str], set[str]]:
+    """
+    Scan body text for mentioned stocks and countries using the same maps
+    as inject_deep_links. Returns (set_of_tickers, set_of_country_codes).
+    Used to auto-populate related_asset_ids / related_country_ids on publish.
+    """
+    if not body:
+        return set(), set()
+
+    # Strip HTML tags for plain-text scanning
+    plain = re.sub(r'<[^>]+>', ' ', body)
+
+    tickers_found: set[str] = set()
+    for ticker, names in STOCKS.items():
+        if not names and ticker in SKIP_TICKER_MATCH:
+            continue
+        # Check ticker (skip ambiguous short ones)
+        if ticker not in SKIP_TICKER_MATCH:
+            if re.search(r'\b' + re.escape(ticker) + r'\b', plain):
+                tickers_found.add(ticker)
+                continue
+        # Check company names
+        for name in names:
+            if name and len(name) >= 4 and re.search(r'\b' + re.escape(name) + r'\b', plain, re.IGNORECASE):
+                tickers_found.add(ticker)
+                break
+
+    countries_found: set[str] = set()
+    for country_name, code in COUNTRIES.items():
+        if re.search(r'\b' + re.escape(country_name) + r'\b', plain, re.IGNORECASE):
+            countries_found.add(code)
+
+    return tickers_found, countries_found
+
+
 def inject_deep_links(body: str) -> str:
     """
     Main entry point. Call this on blog post body during publish.

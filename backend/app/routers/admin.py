@@ -27,7 +27,7 @@ from app.routers.auth import get_admin_user, get_current_user
 from app.models.user import User, LoginEvent, PageView
 from app.storage import r2_public_url, r2_upload
 from app.limiter import limiter
-from app.utils.deep_links import inject_deep_links
+from app.utils.deep_links import inject_deep_links, detect_entities
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -250,6 +250,31 @@ def publish_blog(
     post.status = BlogStatus.published
     post.published_at = now
     post.updated_at = now
+
+    # Auto-detect entity tags from body text and merge with any manually set IDs
+    tickers_found, country_codes_found = detect_entities(post.body)
+
+    if tickers_found:
+        from app.models.asset import Asset as _Asset
+        rows = db.execute(
+            select(_Asset.id, _Asset.symbol).where(
+                _Asset.symbol.in_(tickers_found), _Asset.is_active == True
+            )
+        ).all()
+        detected_asset_ids = [r.id for r in rows]
+        existing_asset_ids = list(post.related_asset_ids or [])
+        merged = list(dict.fromkeys(existing_asset_ids + detected_asset_ids))  # deduped, order preserved
+        post.related_asset_ids = merged
+
+    if country_codes_found:
+        from app.models.country import Country as _Country
+        rows = db.execute(
+            select(_Country.id).where(_Country.code.in_(country_codes_found))
+        ).all()
+        detected_country_ids = [r.id for r in rows]
+        existing_country_ids = list(post.related_country_ids or [])
+        merged = list(dict.fromkeys(existing_country_ids + detected_country_ids))
+        post.related_country_ids = merged
 
     # Auto-create FeedEvent
     event = FeedEvent(
