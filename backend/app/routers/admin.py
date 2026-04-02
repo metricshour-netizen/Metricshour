@@ -10,13 +10,14 @@ PUT    /api/admin/blogs/{id}      — update fields
 POST   /api/admin/blogs/{id}/publish  — publish + auto-create FeedEvent
 DELETE /api/admin/blogs/{id}      — delete (draft only)
 POST   /api/admin/blogs/{id}/cover    — upload cover image to R2
+POST   /api/admin/blogs/{id}/fetch-cover — auto-fetch cover from Unsplash
 """
 
 import re
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Request, UploadFile, status
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -28,6 +29,7 @@ from app.models.user import User, LoginEvent, PageView
 from app.storage import r2_public_url, r2_upload
 from app.limiter import limiter
 from app.utils.deep_links import inject_deep_links, detect_entities
+from app.utils.fetch_cover import attach_cover
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -262,6 +264,7 @@ def list_blogs(
 @router.post("/blogs", response_model=BlogOut, status_code=status.HTTP_201_CREATED)
 def create_blog(
     body: BlogIn,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     _: User = Depends(get_admin_user),
 ):
@@ -288,6 +291,18 @@ def create_blog(
     db.add(post)
     db.commit()
     db.refresh(post)
+
+    # Auto-fetch cover from Unsplash if none provided
+    if not post.cover_image_url:
+        from app.database import SessionLocal as _SL
+        def _bg_cover(post_id: int, title: str):
+            _db = _SL()
+            try:
+                attach_cover(post_id, title, _db)
+            finally:
+                _db.close()
+        background_tasks.add_task(_bg_cover, post.id, post.title)
+
     return post
 
 
@@ -445,6 +460,22 @@ async def upload_cover(
     db.commit()
 
     return {"url": url, "key": key}
+
+
+@router.post("/blogs/{post_id}/fetch-cover", response_model=dict)
+def fetch_cover_endpoint(
+    post_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_admin_user),
+):
+    """Fetch a cover image from Unsplash for this post and save to R2."""
+    post = db.get(BlogPost, post_id)
+    if post is None:
+        raise HTTPException(status_code=404, detail="Blog post not found")
+    url = attach_cover(post_id, post.title, db)
+    if not url:
+        raise HTTPException(status_code=502, detail="Could not fetch cover from Unsplash — check UNSPLASH_ACCESS_KEY")
+    return {"url": url}
 
 
 # ── Admin author management ───────────────────────────────────────────────────

@@ -45,6 +45,8 @@ class Settings:
     telegram_webhook_secret: str = os.environ.get("TELEGRAM_WEBHOOK_SECRET", "")
     resend_api_key: str = os.environ.get("RESEND_API_KEY", "")
     resend_from_email: str = os.environ.get("RESEND_FROM_EMAIL", "alerts@metricshour.com")
+    # Unsplash (cover image auto-fetch)
+    unsplash_access_key: str = os.environ.get("UNSPLASH_ACCESS_KEY", "")
 
 
 settings = Settings()

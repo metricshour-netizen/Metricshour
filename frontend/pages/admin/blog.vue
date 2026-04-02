@@ -59,6 +59,12 @@
               :disabled="publishing === post.id"
               @click="publishPost(post.id)"
             >{{ publishing === post.id ? '…' : 'Publish' }}</button>
+            <button
+              v-if="!post.cover_image_url"
+              class="text-xs text-yellow-500 hover:text-yellow-400 border border-yellow-900/40 hover:border-yellow-500 px-3 py-1.5 rounded-lg transition-colors"
+              :disabled="fetchingCover === post.id"
+              @click="fetchCover(post.id)"
+            >{{ fetchingCover === post.id ? '…' : '🖼 Cover' }}</button>
             <a
               v-if="post.status === 'published'"
               :href="`/blog/${post.slug}`"
@@ -235,6 +241,7 @@ const loadingPosts = ref(false)
 const error = ref('')
 const publishing = ref<number | null>(null)
 const deleting = ref<number | null>(null)
+const fetchingCover = ref<number | null>(null)
 
 // ── Form ──────────────────────────────────────────────────────────────────────
 const formOpen = ref(false)
@@ -339,6 +346,20 @@ async function deletePost(id: number) {
     error.value = e.message || 'Delete failed'
   } finally {
     deleting.value = null
+  }
+}
+
+async function fetchCover(id: number) {
+  fetchingCover.value = id
+  error.value = ''
+  try {
+    const updated = await apiPost<{ url: string }>(`/api/admin/blogs/${id}/fetch-cover`, {})
+    const idx = posts.value.findIndex(p => p.id === id)
+    if (idx !== -1) posts.value[idx].cover_image_url = updated.url
+  } catch (e: any) {
+    error.value = e.message || 'Cover fetch failed'
+  } finally {
+    fetchingCover.value = null
   }
 }
 
