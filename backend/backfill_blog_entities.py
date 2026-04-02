@@ -36,7 +36,7 @@ for post in posts:
     ))
     country_ids = list(dict.fromkeys(
         list(post.related_country_ids or []) +
-        [code_to_id[c] for c in codes if c in code_to_id]
+        [code_to_id[c.upper()] for c in codes if c.upper() in code_to_id]
     ))
 
     changed = (asset_ids != list(post.related_asset_ids or []) or

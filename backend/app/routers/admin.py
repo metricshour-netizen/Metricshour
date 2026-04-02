@@ -269,7 +269,7 @@ def publish_blog(
     if country_codes_found:
         from app.models.country import Country as _Country
         rows = db.execute(
-            select(_Country.id).where(_Country.code.in_(country_codes_found))
+            select(_Country.id).where(_Country.code.in_([c.upper() for c in country_codes_found]))
         ).all()
         detected_country_ids = [r.id for r in rows]
         existing_country_ids = list(post.related_country_ids or [])
