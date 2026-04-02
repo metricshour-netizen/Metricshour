@@ -149,6 +149,8 @@ def _asset_summary(a: Asset, country: Country | None = None, price: Price | None
             "high": price.high,
             "low": price.low,
             "timestamp": price.timestamp.isoformat(),
+            "fetched_at": price.fetched_at.isoformat() if price.fetched_at else None,
+            "change_pct": round((price.close - price.open) / price.open * 100, 4) if price.open and price.open > 0 and price.close else None,
         } if price else None,
     }
 
