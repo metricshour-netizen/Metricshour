@@ -23,11 +23,11 @@
               </div>
               <div>
                 <div class="flex items-center gap-2 flex-wrap mb-1">
-                  <h1 class="text-3xl font-extrabold text-white tracking-tight">{{ asset.symbol }}</h1>
+                  <h1 class="text-3xl font-extrabold text-white tracking-tight">{{ asset.name }}</h1>
                   <span class="text-[10px] font-bold text-sky-400/80 bg-sky-400/10 border border-sky-800/40 px-2 py-1 rounded-md">ETF</span>
                   <span v-if="asset.exchange" class="text-xs bg-[#1f2937] text-gray-400 px-2 py-1 rounded-md">{{ asset.exchange }}</span>
                 </div>
-                <p class="text-gray-300 font-medium">{{ asset.name }}</p>
+                <p class="text-gray-300 font-medium">{{ asset.symbol }}</p>
                 <p class="text-gray-600 text-xs mt-0.5">{{ asset.sector || 'ETF' }} · Exchange-Traded Fund</p>
               </div>
             </div>

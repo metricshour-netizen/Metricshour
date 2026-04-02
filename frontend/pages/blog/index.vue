@@ -112,7 +112,10 @@ useSeoMeta({
 })
 
 useHead({
-  link: [{ rel: 'canonical', href: 'https://metricshour.com/blog/' }],
+  link: [
+    { rel: 'canonical', href: 'https://metricshour.com/blog/' },
+    { rel: 'alternate', type: 'application/rss+xml', title: 'MetricsHour Blog RSS Feed', href: 'https://api.metricshour.com/rss.xml' },
+  ],
   script: [{
     type: 'application/ld+json',
     innerHTML: JSON.stringify({

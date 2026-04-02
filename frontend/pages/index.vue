@@ -719,7 +719,12 @@ useHead({
           name: 'MetricsHour',
           url: 'https://metricshour.com',
           logo: 'https://metricshour.com/favicon.svg',
-          sameAs: ['https://twitter.com/metricshour'],
+          sameAs: [
+            'https://twitter.com/metricshour',
+            'https://www.instagram.com/metricshour',
+            'https://www.linkedin.com/company/metricshour',
+            'https://www.facebook.com/metricshour',
+          ],
           description: 'Global financial intelligence platform — stocks, macro data, bilateral trade flows, and commodities.',
         },
         {

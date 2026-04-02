@@ -295,6 +295,61 @@ def sitemap(db: Session = Depends(get_db)):
     )
 
 
+def _xml_escape(s: str) -> str:
+    return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+
+
+@router.api_route("/rss.xml", methods=["GET", "HEAD"], include_in_schema=False)
+def rss_feed(db: Session = Depends(get_db)):
+    """RSS 2.0 feed of published blog posts — indexed by Google News and feed readers."""
+    posts = db.execute(
+        select(BlogPost.title, BlogPost.slug, BlogPost.excerpt, BlogPost.published_at, BlogPost.updated_at, BlogPost.author_name)
+        .where(BlogPost.status == "published")
+        .order_by(BlogPost.published_at.desc())
+        .limit(50)
+    ).all()
+
+    items = []
+    for p in posts:
+        pub_date = p.published_at.strftime("%a, %d %b %Y %H:%M:%S +0000") if p.published_at else ""
+        description = _xml_escape(p.excerpt or "")
+        title = _xml_escape(p.title)
+        link = f"{BASE}/blog/{p.slug}/"
+        items.append(
+            f"  <item>\n"
+            f"    <title>{title}</title>\n"
+            f"    <link>{link}</link>\n"
+            f"    <guid isPermaLink=\"true\">{link}</guid>\n"
+            f"    <description>{description}</description>\n"
+            f"    <pubDate>{pub_date}</pubDate>\n"
+            f"    <author>editorial@metricshour.com ({_xml_escape(p.author_name or 'MetricsHour Team')})</author>\n"
+            f"  </item>"
+        )
+
+    rss = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">\n'
+        '  <channel>\n'
+        '    <title>MetricsHour Blog — Macro Analysis &amp; Market Intelligence</title>\n'
+        f'    <link>{BASE}/blog/</link>\n'
+        f'    <atom:link href="https://api.metricshour.com/rss.xml" rel="self" type="application/rss+xml"/>\n'
+        '    <description>Global macro analysis, trade flows, and market intelligence from MetricsHour.</description>\n'
+        '    <language>en-us</language>\n'
+        '    <ttl>60</ttl>\n'
+        + "\n".join(items)
+        + "\n  </channel>\n</rss>"
+    )
+
+    return Response(
+        content=rss,
+        media_type="application/rss+xml",
+        headers={
+            "Content-Type": "application/rss+xml; charset=utf-8",
+            "Cache-Control": "public, max-age=3600, s-maxage=3600",
+        },
+    )
+
+
 @router.api_route("/robots.txt", methods=["GET", "HEAD"])
 def robots_txt() -> Response:
     """Serve robots.txt from the API so Sitemap directive isn't overridden by Cloudflare managed content."""
@@ -320,6 +375,8 @@ def robots_txt() -> Response:
         "Disallow: /\n"
         "\n"
         f"Sitemap: https://api.metricshour.com/sitemap.xml\n"
+        f"# RSS feed\n"
+        f"# https://api.metricshour.com/rss.xml\n"
     )
     return Response(
         content=content,

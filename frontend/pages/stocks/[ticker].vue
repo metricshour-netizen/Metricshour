@@ -24,7 +24,7 @@
               </div>
               <div>
                 <div class="flex items-center gap-2 flex-wrap mb-1">
-                  <h1 class="text-3xl font-extrabold text-white tracking-tight">{{ stock.symbol }}</h1>
+                  <h1 class="text-3xl font-extrabold text-white tracking-tight">{{ stock.name }}</h1>
                   <span class="text-xs bg-[#1f2937] text-gray-400 px-2 py-1 rounded-md">{{ stock.exchange }}</span>
                   <span v-if="stock.sector" class="text-xs border border-emerald-800 text-emerald-400 px-2 py-1 rounded-md">{{ stock.sector }}</span>
                   <span v-if="geoRisk" class="text-xs font-bold px-2 py-1 rounded-md"
@@ -34,7 +34,7 @@
                       'bg-emerald-900/40 text-emerald-400 border border-emerald-800': geoRisk === 'LOW',
                     }">{{ geoRisk }} GEO RISK</span>
                 </div>
-                <p class="text-gray-300 font-medium">{{ stock.name }}</p>
+                <p class="text-gray-300 font-medium">{{ stock.symbol }}</p>
                 <p class="text-xs text-gray-500 leading-relaxed mt-1 max-w-lg">
                   {{ stock.sector }} company{{ stock.country ? ` headquartered in ${stock.country.name}` : '' }}.
                   Geographic revenue tracked across {{ stock.country_revenues?.length || 'multiple' }} markets — source: SEC EDGAR 10-K.

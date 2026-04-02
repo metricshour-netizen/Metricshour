@@ -24,11 +24,11 @@
               </div>
               <div>
                 <div class="flex items-center gap-2 flex-wrap mb-1">
-                  <h1 class="text-3xl font-extrabold text-white tracking-tight">{{ index.symbol }}</h1>
+                  <h1 class="text-3xl font-extrabold text-white tracking-tight">{{ index.name }}</h1>
                   <span class="text-[10px] font-bold text-purple-400/80 bg-purple-400/10 border border-purple-800/40 px-2 py-1 rounded-md">INDEX</span>
                   <span v-if="index.exchange" class="text-xs bg-[#1f2937] text-gray-400 px-2 py-1 rounded-md">{{ index.exchange }}</span>
                 </div>
-                <p class="text-gray-300 font-medium">{{ index.name }}</p>
+                <p class="text-gray-300 font-medium">{{ index.symbol }}</p>
                 <p class="text-gray-600 text-xs mt-0.5">{{ index.sector }} · Global Markets Index</p>
               </div>
             </div>
