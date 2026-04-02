@@ -21,6 +21,7 @@ from app.models.asset import Asset, AssetType, Price, StockCountryRevenue
 from app.models.country import Country, TradePair, CountryIndicator
 from app.models.summary import PageSummary
 from app.models.feed import BlogPost
+from app.models.macro import MacroSeries
 
 router = APIRouter()
 
@@ -209,6 +210,45 @@ def sitemap(db: Session = Depends(get_db)):
         dates = [d for d in (post.published_at, post.updated_at) if d is not None]
         lm = max(dates).date().isoformat() if dates else today
         entries.append(_url(f"{BASE}/blog/{post.slug}/", "0.8", "weekly", lm))
+
+    # Crypto → /crypto/{symbol}/
+    for (symbol,) in db.execute(
+        select(Asset.symbol).where(
+            Asset.asset_type == AssetType.crypto,
+            Asset.is_active == True,
+            Asset.symbol.isnot(None),
+        )
+    ):
+        lm = lastmod_map.get(("crypto_insight", symbol)) or lastmod_map.get(("crypto", symbol)) or today
+        entries.append(_url(f"{BASE}/crypto/{symbol.lower()}/", "0.7", "daily", lm))
+
+    # ETFs → /etfs/{symbol}/
+    for (symbol,) in db.execute(
+        select(Asset.symbol).where(
+            Asset.asset_type == AssetType.etf,
+            Asset.is_active == True,
+            Asset.symbol.isnot(None),
+        )
+    ):
+        lm = lastmod_map.get(("etf_insight", symbol)) or lastmod_map.get(("etf", symbol)) or today
+        entries.append(_url(f"{BASE}/etfs/{symbol.lower()}/", "0.6", "daily", lm))
+
+    # FX pairs → /fx/{symbol}/
+    for (symbol,) in db.execute(
+        select(Asset.symbol).where(
+            Asset.asset_type == AssetType.fx,
+            Asset.is_active == True,
+            Asset.symbol.isnot(None),
+        )
+    ):
+        lm = lastmod_map.get(("fx_insight", symbol)) or lastmod_map.get(("fx", symbol)) or today
+        entries.append(_url(f"{BASE}/fx/{symbol.lower()}/", "0.6", "daily", lm))
+
+    # Rates series → /rates/{series_id}/
+    for (series_id,) in db.execute(
+        select(MacroSeries.series_id).distinct()
+    ):
+        entries.append(_url(f"{BASE}/rates/{series_id.lower()}/", "0.7", "weekly", today))
 
     # Compare pages → /compare/{a}-vs-{b}
     # Only include pairs where BOTH countries have GDP data (avoids thin content).

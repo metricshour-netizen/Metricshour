@@ -133,7 +133,7 @@ useSeoMeta({
   ogDescription: 'Live forex exchange rates for major and emerging market currency pairs. Updated every 15 minutes.',
   ogUrl: 'https://metricshour.com/fx/',
   ogType: 'website',
-  ogImage: 'https://cdn.metricshour.com/og/section/commodities.png',
+  ogImage: 'https://cdn.metricshour.com/og/section/fx.png',
   twitterCard: 'summary_large_image',
   robots: 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1',
 })

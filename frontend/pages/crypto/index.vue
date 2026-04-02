@@ -145,7 +145,7 @@ useSeoMeta({
   ogDescription: 'Live cryptocurrency prices, market caps, and 24h changes for Bitcoin, Ethereum, Solana, XRP and top coins.',
   ogUrl: 'https://metricshour.com/crypto/',
   ogType: 'website',
-  ogImage: 'https://cdn.metricshour.com/og/section/commodities.png',
+  ogImage: 'https://cdn.metricshour.com/og/section/crypto.png',
   twitterCard: 'summary_large_image',
   robots: 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1',
 })

@@ -1039,6 +1039,10 @@ def generate_section_images() -> dict:
         ("pricing",     "Pricing",              "Plans · Features · Compare"),
         ("sectors",     "Market Sectors",       "Technology · Healthcare · Energy · Finance"),
         ("blog",        "MetricsHour Blog",     "Macro Analysis · Trade · Markets · Geopolitics"),
+        ("crypto",      "Cryptocurrency",       "Bitcoin · Ethereum · Altcoins · Real-time Prices"),
+        ("etfs",        "ETFs",                 "Index Funds · Bonds · Sector ETFs · Global"),
+        ("fx",          "Forex",                "Major Pairs · Crosses · Real-time Rates"),
+        ("rates",       "Interest Rates",       "Fed Funds · Treasury Yields · Inflation"),
     ]
     count = 0
     for key, title, subtitle in sections:

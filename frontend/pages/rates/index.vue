@@ -132,10 +132,10 @@ useSeoMeta({
   ogTitle: 'US Interest Rates & Macro Dashboard — MetricsHour',
   ogDescription: 'Fed funds rate, Treasury yields, CPI, M2, jobless claims — updated daily from FRED.',
   ogUrl: 'https://metricshour.com/rates/',
-  ogImage: 'https://cdn.metricshour.com/og/section/home.png',
+  ogImage: 'https://cdn.metricshour.com/og/section/rates.png',
   ogImageWidth: '1200',
   ogImageHeight: '630',
-  twitterImage: 'https://cdn.metricshour.com/og/section/home.png',
+  twitterImage: 'https://cdn.metricshour.com/og/section/rates.png',
   twitterCard: 'summary_large_image',
   robots: 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1',
 })

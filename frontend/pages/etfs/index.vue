@@ -195,7 +195,7 @@ useSeoMeta({
   ogDescription: 'Live ETF prices and 24h changes for S&P 500, Nasdaq, international, bond and commodity funds.',
   ogUrl: 'https://metricshour.com/etfs/',
   ogType: 'website',
-  ogImage: 'https://cdn.metricshour.com/og/section/commodities.png',
+  ogImage: 'https://cdn.metricshour.com/og/section/etfs.png',
   twitterCard: 'summary_large_image',
   robots: 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1',
 })

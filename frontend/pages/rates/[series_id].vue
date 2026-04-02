@@ -223,7 +223,13 @@ useSeoMeta({
   title: pageTitle,
   description: `Historical data and chart for FRED series ${seriesId}. Updated daily from Federal Reserve Economic Data.`,
   ogUrl: `https://metricshour.com/rates/${seriesId.toLowerCase()}/`,
-  ogImage: 'https://cdn.metricshour.com/og/section/home.png',
+  ogTitle: pageTitle,
+  ogDescription: `Historical data and chart for FRED series ${seriesId}. Updated daily from Federal Reserve Economic Data.`,
+  ogImage: 'https://cdn.metricshour.com/og/section/rates.png',
+  ogImageWidth: '1200',
+  ogImageHeight: '630',
+  twitterCard: 'summary_large_image',
+  twitterImage: 'https://cdn.metricshour.com/og/section/rates.png',
   robots: 'index, follow',
 })
 useHead({
