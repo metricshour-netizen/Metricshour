@@ -398,8 +398,9 @@ function fmtPrice(v: number | null | undefined): string {
 function fmtTs(t: string | null | undefined): string {
   if (!t) return '—'
   const d = new Date(t)
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
-    + ' · ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC', hour12: false }) + ' UTC'
+  const date = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+  if (d.getUTCHours() === 0 && d.getUTCMinutes() === 0) return date
+  return date + ' · ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC', hour12: false }) + ' UTC'
 }
 
 // ── Stats ──────────────────────────────────────────────────────────────────────

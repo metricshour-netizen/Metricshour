@@ -585,8 +585,11 @@ function fmtPriceTs(ts: string | undefined): string {
   if (!ts) return '—'
   const d = new Date(ts)
   if (isNaN(d.getTime())) return '—'
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
-    + ' · ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC', hour12: false }) + ' UTC'
+  const hrs = d.getUTCHours(), mins = d.getUTCMinutes()
+  const date = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+  // Daily candles have no meaningful intraday time — omit 00:00 UTC
+  if (hrs === 0 && mins === 0) return date
+  return date + ' · ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC', hour12: false }) + ' UTC'
 }
 
 function fmtGdp(v: number | null | undefined): string {

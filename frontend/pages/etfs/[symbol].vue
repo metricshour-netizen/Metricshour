@@ -266,8 +266,9 @@ function fmtCap(v: number): string {
 function fmtTs(ts: string): string {
   if (!ts) return ''
   const d = new Date(ts)
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
-    + ' · ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC', hour12: false }) + ' UTC'
+  const date = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+  if (d.getUTCHours() === 0 && d.getUTCMinutes() === 0) return date
+  return date + ' · ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC', hour12: false }) + ' UTC'
 }
 
 function fmtInsightDate(ts: string): string {

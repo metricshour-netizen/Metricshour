@@ -264,11 +264,14 @@ function isStale(ts: string | undefined): boolean {
 function fmtCloseDate(ts: string): string {
   const d = parseUTC(ts)
   if (isNaN(d.getTime())) return '—'
+  const isMidnight = d.getUTCHours() === 0 && d.getUTCMinutes() === 0
+  const datePart = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+  if (isMidnight) return datePart
   const now = new Date()
   const isToday = d.toDateString() === now.toDateString()
   const time = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC', hour12: false }) + ' UTC'
   if (isToday) return time
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' · ' + time
+  return datePart + ' · ' + time
 }
 
 useSeoMeta({
