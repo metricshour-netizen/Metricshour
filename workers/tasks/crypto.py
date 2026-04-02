@@ -1,11 +1,12 @@
 """
-Crypto price ingestion — CoinGecko free API (no key required).
-Runs every 1 minute, 24/7.
+Crypto price ingestion — Tiingo crypto API.
+Runs every 2 minutes, 24/7.
 """
 
 import logging
+import os
 import requests
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -16,65 +17,75 @@ from app.models.asset import Asset, AssetType, Price
 
 log = logging.getLogger(__name__)
 
-# Maps our DB symbol → CoinGecko ID
-COINGECKO_IDS: dict[str, str] = {
-    'BTC':   'bitcoin',
-    'ETH':   'ethereum',
-    'BNB':   'binancecoin',
-    'SOL':   'solana',
-    'XRP':   'ripple',
-    'DOGE':  'dogecoin',
-    'ADA':   'cardano',
-    'AVAX':  'avalanche-2',
-    'DOT':   'polkadot',
-    'LINK':  'chainlink',
-    'LTC':   'litecoin',
-    'BCH':   'bitcoin-cash',
-    'UNI':   'uniswap',
-    'ATOM':  'cosmos',
-    'XLM':   'stellar',
-    'NEAR':  'near',
-    'FIL':   'filecoin',
-    'ICP':   'internet-computer',
-    'HBAR':  'hedera-hashgraph',
-    'VET':   'vechain',
-    'ALGO':  'algorand',
-    'XTZ':   'tezos',
-    'EOS':   'eos',
-    'SAND':  'the-sandbox',
-    'MANA':  'decentraland',
-    'THETA': 'theta-token',
-    'AXS':   'axie-infinity',
-    'GRT':   'the-graph',
-    'FTM':   'fantom',
-    'FLOW':  'flow',
-    'ZEC':   'zcash',
-    'DASH':  'dash',
-    'WAVES': 'waves',
-    'ENJ':   'enjincoin',
-    'BAT':   'basic-attention-token',
-    'ICX':   'icon',
-    'QTUM':  'qtum',
-    'ZIL':   'zilliqa',
-    'ONT':   'ontology',
-    'CRV':   'curve-dao-token',
-    'LDO':   'lido-dao',
-    'ARB':   'arbitrum',
-    'OP':    'optimism',
-    'APT':   'aptos',
-    'INJ':   'injective-protocol',
-    'RUNE':  'thorchain',
-    'KAVA':  'kava',
-    'CHZ':   'chiliz',
-    'EGLD':  'elrond-erd-2',
-    'MNT':   'mantle',
+TIINGO_KEY = os.environ.get('TIINGO_API_KEY', '')
+TIINGO_HEADERS = {
+    'Authorization': f'Token {TIINGO_KEY}',
+    'Content-Type': 'application/json',
 }
 
-ID_TO_SYMBOL = {v: k for k, v in COINGECKO_IDS.items()}
+# Maps our DB symbol → Tiingo ticker (symbol + "usd")
+TIINGO_TICKERS: dict[str, str] = {
+    'BTC':   'btcusd',
+    'ETH':   'ethusd',
+    'BNB':   'bnbusd',
+    'SOL':   'solusd',
+    'XRP':   'xrpusd',
+    'DOGE':  'dogeusd',
+    'ADA':   'adausd',
+    'AVAX':  'avaxusd',
+    'DOT':   'dotusd',
+    'LINK':  'linkusd',
+    'LTC':   'ltcusd',
+    'BCH':   'bchusd',
+    'UNI':   'uniusd',
+    'ATOM':  'atomusd',
+    'XLM':   'xlmusd',
+    'NEAR':  'nearusd',
+    'FIL':   'filusd',
+    'ICP':   'icpusd',
+    'HBAR':  'hbarusd',
+    'VET':   'vetusd',
+    'ALGO':  'algousd',
+    'XTZ':   'xtzusd',
+    'EOS':   'eosusd',
+    'SAND':  'sandusd',
+    'MANA':  'manausd',
+    'THETA': 'thetausd',
+    'AXS':   'axsusd',
+    'GRT':   'grtusd',
+    'FTM':   'ftmusd',
+    'FLOW':  'flowusd',
+    'ZEC':   'zecusd',
+    'DASH':  'dashusd',
+    'WAVES': 'wavesusd',
+    'ENJ':   'enjusd',
+    'BAT':   'batusd',
+    'ICX':   'icxusd',
+    'QTUM':  'qtumusd',
+    'ZIL':   'zilusd',
+    'ONT':   'ontusd',
+    'CRV':   'crvusd',
+    'LDO':   'ldousd',
+    'ARB':   'arbusd',
+    'OP':    'opusd',
+    'APT':   'aptusd',
+    'INJ':   'injusd',
+    'RUNE':  'runeusd',
+    'KAVA':  'kavausd',
+    'CHZ':   'chzusd',
+    'EGLD':  'egldusd',
+    'MNT':   'mntusd',
+}
+
+TICKER_TO_SYMBOL = {v: k for k, v in TIINGO_TICKERS.items()}
 
 
 @app.task(name='tasks.crypto.fetch_crypto_prices', bind=True, max_retries=3)
 def fetch_crypto_prices(self):
+    if not TIINGO_KEY:
+        log.warning('TIINGO_API_KEY not set — skipping crypto fetch')
+        return
+
     db = SessionLocal()
     try:
         assets = db.execute(
@@ -82,56 +93,88 @@ def fetch_crypto_prices(self):
         ).scalars().all()
         symbol_to_asset = {a.symbol: a for a in assets}
 
-        ids = [COINGECKO_IDS[s] for s in symbol_to_asset if s in COINGECKO_IDS]
-        if not ids:
+        tiingo_tickers = [TIINGO_TICKERS[s] for s in symbol_to_asset if s in TIINGO_TICKERS]
+        if not tiingo_tickers:
             return
 
+        tickers_param = ','.join(tiingo_tickers)
+
+        # ── Real-time top-of-book ───────────────────────────────────────────────
         resp = requests.get(
-            'https://api.coingecko.com/api/v3/simple/price',
-            params={
-                'ids': ','.join(ids),
-                'vs_currencies': 'usd',
-                'include_24hr_vol': 'true',
-                'include_24hr_change': 'true',
-            },
+            'https://api.tiingo.com/tiingo/crypto/top',
+            params={'tickers': tickers_param},
+            headers=TIINGO_HEADERS,
             timeout=15,
         )
         resp.raise_for_status()
-        data = resp.json()
+        top_data = {item['ticker']: item for item in resp.json()}
+
+        # ── Daily OHLC ─────────────────────────────────────────────────────────
+        today = date.today().isoformat()
+        resp_daily = requests.get(
+            'https://api.tiingo.com/tiingo/crypto/prices',
+            params={'tickers': tickers_param, 'startDate': today, 'resampleFreq': '1day'},
+            headers=TIINGO_HEADERS,
+            timeout=15,
+        )
+        resp_daily.raise_for_status()
+        # Returns: [{ticker, baseCurrency, quoteCurrency, priceData: [{date, open, high, low, close, volume, volumeNotional}]}]
+        daily_map: dict[str, dict] = {}
+        for item in resp_daily.json():
+            if item.get('priceData'):
+                daily_map[item['ticker']] = item['priceData'][-1]  # most recent day
 
         now_minute = datetime.now(timezone.utc).replace(second=0, microsecond=0)
         now_day = now_minute.replace(hour=0, minute=0)
+        fetched = datetime.now(timezone.utc)
 
         rows_1m = []
         rows_1d = []
-        for cg_id, vals in data.items():
-            sym = ID_TO_SYMBOL.get(cg_id)
+
+        for tiingo_ticker, book in top_data.items():
+            sym = TICKER_TO_SYMBOL.get(tiingo_ticker)
             if not sym or sym not in symbol_to_asset:
                 continue
-            close = vals['usd']
-            change_pct = vals.get('usd_24h_change')
-            # Reconstruct 24h-ago price as a proxy for today's open
-            open_val = close / (1 + change_pct / 100) if change_pct is not None else None
 
-            fetched = datetime.now(timezone.utc)
+            book_data = book.get('topOfBookData', [{}])[0]
+            close = book_data.get('lastPrice')
+            if close is None:
+                continue
+
             rows_1m.append({
                 'asset_id': symbol_to_asset[sym].id,
                 'timestamp': now_minute,
                 'interval': '1m',
                 'open': None, 'high': None, 'low': None,
                 'close': close,
-                'volume': vals.get('usd_24h_vol'),
+                'volume': book_data.get('lastSizeNotional'),  # USD-denominated volume
                 'fetched_at': fetched,
             })
-            rows_1d.append({
-                'asset_id': symbol_to_asset[sym].id,
-                'timestamp': now_day,
-                'interval': '1d',
-                'open': open_val, 'high': None, 'low': None,
-                'close': close,
-                'volume': vals.get('usd_24h_vol'),
-                'fetched_at': fetched,
-            })
+
+            # Daily OHLC — use Tiingo daily data if available, else reconstruct
+            daily = daily_map.get(tiingo_ticker)
+            if daily:
+                rows_1d.append({
+                    'asset_id': symbol_to_asset[sym].id,
+                    'timestamp': now_day,
+                    'interval': '1d',
+                    'open': daily.get('open'),
+                    'high': daily.get('high'),
+                    'low': daily.get('low'),
+                    'close': daily.get('close') or close,
+                    'volume': daily.get('volumeNotional'),
+                    'fetched_at': fetched,
+                })
+            else:
+                rows_1d.append({
+                    'asset_id': symbol_to_asset[sym].id,
+                    'timestamp': now_day,
+                    'interval': '1d',
+                    'open': None, 'high': None, 'low': None,
+                    'close': close,
+                    'volume': None,
+                    'fetched_at': fetched,
+                })
 
         if rows_1m:
             stmt = pg_insert(Price).values(rows_1m)
@@ -145,18 +188,23 @@ def fetch_crypto_prices(self):
             stmt = pg_insert(Price).values(rows_1d)
             stmt = stmt.on_conflict_do_update(
                 constraint='uq_price_asset_time_interval',
-                set_={'close': stmt.excluded.close, 'volume': stmt.excluded.volume, 'open': stmt.excluded.open, 'fetched_at': stmt.excluded.fetched_at},
+                set_={
+                    'close': stmt.excluded.close,
+                    'open': stmt.excluded.open,
+                    'high': stmt.excluded.high,
+                    'low': stmt.excluded.low,
+                    'volume': stmt.excluded.volume,
+                    'fetched_at': stmt.excluded.fetched_at,
+                },
             )
             db.execute(stmt)
 
         db.commit()
-        log.info(f'Crypto: upserted {len(rows_1m)} 1m + {len(rows_1d)} 1d prices')
+        log.info('Crypto (Tiingo): upserted %d 1m + %d 1d prices', len(rows_1m), len(rows_1d))
 
     except Exception as exc:
         db.rollback()
-        # Back off longer on rate limit errors
-        import requests as req_mod
-        countdown = 120 if isinstance(exc, req_mod.exceptions.HTTPError) and exc.response is not None and exc.response.status_code == 429 else 30
+        countdown = 120 if isinstance(exc, requests.exceptions.HTTPError) and exc.response is not None and exc.response.status_code == 429 else 30
         log.warning('Crypto price fetch failed (%s), retrying in %ds', exc, countdown)
         raise self.retry(exc=exc, countdown=countdown)
     finally:

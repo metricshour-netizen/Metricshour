@@ -326,6 +326,9 @@ useHead({
     { name: 'description', content: 'Screen S&P 500 stocks by geographic revenue exposure. Find stocks with low China exposure, high US revenue, or specific sector focus.' },
     { property: 'og:title', content: 'Stock Screener — MetricsHour' },
     { property: 'og:description', content: 'Filter 465 S&P 500 stocks by China revenue %, US revenue %, sector, and market cap.' },
-  ]
+    { property: 'og:image', content: 'https://cdn.metricshour.com/og/section/home.png' },
+    { property: 'og:type', content: 'website' },
+  ],
+  link: [{ rel: 'canonical', href: 'https://metricshour.com/screener/' }]
 })
 </script>
