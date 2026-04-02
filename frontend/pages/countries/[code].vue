@@ -455,10 +455,11 @@ const { isLoggedIn } = useAuth()
 
 const code = (route.params.code as string).toLowerCase()
 
-const { data: country, pending, error } = useAsyncData(
+const { data: country, pending, error } = await useAsyncData(
   `country-${code}`,
   () => r2Fetch<any>(`snapshots/countries/${code}.json`, `/api/countries/${code}`).catch(() => null),
 )
+if (!country.value) throw createError({ statusCode: 404, statusMessage: 'Country not found' })
 
 // Trade partners, exposed stocks, and local stocks are bundled in the R2 snapshot.
 // Use computed to extract them — no separate API call needed.

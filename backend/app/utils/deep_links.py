@@ -88,7 +88,7 @@ STOCKS = {
     "SHEL":  ["Shell"],
     "SLB":   ["Schlumberger"],
     "SONY":  ["Sony"],
-    "SSNLF": ["Samsung"],
+    # "SSNLF": Samsung removed — OTC stock, no SEC EDGAR 10-K data, page shows no geo revenue
     "TM":    ["Toyota"],
     "TMO":   ["Thermo Fisher"],
     "TSLA":  ["Tesla"],

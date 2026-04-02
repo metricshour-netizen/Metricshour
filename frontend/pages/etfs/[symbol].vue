@@ -167,10 +167,11 @@ const route = useRoute()
 const { get } = useApi()
 const symbol = (route.params.symbol as string).toUpperCase()
 
-const { data: asset, pending, error } = useAsyncData(
+const { data: asset, pending, error } = await useAsyncData(
   `etf-${symbol}`,
   () => get<any>(`/api/assets/${symbol}`).catch(() => null),
 )
+if (!asset.value) throw createError({ statusCode: 404, statusMessage: 'ETF not found' })
 
 const { data: pageSummary } = useAsyncData(
   `summary-etf-${symbol}`,

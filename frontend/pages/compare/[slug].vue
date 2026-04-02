@@ -244,6 +244,8 @@ const [{ data: dataA, pending: pA, error: errA }, { data: dataB, pending: pB, er
   useAsyncData(`compare-${codeB}`, () => get<any>(`/api/countries/${codeB}`).catch(() => null)),
 ])
 
+if (!dataA.value || !dataB.value) throw createError({ statusCode: 404, statusMessage: 'Country not found' })
+
 const pending = computed(() => pA.value || pB.value)
 const error   = computed(() => errA.value || errB.value)
 const countryA = computed(() => dataA.value)

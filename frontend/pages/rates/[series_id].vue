@@ -104,6 +104,7 @@ const { data, pending, refresh } = await useAsyncData(
   `rates-${seriesId}-${activeDays.value}`,
   () => get<any>(`/api/rates/${seriesId}?days=${activeDays.value}`).catch(() => null),
 )
+if (!data.value) throw createError({ statusCode: 404, statusMessage: 'Series not found' })
 
 async function setDays(d: number) {
   activeDays.value = d

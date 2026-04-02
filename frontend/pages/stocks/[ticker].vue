@@ -398,10 +398,11 @@ if (INDEX_SYMBOLS.has(ticker)) {
   await navigateTo(`/indices/${ticker.toLowerCase()}/`, { redirectCode: 301 })
 }
 
-const { data: stock, pending, error } = useAsyncData(
+const { data: stock, pending, error } = await useAsyncData(
   `stock-${ticker}`,
   () => r2Fetch<any>(`snapshots/stocks/${ticker.toLowerCase()}.json`, `/api/assets/${ticker}`).catch(() => null),
 )
+if (!stock.value) throw createError({ statusCode: 404, statusMessage: 'Stock not found' })
 
 // entity type depends on asset_type (commodity vs stock)
 const summaryEntityType = computed(() =>

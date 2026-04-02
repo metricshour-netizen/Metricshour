@@ -178,7 +178,7 @@ const slug = route.params.slug as string
 const articleUrl = `https://metricshour.com/blog/${slug}/`
 
 // Single SSR-compatible fetch: post + related entities + other posts in one pass
-const { data: pageData, pending, error } = useAsyncData(
+const { data: pageData, pending, error } = await useAsyncData(
   `blog-${slug}`,
   async () => {
     // On the server, call the API directly (bypasses Cloudflare which strips markdown images)
@@ -212,6 +212,7 @@ const { data: pageData, pending, error } = useAsyncData(
     return { post, assets, countries, others }
   },
 )
+if (!pageData.value?.post) throw createError({ statusCode: 404, statusMessage: 'Article not found' })
 
 const post = computed(() => pageData.value?.post ?? null)
 const relatedAssets = computed(() => pageData.value?.assets ?? [])

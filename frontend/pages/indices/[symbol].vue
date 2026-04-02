@@ -174,10 +174,11 @@ const route = useRoute()
 const { get } = useApi()
 const symbol = (route.params.symbol as string).toUpperCase()
 
-const { data: index, pending, error } = useAsyncData(
+const { data: index, pending, error } = await useAsyncData(
   `index-${symbol}`,
   () => get<any>(`/api/assets/${symbol}`).catch(() => null),
 )
+if (!index.value) throw createError({ statusCode: 404, statusMessage: 'Index not found' })
 
 const { data: pageSummary } = useAsyncData(
   `summary-index-${symbol}`,

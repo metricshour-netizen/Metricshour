@@ -165,10 +165,11 @@ const route = useRoute()
 const { get } = useApi()
 const symbol = (route.params.symbol as string).toUpperCase()
 
-const { data: asset, pending, error } = useAsyncData(
+const { data: asset, pending, error } = await useAsyncData(
   `crypto-${symbol}`,
   () => get<any>(`/api/assets/${symbol}`).catch(() => null),
 )
+if (!asset.value) throw createError({ statusCode: 404, statusMessage: 'Asset not found' })
 
 const { data: pageSummary } = useAsyncData(
   `summary-crypto-${symbol}`,

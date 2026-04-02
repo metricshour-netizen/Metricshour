@@ -172,9 +172,10 @@
 const route = useRoute()
 const slug = computed(() => route.params.slug as string)
 
-const { data: sector, pending, error } = useFetch<any>(() => `/api/assets/sectors/${slug.value}`, {
+const { data: sector, pending, error } = await useFetch<any>(() => `/api/assets/sectors/${slug.value}`, {
   baseURL: useRuntimeConfig().public.apiBase,
 })
+if (!sector.value) throw createError({ statusCode: 404, statusMessage: 'Sector not found' })
 
 const { data: allSectors } = useFetch<any[]>('/api/assets/sectors', {
   key: 'sectors-list',

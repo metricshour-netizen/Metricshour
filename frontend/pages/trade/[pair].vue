@@ -392,10 +392,11 @@ const parts = pair.includes('--') ? pair.split('--') : pair.split('-')
 const codeA = parts[0] ?? ''
 const codeB = parts[parts.length - 1] ?? ''
 
-const { data, pending, error } = useAsyncData(
+const { data, pending, error } = await useAsyncData(
   `trade-${pair}`,
   () => r2Fetch<any>(`snapshots/trade/${pair.toLowerCase()}.json`, `/api/trade/${codeA}/${codeB}`).catch(() => null),
 )
+if (!data.value) throw createError({ statusCode: 404, statusMessage: 'Trade corridor not found' })
 
 const { data: pageSummary } = useAsyncData(
   `summary-trade-${codeA}-${codeB}`,
