@@ -197,8 +197,8 @@ def _text_movers(gainers, losers):
         lpair = f"{top_l['symbol']} {top_l['chg']:.1f}%" if top_l else ""
         ig_hooks = [
             f"{gs} is up {top_g['chg']:.1f}% today.\n\nMost people won't notice until it's already moved.\nHere are the names worth watching right now.",
-            f"The market doesn't wait.\n\n{gs} {gch}. {ls} {lch}.\nThese are today's biggest moves — and the ones behind the move matter more than the number.",
-            f"Today's movers — no noise, just data.\n\n{gs} leads the gainers at {gch}.\nKnow what's moving before it trends.",
+            f"The market doesn't wait.\n\n{gs} {gch}. {ls} {lch}.\nThese are today's biggest moves.",
+            f"Today's movers — no noise, just data.\n\n{gs} leads the gainers at {gch}.\nNo filters — just today's price action.",
         ]
         x_hooks = [
             f"{gs} {gch} today. {lpair} Full mover list below.",
@@ -261,7 +261,7 @@ def _text_crypto(items):
     eth_full = f"ETH {_fmt_price(eth['close'])} ({eth['chg']:+.1f}%)." if eth else ""
     eth_pair = f"ETH {_fmt_price(eth['close'])} ({eth['chg']:+.1f}%)." if eth else ""
     ig_hooks = [
-        f"Bitcoin: {btc_price}. {eth_str}\n\nThe numbers don't lie. Here's where crypto stands right now.",
+        f"Bitcoin: {btc_price}. {eth_str}\n\nHere's where crypto stands right now.",
         f"Crypto update — {today}.\n\nBTC {btc_price} ({btc['chg']:+.1f}%). {eth_full}\nNo narrative. Just the data.",
         f"Where is crypto right now?\n\nBTC: {btc_price} {btc['chg']:+.1f}%.\n{eth_pair}\nLive prices updated on MetricsHour.",
     ]
@@ -323,8 +323,8 @@ def _text_commodities(items):
         oil_li  = f"oil at {_fmt_price(oil['close'])} ({oil['chg']:+.1f}%)" if oil else ""
         oil_li2 = f"Oil {_fmt_price(oil['close'])}," if oil else ""
         ig_hooks = [
-            f"Gold: {gp} ({gch} today).\n\nThe commodity markets don't wait for the headlines. Here's where everything stands right now.",
-            f"Commodity prices — {today}.\n\nGold: {gp}. {oil_str}\nThe real economy moves here first.",
+            f"Gold: {gp} ({gch} today).\n\nHere's where commodity prices stand right now.",
+            f"Commodity prices — {today}.\n\nGold: {gp}. {oil_str}\nRaw material prices lead equity sectors.",
             f"When equities are noisy, watch commodities.\n\nGold {gp} {gch}. {oil_x}\nLive data on MetricsHour.",
         ]
         x_hooks = [
