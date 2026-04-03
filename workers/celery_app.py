@@ -370,6 +370,13 @@ app.conf.update(
             'schedule': crontab(hour=2, minute=0, day_of_week=0),
         },
 
+        # llms-full.txt — daily 2:30am UTC
+        # Full blog post content for AI crawler consumption (llmstxt.org spec)
+        'llms-full-daily-230am': {
+            'task': 'tasks.llms.generate_llms_full',
+            'schedule': crontab(hour=2, minute=30),
+        },
+
         # WITS trade matrix: full annual refresh — Jan 15 at 2am
         'trade-update-annual-jan15': {
             'task': 'tasks.trade_update.update_trade_data_annual',

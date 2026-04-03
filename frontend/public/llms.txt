@@ -2,6 +2,8 @@
 
 > MetricsHour is a financial intelligence platform that maps geographic revenue exposure for stocks, tracks macro data for 250 countries, and surfaces bilateral trade flows between 2,700+ country pairs. It is built for investors who want to understand where companies actually earn their money — not just what their ticker symbol says.
 
+> Full content for AI indexing: https://metricshour.com/llms-full.txt (updated daily)
+
 ## Key Features
 
 - [Geographic Revenue Screener](https://metricshour.com/screener/) — filter S&P 500 and global stocks by the % of revenue derived from any country (China, Europe, emerging markets, etc.)
