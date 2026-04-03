@@ -4,3 +4,4 @@ Disallow: /admin/
 
 # Sitemap served from API backend (no Cloudflare Bot Fight Mode on api subdomain)
 Sitemap: https://api.metricshour.com/sitemap.xml
+LLMs: https://metricshour.com/llms.txt
