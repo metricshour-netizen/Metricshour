@@ -1,0 +1,101 @@
+# MetricsHour
+
+> MetricsHour is a financial intelligence platform that maps geographic revenue exposure for stocks, tracks macro data for 250 countries, and surfaces bilateral trade flows between 2,700+ country pairs. It is built for investors who want to understand where companies actually earn their money — not just what their ticker symbol says.
+
+## Key Features
+
+- [Geographic Revenue Screener](https://metricshour.com/screener/) — filter S&P 500 and global stocks by the % of revenue derived from any country (China, Europe, emerging markets, etc.)
+- [Country Economy Pages](https://metricshour.com/countries/) — GDP, inflation, interest rates, trade balance, FDI, and 60+ indicators for 250 countries
+- [Bilateral Trade Data](https://metricshour.com/trade/) — export/import flows between 2,700+ country pairs with top traded products
+- [Stock Pages](https://metricshour.com/stocks/) — geographic revenue breakdown from SEC 10-K filings for 777 stocks including S&P 500 and China A-shares
+- [Yield Curve](https://metricshour.com/yield-curve/) — live US Treasury yield curve with historical comparisons
+- [Interest Rates](https://metricshour.com/rates/) — central bank policy rates and FRED macro series
+- [Earnings Calendar](https://metricshour.com/earnings/) — upcoming earnings events with geographic revenue context
+- [China A-Shares](https://metricshour.com/china/) — 300 Shanghai and Shenzhen listed stocks with sector and macro context
+- [Blog](https://metricshour.com/blog/) — data-driven analysis on trade war exposure, geographic revenue risk, and macro trends
+
+## Country Pages (250 total)
+
+Format: https://metricshour.com/countries/{iso2-lowercase}
+
+Notable examples:
+- [United States](https://metricshour.com/countries/us)
+- [China](https://metricshour.com/countries/cn)
+- [Germany](https://metricshour.com/countries/de)
+- [Japan](https://metricshour.com/countries/jp)
+- [India](https://metricshour.com/countries/in)
+- [Brazil](https://metricshour.com/countries/br)
+- [Nigeria](https://metricshour.com/countries/ng)
+- [Saudi Arabia](https://metricshour.com/countries/sa)
+- [United Kingdom](https://metricshour.com/countries/gb)
+- [France](https://metricshour.com/countries/fr)
+
+## Stock Pages (777 total — US-listed + China A-shares)
+
+Format: https://metricshour.com/stocks/{TICKER}
+
+Notable US-listed stocks:
+- [Apple (AAPL)](https://metricshour.com/stocks/AAPL) — 18.9% China revenue
+- [NVIDIA (NVDA)](https://metricshour.com/stocks/NVDA) — 17% China revenue
+- [Tesla (TSLA)](https://metricshour.com/stocks/TSLA) — 22% China revenue
+- [Microsoft (MSFT)](https://metricshour.com/stocks/MSFT)
+- [Qualcomm (QCOM)](https://metricshour.com/stocks/QCOM) — 46% China revenue
+- [ExxonMobil (XOM)](https://metricshour.com/stocks/XOM)
+- [Nike (NKE)](https://metricshour.com/stocks/NKE)
+- [Starbucks (SBUX)](https://metricshour.com/stocks/SBUX)
+
+Notable China A-shares (SHG/SHE):
+- [Sinopec (600028)](https://metricshour.com/stocks/600028)
+- [CITIC Securities (600030)](https://metricshour.com/stocks/600030)
+- [China Merchants Bank (600036)](https://metricshour.com/stocks/600036)
+- [Sany Heavy Industry (600031)](https://metricshour.com/stocks/600031)
+
+## Trade Pair Pages (2,708 total)
+
+Format: https://metricshour.com/trade/{iso2}-{iso2}
+
+Notable examples:
+- [US–China Trade](https://metricshour.com/trade/us-cn)
+- [US–Mexico Trade](https://metricshour.com/trade/us-mx)
+- [Germany–China Trade](https://metricshour.com/trade/de-cn)
+- [China–Nigeria Trade](https://metricshour.com/trade/cn-ng)
+- [US–EU Trade](https://metricshour.com/trade/us-de)
+
+## Market Data
+
+- [Cryptocurrencies](https://metricshour.com/crypto/) — 50 assets with OHLCV price data
+- [ETFs](https://metricshour.com/etfs/) — 100 ETFs
+- [FX Pairs](https://metricshour.com/fx/) — 10 major currency pairs
+- [Commodities](https://metricshour.com/commodities/) — 24 commodities (energy, metals, agriculture)
+
+## Country Groups
+
+- [European Union](https://metricshour.com/groups/eu)
+- [G7](https://metricshour.com/groups/g7)
+- [G20](https://metricshour.com/groups/g20)
+- [BRICS](https://metricshour.com/groups/brics)
+- [ASEAN](https://metricshour.com/groups/asean)
+- [NATO](https://metricshour.com/groups/nato)
+- [OPEC](https://metricshour.com/groups/opec)
+- [OECD](https://metricshour.com/groups/oecd)
+
+## Blog (57 published posts)
+
+Data-driven articles on geographic revenue risk, trade war exposure, and macro analysis.
+Full list: https://metricshour.com/blog/
+
+Selected posts:
+- [Apple's $72 Billion China Problem](https://metricshour.com/blog/apples-72-billion-china-problem-more-than-just-iphone-sales-at-risk)
+- [NVIDIA China Revenue Percentage (FY2024)](https://metricshour.com/blog/nvidia-china-revenue-percentage-fy2024-export-controls-and-tariff-risk-for-nvda-investors)
+- [US-China Tariffs Hit 145%: Which S&P 500 Stocks Have the Most to Lose](https://metricshour.com/blog/us-china-tariffs-hit-145-which-sp-500-stocks-have-the-most-to-lose)
+- [How to Check Any Stock's Revenue by Country](https://metricshour.com/blog/how-to-check-any-stocks-revenue-by-country-and-why-it-matters-more-than-ever-in-2026)
+- [Semiconductor Stocks Ranked by China Revenue Exposure](https://metricshour.com/blog/semiconductor-stocks-ranked-by-china-revenue-exposure-a-2026-investor-guide)
+- [India Rising: S&P 500 Stocks Positioned for Asia's Growth](https://metricshour.com/blog/india-rising-the-sp-500-stocks-best-positioned-for-asias-fastest-growing-trillion-dollar-economy)
+
+## API
+
+Machine-readable data is available via the REST API:
+- Countries: https://api.metricshour.com/api/countries
+- Stocks: https://api.metricshour.com/api/assets?type=stock
+- Trade pairs: https://api.metricshour.com/api/trade
+- Sitemap: https://api.metricshour.com/sitemap.xml
