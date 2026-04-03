@@ -127,6 +127,17 @@ GROUP_META = {
         "emoji": "🏛️",
         "keywords": ["Commonwealth countries GDP", "Commonwealth nations economy", "Commonwealth trade", "former British Empire economies"],
     },
+    "africa": {
+        "name": "African Union",
+        "full_name": "African Union",
+        "description": "The African Union is a continental union of 55 member states in Africa. The AU focuses on accelerating the economic integration of Africa, promoting peace and stability, and representing Africa's interests in global forums. Africa is home to the world's fastest-growing middle class and six of the ten fastest-growing economies globally.",
+        "founded": 2002,
+        "hq": "Addis Ababa, Ethiopia",
+        "website": "https://au.int",
+        "field": "region:Africa",
+        "emoji": "🌍",
+        "keywords": ["African Union GDP", "Africa economy", "AU member states", "African economic data", "Africa trade"],
+    },
 }
 
 FIELD_MAP = {meta["field"]: slug for slug, meta in GROUP_META.items()}
@@ -166,10 +177,16 @@ def get_group(request: Request, slug: str, db: Session = Depends(get_db)) -> dic
 
     field = meta["field"]
 
-    # Fetch all member countries
-    members_raw = db.execute(
-        select(Country).where(getattr(Country, field) == True).order_by(Country.name)
-    ).scalars().all()
+    # Fetch all member countries — special case: region-based blocs
+    if field.startswith("region:"):
+        region_val = field.split(":", 1)[1]
+        members_raw = db.execute(
+            select(Country).where(Country.region == region_val).order_by(Country.name)
+        ).scalars().all()
+    else:
+        members_raw = db.execute(
+            select(Country).where(getattr(Country, field) == True).order_by(Country.name)
+        ).scalars().all()
 
     if not members_raw:
         raise HTTPException(status_code=404, detail="No members found")

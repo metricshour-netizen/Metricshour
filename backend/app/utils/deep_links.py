@@ -156,6 +156,8 @@ BLOC_PHRASES: list[tuple[str, str]] = [
     ("OECD members",              "oecd"),
     ("Commonwealth nations",      "commonwealth"),
     ("Commonwealth countries",    "commonwealth"),
+    ("African Union",             "africa"),
+    ("AU member states",          "africa"),
 ]
 
 SECTOR_PHRASES: list[tuple[str, str]] = [

@@ -62,7 +62,7 @@ SECTOR_SLUGS = [
 ]
 
 BLOC_SLUGS = [
-    "g7", "g20", "eu", "eurozone", "nato", "brics", "asean", "opec", "oecd", "commonwealth",
+    "g7", "g20", "eu", "eurozone", "nato", "brics", "asean", "opec", "oecd", "commonwealth", "africa",
 ]
 
 
