@@ -51,7 +51,7 @@
               Bilateral trade corridor — {{ data.exporter.name }} and {{ data.importer.name }}.
               <template v-if="td">Total goods trade: {{ fmtUsd(td.trade_value_usd) }}<template v-if="td.year"> ({{ td.year }})</template>. </template>
               Exports, imports, trade balance, top products, and macro context.
-              <template v-if="td?.data_source">Source: {{ td.data_source }}.</template>
+              <template v-if="td?.data_source">Source: <a href="https://comtradeplus.un.org" target="_blank" rel="noopener noreferrer" class="underline hover:text-gray-300 transition-colors">{{ td.data_source }}</a>.</template>
             </p>
             <!-- Balance callout -->
             <div v-if="td" class="sm:text-right">
@@ -63,9 +63,9 @@
                 {{ (td.balance_usd ?? 0) >= 0 ? `${codeA.toUpperCase()} surplus` : `${codeA.toUpperCase()} deficit` }}
                 <span v-if="td.year"> · {{ td.year }}</span>
               </div>
-              <div v-if="td.data_source" class="inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded text-[10px] font-mono bg-[#111827] border border-[#1f2937] text-gray-500">
+              <a v-if="td.data_source" href="https://comtradeplus.un.org" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded text-[10px] font-mono bg-[#111827] border border-[#1f2937] text-gray-500 hover:text-gray-400 transition-colors">
                 <span class="text-emerald-700">◆</span> {{ td.data_source }}
-              </div>
+              </a>
             </div>
           </div>
         </template>

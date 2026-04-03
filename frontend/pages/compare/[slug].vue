@@ -98,7 +98,7 @@
             </tbody>
           </table>
         </div>
-        <p class="text-[11px] text-gray-700 mt-2">Source: World Bank. ▲ = higher value. For inflation/unemployment/debt, lower may be preferable.</p>
+        <p class="text-[11px] text-gray-700 mt-2">Source: <a href="https://data.worldbank.org" target="_blank" rel="noopener noreferrer" class="underline hover:text-gray-500 transition-colors">World Bank</a>. ▲ = higher value. For inflation/unemployment/debt, lower may be preferable.</p>
       </section>
 
       <!-- Bilateral Trade (if data exists) -->

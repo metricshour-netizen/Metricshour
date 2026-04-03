@@ -150,7 +150,7 @@
             {{ fmt('gdp_usd', gdpHistory[gdpHistory.length - 1]?.gdp) }}
           </span>
         </div>
-        <p class="text-xs text-gray-600 mb-3">Total annual economic output in current US dollars · Source: World Bank</p>
+        <p class="text-xs text-gray-600 mb-3">Total annual economic output in current US dollars · Source: <a :href="`https://data.worldbank.org/country/${(country as any).code3?.toLowerCase()}`" target="_blank" rel="noopener noreferrer" class="underline hover:text-gray-400 transition-colors">World Bank</a></p>
         <div v-if="!gdpHistory?.length" class="h-36 flex items-center justify-center text-gray-600 text-xs">
           No GDP history data available
         </div>
@@ -166,7 +166,7 @@
       <div class="bg-[#111827] border border-[#1f2937] rounded-lg p-5 mb-6">
         <div class="flex items-center justify-between mb-3">
           <h2 class="text-sm font-bold text-white">Key Indicators Over Time</h2>
-          <span class="text-[10px] text-gray-600">World Bank · 2000–2024</span>
+          <span class="text-[10px] text-gray-600"><a :href="`https://data.worldbank.org/country/${(country as any).code3?.toLowerCase()}`" target="_blank" rel="noopener noreferrer" class="underline hover:text-gray-400 transition-colors">World Bank</a> · 2000–2024</span>
         </div>
         <div v-if="timeseriesLoading" class="h-44 bg-[#0d1117] rounded-lg animate-pulse" />
         <div v-else-if="!hasTimeseries" class="h-44 flex items-center justify-center text-gray-600 text-xs">
@@ -259,7 +259,7 @@
       <div class="bg-[#111827] border border-[#1f2937] rounded-lg p-6 mb-6">
         <h2 class="text-sm font-bold text-white mb-1">Top Trade Partners</h2>
         <p class="text-xs text-gray-500 mb-4">
-          Bilateral goods trade ranked by total volume — click any partner to view the full trade corridor breakdown. Source: UN Comtrade.
+          Bilateral goods trade ranked by total volume — click any partner to view the full trade corridor breakdown. Source: <a href="https://comtradeplus.un.org" target="_blank" rel="noopener noreferrer" class="underline hover:text-gray-400 transition-colors">UN Comtrade</a>.
         </p>
         <div v-if="tradePartnersLoading" class="space-y-2">
           <div v-for="i in 5" :key="i" class="h-6 bg-[#1f2937] rounded animate-pulse"/>
@@ -433,7 +433,7 @@
         </div>
       </div>
 
-      <p class="text-xs text-gray-600">Data: World Bank · REST Countries · IMF · UN Comtrade · SEC EDGAR</p>
+      <p class="text-xs text-gray-600">Data: <a :href="`https://data.worldbank.org/country/${(country as any).code3?.toLowerCase()}`" target="_blank" rel="noopener noreferrer" class="underline hover:text-gray-400 transition-colors">World Bank</a> · REST Countries · <a :href="`https://www.imf.org/en/countries/${(country as any).code3}`" target="_blank" rel="noopener noreferrer" class="underline hover:text-gray-400 transition-colors">IMF</a> · <a href="https://comtradeplus.un.org" target="_blank" rel="noopener noreferrer" class="underline hover:text-gray-400 transition-colors">UN Comtrade</a> · SEC EDGAR</p>
 
       <ShareEmbed
         :embed-url="`/embed/country/${code.toLowerCase()}`"
