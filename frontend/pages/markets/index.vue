@@ -320,7 +320,7 @@
                 v-slot="{ navigate }"
               >
                 <tr @click="navigate" class="border-b border-[#1a2030] hover:bg-[#0d1117] transition-colors cursor-pointer last:border-0">
-                  <td class="px-4 py-2.5 font-mono text-xs text-emerald-400">{{ s.symbol }}</td>
+                  <td class="px-4 py-2.5 font-mono text-xs text-emerald-400">{{ fmtChinaTicker(s.symbol, s.exchange) }}</td>
                   <td class="px-4 py-2.5 text-gray-400 truncate max-w-[180px] hidden sm:table-cell">{{ s.name }}</td>
                   <td class="px-4 py-2.5 text-right font-bold text-white tabular-nums">{{ s.price ? `¥${s.price.close?.toFixed(2)}` : '—' }}</td>
                   <td class="px-4 py-2.5 text-right tabular-nums text-xs"
@@ -532,6 +532,11 @@ function fmtCap(v: number | null): string {
   if (v >= 1e12) return `$${(v / 1e12).toFixed(1)}T`
   if (v >= 1e9)  return `$${(v / 1e9).toFixed(0)}B`
   return `$${(v / 1e6).toFixed(0)}M`
+}
+
+function fmtChinaTicker(symbol: string, exchange: string): string {
+  const suffix = exchange === 'SHG' ? 'SH' : 'SZ'
+  return `${symbol}.${suffix}`
 }
 
 function fmtPrice(v: number): string {
