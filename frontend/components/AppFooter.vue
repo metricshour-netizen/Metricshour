@@ -13,6 +13,7 @@
       <NuxtLink to="/countries/"   class="hover:text-gray-400 transition-colors">Countries</NuxtLink>
       <NuxtLink to="/trade/"       class="hover:text-gray-400 transition-colors">Trade</NuxtLink>
       <NuxtLink to="/commodities/" class="hover:text-gray-400 transition-colors">Commodities</NuxtLink>
+      <NuxtLink to="/china/"       class="hover:text-gray-400 transition-colors">China A-Shares</NuxtLink>
       <NuxtLink to="/rates/"        class="hover:text-gray-400 transition-colors">Rates</NuxtLink>
       <NuxtLink to="/yield-curve/" class="hover:text-gray-400 transition-colors">Yield Curve</NuxtLink>
       <NuxtLink to="/earnings/"    class="hover:text-gray-400 transition-colors">Earnings</NuxtLink>
