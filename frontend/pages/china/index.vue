@@ -72,7 +72,7 @@
               class="border-b border-[#1a2030] hover:bg-[#0d1117] transition-colors cursor-pointer"
               @click="navigateTo(`/china/${s.symbol}`)"
             >
-              <td class="px-4 py-3 font-mono text-xs text-emerald-400">{{ s.symbol }}</td>
+              <td class="px-4 py-3 font-mono text-xs text-emerald-400">{{ fmtTicker(s.symbol, s.exchange) }}</td>
               <td class="px-4 py-3 text-gray-200 truncate max-w-[200px]">{{ s.name }}</td>
               <td class="px-4 py-3 text-right font-bold text-white tabular-nums">
                 {{ s.price ? `¥${s.price.close?.toFixed(2)}` : '—' }}
@@ -134,6 +134,11 @@ const filtered = computed(() => {
 })
 
 watch(search, () => { page.value = 1 })
+
+function fmtTicker(symbol: string, exchange: string): string {
+  const suffix = exchange === 'SHG' ? 'SH' : 'SZ'
+  return `${symbol}.${suffix}`
+}
 
 const totalPages = computed(() => Math.max(1, Math.ceil((filtered.value?.length || 0) / PAGE_SIZE)))
 const paginated = computed(() => {

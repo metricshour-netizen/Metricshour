@@ -22,7 +22,7 @@
                   <h1 class="text-3xl font-extrabold text-white tracking-tight">{{ stock.name }}</h1>
                   <span class="text-xs bg-[#1f2937] text-gray-400 px-2 py-1 rounded-md">{{ stock.exchange }}</span>
                 </div>
-                <p class="text-gray-300 font-medium font-mono">{{ stock.symbol }}</p>
+                <p class="text-gray-300 font-medium font-mono">{{ fmtTicker(stock.symbol, stock.exchange) }}</p>
                 <p class="text-xs text-gray-500 mt-1">China A-share · Priced in CNY ¥ · {{ stock.exchange === 'SHG' ? 'Shanghai Stock Exchange' : 'Shenzhen Stock Exchange' }}</p>
               </div>
             </div>
@@ -172,6 +172,11 @@ watch([chartData, chartEl], () => {
 
 onUnmounted(() => chart?.dispose())
 
+function fmtTicker(symbol: string, exchange: string): string {
+  const suffix = exchange === 'SHG' ? 'SH' : 'SZ'
+  return `${symbol}.${suffix}`
+}
+
 function fmtTs(ts: string): string {
   return new Date(ts).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'UTC', timeZoneName: 'short' })
 }
@@ -183,7 +188,7 @@ function fmtNewsDate(ts: string): string {
 const ogImageUrl = computed(() => `https://cdn.metricshour.com/og/china/${symbol.value.toLowerCase()}.png`)
 
 useSeoMeta({
-  title: computed(() => stock.value ? `${stock.value.name} (${stock.value.symbol}) — China A-Share | MetricsHour` : 'China A-Share | MetricsHour'),
+  title: computed(() => stock.value ? `${stock.value.name} (${fmtTicker(stock.value.symbol, stock.value.exchange)}) — China A-Share | MetricsHour` : 'China A-Share | MetricsHour'),
   description: computed(() => stock.value ? `${stock.value.name} stock price and data. Listed on ${stock.value.exchange}. Priced in CNY.` : ''),
   ogImage: ogImageUrl,
   twitterCard: 'summary_large_image',
