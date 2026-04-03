@@ -21,7 +21,7 @@ from celery_app import app
 from app.config import settings
 from app.database import SessionLocal
 from app.models.asset import Asset, AssetType, Price
-from tasks.market_hours import is_trading_day
+from tasks.market_hours import is_us_market_open
 
 log = logging.getLogger(__name__)
 
@@ -180,11 +180,13 @@ def fetch_stock_prices(self):
         if not symbols:
             return
 
-        now = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+        now = datetime.now(timezone.utc)
 
-        if not is_trading_day(now):
-            log.debug('Stock fetch skipped — weekend')
+        if not is_us_market_open(now):
+            log.debug('Stock fetch skipped — market closed')
             return
+
+        now = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
         # Primary: Tiingo IEX — real-time OHLCV, batched 100/call
         iex_prices = _fetch_tiingo_iex(symbols)
