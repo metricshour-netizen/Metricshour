@@ -39,6 +39,7 @@ STATIC_ROUTE_TEMPLATES = [
     (f"{BASE}/crypto/",       "0.8", "daily"),
     (f"{BASE}/etfs/",         "0.7", "daily"),
     (f"{BASE}/fx/",           "0.7", "daily"),
+    (f"{BASE}/china/",        "0.7", "daily"),
     (f"{BASE}/indices/",      "0.7", "daily"),
     (f"{BASE}/screener/",     "0.8", "daily"),
     (f"{BASE}/rates/",        "0.8", "daily"),
@@ -243,6 +244,26 @@ def sitemap(db: Session = Depends(get_db)):
     ):
         lm = lastmod_map.get(("fx_insight", symbol)) or lastmod_map.get(("fx", symbol)) or today
         entries.append(_url(f"{BASE}/fx/{symbol.lower()}/", "0.6", "daily", lm))
+
+    # China A-shares → /china/{symbol}/ — only those with price data
+    china_with_prices = {
+        row[0] for row in db.execute(
+            select(Asset.symbol)
+            .join(Price, Price.asset_id == Asset.id)
+            .where(Asset.exchange.in_(["SHG", "SHE"]), Asset.is_active == True)
+            .distinct()
+        )
+    }
+    for (symbol,) in db.execute(
+        select(Asset.symbol).where(
+            Asset.exchange.in_(["SHG", "SHE"]),
+            Asset.is_active == True,
+            Asset.symbol.isnot(None),
+        )
+    ):
+        if symbol not in china_with_prices:
+            continue
+        entries.append(_url(f"{BASE}/china/{symbol}/", "0.5", "daily", today))
 
     # Rates series → /rates/{series_id}/
     for (series_id,) in db.execute(

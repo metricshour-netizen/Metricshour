@@ -146,5 +146,9 @@ useSeoMeta({
   description: 'Browse China A-share stocks listed on the Shanghai (SHG) and Shenzhen (SHE) exchanges with live CNY prices. Powered by Tiingo.',
   ogTitle: 'China A-Shares | MetricsHour',
   ogDescription: 'Shanghai and Shenzhen listed stocks with live CNY prices.',
+  ogImage: 'https://cdn.metricshour.com/og/section/china.png',
+  twitterCard: 'summary_large_image',
+  twitterImage: 'https://cdn.metricshour.com/og/section/china.png',
 })
+useHead({ link: [{ rel: 'canonical', href: 'https://metricshour.com/china/' }] })
 </script>

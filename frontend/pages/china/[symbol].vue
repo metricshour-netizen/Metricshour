@@ -180,8 +180,14 @@ function fmtNewsDate(ts: string): string {
   return new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
+const ogImageUrl = computed(() => `https://cdn.metricshour.com/og/china/${symbol.value.toLowerCase()}.png`)
+
 useSeoMeta({
   title: computed(() => stock.value ? `${stock.value.name} (${stock.value.symbol}) — China A-Share | MetricsHour` : 'China A-Share | MetricsHour'),
   description: computed(() => stock.value ? `${stock.value.name} stock price and data. Listed on ${stock.value.exchange}. Priced in CNY.` : ''),
+  ogImage: ogImageUrl,
+  twitterCard: 'summary_large_image',
+  twitterImage: ogImageUrl,
 })
+useHead({ link: [{ rel: 'canonical', href: computed(() => `https://metricshour.com/china/${symbol.value.toLowerCase()}/`) }] })
 </script>

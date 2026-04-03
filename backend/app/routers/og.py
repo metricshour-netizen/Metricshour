@@ -492,6 +492,11 @@ _SECTION_CONFIG: dict[str, dict] = {
         "tagline": "Free tier forever · Pro from $9.99/mo · No Bloomberg bill",
         "accent": GREEN,
     },
+    "china": {
+        "label": "CHINA A-SHARES",
+        "tagline": "Shanghai & Shenzhen · 300+ stocks · Priced in CNY · Daily prices via Tiingo",
+        "accent": (220, 38, 38),  # red-600
+    },
 }
 
 
@@ -731,4 +736,39 @@ def og_stock(symbol: str, db: Session = Depends(get_db)):
         return Response(content=png, media_type="image/png", headers=_PNG_HEADERS)
     except Exception as exc:
         log.warning("OG image generation failed for stocks/%s: %s", symbol, exc)
+        return Response(content=_fallback_png(symbol.upper()), media_type="image/png", headers=_PNG_HEADERS)
+
+
+@router.get("/og/china/{symbol}.png", include_in_schema=False)
+def og_china(symbol: str, db: Session = Depends(get_db)):
+    asset = db.execute(
+        select(Asset).where(
+            Asset.symbol == symbol.upper(),
+            Asset.exchange.in_(["SHG", "SHE"]),
+            Asset.is_active == True,
+        )
+    ).scalar_one_or_none()
+    if asset is None:
+        raise HTTPException(status_code=404, detail="China stock not found")
+    price_row = db.execute(
+        select(Price)
+        .where(Price.asset_id == asset.id, Price.interval == "1d")
+        .order_by(Price.timestamp.desc())
+        .limit(1)
+    ).scalar_one_or_none()
+    change_pct = None
+    if price_row and price_row.open and price_row.close and price_row.open > 0:
+        change_pct = (price_row.close - price_row.open) / price_row.open * 100
+    try:
+        png = _render_stock(
+            asset.symbol,
+            asset.name,
+            price_row.close if price_row else None,
+            asset.market_cap_usd,
+            change_pct=change_pct,
+        )
+        _fire_r2_upload(f"og/china/{symbol.lower()}.png", png)
+        return Response(content=png, media_type="image/png", headers=_PNG_HEADERS)
+    except Exception as exc:
+        log.warning("OG image generation failed for china/%s: %s", symbol, exc)
         return Response(content=_fallback_png(symbol.upper()), media_type="image/png", headers=_PNG_HEADERS)

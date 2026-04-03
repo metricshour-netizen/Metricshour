@@ -76,6 +76,9 @@ async def security_headers(request: Request, call_next) -> Response:
         elif path.endswith("/prices"):
             # Price history — updated by Celery every 15min, don't over-cache
             cc = "public, s-maxage=60, stale-while-revalidate=30"
+        elif path.startswith("/og/china/"):
+            # China stock OG images — daily prices
+            cc = "public, s-maxage=86400, stale-while-revalidate=3600"
         elif path.startswith("/api/assets/"):
             # Asset detail — prices update every 15min
             cc = "public, s-maxage=900, stale-while-revalidate=60"
