@@ -1,11 +1,11 @@
 """
-Stock price ingestion — Marketstack (primary, EOD) + yfinance fallback.
-Runs every 15 minutes but Marketstack is called at most ONCE per trading day
-via a Redis cache key. yfinance handles intraday updates.
+Stock price ingestion — Tiingo IEX (primary, real-time OHLCV) + yfinance fallback.
+Runs every 15 minutes during market hours.
+Tiingo IEX batches up to 100 tickers per call — ~5 calls for 465 US stocks.
 """
 
 import logging
-import os
+import time
 from datetime import datetime, timezone
 
 import requests
@@ -18,111 +18,55 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from celery_app import app
+from app.config import settings
 from app.database import SessionLocal
 from app.models.asset import Asset, AssetType, Price
-from tasks.market_hours import is_trading_day, should_call_marketstack_eod
+from tasks.market_hours import is_trading_day
 
 log = logging.getLogger(__name__)
 
-MARKETSTACK_KEY = os.environ.get('MARKETSTACK_API_KEY', '')
+TIINGO_HEADERS = {
+    'Content-Type': 'application/json',
+    'Authorization': f'Token {settings.tiingo_api_key}',
+}
 
-# Reject any single-period price change > this threshold (bad yfinance/Marketstack ticks)
+# Reject any single-period price change > this threshold (bad ticks)
 MAX_STOCK_SPIKE_PCT = 15.0
-MARKETSTACK_URL = 'http://api.marketstack.com/v1'
-CHUNK_SIZE = 100  # Marketstack accepts up to 100 symbols per call
+CHUNK_SIZE = 100  # Tiingo IEX accepts up to 100 symbols per call
 
-# Set to True if Marketstack key is confirmed invalid — skips all calls silently
-_marketstack_disabled = False
-
-# Redis cache key: set after a successful EOD fetch so we call Marketstack
-# exactly once per trading day instead of on every 15-min task run.
-_MS_CACHE_KEY_PREFIX = 'marketstack:eod:fetched:'
-_MS_CACHE_TTL = 6 * 3600  # 6h — expires well before next day's window
+# Exchanges we track via IEX (US only)
+US_EXCHANGES = {'NASDAQ', 'NYSE', 'NYSE ARCA', 'NYSE MKT', 'AMEX', 'BATS'}
 
 
-def _ms_cache_key(date_str: str) -> str:
-    return f'{_MS_CACHE_KEY_PREFIX}{date_str}'
-
-
-def _already_fetched_today(date_str: str) -> bool:
-    """Returns True if we already have a successful Marketstack EOD fetch for today."""
-    try:
-        from app.storage import get_redis
-        r = get_redis()
-        return r.exists(_ms_cache_key(date_str)) == 1
-    except Exception:
-        return False  # Redis unavailable — allow the fetch
-
-
-def _mark_fetched_today(date_str: str) -> None:
-    try:
-        from app.storage import get_redis
-        r = get_redis()
-        r.setex(_ms_cache_key(date_str), _MS_CACHE_TTL, '1')
-    except Exception:
-        pass
-
-
-def _check_marketstack_key() -> bool:
-    """Probe Marketstack with a single symbol. Disables globally on 401/invalid_access_key."""
-    global _marketstack_disabled
-    if not MARKETSTACK_KEY:
-        _marketstack_disabled = True
-        return False
-    try:
-        resp = requests.get(
-            f'{MARKETSTACK_URL}/eod/latest',
-            params={'access_key': MARKETSTACK_KEY, 'symbols': 'AAPL', 'limit': 1},
-            timeout=10,
-        )
-        data = resp.json()
-        if resp.status_code == 401 or data.get('error', {}).get('code') == 'invalid_access_key':
-            log.warning('Marketstack API key invalid — falling back to yfinance for all symbols')
-            _marketstack_disabled = True
-            return False
-    except Exception:
-        pass
-    return True
-
-
-def _fetch_marketstack(symbols: list[str]) -> dict[str, dict]:
+def _fetch_tiingo_iex(symbols: list[str]) -> dict[str, dict]:
     """
-    Fetch latest EOD OHLCV for a batch of symbols via Marketstack.
+    Fetch latest IEX quotes for a batch of US symbols via Tiingo.
     Returns {symbol: {open, high, low, close, volume}}. Skips failures quietly.
-    Batches in chunks of CHUNK_SIZE to stay within per-request limits.
     """
-    if _marketstack_disabled or not MARKETSTACK_KEY:
-        return {}
-
     result: dict[str, dict] = {}
     for i in range(0, len(symbols), CHUNK_SIZE):
         chunk = symbols[i:i + CHUNK_SIZE]
         try:
             resp = requests.get(
-                f'{MARKETSTACK_URL}/eod/latest',
-                params={
-                    'access_key': MARKETSTACK_KEY,
-                    'symbols': ','.join(chunk),
-                    'limit': len(chunk),
-                },
-                timeout=30,
+                'https://api.tiingo.com/iex/',
+                params={'tickers': ','.join(chunk)},
+                headers=TIINGO_HEADERS,
+                timeout=20,
             )
             resp.raise_for_status()
-            data = resp.json()
-            for row in data.get('data', []):
-                sym = row.get('symbol', '').split('.')[0]  # strip exchange suffix
-                close = row.get('adj_close') or row.get('close')
+            for row in resp.json():
+                sym = row.get('ticker', '').upper()
+                close = row.get('tngoLast') or row.get('last')
                 if sym and close:
                     result[sym] = {
-                        'open':   row.get('adj_open') or row.get('open'),
-                        'high':   row.get('adj_high') or row.get('high'),
-                        'low':    row.get('adj_low') or row.get('low'),
+                        'open':   row.get('open'),
+                        'high':   row.get('high'),
+                        'low':    row.get('low'),
                         'close':  float(close),
-                        'volume': row.get('adj_volume') or row.get('volume'),
+                        'volume': row.get('volume'),
                     }
         except Exception:
-            log.warning('Marketstack batch %d-%d failed', i, i + CHUNK_SIZE)
-
+            log.warning('Tiingo IEX batch %d-%d failed', i, i + CHUNK_SIZE)
     return result
 
 
@@ -132,7 +76,6 @@ def _fetch_yfinance(symbols: list[str]) -> dict[str, tuple[float | None, float]]
     for i in range(0, len(symbols), CHUNK_SIZE):
         chunk = symbols[i:i + CHUNK_SIZE]
         try:
-            # Force multi-ticker path so df[sym] always returns a clean sub-DataFrame
             tickers = chunk if len(chunk) > 1 else chunk * 2
             df = yf.download(tickers, period='2d', interval='1d',
                              group_by='ticker', progress=False, threads=True)
@@ -146,7 +89,7 @@ def _fetch_yfinance(symbols: list[str]) -> dict[str, tuple[float | None, float]]
                 except (KeyError, IndexError, TypeError):
                     pass
         except Exception:
-            log.exception(f'yfinance batch {i}-{i+CHUNK_SIZE} failed')
+            log.exception('yfinance batch %d-%d failed', i, i + CHUNK_SIZE)
     return result
 
 
@@ -156,15 +99,6 @@ def _upsert_prices(
     prices: dict[str, dict | tuple | float],
     now: datetime,
 ) -> int:
-    """
-    Upsert daily prices.
-    Accepts three price formats:
-      - dict: {open, high, low, close, volume}   (Marketstack full OHLCV)
-      - tuple: (open, close)                      (yfinance)
-      - float: close only                         (legacy)
-    Timestamp must already be day-truncated by the caller.
-    On conflict, updates all OHLCV fields so Marketstack data enriches yfinance rows.
-    """
     asset_ids = [symbol_to_asset[s].id for s in prices if s in symbol_to_asset]
     last_prices: dict[int, float] = {}
     for aid in asset_ids:
@@ -234,7 +168,11 @@ def fetch_stock_prices(self):
     db = SessionLocal()
     try:
         assets = db.execute(
-            select(Asset).where(Asset.asset_type == AssetType.stock, Asset.is_active == True)
+            select(Asset).where(
+                Asset.asset_type == AssetType.stock,
+                Asset.is_active == True,
+                Asset.exchange.in_(US_EXCHANGES),
+            )
         ).scalars().all()
         symbol_to_asset = {a.symbol: a for a in assets}
         symbols = list(symbol_to_asset.keys())
@@ -242,59 +180,27 @@ def fetch_stock_prices(self):
         if not symbols:
             return
 
-        # Truncate to day-start so every run upserts the same daily row
         now = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
-        today_str = now.strftime('%Y-%m-%d')
 
-        # Skip entirely on weekends — no exchange has settled EOD data
         if not is_trading_day(now):
             log.debug('Stock fetch skipped — weekend')
             return
 
-        # Probe Marketstack key on first run — disables globally if invalid
-        if not _marketstack_disabled and MARKETSTACK_KEY:
-            _check_marketstack_key()
+        # Primary: Tiingo IEX — real-time OHLCV, batched 100/call
+        iex_prices = _fetch_tiingo_iex(symbols)
 
-        # Primary: Marketstack EOD — called once per trading day (after US close 21:00 UTC).
-        # A Redis cache key prevents redundant calls on the 12 subsequent 15-min task runs.
-        ms_prices: dict[str, dict] = {}
-        if should_call_marketstack_eod(now) and not _already_fetched_today(today_str):
-            ms_prices = _fetch_marketstack(symbols)
-            if ms_prices:
-                _mark_fetched_today(today_str)
-                log.info('Marketstack EOD: fetched %d/%d symbols, cached for today', len(ms_prices), len(symbols))
-
-        # Fallback / intraday: yfinance covers anything Marketstack missed and
-        # keeps prices updating throughout the trading day.
-        missed = [s for s in symbols if s not in ms_prices]
+        # Fallback: yfinance for anything IEX didn't return
+        missed = [s for s in symbols if s not in iex_prices]
         yf_prices: dict[str, tuple[float | None, float]] = {}
         if missed:
             yf_prices = _fetch_yfinance(missed)
 
-        # Secondary Marketstack fallback: covers symbols yfinance consistently
-        # cannot fetch (pending acquisitions, odd tickers, data gaps).
-        # Throttled to once per 4h via Redis to avoid burning API quota.
-        ms_fallback: dict[str, dict] = {}
-        yf_empty = [s for s in missed if s not in yf_prices]
-        if yf_empty and not _marketstack_disabled and MARKETSTACK_KEY:
-            _fallback_key = f'marketstack:yf_fallback:{today_str}:{int(now.strftime("%H")) // 4 * 4:02d}'
-            try:
-                from app.storage import get_redis
-                r = get_redis()
-                if not r.exists(_fallback_key):
-                    ms_fallback = _fetch_marketstack(yf_empty)
-                    if ms_fallback:
-                        r.setex(_fallback_key, 4 * 3600, '1')
-                        log.info('Marketstack fallback: fetched %d yfinance-resistant symbols', len(ms_fallback))
-            except Exception:
-                ms_fallback = _fetch_marketstack(yf_empty)
-
-        prices: dict[str, dict | tuple | float] = {**ms_prices, **ms_fallback, **yf_prices}
+        prices: dict[str, dict | tuple | float] = {**iex_prices, **yf_prices}
         count = _upsert_prices(db, symbol_to_asset, prices, now)
         db.commit()
         log.info(
-            'Stocks: upserted %d/%d prices (marketstack=%d, yfinance=%d, ms_fallback=%d)',
-            count, len(symbols), len(ms_prices), len(yf_prices), len(ms_fallback),
+            'Stocks: upserted %d/%d prices (tiingo_iex=%d, yfinance=%d)',
+            count, len(symbols), len(iex_prices), len(yf_prices),
         )
 
     except Exception as exc:
