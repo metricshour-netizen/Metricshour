@@ -189,5 +189,33 @@ useSeoMeta({
   twitterCard: 'summary_large_image',
   twitterImage: ogImageUrl,
 })
-useHead({ link: [{ rel: 'canonical', href: computed(() => `https://metricshour.com/china/${symbol.value.toLowerCase()}/`) }] })
+useHead(computed(() => ({
+  link: [{ rel: 'canonical', href: `https://metricshour.com/china/${symbol.value.toLowerCase()}/` }],
+  script: stock.value ? [
+    {
+      type: 'application/ld+json',
+      innerHTML: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'WebPage',
+        name: `${stock.value.name} (${stock.value.symbol}) — China A-Share | MetricsHour`,
+        url: `https://metricshour.com/china/${symbol.value.toLowerCase()}/`,
+        description: `${stock.value.name} stock price and data. Listed on the ${stock.value.exchange === 'SHG' ? 'Shanghai Stock Exchange' : 'Shenzhen Stock Exchange'} (${stock.value.exchange}). Priced in CNY.`,
+        breadcrumb: {
+          '@type': 'BreadcrumbList',
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://metricshour.com' },
+            { '@type': 'ListItem', position: 2, name: 'China A-Shares', item: 'https://metricshour.com/china/' },
+            { '@type': 'ListItem', position: 3, name: stock.value.symbol, item: `https://metricshour.com/china/${symbol.value.toLowerCase()}/` },
+          ],
+        },
+        mainEntity: {
+          '@type': 'Corporation',
+          name: stock.value.name,
+          tickerSymbol: stock.value.symbol,
+          description: `${stock.value.name} is a China A-share stock listed on the ${stock.value.exchange === 'SHG' ? 'Shanghai Stock Exchange' : 'Shenzhen Stock Exchange'}.`,
+        },
+      }),
+    },
+  ] : [],
+})))
 </script>

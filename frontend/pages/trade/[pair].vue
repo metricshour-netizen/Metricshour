@@ -579,6 +579,7 @@ useHead(computed(() => ({
         name: `${data.value.exporter.name}–${data.value.importer.name} Trade — MetricsHour`,
         url: `https://metricshour.com/trade/${data.value?.canonical_pair ?? pair}/`,
         description: `${data.value.exporter.name} and ${data.value.importer.name} bilateral trade flows, top products, and GDP dependency. Source: UN Comtrade.`,
+        dateModified: new Date().toISOString().slice(0, 10),
         mainEntity: {
           '@type': 'ItemList',
           itemListElement: [

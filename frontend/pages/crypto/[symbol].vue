@@ -382,7 +382,59 @@ useSeoMeta({
   robots: 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1',
 })
 
+function buildCryptoFaqs(a: any) {
+  const faqs: { '@type': string; name: string; acceptedAnswer: { '@type': string; text: string } }[] = []
+  const push = (q: string, ans: string) => faqs.push({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: ans } })
+  const p = a.price ?? {}
+  if (p.close != null) push(`What is ${a.name}'s price today?`, `${a.name} (${a.symbol}) is currently priced at $${p.close.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 6 })} USD. Data sourced from Tiingo.`)
+  if (p.change_pct != null) push(`How much has ${a.name} moved today?`, `${a.name} has moved ${p.change_pct >= 0 ? '+' : ''}${p.change_pct.toFixed(2)}% in the last 24 hours.`)
+  if (a.market_cap_usd != null) {
+    const cap = a.market_cap_usd >= 1e12 ? `$${(a.market_cap_usd / 1e12).toFixed(2)} trillion` : `$${(a.market_cap_usd / 1e9).toFixed(1)} billion`
+    push(`What is ${a.name}'s market cap?`, `${a.name}'s current market capitalisation is approximately ${cap} USD.`)
+  }
+  if (p.high != null && p.low != null) push(`What is ${a.name}'s 24-hour price range?`, `${a.name} has traded between $${p.low.toLocaleString('en-US', { maximumFractionDigits: 6 })} and $${p.high.toLocaleString('en-US', { maximumFractionDigits: 6 })} in the last 24 hours.`)
+  return faqs
+}
+
 useHead(computed(() => ({
   link: [{ rel: 'canonical', href: `https://metricshour.com/crypto/${symbol.toLowerCase()}/` }],
+  script: asset.value ? [
+    {
+      type: 'application/ld+json',
+      innerHTML: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'WebPage',
+        name: `${asset.value.name} (${asset.value.symbol}) Price & Data — MetricsHour`,
+        url: `https://metricshour.com/crypto/${symbol.toLowerCase()}/`,
+        description: `Live ${asset.value.name} price, 24h change, market cap, and historical data. Updated in real time.`,
+        breadcrumb: {
+          '@type': 'BreadcrumbList',
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://metricshour.com' },
+            { '@type': 'ListItem', position: 2, name: 'Crypto', item: 'https://metricshour.com/crypto/' },
+            { '@type': 'ListItem', position: 3, name: asset.value.symbol, item: `https://metricshour.com/crypto/${symbol.toLowerCase()}/` },
+          ],
+        },
+        mainEntity: {
+          '@type': 'ExchangeRateSpecification',
+          name: `${asset.value.name} to USD`,
+          currency: 'USD',
+          currentExchangeRate: asset.value.price?.close != null ? {
+            '@type': 'UnitPriceSpecification',
+            price: asset.value.price.close,
+            priceCurrency: 'USD',
+          } : undefined,
+        },
+      }),
+    },
+    ...(buildCryptoFaqs(asset.value).length ? [{
+      type: 'application/ld+json',
+      innerHTML: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        mainEntity: buildCryptoFaqs(asset.value),
+      }),
+    }] : []),
+  ] : [],
 })))
 </script>

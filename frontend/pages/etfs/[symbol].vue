@@ -342,5 +342,39 @@ useSeoMeta({
 
 useHead(computed(() => ({
   link: [{ rel: 'canonical', href: `https://metricshour.com/etfs/${symbol.toLowerCase()}/` }],
+  script: asset.value ? [
+    {
+      type: 'application/ld+json',
+      innerHTML: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'WebPage',
+        name: `${asset.value.name} (${asset.value.symbol}) ETF — MetricsHour`,
+        url: `https://metricshour.com/etfs/${symbol.toLowerCase()}/`,
+        description: `${asset.value.name} (${asset.value.symbol}) ETF price, performance, and data. Exchange-traded fund listed on ${asset.value.exchange || 'US exchanges'}.`,
+        breadcrumb: {
+          '@type': 'BreadcrumbList',
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://metricshour.com' },
+            { '@type': 'ListItem', position: 2, name: 'ETFs', item: 'https://metricshour.com/etfs/' },
+            { '@type': 'ListItem', position: 3, name: asset.value.symbol, item: `https://metricshour.com/etfs/${symbol.toLowerCase()}/` },
+          ],
+        },
+        mainEntity: {
+          '@type': 'FinancialProduct',
+          name: asset.value.name,
+          alternateName: asset.value.symbol,
+          description: `${asset.value.name} is an exchange-traded fund (ETF)${asset.value.sector ? ` in the ${asset.value.sector} category` : ''}, traded under the ticker ${asset.value.symbol}.`,
+          provider: { '@type': 'Organization', name: 'MetricsHour', url: 'https://metricshour.com' },
+          ...(asset.value.price?.close != null ? {
+            offers: {
+              '@type': 'Offer',
+              price: asset.value.price.close,
+              priceCurrency: 'USD',
+            },
+          } : {}),
+        },
+      }),
+    },
+  ] : [],
 })))
 </script>

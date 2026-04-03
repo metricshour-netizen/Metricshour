@@ -13,7 +13,7 @@
         <div class="flex items-start gap-4 mb-3">
           <span class="text-5xl leading-none" aria-hidden="true">{{ country.flag }}</span>
           <div>
-            <h1 class="text-2xl font-bold text-white">{{ country.name }}</h1>
+            <h1 class="text-2xl font-bold text-white">{{ country.name }} Economy: GDP, Trade &amp; Macro Data</h1>
             <p class="text-gray-500 text-sm">{{ country.name_official }}</p>
             <p class="text-gray-500 text-sm">{{ country.region }} · {{ country.subregion }}</p>
           </div>
@@ -644,6 +644,7 @@ useHead(computed(() => ({
         name: `${country.value.name} Economy & Macro Data — MetricsHour`,
         url: `https://metricshour.com/countries/${code}/`,
         description: `GDP, inflation, trade flows, and 80+ macro indicators for ${country.value.name}. Data from World Bank, IMF, and UN Comtrade.`,
+        dateModified: new Date().toISOString().slice(0, 10),
         mainEntity: { '@type': 'Country', name: country.value.name },
         speakable: {
           '@type': 'SpeakableSpecification',

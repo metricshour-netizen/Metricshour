@@ -24,7 +24,7 @@
               </div>
               <div>
                 <div class="flex items-center gap-2 flex-wrap mb-1">
-                  <h1 class="text-3xl font-extrabold text-white tracking-tight">{{ stock.name }}</h1>
+                  <h1 class="text-3xl font-extrabold text-white tracking-tight">{{ stock.name }} ({{ stock.symbol }}) — Revenue by Country</h1>
                   <span class="text-xs bg-[#1f2937] text-gray-400 px-2 py-1 rounded-md">{{ stock.exchange }}</span>
                   <span v-if="stock.sector" class="text-xs border border-emerald-800 text-emerald-400 px-2 py-1 rounded-md">{{ stock.sector }}</span>
                   <span v-if="geoRisk" class="text-xs font-bold px-2 py-1 rounded-md"
@@ -779,6 +779,7 @@ useHead(computed(() => ({
         name: `${stock.value.symbol} — ${stock.value.name} — MetricsHour`,
         url: `https://metricshour.com/stocks/${ticker.toLowerCase()}/`,
         description: `${stock.value.name} (${stock.value.symbol}) geographic revenue breakdown from SEC EDGAR.`,
+        dateModified: stock.value.price?.timestamp ? stock.value.price.timestamp.slice(0, 10) : new Date().toISOString().slice(0, 10),
         mainEntity: { '@type': 'Corporation', name: stock.value.name, tickerSymbol: stock.value.symbol },
         speakable: {
           '@type': 'SpeakableSpecification',
