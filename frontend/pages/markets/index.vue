@@ -298,7 +298,7 @@
       </template>
 
       <!-- ── China A-Shares ──────────────────────────────────────────────── -->
-      <template v-if="activeTab === 'all' && !search">
+      <template v-if="(activeTab === 'all' && !search) || activeTab === 'china'">
         <SectionHeader color="bg-red-500" label="China A-Shares" />
         <div v-if="chinaTop.length" class="bg-[#111827] border border-[#1f2937] rounded-xl overflow-hidden mb-8">
           <table class="w-full text-sm">
@@ -333,8 +333,8 @@
             </tbody>
           </table>
           <div class="px-4 py-2.5 border-t border-[#1f2937] flex items-center justify-between">
-            <span class="text-[10px] text-gray-600">Top 10 by price · {{ chinaPending ? '...' : chinaTotal }} total stocks</span>
-            <NuxtLink to="/china/" class="text-xs text-emerald-500 hover:text-emerald-400 transition-colors">View all {{ chinaTotal }} →</NuxtLink>
+            <span class="text-[10px] text-gray-600">{{ activeTab === 'china' ? `${chinaTop.length} stocks with prices` : 'Top 10 by price' }} · {{ chinaPending ? '...' : chinaTotal }} total</span>
+            <NuxtLink v-if="activeTab !== 'china'" to="/china/" class="text-xs text-emerald-500 hover:text-emerald-400 transition-colors">View all {{ chinaTotal }} →</NuxtLink>
           </div>
         </div>
         <div v-else-if="!chinaPending" class="bg-[#111827] border border-[#1f2937] rounded-xl p-6 mb-8 text-center text-gray-600 text-sm">
@@ -430,7 +430,8 @@ const { data: chinaAssets, pending: chinaPending } = useAsyncData('markets-china
 const chinaTotal = computed(() => chinaAssets.value?.length ?? 0)
 const chinaTop = computed(() => {
   const all = chinaAssets.value ?? []
-  return [...all].filter((s: any) => s.price?.close).sort((a: any, b: any) => (b.price?.close ?? 0) - (a.price?.close ?? 0)).slice(0, 10)
+  const sorted = [...all].filter((s: any) => s.price?.close).sort((a: any, b: any) => (b.price?.close ?? 0) - (a.price?.close ?? 0))
+  return activeTab.value === 'china' ? sorted : sorted.slice(0, 10)
 })
 
 function byType(type: string) {
@@ -446,6 +447,7 @@ const tabs = computed(() => [
   { key: 'stock',     label: 'Stocks',     icon: '📈', activeClass: 'bg-emerald-500 border-emerald-500', count: byType('stock').length },
   { key: 'crypto',    label: 'Crypto',     icon: '₿',  activeClass: 'bg-amber-500 border-amber-500',   count: byType('crypto').length },
   { key: 'bond',      label: 'Bonds',      icon: '🏛', activeClass: 'bg-rose-500 border-rose-500',     count: byType('bond').length },
+  { key: 'china',     label: 'China',      icon: '🇨🇳', activeClass: 'bg-red-600 border-red-600',       count: chinaTotal.value },
 ])
 
 function showSection(type: string) {
