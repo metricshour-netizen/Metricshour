@@ -67,6 +67,49 @@
         </div>
       </div>
 
+      <!-- Summary -->
+      <div v-if="pageSummary?.summary" class="bg-[#111827] border border-[#1f2937] rounded-lg p-4 mb-4 text-sm text-gray-400 leading-relaxed page-summary">
+        {{ pageSummary.summary }}
+      </div>
+
+      <!-- Insights (rotating) -->
+      <div v-if="pageInsights?.length" class="mb-4">
+        <div class="relative border rounded-lg p-4 overflow-hidden bg-[#0d1520] border-emerald-900/50 page-insight-latest">
+          <div class="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent"/>
+          <div class="flex items-start gap-3">
+            <span class="text-base mt-0.5 shrink-0 text-emerald-400">◆</span>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 mb-1 flex-wrap">
+                <span class="text-[10px] font-bold uppercase tracking-widest text-emerald-400">MetricsHour Intelligence</span>
+                <span class="text-[10px] text-gray-700 ml-auto">{{ fmtInsightDate(pageInsights[featuredIdx].generated_at) }}</span>
+              </div>
+              <p class="text-sm text-gray-300 leading-relaxed">{{ pageInsights[featuredIdx].summary }}</p>
+            </div>
+          </div>
+        </div>
+        <div v-if="pageInsights.length > 1" class="mt-1.5 border border-[#1a2030] rounded-lg overflow-hidden">
+          <div class="divide-y divide-[#131b27]">
+            <div
+              v-for="(insight, i) in otherInsights"
+              v-show="showAllInsights || i < 2"
+              :key="insight.generated_at"
+              class="flex items-start gap-3 px-3 py-2 bg-[#0a0d14] cursor-pointer"
+              @click="toggleInsight(insight.generated_at)"
+            >
+              <span class="text-[10px] text-gray-600 shrink-0 mt-0.5 w-16">{{ new Date(insight.generated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) }}</span>
+              <p class="text-xs text-gray-500 leading-relaxed" :class="expandedInsights.has(insight.generated_at) ? '' : 'line-clamp-2'">{{ insight.summary }}</p>
+            </div>
+          </div>
+          <button
+            v-if="pageInsights.length > 3"
+            class="w-full px-3 py-2 text-[10px] text-gray-600 hover:text-emerald-400 bg-[#0a0d14] border-t border-[#1a2030] transition-colors text-left"
+            @click="showAllInsights = !showAllInsights"
+          >
+            {{ showAllInsights ? '↑ Show less' : `↓ Read more (${pageInsights.length - 3} more insights)` }}
+          </button>
+        </div>
+      </div>
+
       <!-- Price chart -->
       <div class="bg-[#111827] border border-[#1f2937] rounded-xl p-5 mb-6">
         <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
@@ -150,6 +193,42 @@ const { data: newsItems } = useAsyncData(
   () => get<any[]>(`/api/news/${symbol.value}`).catch(() => []),
   { server: false },
 )
+
+const { data: pageSummary } = useAsyncData(
+  `summary-stock-${symbol.value}`,
+  () => get<any>(`/api/summaries/stock/${symbol.value}`).catch(() => null),
+  { server: false },
+)
+
+const { data: pageInsights } = useAsyncData(
+  `insights-stock-${symbol.value}`,
+  () => get<any[]>(`/api/insights/stock/${symbol.value}`).catch(() => []),
+  { server: false },
+)
+
+const featuredIdx = computed(() => {
+  const ins = pageInsights.value
+  if (!ins?.length) return 0
+  const day = Math.floor(Date.now() / 86400000)
+  return day % Math.min(ins.length, 3)
+})
+
+const otherInsights = computed(() => {
+  const ins = pageInsights.value ?? []
+  return ins.filter((_: any, i: number) => i !== featuredIdx.value)
+})
+
+const expandedInsights = ref<Set<string>>(new Set())
+const showAllInsights = ref(false)
+const toggleInsight = (key: string) => {
+  const s = new Set(expandedInsights.value)
+  s.has(key) ? s.delete(key) : s.add(key)
+  expandedInsights.value = s
+}
+
+function fmtInsightDate(ts: string): string {
+  return new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
 
 const chartData = computed(() => (pricesRaw.value ?? []).filter((p: any) => p.c != null))
 
