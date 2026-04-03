@@ -203,7 +203,27 @@ useSeoMeta({
   robots: 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1',
 })
 
-useHead({
+useHead(computed(() => ({
   link: [{ rel: 'canonical', href: 'https://metricshour.com/etfs/' }],
-})
+  script: [{
+    type: 'application/ld+json',
+    innerHTML: JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'CollectionPage',
+      name: 'ETF Prices & Data — MetricsHour',
+      url: 'https://metricshour.com/etfs/',
+      description: 'Exchange-traded fund prices and performance data. SPY, QQQ, VTI and 100+ ETFs.',
+      isPartOf: { '@type': 'WebSite', name: 'MetricsHour', url: 'https://metricshour.com' },
+      mainEntity: {
+        '@type': 'ItemList',
+        itemListElement: (etfs.value ?? []).slice(0, 50).map((e: any, i: number) => ({
+          '@type': 'ListItem',
+          position: i + 1,
+          name: e.name || e.symbol,
+          item: `https://metricshour.com/etfs/${e.symbol.toLowerCase()}/`,
+        })),
+      },
+    }),
+  }],
+})))
 </script>

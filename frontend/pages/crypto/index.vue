@@ -153,7 +153,27 @@ useSeoMeta({
   robots: 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1',
 })
 
-useHead({
+useHead(computed(() => ({
   link: [{ rel: 'canonical', href: 'https://metricshour.com/crypto/' }],
-})
+  script: [{
+    type: 'application/ld+json',
+    innerHTML: JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'CollectionPage',
+      name: 'Cryptocurrency Prices — MetricsHour',
+      url: 'https://metricshour.com/crypto/',
+      description: 'Live cryptocurrency prices, 24h changes, and market caps. BTC, ETH, SOL and 50+ coins.',
+      isPartOf: { '@type': 'WebSite', name: 'MetricsHour', url: 'https://metricshour.com' },
+      mainEntity: {
+        '@type': 'ItemList',
+        itemListElement: (coins.value ?? []).slice(0, 50).map((c: any, i: number) => ({
+          '@type': 'ListItem',
+          position: i + 1,
+          name: c.name || c.symbol,
+          item: `https://metricshour.com/crypto/${c.symbol.toLowerCase()}/`,
+        })),
+      },
+    }),
+  }],
+})))
 </script>
