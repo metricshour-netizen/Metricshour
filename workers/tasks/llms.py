@@ -18,7 +18,9 @@ from app.database import SessionLocal
 log = logging.getLogger(__name__)
 
 BASE_URL = "https://metricshour.com"
-OUT_PATH = Path(__file__).parents[2] / "frontend" / "public" / "llms-full.txt"
+_FRONTEND = Path(__file__).parents[2] / "frontend"
+OUT_PATH = _FRONTEND / "public" / "llms-full.txt"          # source (included in next build)
+OUT_PATH_SERVED = _FRONTEND / ".output" / "public" / "llms-full.txt"  # live-served by Nuxt
 
 
 def _strip_markdown(text: str) -> str:
@@ -90,6 +92,9 @@ def generate_llms_full() -> int:
     content = "\n".join(lines)
     OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     OUT_PATH.write_text(content, encoding="utf-8")
+    # Also write to .output/public/ so Nuxt SSR serves it immediately without a rebuild
+    if OUT_PATH_SERVED.parent.exists():
+        OUT_PATH_SERVED.write_text(content, encoding="utf-8")
     log.info("llms-full.txt written: %d posts, %d KB", len(posts), len(content) // 1024)
     return len(posts)
 
