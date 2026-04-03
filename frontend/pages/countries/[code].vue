@@ -435,6 +435,11 @@
 
       <p class="text-xs text-gray-600">Data: World Bank · REST Countries · IMF · UN Comtrade · SEC EDGAR</p>
 
+      <ShareEmbed
+        :embed-url="`/embed/country/${code.toLowerCase()}`"
+        :download-url="`/api/countries/${code}/indicators/download`"
+      />
+
       <!-- Newsletter -->
       <div class="mt-8 border border-gray-800 rounded-xl p-6 bg-gray-900/40">
         <p class="text-xs font-mono text-emerald-500 uppercase tracking-widest mb-1">Weekly Briefing</p>

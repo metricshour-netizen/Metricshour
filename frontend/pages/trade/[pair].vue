@@ -370,6 +370,11 @@
         Trade: {{ td?.data_source || 'UN Comtrade 2022' }} · Macro: World Bank · IMF
       </p>
 
+      <ShareEmbed
+        :embed-url="`/embed/trade/${pair}`"
+        :download-url="`/api/trade/${pair.split('-')[0].toUpperCase()}/${pair.split('-')[1].toUpperCase()}/download`"
+      />
+
       <!-- Newsletter -->
       <div class="mt-8 border border-gray-800 rounded-xl p-6 bg-gray-900/40">
         <p class="text-xs font-mono text-emerald-500 uppercase tracking-widest mb-1">Weekly Briefing</p>

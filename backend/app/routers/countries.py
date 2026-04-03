@@ -357,3 +357,44 @@ def _groupings(c: Country) -> list[str]:
     if c.is_commonwealth:
         groups.append("Commonwealth")
     return groups
+
+
+@router.get("/{code}/indicators/download")
+@limiter.limit("20/minute")
+def download_country_indicators(
+    request: Request,
+    code: str,
+    db: Session = Depends(get_db),
+):
+    """Download country economic indicators as CSV."""
+    import csv, io
+    from fastapi.responses import StreamingResponse
+
+    country = db.execute(
+        select(Country).where(Country.code == code.upper())
+    ).scalar_one_or_none()
+    if not country:
+        raise HTTPException(status_code=404, detail="Country not found")
+
+    rows = db.execute(
+        select(CountryIndicator)
+        .where(CountryIndicator.country_id == country.id, CountryIndicator.value.isnot(None))
+        .order_by(CountryIndicator.indicator, CountryIndicator.period_date)
+    ).scalars().all()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["country", "indicator", "period_date", "value", "source_credit"])
+    for r in rows:
+        writer.writerow([
+            country.code, r.indicator, r.period_date, r.value,
+            "MetricsHour (metricshour.com) — World Bank",
+        ])
+
+    output.seek(0)
+    filename = f"{code.lower()}-indicators.csv"
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )

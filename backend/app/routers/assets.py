@@ -459,3 +459,47 @@ def _asset_summary(asset: Asset, country: Country | None) -> dict:
             "flag": country.flag_emoji,
         } if country else None,
     }
+
+
+@router.get("/{symbol}/prices/download")
+@limiter.limit("20/minute")
+def download_asset_prices(
+    request: Request,
+    symbol: str,
+    interval: str = "1d",
+    limit: int = Query(default=365, ge=1, le=1000),
+    db: Session = Depends(get_db),
+):
+    """Download price history as CSV."""
+    import csv, io
+    from fastapi.responses import StreamingResponse
+
+    asset = db.execute(
+        select(Asset).where(Asset.symbol == symbol.upper(), Asset.is_active == True)
+    ).scalar_one_or_none()
+    if not asset:
+        raise HTTPException(status_code=404, detail="Asset not found")
+
+    rows = db.execute(
+        select(Price)
+        .where(Price.asset_id == asset.id, Price.interval == interval)
+        .order_by(Price.timestamp.desc())
+        .limit(limit)
+    ).scalars().all()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["date", "open", "high", "low", "close", "volume", "interval", "symbol", "source_credit"])
+    for p in rows:
+        writer.writerow([
+            p.timestamp.date(), p.open, p.high, p.low, p.close, p.volume,
+            interval, asset.symbol, "MetricsHour (metricshour.com)",
+        ])
+
+    output.seek(0)
+    filename = f"{symbol.lower()}-prices-{interval}.csv"
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )

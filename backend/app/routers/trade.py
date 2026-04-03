@@ -220,3 +220,58 @@ def _country_ref(c: Country, indicators: dict | None = None) -> dict:
         "currency_code": c.currency_code,
         "indicators": indicators or {},
     }
+
+
+@router.get("/{exporter_code}/{importer_code}/download")
+@limiter.limit("20/minute")
+def download_trade_data(
+    request: Request,
+    exporter_code: str,
+    importer_code: str,
+    db: Session = Depends(get_db),
+):
+    """Download bilateral trade data as CSV."""
+    import csv, io
+    from fastapi.responses import StreamingResponse
+
+    exp = db.execute(select(Country).where(Country.code == exporter_code.upper())).scalar_one_or_none()
+    imp = db.execute(select(Country).where(Country.code == importer_code.upper())).scalar_one_or_none()
+    if not exp or not imp:
+        raise HTTPException(status_code=404, detail="Country not found")
+
+    pairs = db.execute(
+        select(TradePair).where(TradePair.exporter_id == exp.id, TradePair.importer_id == imp.id)
+        .order_by(TradePair.year.desc())
+    ).scalars().all()
+    if not pairs:
+        pairs = db.execute(
+            select(TradePair).where(TradePair.exporter_id == imp.id, TradePair.importer_id == exp.id)
+            .order_by(TradePair.year.desc())
+        ).scalars().all()
+    if not pairs:
+        raise HTTPException(status_code=404, detail="No trade data found")
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "year", "exporter", "importer",
+        "exports_usd", "imports_usd", "trade_value_usd", "balance_usd",
+        "exporter_gdp_share_pct", "importer_gdp_share_pct", "data_source", "source_credit",
+    ])
+    for p in pairs:
+        e = exp if p.exporter_id == exp.id else imp
+        i = imp if p.importer_id == imp.id else exp
+        writer.writerow([
+            p.year, e.code, i.code,
+            p.exports_usd, p.imports_usd, p.trade_value_usd, p.balance_usd,
+            p.exporter_gdp_share_pct, p.importer_gdp_share_pct,
+            p.data_source or "UN Comtrade", "MetricsHour (metricshour.com)",
+        ])
+
+    output.seek(0)
+    filename = f"trade-{exporter_code.lower()}-{importer_code.lower()}.csv"
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )

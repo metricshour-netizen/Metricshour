@@ -395,6 +395,11 @@
 
       <p class="text-xs text-gray-700 text-center">Data: SEC EDGAR · World Bank · REST Countries</p>
 
+      <ShareEmbed
+        :embed-url="`/embed/stocks/${ticker.toLowerCase()}`"
+        :download-url="`/api/assets/${ticker}/prices/download?interval=1d&limit=365`"
+      />
+
       <!-- Newsletter -->
       <div class="mt-8 border border-gray-800 rounded-xl p-6 bg-gray-900/40">
         <p class="text-xs font-mono text-emerald-500 uppercase tracking-widest mb-1">Weekly Briefing</p>
