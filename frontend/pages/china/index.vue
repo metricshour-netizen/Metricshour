@@ -70,7 +70,7 @@
               v-for="s in paginated"
               :key="s.id"
               class="border-b border-[#1a2030] hover:bg-[#0d1117] transition-colors cursor-pointer"
-              @click="navigateTo(`/stocks/${s.symbol}`)"
+              @click="navigateTo(`/china/${s.symbol}`)"
             >
               <td class="px-4 py-3 font-mono text-xs text-emerald-400">{{ s.symbol }}</td>
               <td class="px-4 py-3 text-gray-200 truncate max-w-[200px]">{{ s.name }}</td>

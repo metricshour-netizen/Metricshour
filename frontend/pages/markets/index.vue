@@ -297,12 +297,57 @@
         </div>
       </template>
 
+      <!-- ── China A-Shares ──────────────────────────────────────────────── -->
+      <template v-if="activeTab === 'all' && !search">
+        <SectionHeader color="bg-red-500" label="China A-Shares" />
+        <div v-if="chinaTop.length" class="bg-[#111827] border border-[#1f2937] rounded-xl overflow-hidden mb-8">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-[#1f2937]">
+                <th class="text-left text-[10px] text-gray-500 uppercase tracking-wider px-4 py-2.5">Ticker</th>
+                <th class="text-left text-[10px] text-gray-500 uppercase tracking-wider px-4 py-2.5 hidden sm:table-cell">Name</th>
+                <th class="text-right text-[10px] text-gray-500 uppercase tracking-wider px-4 py-2.5">Price (CNY)</th>
+                <th class="text-right text-[10px] text-gray-500 uppercase tracking-wider px-4 py-2.5">Change</th>
+                <th class="text-right text-[10px] text-gray-500 uppercase tracking-wider px-4 py-2.5 hidden md:table-cell">Exchange</th>
+              </tr>
+            </thead>
+            <tbody>
+              <NuxtLink
+                v-for="s in chinaTop"
+                :key="s.id"
+                :to="`/china/${s.symbol}`"
+                custom
+                v-slot="{ navigate }"
+              >
+                <tr @click="navigate" class="border-b border-[#1a2030] hover:bg-[#0d1117] transition-colors cursor-pointer last:border-0">
+                  <td class="px-4 py-2.5 font-mono text-xs text-emerald-400">{{ s.symbol }}</td>
+                  <td class="px-4 py-2.5 text-gray-400 truncate max-w-[180px] hidden sm:table-cell">{{ s.name }}</td>
+                  <td class="px-4 py-2.5 text-right font-bold text-white tabular-nums">{{ s.price ? `¥${s.price.close?.toFixed(2)}` : '—' }}</td>
+                  <td class="px-4 py-2.5 text-right tabular-nums text-xs"
+                      :class="s.price?.change_pct != null ? (s.price.change_pct >= 0 ? 'text-emerald-400' : 'text-red-400') : 'text-gray-600'">
+                    {{ s.price?.change_pct != null ? `${s.price.change_pct >= 0 ? '+' : ''}${s.price.change_pct.toFixed(2)}%` : '—' }}
+                  </td>
+                  <td class="px-4 py-2.5 text-right text-gray-600 text-xs hidden md:table-cell">{{ s.exchange }}</td>
+                </tr>
+              </NuxtLink>
+            </tbody>
+          </table>
+          <div class="px-4 py-2.5 border-t border-[#1f2937] flex items-center justify-between">
+            <span class="text-[10px] text-gray-600">Top 10 by price · {{ chinaPending ? '...' : chinaTotal }} total stocks</span>
+            <NuxtLink to="/china/" class="text-xs text-emerald-500 hover:text-emerald-400 transition-colors">View all {{ chinaTotal }} →</NuxtLink>
+          </div>
+        </div>
+        <div v-else-if="!chinaPending" class="bg-[#111827] border border-[#1f2937] rounded-xl p-6 mb-8 text-center text-gray-600 text-sm">
+          China A-share data loading — check back after 09:00 UTC.
+        </div>
+      </template>
+
       <!-- Empty state -->
       <div v-if="filtered.length === 0 && search" class="text-center py-20 text-gray-600 text-sm">
         No assets match "{{ search }}"
       </div>
 
-      <p class="text-xs text-gray-700 mt-2">Data: Marketstack · FRED · SEC EDGAR · ECB</p>
+      <p class="text-xs text-gray-700 mt-2">Data: Marketstack · FRED · SEC EDGAR · ECB · Tiingo</p>
 
       </template><!-- end card view -->
     </template>
@@ -373,6 +418,20 @@ onMounted(() => {
 const { data: allAssets, pending } = useAsyncData('markets-all',
   () => get<any[]>('/api/assets').catch(() => []),
 )
+
+const { data: chinaAssets, pending: chinaPending } = useAsyncData('markets-china',
+  () => Promise.all([
+    get<any[]>('/api/assets', { type: 'stock', exchange: 'SHG', limit: 500 }).catch(() => []),
+    get<any[]>('/api/assets', { type: 'stock', exchange: 'SHE', limit: 500 }).catch(() => []),
+  ]).then(([shg, she]) => [...(shg ?? []), ...(she ?? [])]),
+  { server: false },
+)
+
+const chinaTotal = computed(() => chinaAssets.value?.length ?? 0)
+const chinaTop = computed(() => {
+  const all = chinaAssets.value ?? []
+  return [...all].filter((s: any) => s.price?.close).sort((a: any, b: any) => (b.price?.close ?? 0) - (a.price?.close ?? 0)).slice(0, 10)
+})
 
 function byType(type: string) {
   return (allAssets.value ?? []).filter((a: any) => a.asset_type === type)
