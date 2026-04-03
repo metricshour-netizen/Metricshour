@@ -20,6 +20,7 @@ from app.routers import earnings as earnings_router
 from app.routers import newsletter
 from app.routers import screener as screener_router
 from app.routers import news as news_router
+from app.routers import blocs as blocs_router
 
 if settings.sentry_dsn:
     sentry_sdk.init(
@@ -132,6 +133,7 @@ app.include_router(rates_router.router, prefix="/api")  # GET /api/rates/, /api/
 app.include_router(earnings_router.router, prefix="/api")  # GET /api/earnings/upcoming, /api/earnings/recent
 app.include_router(screener_router.router, prefix="/api")  # GET /api/screener, /api/screener/sectors
 app.include_router(news_router.router, prefix="/api")     # GET /api/news/{symbol} — Tiingo news
+app.include_router(blocs_router.router, prefix="/api")  # GET /api/blocs/, /api/blocs/{slug}
 
 
 Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)

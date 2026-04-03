@@ -32,6 +32,7 @@ STATIC_ROUTE_TEMPLATES = [
     (f"{BASE}/markets/",      "0.9", "daily"),
     (f"{BASE}/stocks/",       "0.9", "daily"),
     (f"{BASE}/sectors/",      "0.8", "weekly"),
+    (f"{BASE}/blocs/",       "0.8", "weekly"),
     (f"{BASE}/countries/",    "0.9", "weekly"),
     (f"{BASE}/compare/",      "0.7", "weekly"),
     (f"{BASE}/trade/",        "0.9", "weekly"),
@@ -58,6 +59,10 @@ SECTOR_SLUGS = [
     "technology", "healthcare", "financials", "industrials", "energy",
     "consumer-discretionary", "consumer-staples", "communication-services",
     "materials", "real-estate", "utilities",
+]
+
+BLOC_SLUGS = [
+    "g7", "g20", "eu", "eurozone", "nato", "brics", "asean", "opec", "oecd", "commonwealth",
 ]
 
 
@@ -92,6 +97,10 @@ def sitemap(db: Session = Depends(get_db)):
     # Sector pages → /sectors/{slug}
     for slug in SECTOR_SLUGS:
         entries.append(_url(f"{BASE}/sectors/{slug}/", "0.7", "weekly", today))
+
+    # Group pages → /blocs/{slug}
+    for slug in BLOC_SLUGS:
+        entries.append(_url(f"{BASE}/blocs/{slug}/", "0.8", "weekly", today))
 
     # Stocks → /stocks/{symbol} — only stocks with price OR revenue data (avoid thin content)
     stocks_with_prices = {

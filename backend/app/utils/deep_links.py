@@ -129,6 +129,35 @@ COUNTRIES = {
     "Ghana": "gh", "Greater China": "cn", "Pakistan": "pk",
 }
 
+BLOC_PHRASES: list[tuple[str, str]] = [
+    ("European Union",            "eu"),
+    ("the EU",                    "eu"),
+    ("the Eurozone",              "eurozone"),
+    ("euro area",                 "eurozone"),
+    ("G7 countries",              "g7"),
+    ("G7 nations",                "g7"),
+    ("the G7",                    "g7"),
+    ("G20 countries",             "g20"),
+    ("G20 nations",               "g20"),
+    ("the G20",                   "g20"),
+    ("BRICS countries",           "brics"),
+    ("BRICS nations",             "brics"),
+    ("BRICS economies",           "brics"),
+    ("NATO members",              "nato"),
+    ("NATO countries",            "nato"),
+    ("NATO allies",               "nato"),
+    ("ASEAN countries",           "asean"),
+    ("ASEAN nations",             "asean"),
+    ("ASEAN economies",           "asean"),
+    ("OPEC members",              "opec"),
+    ("OPEC nations",              "opec"),
+    ("OPEC countries",            "opec"),
+    ("OECD countries",            "oecd"),
+    ("OECD members",              "oecd"),
+    ("Commonwealth nations",      "commonwealth"),
+    ("Commonwealth countries",    "commonwealth"),
+]
+
 SECTOR_PHRASES: list[tuple[str, str]] = [
     ("Technology sector",             "technology"),
     ("tech sector",                   "technology"),
@@ -283,6 +312,24 @@ def _inject_corridors(body: str, html: bool) -> str:
     return body
 
 
+def _inject_blocs(body: str, html: bool) -> str:
+    """Inject links to /blocs/{slug} pages for recognizable bloc/grouping phrases."""
+    for phrase, slug in BLOC_PHRASES:
+        url = f"{BASE}/blocs/{slug}"
+        if url in body:
+            continue
+        pat = r'\b' + re.escape(phrase) + r'\b'
+        if html:
+            if re.search(re.escape(phrase), body) and f'class="link-bloc"' in body:
+                continue
+            body = re.sub(pat, f'<a href="{url}" class="link-bloc">{phrase}</a>', body, count=1, flags=re.IGNORECASE)
+        else:
+            if f'[{phrase}]' in body:
+                continue
+            body = re.sub(pat, f'[{phrase}]({url})', body, count=1, flags=re.IGNORECASE)
+    return body
+
+
 def _inject_sectors(body: str, html: bool) -> str:
     """Inject links to sector pages for recognizable sector phrases."""
     for phrase, slug in SECTOR_PHRASES:
@@ -358,6 +405,7 @@ def inject_deep_links(body: str) -> str:
     for country_name, code in sorted(COUNTRIES.items(), key=lambda x: -len(x[0])):
         body = _inject_country(body, country_name, code, html)
     body = _inject_corridors(body, html)
+    body = _inject_blocs(body, html)
     body = _inject_sectors(body, html)
     body = _post_clean(body)
     return body
