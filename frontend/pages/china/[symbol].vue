@@ -200,6 +200,8 @@ useHead(computed(() => ({
         name: `${stock.value.name} (${stock.value.symbol}) — China A-Share | MetricsHour`,
         url: `https://metricshour.com/china/${symbol.value.toLowerCase()}/`,
         description: `${stock.value.name} stock price and data. Listed on the ${stock.value.exchange === 'SHG' ? 'Shanghai Stock Exchange' : 'Shenzhen Stock Exchange'} (${stock.value.exchange}). Priced in CNY.`,
+        datePublished: '2026-04-03',
+        dateModified: stock.value.price?.timestamp ? stock.value.price.timestamp.slice(0, 10) : new Date().toISOString().slice(0, 10),
         breadcrumb: {
           '@type': 'BreadcrumbList',
           itemListElement: [

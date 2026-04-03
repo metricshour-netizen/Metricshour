@@ -407,6 +407,8 @@ useHead(computed(() => ({
         name: `${asset.value.name} (${asset.value.symbol}) Price & Data — MetricsHour`,
         url: `https://metricshour.com/crypto/${symbol.toLowerCase()}/`,
         description: `Live ${asset.value.name} price, 24h change, market cap, and historical data. Updated in real time.`,
+        datePublished: '2026-04-01',
+        dateModified: asset.value.price?.timestamp ? asset.value.price.timestamp.slice(0, 10) : new Date().toISOString().slice(0, 10),
         breadcrumb: {
           '@type': 'BreadcrumbList',
           itemListElement: [

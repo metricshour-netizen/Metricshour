@@ -351,6 +351,8 @@ useHead(computed(() => ({
         name: `${asset.value.name} (${asset.value.symbol}) ETF — MetricsHour`,
         url: `https://metricshour.com/etfs/${symbol.toLowerCase()}/`,
         description: `${asset.value.name} (${asset.value.symbol}) ETF price, performance, and data. Exchange-traded fund listed on ${asset.value.exchange || 'US exchanges'}.`,
+        datePublished: '2026-04-01',
+        dateModified: asset.value.price?.timestamp ? asset.value.price.timestamp.slice(0, 10) : new Date().toISOString().slice(0, 10),
         breadcrumb: {
           '@type': 'BreadcrumbList',
           itemListElement: [

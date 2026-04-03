@@ -124,6 +124,14 @@ export default defineNuxtConfig({
     '/trade/**': { headers: { 'Cache-Control': 'public, s-maxage=14400, max-age=3600, stale-while-revalidate=604800' } },
     '/commodities/**': { headers: { 'Cache-Control': 'public, s-maxage=1800, max-age=300, stale-while-revalidate=86400' } },
     '/indices/**': { headers: { 'Cache-Control': 'public, s-maxage=1800, max-age=300, stale-while-revalidate=86400' } },
+    // Crypto detail pages — 2 min edge cache (prices update every minute)
+    '/crypto/**': { headers: { 'Cache-Control': 'public, s-maxage=120, max-age=60, stale-while-revalidate=3600' } },
+    // ETF + FX detail pages — 30 min edge cache
+    '/etfs/**': { headers: { 'Cache-Control': 'public, s-maxage=1800, max-age=300, stale-while-revalidate=86400' } },
+    '/fx/**': { headers: { 'Cache-Control': 'public, s-maxage=1800, max-age=300, stale-while-revalidate=86400' } },
+    // China A-shares + rates — 30 min edge cache (daily close data)
+    '/china/**': { headers: { 'Cache-Control': 'public, s-maxage=1800, max-age=300, stale-while-revalidate=86400' } },
+    '/rates/**': { headers: { 'Cache-Control': 'public, s-maxage=1800, max-age=300, stale-while-revalidate=86400' } },
     '/blog/**': { headers: { 'Cache-Control': 'public, s-maxage=1800, max-age=300, stale-while-revalidate=86400' } },
     '/compare/**': { headers: { 'Cache-Control': 'public, s-maxage=1800, max-age=300, stale-while-revalidate=86400' } },
     // Markets + Feed — 5 min (data changes frequently)
