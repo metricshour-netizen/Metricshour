@@ -50,7 +50,22 @@
 
     <!-- Data sources + copyright -->
     <div class="border-t border-[#1a2332] px-4 py-4 text-center text-[10px] text-gray-700 space-y-1">
-      <p>Data: World Bank · SEC EDGAR · UN Comtrade · REST Countries · IMF · Marketstack · FRED</p>
+      <p>
+        Data:
+        <a href="https://data.worldbank.org" target="_blank" rel="noopener noreferrer" class="hover:text-gray-500 transition-colors">World Bank</a>
+        ·
+        <a href="https://efts.sec.gov/LATEST/search-index?forms=10-K,10-Q" target="_blank" rel="noopener noreferrer" class="hover:text-gray-500 transition-colors">SEC EDGAR</a>
+        ·
+        <a href="https://comtradeplus.un.org" target="_blank" rel="noopener noreferrer" class="hover:text-gray-500 transition-colors">UN Comtrade</a>
+        ·
+        <span class="text-gray-700">REST Countries</span>
+        ·
+        <a href="https://data.imf.org" target="_blank" rel="noopener noreferrer" class="hover:text-gray-500 transition-colors">IMF</a>
+        ·
+        <span class="text-gray-700">Marketstack</span>
+        ·
+        <a href="https://fred.stlouisfed.org" target="_blank" rel="noopener noreferrer" class="hover:text-gray-500 transition-colors">FRED</a>
+      </p>
       <p>© {{ new Date().getFullYear() }} MetricsHour · All rights reserved</p>
     </div>
   </footer>
