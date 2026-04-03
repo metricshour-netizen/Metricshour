@@ -18,7 +18,7 @@
         </div>
       </div>
 
-      <div v-if="gdpHistory.length" class="chart-wrap">
+      <div v-if="gdpHistory?.length" class="chart-wrap">
         <div class="chart-title">GDP (USD) — Historical</div>
         <div ref="chartEl" class="chart"/>
       </div>
