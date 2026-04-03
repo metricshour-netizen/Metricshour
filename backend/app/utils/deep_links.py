@@ -158,6 +158,9 @@ BLOC_PHRASES: list[tuple[str, str]] = [
     ("Commonwealth countries",    "commonwealth"),
     ("African Union",             "africa"),
     ("AU member states",          "africa"),
+    ("US-EU trade",               "eu"),
+    ("US–EU trade",               "eu"),
+    ("EU-US trade",               "eu"),
 ]
 
 SECTOR_PHRASES: list[tuple[str, str]] = [
@@ -182,7 +185,7 @@ SECTOR_PHRASES: list[tuple[str, str]] = [
 
 CORRIDORS = [
     ("us", "cn", ["US-China trade", "US–China trade", "US and China trade", "China-US trade"]),
-    ("us", "de", ["US-Germany trade", "US-EU trade", "US–EU trade"]),
+    ("us", "de", ["US-Germany trade", "US–Germany trade"]),
     ("us", "jp", ["US-Japan trade", "US–Japan trade"]),
     ("us", "gb", ["US-UK trade", "US–UK trade"]),
     ("us", "mx", ["US-Mexico trade", "US–Mexico trade"]),
