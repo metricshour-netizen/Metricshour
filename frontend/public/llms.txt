@@ -85,12 +85,16 @@ Data-driven articles on geographic revenue risk, trade war exposure, and macro a
 Full list: https://metricshour.com/blog/
 
 Selected posts:
+- [US-China Tariffs Hit 145%: Which S&P 500 Stocks Have the Most to Lose](https://metricshour.com/blog/us-china-tariffs-hit-145-which-sp-500-stocks-have-the-most-to-lose)
 - [Apple's $72 Billion China Problem](https://metricshour.com/blog/apples-72-billion-china-problem-more-than-just-iphone-sales-at-risk)
 - [NVIDIA China Revenue Percentage (FY2024)](https://metricshour.com/blog/nvidia-china-revenue-percentage-fy2024-export-controls-and-tariff-risk-for-nvda-investors)
-- [US-China Tariffs Hit 145%: Which S&P 500 Stocks Have the Most to Lose](https://metricshour.com/blog/us-china-tariffs-hit-145-which-sp-500-stocks-have-the-most-to-lose)
-- [How to Check Any Stock's Revenue by Country](https://metricshour.com/blog/how-to-check-any-stocks-revenue-by-country-and-why-it-matters-more-than-ever-in-2026)
 - [Semiconductor Stocks Ranked by China Revenue Exposure](https://metricshour.com/blog/semiconductor-stocks-ranked-by-china-revenue-exposure-a-2026-investor-guide)
-- [India Rising: S&P 500 Stocks Positioned for Asia's Growth](https://metricshour.com/blog/india-rising-the-sp-500-stocks-best-positioned-for-asias-fastest-growing-trillion-dollar-economy)
+- [Mexico Economy 2026: Nearshoring Boom, Risks, and What It Means for US Stocks](https://metricshour.com/blog/mexico-economy-2026-nearshoring-boom-risks-and-what-it-means-for-us-stocks)
+- [Tech Stocks Most Exposed to a Europe Recession in 2026](https://metricshour.com/blog/tech-stocks-most-exposed-to-a-europe-recession-in-2026)
+- [India vs Vietnam Manufacturing 2026: Which Country Wins the Supply Chain Shift?](https://metricshour.com/blog/india-vs-vietnam-manufacturing-2026-which-country-wins-the-supply-chain-shift)
+- [How to Check Any Stock's Revenue by Country](https://metricshour.com/blog/how-to-check-any-stocks-revenue-by-country-and-why-it-matters-more-than-ever-in-2026)
+- [BOJ Inflation Rethink: What Japan's New Price Measure Means for Rate Hikes](https://metricshour.com/blog/bank-of-japan-boj-review-the-concept-and-measurement-of-underlying-inflation)
+- [Bank of England Holds at 3.75%: Sticky Services Inflation Is Delaying UK Rate Cuts](https://metricshour.com/blog/bank-of-england-bank-rate-maintained-at-375-march-2026-monetary-policy-summary-and-minutes)
 
 ## API
 
