@@ -820,12 +820,75 @@ def _stock_price_insight_text(asset: Asset, hq, db) -> str | None:
     return " ".join(lines)
 
 
-def _stock_insight_text(asset: Asset, db) -> str | None:
+def _china_stock_insight_text(asset: Asset, db) -> str | None:
     """
-    Opinionated 60-80 word analyst take for a stock page. Generated daily.
+    Daily 3-sentence insight for China A-share stocks (SHG/SHE exchange).
+    Rotates across 4 China-specific angles. Uses PBOC/NBS/CSRC context.
     """
     if not _has_ai_key():
         return None
+
+    exch_label = "Shanghai Stock Exchange (SSE)" if asset.exchange == "SHG" else "Shenzhen Stock Exchange (SZSE)"
+
+    # Latest price in CNY
+    price_row = db.execute(
+        select(Price).where(Price.asset_id == asset.id)
+        .order_by(Price.timestamp.desc()).limit(1)
+    ).scalar_one_or_none()
+    price_info = ""
+    if price_row and price_row.close:
+        chg = ((price_row.close - price_row.open) / price_row.open * 100) if price_row.open else None
+        price_info = f"Latest price: {price_row.close:.2f} CNY" + (f" ({chg:+.2f}% vs open)" if chg else "")
+
+    _CHINA_ANGLES = [
+        (60, 80,
+         "Focus on the company's sector policy environment. Open by naming the specific Chinese government "
+         "policy or regulatory action most affecting this sector right now — cite a number, quota, or rate. "
+         "Name the single earnings variable it moves. Close with the next NBS or NDRC data release to watch."),
+        (60, 80,
+         "Focus on revenue and margin drivers. Open by naming the primary input cost or pricing variable "
+         "that determines this company's gross margin — state it with a unit (e.g. per tonne, per kWh, per loan). "
+         "State the direction of that variable in 2024-2025 and what it means for the next earnings report. "
+         "Close with the PBOC LPR decision or NBS data print that most directly reprices this stock."),
+        (60, 80,
+         "Focus on China macro linkage. Open by naming which specific China macro indicator — industrial output, "
+         "property investment, retail sales, or PMI — most directly drives demand for this company's products. "
+         "State the latest reading and what it means for earnings. "
+         "Close with the next monthly NBS release date and the threshold number that would shift consensus."),
+        (60, 80,
+         "Focus on competitive and structural risk. Open by naming the main competitive threat or structural "
+         "shift affecting this company's market share in China right now — with a specific number or named competitor. "
+         "State what it means for revenue in the next 12 months. "
+         "Close with the CSRC filing, government tender, or industry data release that will confirm the direction."),
+    ]
+    angle = _daily_angle(asset.symbol, len(_CHINA_ANGLES))
+    min_w, max_w, focus = _CHINA_ANGLES[angle]
+
+    prompt = (
+        f"Daily investor brief — {asset.name} ({asset.symbol}), {exch_label}. "
+        f"{min_w}–{max_w} words. Three sentences only. No title. No headings. No bullets.\n\n"
+        f"Stock: {asset.symbol} | Sector: {asset.sector or 'N/A'} | Cap: {_fmt_cap(asset.market_cap_usd)}\n"
+        f"{price_info}\n"
+        f"Date: {date.today().strftime('%B %d, %Y')}\n\n"
+        f"{focus}\n\n"
+        f"Rules: opening sentence names a specific percentage, price, or CNY figure. "
+        f"Every assertion is declarative — no 'could', 'may', 'might'. "
+        f"No bullets. No headers. End with a period."
+    )
+    return _call_ai(prompt, min_words=min_w - 8, max_words=max_w + 10, prefer_gemini=False)
+
+
+def _stock_insight_text(asset: Asset, db) -> str | None:
+    """
+    Opinionated 60-80 word analyst take for a stock page. Generated daily.
+    China A-shares (SHG/SHE) are routed to _china_stock_insight_text.
+    """
+    if not _has_ai_key():
+        return None
+
+    # Route China A-shares to dedicated China prompt
+    if asset.exchange in ("SHG", "SHE"):
+        return _china_stock_insight_text(asset, db)
 
     hq = db.execute(select(Country).where(Country.id == asset.country_id)).scalar_one_or_none() if asset.country_id else None
 
@@ -865,11 +928,14 @@ def _stock_insight_text(asset: Asset, db) -> str | None:
                 hq_inds[r.indicator] = r.value
                 seen_h.add(r.indicator)
         if hq_inds:
-            hq_macro = (
-                f"HQ country ({hq.name}) macro: "
-                f"GDP growth {hq_inds.get('gdp_growth_pct', 'N/A'):.1f}%" if isinstance(hq_inds.get('gdp_growth_pct'), float) else
-                f"HQ country ({hq.name})"
-            )
+            macro_parts = []
+            if isinstance(hq_inds.get("gdp_growth_pct"), float):
+                macro_parts.append(f"GDP growth {hq_inds['gdp_growth_pct']:.1f}%")
+            if isinstance(hq_inds.get("inflation_pct"), float):
+                macro_parts.append(f"inflation {hq_inds['inflation_pct']:.1f}%")
+            if isinstance(hq_inds.get("interest_rate_pct"), float):
+                macro_parts.append(f"policy rate {hq_inds['interest_rate_pct']:.2f}%")
+            hq_macro = f"HQ country ({hq.name}) macro: {', '.join(macro_parts)}" if macro_parts else f"HQ country ({hq.name})"
 
     _STOCK_ANGLES = [
         # 0: geographic revenue risk
