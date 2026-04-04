@@ -169,5 +169,10 @@ export default defineNuxtConfig({
     '/blog/chinas-18-billion-trade-grip-on-nigeria-the-hidden-dependency-that-shapes-africas-largest-economy-3': { redirect: { to: '/blog/chinas-18-billion-trade-grip-on-nigeria-the-hidden-dependency-that-shapes-africas-largest-economy/', statusCode: 301 } },
     '/blog/nigeria-oil-exports-the-us-stocks-at-risk-from-africa-petro-giant-1/': { redirect: { to: '/blog/nigeria-oil-exports-the-us-stocks-at-risk-from-africa-petro-giant/', statusCode: 301 } },
     '/blog/nigeria-oil-exports-the-us-stocks-at-risk-from-africa-petro-giant-1': { redirect: { to: '/blog/nigeria-oil-exports-the-us-stocks-at-risk-from-africa-petro-giant/', statusCode: 301 } },
+    // Keyword cannibalization — duplicate posts consolidated
+    '/blog/teslas-213-billion-china-revenue-the-gigafactory-bet-every-tsla-investor-should-understand/': { redirect: { to: '/blog/tesla-china-revenue-percentage-2026/', statusCode: 301 } },
+    '/blog/teslas-213-billion-china-revenue-the-gigafactory-bet-every-tsla-investor-should-understand': { redirect: { to: '/blog/tesla-china-revenue-percentage-2026/', statusCode: 301 } },
+    '/blog/nvidia-china-revenue-percentage-fy2024-export-controls-tariff-risk-nvda-investors/': { redirect: { to: '/blog/nvidia-china-revenue-chip-export-controls-nvda/', statusCode: 301 } },
+    '/blog/nvidia-china-revenue-percentage-fy2024-export-controls-tariff-risk-nvda-investors': { redirect: { to: '/blog/nvidia-china-revenue-chip-export-controls-nvda/', statusCode: 301 } },
   },
 })
