@@ -72,14 +72,14 @@ Notable examples:
 
 ## Country Groups
 
-- [European Union](https://metricshour.com/groups/eu)
-- [G7](https://metricshour.com/groups/g7)
-- [G20](https://metricshour.com/groups/g20)
-- [BRICS](https://metricshour.com/groups/brics)
-- [ASEAN](https://metricshour.com/groups/asean)
-- [NATO](https://metricshour.com/groups/nato)
-- [OPEC](https://metricshour.com/groups/opec)
-- [OECD](https://metricshour.com/groups/oecd)
+- [European Union](https://metricshour.com/blocs/eu)
+- [G7](https://metricshour.com/blocs/g7)
+- [G20](https://metricshour.com/blocs/g20)
+- [BRICS](https://metricshour.com/blocs/brics)
+- [ASEAN](https://metricshour.com/blocs/asean)
+- [NATO](https://metricshour.com/blocs/nato)
+- [OPEC](https://metricshour.com/blocs/opec)
+- [OECD](https://metricshour.com/blocs/oecd)
 
 ## Blog (57 published posts)
 
