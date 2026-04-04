@@ -158,9 +158,6 @@ BLOC_PHRASES: list[tuple[str, str]] = [
     ("Commonwealth countries",    "commonwealth"),
     ("African Union",             "africa"),
     ("AU member states",          "africa"),
-    ("US-EU trade",               "eu"),
-    ("US–EU trade",               "eu"),
-    ("EU-US trade",               "eu"),
 ]
 
 SECTOR_PHRASES: list[tuple[str, str]] = [
@@ -175,24 +172,11 @@ SECTOR_PHRASES: list[tuple[str, str]] = [
     ("Industrial sector",             "industrials"),
     ("Energy sector",                 "energy"),
     ("oil and gas sector",            "energy"),
-    ("Consumer Discretionary sector", "consumer-discretionary"),
-    ("Consumer Staples sector",       "consumer-staples"),
-    ("Communication Services sector", "communication-services"),
     ("Materials sector",              "materials"),
     ("Real Estate sector",            "real-estate"),
     ("Utilities sector",              "utilities"),
 ]
 
-CORRIDORS = [
-    ("us", "cn", ["US-China trade", "US–China trade", "US and China trade", "China-US trade"]),
-    ("us", "de", ["US-Germany trade", "US–Germany trade"]),
-    ("us", "jp", ["US-Japan trade", "US–Japan trade"]),
-    ("us", "gb", ["US-UK trade", "US–UK trade"]),
-    ("us", "mx", ["US-Mexico trade", "US–Mexico trade"]),
-    ("us", "in", ["US-India trade", "US–India trade"]),
-    ("cn", "jp", ["China-Japan trade", "China–Japan trade"]),
-    ("gb", "ng", ["UK-Nigeria trade", "UK–Nigeria trade"]),
-]
 
 
 def _is_html(body: str) -> bool:
@@ -302,20 +286,6 @@ def _inject_country(body: str, name: str, code: str, html: bool) -> str:
     return body
 
 
-def _inject_corridors(body: str, html: bool) -> str:
-    for exp, imp, phrases in CORRIDORS:
-        url = f"{BASE}/trade/{exp}-{imp}"
-        if url in body: continue
-        for phrase in phrases:
-            if phrase not in body: continue
-            if html:
-                body = body.replace(phrase, f'<a href="{url}" class="link-corridor">{phrase}</a>', 1)
-            else:
-                if f'[{phrase}]' in body: continue
-                body = body.replace(phrase, f'[{phrase}]({url})', 1)
-            break
-    return body
-
 
 def _inject_blocs(body: str, html: bool) -> str:
     """Inject links to /blocs/{slug} pages for recognizable bloc/grouping phrases."""
@@ -411,7 +381,6 @@ def inject_deep_links(body: str) -> str:
         body = _inject_stock(body, ticker, names, html)
     for country_name, code in sorted(COUNTRIES.items(), key=lambda x: -len(x[0])):
         body = _inject_country(body, country_name, code, html)
-    body = _inject_corridors(body, html)
     body = _inject_blocs(body, html)
     body = _inject_sectors(body, html)
     body = _post_clean(body)
