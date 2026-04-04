@@ -81,7 +81,7 @@ Notable examples:
 - [OPEC](https://metricshour.com/blocs/opec)
 - [OECD](https://metricshour.com/blocs/oecd)
 
-## Blog (57 published posts)
+## Blog (55 published posts)
 
 Data-driven articles on geographic revenue risk, trade war exposure, and macro analysis.
 Full list: https://metricshour.com/blog/
