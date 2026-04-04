@@ -372,7 +372,7 @@
 
       <ShareEmbed
         :embed-url="`/embed/trade/${pair}`"
-        :download-url="`/api/trade/${pair.split('-')[0].toUpperCase()}/${pair.split('-')[1].toUpperCase()}/download`"
+        :download-url="`${apiBase}/api/trade/${pair.split('-')[0].toUpperCase()}/${pair.split('-')[1].toUpperCase()}/download`"
       />
 
       <!-- Newsletter -->
@@ -390,6 +390,7 @@
 const route = useRoute()
 const { get, post } = useApi()
 const { r2Fetch } = useR2Fetch()
+const { public: { apiBase } } = useRuntimeConfig()
 
 const pair = route.params.pair as string
 // Support both slug format (united-states--china) and ISO code format (us-cn)

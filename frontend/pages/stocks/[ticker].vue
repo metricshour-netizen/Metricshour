@@ -397,7 +397,7 @@
 
       <ShareEmbed
         :embed-url="`/embed/stocks/${ticker.toLowerCase()}`"
-        :download-url="`/api/assets/${ticker}/prices/download?interval=1d&limit=365`"
+        :download-url="`${apiBase}/api/assets/${ticker}/prices/download?interval=1d&limit=365`"
       />
 
       <!-- Newsletter -->
@@ -422,6 +422,7 @@ const route = useRoute()
 const { get, post, del } = useApi()
 const { r2Fetch } = useR2Fetch()
 const { isLoggedIn } = useAuth()
+const { public: { apiBase } } = useRuntimeConfig()
 
 const ticker = (route.params.ticker as string).toUpperCase()
 

@@ -437,7 +437,7 @@
 
       <ShareEmbed
         :embed-url="`/embed/country/${code.toLowerCase()}`"
-        :download-url="`/api/countries/${code}/indicators/download`"
+        :download-url="`${apiBase}/api/countries/${code}/indicators/download`"
       />
 
       <!-- Newsletter -->
@@ -457,6 +457,7 @@ const route = useRoute()
 const { get, post, del } = useApi()
 const { r2Fetch } = useR2Fetch()
 const { isLoggedIn } = useAuth()
+const { public: { apiBase } } = useRuntimeConfig()
 
 const code = (route.params.code as string).toLowerCase()
 
