@@ -150,13 +150,38 @@
           <NuxtLink to="/markets/" class="text-xs text-purple-400 hover:text-purple-300 border border-purple-800/40 px-3 py-1.5 rounded-lg transition-colors">
             ← All Markets
           </NuxtLink>
-          <NuxtLink to="/markets?tab=stock" class="text-xs text-gray-400 hover:text-gray-300 border border-[#1f2937] px-3 py-1.5 rounded-lg transition-colors">
-            Browse Stocks →
+          <NuxtLink to="/stocks/" class="text-xs text-gray-400 hover:text-gray-300 border border-[#1f2937] px-3 py-1.5 rounded-lg transition-colors">
+            S&P 500 Stocks →
+          </NuxtLink>
+          <NuxtLink to="/etfs/" class="text-xs text-gray-400 hover:text-gray-300 border border-[#1f2937] px-3 py-1.5 rounded-lg transition-colors">
+            ETFs →
+          </NuxtLink>
+          <NuxtLink to="/rates/" class="text-xs text-gray-400 hover:text-gray-300 border border-[#1f2937] px-3 py-1.5 rounded-lg transition-colors">
+            Interest Rates →
           </NuxtLink>
         </div>
       </div>
 
-      <p class="text-xs text-gray-700 text-center">Data: Marketstack · FRED · NYSE · NASDAQ · CME</p>
+      <!-- Related Indices -->
+      <div v-if="relatedIndices?.length" class="bg-[#111827] border border-[#1f2937] rounded-xl p-6 mb-6">
+        <h2 class="text-base font-bold text-white mb-3">More Market Indices</h2>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          <NuxtLink
+            v-for="idx in relatedIndices"
+            :key="idx.symbol"
+            :to="`/indices/${idx.symbol.toLowerCase()}/`"
+            class="flex items-center gap-2 bg-[#0d1117] border border-[#1f2937] hover:border-purple-800/40 rounded-lg px-3 py-2.5 transition-colors group"
+          >
+            <span class="text-lg">{{ regionIcon(idx.sector) }}</span>
+            <div class="min-w-0">
+              <div class="text-xs font-bold text-white group-hover:text-purple-400 transition-colors truncate">{{ idx.name }}</div>
+              <div class="text-[10px] text-gray-600 font-mono">{{ idx.symbol }}</div>
+            </div>
+          </NuxtLink>
+        </div>
+      </div>
+
+      <p class="text-xs text-gray-700 text-center">Data: Tiingo · FRED · NYSE · NASDAQ · CME</p>
 
       <!-- Newsletter -->
       <div class="mt-8 border border-gray-800 rounded-xl p-6 bg-gray-900/40">
@@ -195,6 +220,16 @@ const { data: pageInsights } = useAsyncData(
 const { data: pricesRaw } = useAsyncData(
   `index-prices-${symbol}`,
   () => get<any[]>(`/api/assets/${symbol}/prices?interval=1d&limit=365`).catch(() => []),
+  { server: false },
+)
+
+// ── Related indices ──────────────────────────────────────────────────────────
+const { data: relatedIndices } = useAsyncData(
+  `related-index-${symbol}`,
+  async () => {
+    const all = await get<any[]>('/api/assets?type=index&limit=20').catch(() => [])
+    return (all || []).filter((a: any) => a.symbol !== symbol).slice(0, 6)
+  },
   { server: false },
 )
 

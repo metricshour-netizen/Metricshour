@@ -159,6 +159,30 @@
               <div>Membership: <span class="text-gray-400">Official bloc rosters</span></div>
             </div>
           </section>
+
+          <!-- Other Blocs -->
+          <section v-if="otherBlocs?.length">
+            <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Explore Other Blocs</h2>
+            <div class="space-y-2">
+              <NuxtLink
+                v-for="b in otherBlocs"
+                :key="b.slug"
+                :to="`/blocs/${b.slug}/`"
+                class="flex items-center gap-3 bg-[#111827] border border-[#1f2937] hover:border-emerald-700 rounded-xl px-4 py-3 transition-colors group"
+              >
+                <span class="text-2xl">{{ b.emoji }}</span>
+                <div class="min-w-0">
+                  <div class="text-sm font-bold text-white group-hover:text-emerald-400 transition-colors">{{ b.name }}</div>
+                  <div class="text-[10px] text-gray-600">{{ b.full_name }}</div>
+                </div>
+              </NuxtLink>
+            </div>
+            <div class="mt-3 flex gap-3">
+              <NuxtLink to="/blocs/" class="text-xs text-emerald-400 hover:text-emerald-300 transition-colors">All blocs →</NuxtLink>
+              <NuxtLink to="/countries/" class="text-xs text-gray-500 hover:text-gray-300 transition-colors">Countries →</NuxtLink>
+              <NuxtLink to="/trade/" class="text-xs text-gray-500 hover:text-gray-300 transition-colors">Trade flows →</NuxtLink>
+            </div>
+          </section>
         </div>
       </div>
     </main>
@@ -175,6 +199,16 @@ const { data: bloc, pending, error } = await useFetch(`/api/blocs/${slug}`, {
   baseURL: apiBase,
   key: `bloc-${slug}`,
 })
+
+// ── Other blocs ─────────────────────────────────────────────────────────────
+const { data: otherBlocs } = useAsyncData(
+  `other-blocs-${slug}`,
+  async () => {
+    const res = await $fetch<any[]>('/api/blocs', { baseURL: apiBase }).catch(() => [])
+    return (res || []).filter((b: any) => b.slug !== slug)
+  },
+  { server: false },
+)
 
 // ── Formatters ────────────────────────────────────────────────────────────────
 function fmtGdp(v: number | null | undefined): string | null {

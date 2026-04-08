@@ -143,13 +143,41 @@
           <NuxtLink to="/fx/" class="text-xs text-emerald-400 hover:text-emerald-300 border border-emerald-800/40 px-3 py-1.5 rounded-lg transition-colors">
             ← All Forex
           </NuxtLink>
-          <NuxtLink to="/countries/" class="text-xs text-gray-400 hover:text-gray-300 border border-[#1f2937] px-3 py-1.5 rounded-lg transition-colors">
-            Country Data →
+          <NuxtLink v-if="baseCountry" :to="`/countries/${baseCountry.code}/`" class="text-xs text-gray-400 hover:text-gray-300 border border-[#1f2937] px-3 py-1.5 rounded-lg transition-colors">
+            {{ FLAG_MAP[baseCcy] || '' }} {{ baseCountry.name }} →
+          </NuxtLink>
+          <NuxtLink v-if="quoteCountry" :to="`/countries/${quoteCountry.code}/`" class="text-xs text-gray-400 hover:text-gray-300 border border-[#1f2937] px-3 py-1.5 rounded-lg transition-colors">
+            {{ FLAG_MAP[quoteCcy] || '' }} {{ quoteCountry.name }} →
+          </NuxtLink>
+          <NuxtLink to="/rates/" class="text-xs text-gray-400 hover:text-gray-300 border border-[#1f2937] px-3 py-1.5 rounded-lg transition-colors">
+            Interest Rates →
           </NuxtLink>
         </div>
       </div>
 
-      <p class="text-xs text-gray-700 text-center mb-8">Data: Marketstack · FRED · ECB</p>
+      <!-- Related Currency Pairs -->
+      <div v-if="relatedFx?.length" class="bg-[#111827] border border-[#1f2937] rounded-xl p-6 mb-6">
+        <h2 class="text-base font-bold text-white mb-3">More Currency Pairs</h2>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          <NuxtLink
+            v-for="p in relatedFx"
+            :key="p.symbol"
+            :to="`/fx/${p.symbol.toLowerCase()}/`"
+            class="flex items-center gap-2 bg-[#0d1117] border border-[#1f2937] hover:border-emerald-800/40 rounded-lg px-3 py-2.5 transition-colors group"
+          >
+            <span class="text-sm">{{ pairFlags(p.symbol) }}</span>
+            <div class="min-w-0">
+              <div class="text-xs font-bold text-white group-hover:text-emerald-400 transition-colors font-mono">{{ p.symbol }}</div>
+              <div class="text-[10px] text-gray-600 truncate">{{ p.name }}</div>
+            </div>
+          </NuxtLink>
+        </div>
+        <div class="mt-3">
+          <NuxtLink to="/fx/" class="text-xs text-emerald-400 hover:text-emerald-300 transition-colors">View all forex pairs →</NuxtLink>
+        </div>
+      </div>
+
+      <p class="text-xs text-gray-700 text-center mb-8">Data: Tiingo · FRED · ECB</p>
 
       <!-- Newsletter -->
       <div class="border border-gray-800 rounded-xl p-6 bg-gray-900/40">
@@ -188,6 +216,34 @@ const { data: pageInsights } = useAsyncData(
 const { data: pricesRaw } = useAsyncData(
   `fx-prices-${symbol}`,
   () => get<any[]>(`/api/assets/${symbol}/prices?interval=1d&limit=365`).catch(() => []),
+  { server: false },
+)
+
+// ── Currency → country mapping ───────────────────────────────────────────────
+const CURRENCY_COUNTRY: Record<string, { code: string; name: string }> = {
+  USD: { code: 'us', name: 'United States' }, EUR: { code: 'de', name: 'Eurozone' },
+  GBP: { code: 'gb', name: 'United Kingdom' }, JPY: { code: 'jp', name: 'Japan' },
+  CHF: { code: 'ch', name: 'Switzerland' }, AUD: { code: 'au', name: 'Australia' },
+  CAD: { code: 'ca', name: 'Canada' }, NZD: { code: 'nz', name: 'New Zealand' },
+  CNY: { code: 'cn', name: 'China' }, HKD: { code: 'hk', name: 'Hong Kong' },
+  SEK: { code: 'se', name: 'Sweden' }, NOK: { code: 'no', name: 'Norway' },
+  DKK: { code: 'dk', name: 'Denmark' }, SGD: { code: 'sg', name: 'Singapore' },
+  MXN: { code: 'mx', name: 'Mexico' }, BRL: { code: 'br', name: 'Brazil' },
+  INR: { code: 'in', name: 'India' }, KRW: { code: 'kr', name: 'South Korea' },
+  ZAR: { code: 'za', name: 'South Africa' }, TRY: { code: 'tr', name: 'Turkey' },
+}
+const baseCcy = symbol.slice(0, 3)
+const quoteCcy = symbol.slice(3, 6)
+const baseCountry = CURRENCY_COUNTRY[baseCcy] ?? null
+const quoteCountry = CURRENCY_COUNTRY[quoteCcy] ?? null
+
+// ── Related FX pairs ────────────────────────────────────────────────────────
+const { data: relatedFx } = useAsyncData(
+  `related-fx-${symbol}`,
+  async () => {
+    const all = await get<any[]>('/api/assets?type=fx&limit=12').catch(() => [])
+    return (all || []).filter((a: any) => a.symbol !== symbol).slice(0, 6)
+  },
   { server: false },
 )
 

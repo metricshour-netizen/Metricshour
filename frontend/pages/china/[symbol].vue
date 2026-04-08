@@ -158,6 +158,30 @@
         </div>
       </div>
 
+      <!-- Related China A-Shares -->
+      <div v-if="relatedChina?.length" class="bg-[#111827] border border-[#1f2937] rounded-xl p-6 mb-6">
+        <h2 class="text-base font-bold text-white mb-3">More China A-Shares</h2>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          <NuxtLink
+            v-for="s in relatedChina"
+            :key="s.symbol"
+            :to="`/china/${s.symbol.toLowerCase()}/`"
+            class="flex items-center gap-2 bg-[#0d1117] border border-[#1f2937] hover:border-emerald-800/40 rounded-lg px-3 py-2.5 transition-colors group"
+          >
+            <span class="text-base">🇨🇳</span>
+            <div class="min-w-0">
+              <div class="text-xs font-bold text-white group-hover:text-emerald-400 transition-colors truncate">{{ s.name }}</div>
+              <div class="text-[10px] text-gray-600 font-mono">{{ s.symbol }} · {{ s.exchange }}</div>
+            </div>
+          </NuxtLink>
+        </div>
+        <div class="mt-3 flex gap-3">
+          <NuxtLink to="/china/" class="text-xs text-emerald-400 hover:text-emerald-300 transition-colors">View all China A-Shares →</NuxtLink>
+          <NuxtLink to="/countries/cn/" class="text-xs text-gray-500 hover:text-gray-300 transition-colors">🇨🇳 China macro data →</NuxtLink>
+          <NuxtLink to="/markets/" class="text-xs text-gray-500 hover:text-gray-300 transition-colors">Markets →</NuxtLink>
+        </div>
+      </div>
+
       <p class="text-xs text-gray-700 mt-4">Data: Tiingo · Prices in CNY · Updated daily after Shanghai/Shenzhen market close (07:00 UTC)</p>
     </main>
   </div>
@@ -203,6 +227,16 @@ const { data: pageSummary } = useAsyncData(
 const { data: pageInsights } = useAsyncData(
   `insights-stock-${symbol.value}`,
   () => get<any[]>(`/api/insights/stock/${symbol.value}`).catch(() => []),
+  { server: false },
+)
+
+// ── Related China stocks ─────────────────────────────────────────────────────
+const { data: relatedChina } = useAsyncData(
+  `related-china-${symbol.value}`,
+  async () => {
+    const all = await get<any[]>('/api/assets?type=stock&exchange=SHG,SHE&limit=12').catch(() => [])
+    return (all || []).filter((a: any) => a.symbol !== symbol.value).slice(0, 6)
+  },
   { server: false },
 )
 

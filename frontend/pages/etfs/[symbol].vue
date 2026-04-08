@@ -149,7 +149,31 @@
         </div>
       </div>
 
-      <p class="text-xs text-gray-700 text-center mb-8">Data: Marketstack · NYSE · NASDAQ</p>
+      <!-- Related ETFs -->
+      <div v-if="relatedEtfs?.length" class="bg-[#111827] border border-[#1f2937] rounded-xl p-6 mb-6">
+        <h2 class="text-base font-bold text-white mb-3">More ETFs</h2>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          <NuxtLink
+            v-for="e in relatedEtfs"
+            :key="e.symbol"
+            :to="`/etfs/${e.symbol.toLowerCase()}/`"
+            class="flex items-center gap-2 bg-[#0d1117] border border-[#1f2937] hover:border-sky-800/40 rounded-lg px-3 py-2.5 transition-colors group"
+          >
+            <span class="text-lg">{{ categoryIcon(e.sector) }}</span>
+            <div class="min-w-0">
+              <div class="text-xs font-bold text-white group-hover:text-sky-400 transition-colors truncate">{{ e.name }}</div>
+              <div class="text-[10px] text-gray-600 font-mono">{{ e.symbol }}</div>
+            </div>
+          </NuxtLink>
+        </div>
+        <div class="mt-3 flex gap-3">
+          <NuxtLink to="/etfs/" class="text-xs text-sky-400 hover:text-sky-300 transition-colors">View all ETFs →</NuxtLink>
+          <NuxtLink to="/stocks/" class="text-xs text-gray-500 hover:text-gray-300 transition-colors">Stocks →</NuxtLink>
+          <NuxtLink to="/indices/" class="text-xs text-gray-500 hover:text-gray-300 transition-colors">Indices →</NuxtLink>
+        </div>
+      </div>
+
+      <p class="text-xs text-gray-700 text-center mb-8">Data: Tiingo · NYSE · NASDAQ</p>
 
       <!-- Newsletter -->
       <div class="border border-gray-800 rounded-xl p-6 bg-gray-900/40">
@@ -188,6 +212,16 @@ const { data: pageInsights } = useAsyncData(
 const { data: pricesRaw } = useAsyncData(
   `etf-prices-${symbol}`,
   () => get<any[]>(`/api/assets/${symbol}/prices?interval=1d&limit=365`).catch(() => []),
+  { server: false },
+)
+
+// ── Related ETFs ─────────────────────────────────────────────────────────────
+const { data: relatedEtfs } = useAsyncData(
+  `related-etf-${symbol}`,
+  async () => {
+    const all = await get<any[]>('/api/assets?type=etf&limit=12').catch(() => [])
+    return (all || []).filter((a: any) => a.symbol !== symbol).slice(0, 6)
+  },
   { server: false },
 )
 

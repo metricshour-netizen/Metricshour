@@ -175,7 +175,30 @@
         </div>
       </div>
 
-      <p class="text-xs text-gray-700 text-center mb-8">Data: Marketstack</p>
+      <!-- Related Cryptocurrencies -->
+      <div v-if="relatedCrypto?.length" class="bg-[#111827] border border-[#1f2937] rounded-xl p-6 mb-6">
+        <h2 class="text-base font-bold text-white mb-3">More Cryptocurrencies</h2>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          <NuxtLink
+            v-for="c in relatedCrypto"
+            :key="c.symbol"
+            :to="`/crypto/${c.symbol.toLowerCase()}/`"
+            class="flex items-center gap-2 bg-[#0d1117] border border-[#1f2937] hover:border-orange-800/40 rounded-lg px-3 py-2.5 transition-colors group"
+          >
+            <span class="text-lg">{{ COIN_META[c.symbol]?.icon ?? '🪙' }}</span>
+            <div class="min-w-0">
+              <div class="text-xs font-bold text-white group-hover:text-orange-400 transition-colors truncate">{{ c.name }}</div>
+              <div class="text-[10px] text-gray-600 font-mono">{{ c.symbol }}</div>
+            </div>
+          </NuxtLink>
+        </div>
+        <div class="mt-3 flex gap-2">
+          <NuxtLink to="/crypto/" class="text-xs text-orange-400 hover:text-orange-300 transition-colors">View all crypto →</NuxtLink>
+          <NuxtLink to="/markets/" class="text-xs text-gray-500 hover:text-gray-300 transition-colors">Markets →</NuxtLink>
+        </div>
+      </div>
+
+      <p class="text-xs text-gray-700 text-center mb-8">Data: Tiingo</p>
 
       <!-- Newsletter -->
       <div class="border border-gray-800 rounded-xl p-6 bg-gray-900/40">
@@ -220,6 +243,16 @@ const { data: pricesRaw } = useAsyncData(
 const { data: newsItems } = useAsyncData(
   `news-crypto-${symbol}`,
   () => get<any[]>(`/api/news/${symbol}`).catch(() => []),
+  { server: false },
+)
+
+// ── Related crypto ──────────────────────────────────────────────────────────
+const { data: relatedCrypto } = useAsyncData(
+  `related-crypto-${symbol}`,
+  async () => {
+    const all = await get<any[]>('/api/assets?type=crypto&limit=12').catch(() => [])
+    return (all || []).filter((a: any) => a.symbol !== symbol).slice(0, 6)
+  },
   { server: false },
 )
 

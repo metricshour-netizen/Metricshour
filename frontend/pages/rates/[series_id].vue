@@ -89,6 +89,32 @@
       Series not found or no data yet.
     </div>
 
+    <!-- Related Rate Series -->
+    <div v-if="relatedRates?.length" class="bg-[#111827] border border-[#1f2937] rounded-xl p-6 mt-6 mb-4">
+      <h2 class="text-base font-bold text-white mb-3">Related Rate Series</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <NuxtLink
+          v-for="r in relatedRates"
+          :key="r.series_id"
+          :to="`/rates/${r.series_id.toLowerCase()}/`"
+          class="flex items-center justify-between bg-[#0d1117] border border-[#1f2937] hover:border-blue-800/40 rounded-lg px-4 py-3 transition-colors group"
+        >
+          <div class="min-w-0">
+            <div class="text-xs font-bold text-white group-hover:text-blue-400 transition-colors truncate">{{ r.label }}</div>
+            <div class="text-[10px] text-gray-600 font-mono">{{ r.series_id }}</div>
+          </div>
+          <div v-if="r.value != null" class="text-sm font-bold text-blue-300 tabular-nums shrink-0 ml-3">
+            {{ fmtValue(r.value, r.unit || '%') }}
+          </div>
+        </NuxtLink>
+      </div>
+      <div class="mt-3 flex gap-3">
+        <NuxtLink to="/rates/" class="text-xs text-blue-400 hover:text-blue-300 transition-colors">All rates →</NuxtLink>
+        <NuxtLink to="/yield-curve/" class="text-xs text-gray-500 hover:text-gray-300 transition-colors">Yield curve →</NuxtLink>
+        <NuxtLink to="/fx/" class="text-xs text-gray-500 hover:text-gray-300 transition-colors">Forex →</NuxtLink>
+      </div>
+    </div>
+
     <p class="text-xs text-gray-700 mt-4">Data: Federal Reserve Economic Data (FRED) · St. Louis Fed · Updated daily</p>
   </main>
 </template>
@@ -97,6 +123,21 @@
 const route = useRoute()
 const seriesId = (route.params.series_id as string).toUpperCase()
 const { get } = useApi()
+
+// ── Related rate series ──────────────────────────────────────────────────────
+const { data: relatedRates } = useAsyncData(
+  `related-rates-${seriesId}`,
+  async () => {
+    const dashboard = await get<any>('/api/rates/').catch(() => null)
+    if (!dashboard) return []
+    const all: any[] = []
+    for (const items of Object.values(dashboard as Record<string, any[]>)) {
+      if (Array.isArray(items)) all.push(...items)
+    }
+    return all.filter((s: any) => s.series_id !== seriesId).slice(0, 6)
+  },
+  { server: false },
+)
 
 const activeDays = ref(365)
 
