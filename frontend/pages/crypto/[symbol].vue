@@ -253,7 +253,6 @@ const { data: relatedCrypto } = useAsyncData(
     const all = await get<any[]>('/api/assets?type=crypto&limit=12').catch(() => [])
     return (all || []).filter((a: any) => a.symbol !== symbol).slice(0, 6)
   },
-  { server: false },
 )
 
 // ── Insight rotation — cycles through most recent 3 over consecutive days ─────

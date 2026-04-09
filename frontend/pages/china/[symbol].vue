@@ -237,7 +237,6 @@ const { data: relatedChina } = useAsyncData(
     const all = await get<any[]>('/api/assets?type=stock&exchange=SHG,SHE&limit=12').catch(() => [])
     return (all || []).filter((a: any) => a.symbol !== symbol.value).slice(0, 6)
   },
-  { server: false },
 )
 
 const featuredIdx = computed(() => {

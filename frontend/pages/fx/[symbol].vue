@@ -244,7 +244,6 @@ const { data: relatedFx } = useAsyncData(
     const all = await get<any[]>('/api/assets?type=fx&limit=12').catch(() => [])
     return (all || []).filter((a: any) => a.symbol !== symbol).slice(0, 6)
   },
-  { server: false },
 )
 
 // ── Insight rotation ──────────────────────────────────────────────────────────

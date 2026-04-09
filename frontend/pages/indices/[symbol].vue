@@ -230,7 +230,6 @@ const { data: relatedIndices } = useAsyncData(
     const all = await get<any[]>('/api/assets?type=index&limit=20').catch(() => [])
     return (all || []).filter((a: any) => a.symbol !== symbol).slice(0, 6)
   },
-  { server: false },
 )
 
 // ── Chart ─────────────────────────────────────────────────────────────────────

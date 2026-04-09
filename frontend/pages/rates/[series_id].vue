@@ -130,13 +130,13 @@ const { data: relatedRates } = useAsyncData(
   async () => {
     const dashboard = await get<any>('/api/rates/').catch(() => null)
     if (!dashboard) return []
+    const cats = (dashboard as any).categories ?? dashboard
     const all: any[] = []
-    for (const items of Object.values(dashboard as Record<string, any[]>)) {
+    for (const items of Object.values(cats as Record<string, any[]>)) {
       if (Array.isArray(items)) all.push(...items)
     }
     return all.filter((s: any) => s.series_id !== seriesId).slice(0, 6)
   },
-  { server: false },
 )
 
 const activeDays = ref(365)

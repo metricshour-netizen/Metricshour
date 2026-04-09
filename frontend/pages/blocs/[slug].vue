@@ -207,7 +207,6 @@ const { data: otherBlocs } = useAsyncData(
     const res = await $fetch<any[]>('/api/blocs', { baseURL: apiBase }).catch(() => [])
     return (res || []).filter((b: any) => b.slug !== slug)
   },
-  { server: false },
 )
 
 // ── Formatters ────────────────────────────────────────────────────────────────
