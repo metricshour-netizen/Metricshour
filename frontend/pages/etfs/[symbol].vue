@@ -197,6 +197,16 @@ const { data: asset, pending, error } = await useAsyncData(
 )
 if (!asset.value) throw createError({ statusCode: 404, statusMessage: 'ETF not found' })
 
+// ── Related ETFs (must be before server:false calls for SSR) ────────────────
+const { public: { apiBase: _apiBase } } = useRuntimeConfig()
+const { data: relatedEtfs } = await useAsyncData(
+  `related-etf-${symbol}`,
+  async () => {
+    const all = await $fetch<any[]>('/api/assets', { baseURL: _apiBase, params: { type: 'etf', limit: 12 } }).catch(() => [])
+    return (all || []).filter((a: any) => a.symbol !== symbol).slice(0, 6)
+  },
+)
+
 const { data: pageSummary } = useAsyncData(
   `summary-etf-${symbol}`,
   () => get<any>(`/api/summaries/etf/${symbol}`).catch(() => null),
@@ -213,16 +223,6 @@ const { data: pricesRaw } = useAsyncData(
   `etf-prices-${symbol}`,
   () => get<any[]>(`/api/assets/${symbol}/prices?interval=1d&limit=365`).catch(() => []),
   { server: false },
-)
-
-// ── Related ETFs ─────────────────────────────────────────────────────────────
-const { public: { apiBase: _apiBase } } = useRuntimeConfig()
-const { data: relatedEtfs } = await useAsyncData(
-  `related-etf-${symbol}`,
-  async () => {
-    const all = await $fetch<any[]>('/api/assets', { baseURL: _apiBase, params: { type: 'etf', limit: 12 } }).catch(() => [])
-    return (all || []).filter((a: any) => a.symbol !== symbol).slice(0, 6)
-  },
 )
 
 // ── Insight rotation ──────────────────────────────────────────────────────────

@@ -201,6 +201,16 @@ const { data: asset, pending, error } = await useAsyncData(
 )
 if (!asset.value) throw createError({ statusCode: 404, statusMessage: 'Currency pair not found' })
 
+// ── Related FX pairs (must be before server:false calls for SSR) ────────────
+const { public: { apiBase: _apiBase } } = useRuntimeConfig()
+const { data: relatedFx } = await useAsyncData(
+  `related-fx-${symbol}`,
+  async () => {
+    const all = await $fetch<any[]>('/api/assets', { baseURL: _apiBase, params: { type: 'fx', limit: 12 } }).catch(() => [])
+    return (all || []).filter((a: any) => a.symbol !== symbol).slice(0, 6)
+  },
+)
+
 const { data: pageSummary } = useAsyncData(
   `summary-fx-${symbol}`,
   () => get<any>(`/api/summaries/fx/${symbol}`).catch(() => null),
@@ -236,16 +246,6 @@ const baseCcy = symbol.slice(0, 3)
 const quoteCcy = symbol.slice(3, 6)
 const baseCountry = CURRENCY_COUNTRY[baseCcy] ?? null
 const quoteCountry = CURRENCY_COUNTRY[quoteCcy] ?? null
-
-// ── Related FX pairs ────────────────────────────────────────────────────────
-const { public: { apiBase: _apiBase } } = useRuntimeConfig()
-const { data: relatedFx } = await useAsyncData(
-  `related-fx-${symbol}`,
-  async () => {
-    const all = await $fetch<any[]>('/api/assets', { baseURL: _apiBase, params: { type: 'fx', limit: 12 } }).catch(() => [])
-    return (all || []).filter((a: any) => a.symbol !== symbol).slice(0, 6)
-  },
-)
 
 // ── Insight rotation ──────────────────────────────────────────────────────────
 const featuredIdx = computed(() => {

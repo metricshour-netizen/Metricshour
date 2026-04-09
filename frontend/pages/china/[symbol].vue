@@ -204,6 +204,16 @@ const { data: stock, pending, error } = useAsyncData(
   () => get<any>(`/api/assets/${symbol.value}`).catch(() => null),
 )
 
+// ── Related China stocks (must be before server:false calls for SSR) ─────────
+const { public: { apiBase: _apiBase } } = useRuntimeConfig()
+const { data: relatedChina } = await useAsyncData(
+  `related-china-${symbol.value}`,
+  async () => {
+    const all = await $fetch<any[]>('/api/assets', { baseURL: _apiBase, params: { type: 'stock', exchange: 'SHG', limit: 12 } }).catch(() => [])
+    return (all || []).filter((a: any) => a.symbol !== symbol.value).slice(0, 6)
+  },
+)
+
 const interval = ref('1d')
 
 const { data: pricesRaw, pending: pricesPending } = useAsyncData(
@@ -228,16 +238,6 @@ const { data: pageInsights } = useAsyncData(
   `insights-stock-${symbol.value}`,
   () => get<any[]>(`/api/insights/stock/${symbol.value}`).catch(() => []),
   { server: false },
-)
-
-// ── Related China stocks ─────────────────────────────────────────────────────
-const { public: { apiBase: _apiBase } } = useRuntimeConfig()
-const { data: relatedChina } = await useAsyncData(
-  `related-china-${symbol.value}`,
-  async () => {
-    const all = await $fetch<any[]>('/api/assets', { baseURL: _apiBase, params: { type: 'stock', exchange: 'SHG', limit: 12 } }).catch(() => [])
-    return (all || []).filter((a: any) => a.symbol !== symbol.value).slice(0, 6)
-  },
 )
 
 const featuredIdx = computed(() => {

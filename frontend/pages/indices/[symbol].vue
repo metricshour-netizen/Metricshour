@@ -205,6 +205,16 @@ const { data: index, pending, error } = await useAsyncData(
 )
 if (!index.value) throw createError({ statusCode: 404, statusMessage: 'Index not found' })
 
+// ── Related indices (must be before server:false calls for SSR) ──────────────
+const { public: { apiBase: _apiBase } } = useRuntimeConfig()
+const { data: relatedIndices } = await useAsyncData(
+  `related-index-${symbol}`,
+  async () => {
+    const all = await $fetch<any[]>('/api/assets', { baseURL: _apiBase, params: { type: 'index', limit: 20 } }).catch(() => [])
+    return (all || []).filter((a: any) => a.symbol !== symbol).slice(0, 6)
+  },
+)
+
 const { data: pageSummary } = useAsyncData(
   `summary-index-${symbol}`,
   () => get<any>(`/api/summaries/index/${symbol}`).catch(() => null),
@@ -221,16 +231,6 @@ const { data: pricesRaw } = useAsyncData(
   `index-prices-${symbol}`,
   () => get<any[]>(`/api/assets/${symbol}/prices?interval=1d&limit=365`).catch(() => []),
   { server: false },
-)
-
-// ── Related indices ──────────────────────────────────────────────────────────
-const { public: { apiBase: _apiBase } } = useRuntimeConfig()
-const { data: relatedIndices } = await useAsyncData(
-  `related-index-${symbol}`,
-  async () => {
-    const all = await $fetch<any[]>('/api/assets', { baseURL: _apiBase, params: { type: 'index', limit: 20 } }).catch(() => [])
-    return (all || []).filter((a: any) => a.symbol !== symbol).slice(0, 6)
-  },
 )
 
 // ── Chart ─────────────────────────────────────────────────────────────────────
