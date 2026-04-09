@@ -224,10 +224,11 @@ const { data: pricesRaw } = useAsyncData(
 )
 
 // ── Related indices ──────────────────────────────────────────────────────────
+const { public: { apiBase: _apiBase } } = useRuntimeConfig()
 const { data: relatedIndices } = await useAsyncData(
   `related-index-${symbol}`,
   async () => {
-    const all = await get<any[]>('/api/assets?type=index&limit=20').catch(() => [])
+    const all = await $fetch<any[]>('/api/assets', { baseURL: _apiBase, params: { type: 'index', limit: 20 } }).catch(() => [])
     return (all || []).filter((a: any) => a.symbol !== symbol).slice(0, 6)
   },
 )

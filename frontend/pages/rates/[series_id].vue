@@ -125,10 +125,11 @@ const seriesId = (route.params.series_id as string).toUpperCase()
 const { get } = useApi()
 
 // ── Related rate series ──────────────────────────────────────────────────────
+const { public: { apiBase: _apiBase } } = useRuntimeConfig()
 const { data: relatedRates } = await useAsyncData(
   `related-rates-${seriesId}`,
   async () => {
-    const dashboard = await get<any>('/api/rates/').catch(() => null)
+    const dashboard = await $fetch<any>('/api/rates/', { baseURL: _apiBase }).catch(() => null)
     if (!dashboard) return []
     const cats = (dashboard as any).categories ?? dashboard
     const all: any[] = []

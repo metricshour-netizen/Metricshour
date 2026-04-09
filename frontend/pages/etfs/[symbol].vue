@@ -216,10 +216,11 @@ const { data: pricesRaw } = useAsyncData(
 )
 
 // ── Related ETFs ─────────────────────────────────────────────────────────────
+const { public: { apiBase: _apiBase } } = useRuntimeConfig()
 const { data: relatedEtfs } = await useAsyncData(
   `related-etf-${symbol}`,
   async () => {
-    const all = await get<any[]>('/api/assets?type=etf&limit=12').catch(() => [])
+    const all = await $fetch<any[]>('/api/assets', { baseURL: _apiBase, params: { type: 'etf', limit: 12 } }).catch(() => [])
     return (all || []).filter((a: any) => a.symbol !== symbol).slice(0, 6)
   },
 )

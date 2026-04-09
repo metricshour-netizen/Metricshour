@@ -238,10 +238,11 @@ const baseCountry = CURRENCY_COUNTRY[baseCcy] ?? null
 const quoteCountry = CURRENCY_COUNTRY[quoteCcy] ?? null
 
 // ── Related FX pairs ────────────────────────────────────────────────────────
+const { public: { apiBase: _apiBase } } = useRuntimeConfig()
 const { data: relatedFx } = await useAsyncData(
   `related-fx-${symbol}`,
   async () => {
-    const all = await get<any[]>('/api/assets?type=fx&limit=12').catch(() => [])
+    const all = await $fetch<any[]>('/api/assets', { baseURL: _apiBase, params: { type: 'fx', limit: 12 } }).catch(() => [])
     return (all || []).filter((a: any) => a.symbol !== symbol).slice(0, 6)
   },
 )

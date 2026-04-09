@@ -247,10 +247,11 @@ const { data: newsItems } = useAsyncData(
 )
 
 // ── Related crypto ──────────────────────────────────────────────────────────
-const { data: relatedCrypto } = useAsyncData(
+const { public: { apiBase: _apiBase } } = useRuntimeConfig()
+const { data: relatedCrypto } = await useAsyncData(
   `related-crypto-${symbol}`,
   async () => {
-    const all = await get<any[]>('/api/assets?type=crypto&limit=12').catch(() => [])
+    const all = await $fetch<any[]>('/api/assets', { baseURL: _apiBase, params: { type: 'crypto', limit: 12 } }).catch(() => [])
     return (all || []).filter((a: any) => a.symbol !== symbol).slice(0, 6)
   },
 )
