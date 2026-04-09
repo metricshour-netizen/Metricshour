@@ -224,7 +224,7 @@ const { data: pricesRaw } = useAsyncData(
 )
 
 // ── Related indices ──────────────────────────────────────────────────────────
-const { data: relatedIndices } = useAsyncData(
+const { data: relatedIndices } = await useAsyncData(
   `related-index-${symbol}`,
   async () => {
     const all = await get<any[]>('/api/assets?type=index&limit=20').catch(() => [])

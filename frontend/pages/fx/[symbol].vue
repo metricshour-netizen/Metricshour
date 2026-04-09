@@ -238,7 +238,7 @@ const baseCountry = CURRENCY_COUNTRY[baseCcy] ?? null
 const quoteCountry = CURRENCY_COUNTRY[quoteCcy] ?? null
 
 // ── Related FX pairs ────────────────────────────────────────────────────────
-const { data: relatedFx } = useAsyncData(
+const { data: relatedFx } = await useAsyncData(
   `related-fx-${symbol}`,
   async () => {
     const all = await get<any[]>('/api/assets?type=fx&limit=12').catch(() => [])

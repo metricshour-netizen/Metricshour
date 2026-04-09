@@ -201,7 +201,7 @@ const { data: bloc, pending, error } = await useFetch(`/api/blocs/${slug}`, {
 })
 
 // ── Other blocs ─────────────────────────────────────────────────────────────
-const { data: otherBlocs } = useAsyncData(
+const { data: otherBlocs } = await useAsyncData(
   `other-blocs-${slug}`,
   async () => {
     const res = await $fetch<any[]>('/api/blocs', { baseURL: apiBase }).catch(() => [])

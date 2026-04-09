@@ -216,7 +216,7 @@ const { data: pricesRaw } = useAsyncData(
 )
 
 // ── Related ETFs ─────────────────────────────────────────────────────────────
-const { data: relatedEtfs } = useAsyncData(
+const { data: relatedEtfs } = await useAsyncData(
   `related-etf-${symbol}`,
   async () => {
     const all = await get<any[]>('/api/assets?type=etf&limit=12').catch(() => [])

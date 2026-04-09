@@ -231,10 +231,10 @@ const { data: pageInsights } = useAsyncData(
 )
 
 // ── Related China stocks ─────────────────────────────────────────────────────
-const { data: relatedChina } = useAsyncData(
+const { data: relatedChina } = await useAsyncData(
   `related-china-${symbol.value}`,
   async () => {
-    const all = await get<any[]>('/api/assets?type=stock&exchange=SHG,SHE&limit=12').catch(() => [])
+    const all = await get<any[]>('/api/assets?type=stock&exchange=SHG&limit=12').catch(() => [])
     return (all || []).filter((a: any) => a.symbol !== symbol.value).slice(0, 6)
   },
 )
