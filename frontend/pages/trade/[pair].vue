@@ -372,7 +372,7 @@
 
       <ShareEmbed
         :embed-url="`/embed/trade/${pair}`"
-        :download-url="`${apiBase}/api/trade/${pair.split('-')[0].toUpperCase()}/${pair.split('-')[1].toUpperCase()}/download`"
+        :download-url="`${apiBase}/api/trade/${isoA}/${isoB}/download`"
       />
 
       <!-- Newsletter -->
@@ -404,27 +404,32 @@ const { data, pending, error } = await useAsyncData(
 )
 if (!data.value) throw createError({ statusCode: 404, statusMessage: 'Trade corridor not found' })
 
+// Use ISO codes from API response — canonical_pair uses name slugs (e.g. "united-states-china")
+// which would otherwise produce wrong codes when splitting by "-"
+const isoA = data.value.exporter?.code ?? codeA.toUpperCase()
+const isoB = data.value.importer?.code ?? codeB.toUpperCase()
+
 const { data: pageSummary } = useAsyncData(
-  `summary-trade-${codeA}-${codeB}`,
-  () => get<any>(`/api/summaries/trade/${codeA.toUpperCase()}-${codeB.toUpperCase()}`).catch(() => null),
+  `summary-trade-${isoA}-${isoB}`,
+  () => get<any>(`/api/summaries/trade/${isoA}-${isoB}`).catch(() => null),
   { server: false },
 )
 
 const { data: pageInsights } = useAsyncData(
-  `insights-trade-${codeA}-${codeB}`,
-  () => get<any[]>(`/api/insights/trade/${codeA.toUpperCase()}-${codeB.toUpperCase()}`).catch(() => []),
+  `insights-trade-${isoA}-${isoB}`,
+  () => get<any[]>(`/api/insights/trade/${isoA}-${isoB}`).catch(() => []),
   { server: false },
 )
 
 // Stocks exposed to this trade corridor (lazy, non-blocking)
 const { data: stocksA } = useAsyncData(
-  `corridor-stocks-a-${codeA}`,
-  () => get<any[]>(`/api/countries/${codeA}/stocks`).catch(() => []),
+  `corridor-stocks-a-${isoA}`,
+  () => get<any[]>(`/api/countries/${isoA}/stocks`).catch(() => []),
   { server: false },
 )
 const { data: stocksB } = useAsyncData(
-  `corridor-stocks-b-${codeB}`,
-  () => get<any[]>(`/api/countries/${codeB}/stocks`).catch(() => []),
+  `corridor-stocks-b-${isoB}`,
+  () => get<any[]>(`/api/countries/${isoB}/stocks`).catch(() => []),
   { server: false },
 )
 
