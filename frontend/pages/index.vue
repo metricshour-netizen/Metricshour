@@ -31,8 +31,8 @@
 
       <!-- Live signal badges -->
       <div class="flex items-center justify-center gap-2 flex-wrap mb-6">
-        <NuxtLink to="/countries/" class="inline-flex items-center gap-1.5 bg-[#111827] border border-[#1f2937] hover:border-indigo-800 text-xs text-gray-400 px-3 py-1.5 rounded-full transition-colors">
-          <span class="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse inline-block"></span>
+        <NuxtLink to="/countries/" class="inline-flex items-center gap-1.5 bg-[#111827] border border-[#1f2937] hover:border-emerald-800 text-xs text-gray-400 px-3 py-1.5 rounded-full transition-colors">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block"></span>
           196 countries tracked
         </NuxtLink>
         <NuxtLink to="/markets/" class="inline-flex items-center gap-1.5 bg-[#111827] border border-[#1f2937] hover:border-sky-800 text-xs text-gray-400 px-3 py-1.5 rounded-full transition-colors">
@@ -55,7 +55,7 @@
       <!-- H1 — primary SEO heading -->
       <h1 class="text-3xl sm:text-4xl lg:text-5xl font-black text-white mb-4 leading-tight tracking-tight">
         Which stocks get hurt when
-        <span class="text-indigo-400"> trade wars</span> escalate?
+        <span class="text-emerald-400"> trade wars</span> escalate?
       </h1>
       <p class="text-gray-400 text-base sm:text-lg max-w-2xl mx-auto mb-8 leading-relaxed">
         MetricsHour maps where every stock earns its revenue — by country, from SEC filings.
@@ -75,7 +75,7 @@
             @keydown.enter.prevent="selectFocused"
             @focus="searchQuery.length >= 2 && (searchOpen = true)"
             placeholder="Search countries, stocks, trade pairs..."
-            class="w-full bg-[#111827] border border-[#1f2937] focus:border-indigo-500 text-white rounded-lg px-4 py-3.5 pl-9 text-sm focus:outline-none transition-colors font-mono"
+            class="w-full bg-[#111827] border border-[#1f2937] focus:border-emerald-500 text-white rounded-lg px-4 py-3.5 pl-9 text-sm focus:outline-none transition-colors font-mono"
             autocomplete="off"
             spellcheck="false"
           />
@@ -116,7 +116,7 @@
               class="flex items-center gap-2.5 px-3 py-2.5 hover:bg-[#1f2937] transition-colors"
               :class="focusedIndex === (searchResults.countries.length + i) ? 'bg-[#1f2937]' : ''"
             >
-              <span class="text-xs font-mono font-bold text-indigo-400 w-14 shrink-0">{{ a.symbol }}</span>
+              <span class="text-xs font-mono font-bold text-emerald-400 w-14 shrink-0">{{ a.symbol }}</span>
               <span class="text-sm text-gray-300 flex-1 truncate">{{ a.name }}</span>
               <span class="text-[10px] text-gray-600 capitalize shrink-0 bg-[#1f2937] px-1.5 py-0.5 rounded">{{ a.asset_type }}</span>
             </NuxtLink>
@@ -141,14 +141,14 @@
         <span class="text-gray-700">·</span>
         <NuxtLink to="/markets/" class="hover:text-gray-400 transition-colors font-medium">Browse Markets →</NuxtLink>
         <span class="text-gray-700">·</span>
-        <NuxtLink to="/feed/" class="text-indigo-500 hover:text-indigo-400 transition-colors flex items-center gap-1 font-medium">
-          <span class="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse inline-block"></span>
+        <NuxtLink to="/feed/" class="text-emerald-700 hover:text-emerald-500 transition-colors flex items-center gap-1 font-medium">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse inline-block"></span>
           Live Feed
         </NuxtLink>
       </div>
 
       <div v-if="!isLoggedIn" class="flex items-center justify-center gap-3 mt-5">
-        <NuxtLink to="/join/" class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors">Create Free Account</NuxtLink>
+        <NuxtLink to="/join/" class="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors">Create Free Account</NuxtLink>
         <NuxtLink to="/login/" class="text-sm text-gray-400 hover:text-white transition-colors">Sign In →</NuxtLink>
       </div>
 
@@ -187,16 +187,16 @@
       <div class="flex items-center justify-between mb-3">
         <div class="flex items-center gap-2">
           <span class="text-[10px] font-mono font-bold text-gray-600 uppercase tracking-widest">Economic Calendar</span>
-          <span class="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse inline-block"></span>
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block"></span>
         </div>
-        <NuxtLink to="/feed/" class="text-xs text-indigo-500 hover:text-indigo-400 transition-colors">View feed →</NuxtLink>
+        <NuxtLink to="/feed/" class="text-xs text-emerald-600 hover:text-emerald-400 transition-colors">View feed →</NuxtLink>
       </div>
       <div class="overflow-x-auto -mx-4 px-4">
         <div class="flex gap-3 min-w-max pb-1">
           <div
             v-for="ev in calendarEvents"
             :key="ev.id"
-            class="bg-[#111827] border border-[#1f2937] rounded-lg p-3 min-w-[160px] shrink-0 hover:border-indigo-800 transition-colors cursor-pointer"
+            class="bg-[#111827] border border-[#1f2937] rounded-lg p-3 min-w-[160px] shrink-0 hover:border-emerald-800 transition-colors cursor-pointer"
             @click="navigateTo(calendarLink(ev))"
           >
             <div class="text-[10px] font-mono text-gray-600 mb-1.5">{{ calEventTime(ev) }}</div>
@@ -222,13 +222,13 @@
       <!-- Card 1: Geographic Revenue -->
       <NuxtLink
         to="/screener/"
-        class="bg-[#111827] border border-[#1f2937] hover:border-indigo-700 rounded-xl p-5 transition-all group"
+        class="bg-[#111827] border border-[#1f2937] hover:border-emerald-700 rounded-xl p-5 transition-all group"
       >
         <div class="flex items-start gap-3 mb-3">
           <span class="text-xl">📊</span>
           <div>
-            <div class="text-[10px] font-mono font-bold tracking-widest text-indigo-500 uppercase mb-0.5">Geographic Revenue · SEC EDGAR</div>
-            <h2 class="text-sm font-black text-white group-hover:text-indigo-400 transition-colors leading-snug">
+            <div class="text-[10px] font-mono font-bold tracking-widest text-emerald-600 uppercase mb-0.5">Geographic Revenue · SEC EDGAR</div>
+            <h2 class="text-sm font-black text-white group-hover:text-emerald-400 transition-colors leading-snug">
               See exactly where every stock earns its money
             </h2>
           </div>
@@ -237,7 +237,7 @@
           Apple: 19% China. NVIDIA: 57% Asia. Tesla: 22% China.
           Pulled from actual SEC 10-K filings — not estimates. Filter 300+ stocks by any country.
         </p>
-        <div class="inline-flex items-center gap-1.5 text-xs text-indigo-500 group-hover:text-indigo-400 transition-colors font-semibold">
+        <div class="inline-flex items-center gap-1.5 text-xs text-emerald-600 group-hover:text-emerald-400 transition-colors font-semibold">
           Screen stocks by geography →
         </div>
       </NuxtLink>
@@ -320,7 +320,7 @@
       <div>
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-sm font-bold text-white font-mono uppercase tracking-widest">Top Stocks</h2>
-          <NuxtLink to="/stocks/" class="text-xs text-indigo-500 hover:text-indigo-400 transition-colors">View all →</NuxtLink>
+          <NuxtLink to="/stocks/" class="text-xs text-emerald-600 hover:text-emerald-400 transition-colors">View all →</NuxtLink>
         </div>
         <div v-if="stocksPending" class="space-y-2">
           <div v-for="i in 5" :key="i" class="h-14 bg-[#111827] rounded-lg animate-pulse"/>
@@ -331,12 +331,12 @@
             v-for="s in topStocks"
             :key="s.symbol"
             :to="`/stocks/${s.symbol.toLowerCase()}`"
-            class="flex items-center gap-3 bg-[#111827] border border-[#1f2937] hover:border-indigo-500 rounded-lg px-3 py-2.5 transition-colors group"
+            class="flex items-center gap-3 bg-[#111827] border border-[#1f2937] hover:border-emerald-500 rounded-lg px-3 py-2.5 transition-colors group"
           >
             <span class="text-lg leading-none shrink-0" aria-hidden="true">{{ s.country?.flag || '🏢' }}</span>
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-1.5">
-                <span class="text-xs font-mono font-bold text-indigo-400 group-hover:text-indigo-300">{{ s.symbol }}</span>
+                <span class="text-xs font-mono font-bold text-emerald-400 group-hover:text-emerald-300">{{ s.symbol }}</span>
                 <span class="text-xs text-gray-500 truncate">{{ s.name }}</span>
               </div>
               <span class="text-[10px] text-gray-700">{{ s.sector }}</span>
@@ -353,7 +353,7 @@
       <div>
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-sm font-bold text-white font-mono uppercase tracking-widest">G20 Countries</h2>
-          <NuxtLink to="/countries/" class="text-xs text-indigo-500 hover:text-indigo-400 transition-colors">View all 196 →</NuxtLink>
+          <NuxtLink to="/countries/" class="text-xs text-emerald-600 hover:text-emerald-400 transition-colors">View all 196 →</NuxtLink>
         </div>
         <div v-if="countriesPending" class="grid grid-cols-4 sm:grid-cols-5 gap-2">
           <div v-for="i in 20" :key="i" class="h-16 bg-[#111827] rounded-lg animate-pulse"/>
@@ -363,7 +363,7 @@
             v-for="c in (countries?.length ? countries : G20_FALLBACK)"
             :key="c.code"
             :to="`/countries/${c.code.toLowerCase()}`"
-            class="bg-[#111827] border border-[#1f2937] hover:border-indigo-500 rounded-lg p-2 transition-colors flex flex-col items-center"
+            class="bg-[#111827] border border-[#1f2937] hover:border-emerald-500 rounded-lg p-2 transition-colors flex flex-col items-center"
           >
             <div class="text-xl mb-0.5" aria-hidden="true">{{ c.flag }}</div>
             <div class="text-[9px] font-mono text-gray-600 text-center leading-tight">{{ c.name.split(' ')[0] }}</div>
@@ -377,7 +377,7 @@
     <section class="mb-12">
       <div class="flex items-center justify-between mb-4">
         <h2 class="text-sm font-bold text-white font-mono uppercase tracking-widest">Major Trade Relationships</h2>
-        <NuxtLink to="/trade/" class="text-xs text-indigo-500 hover:text-indigo-400 transition-colors">View all →</NuxtLink>
+        <NuxtLink to="/trade/" class="text-xs text-emerald-600 hover:text-emerald-400 transition-colors">View all →</NuxtLink>
       </div>
       <div v-if="tradesPending" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <div v-for="i in 6" :key="i" class="h-20 bg-[#111827] rounded-lg animate-pulse"/>
@@ -387,13 +387,13 @@
           v-for="t in topTrades"
           :key="`${t.exporter?.code}-${t.importer?.code}`"
           :to="`/trade/${t.exporter?.slug ?? t.exporter?.code?.toLowerCase()}--${t.importer?.slug ?? t.importer?.code?.toLowerCase()}`"
-          class="bg-[#111827] border border-[#1f2937] hover:border-indigo-500 rounded-lg p-4 transition-colors group"
+          class="bg-[#111827] border border-[#1f2937] hover:border-emerald-500 rounded-lg p-4 transition-colors group"
         >
           <div class="flex items-center gap-2 mb-2">
             <span class="text-xl" aria-hidden="true">{{ t.exporter?.flag }}</span>
             <span class="text-xs text-gray-600" aria-hidden="true">↔</span>
             <span class="text-xl" aria-hidden="true">{{ t.importer?.flag }}</span>
-            <span class="text-xs font-semibold text-white ml-1 truncate group-hover:text-indigo-400 transition-colors">
+            <span class="text-xs font-semibold text-white ml-1 truncate group-hover:text-emerald-400 transition-colors">
               {{ t.exporter?.name }} – {{ t.importer?.name }}
             </span>
           </div>
@@ -434,7 +434,7 @@
 
     <!-- ── Newsletter capture ─────────────────────────────────────────────── -->
     <section class="max-w-xl mx-auto px-4 py-10 text-center">
-      <p class="text-xs font-mono text-indigo-400 uppercase tracking-widest mb-2">Weekly Briefing</p>
+      <p class="text-xs font-mono text-emerald-500 uppercase tracking-widest mb-2">Weekly Briefing</p>
       <h2 class="text-xl font-bold text-white mb-2">The macro moves that matter, explained.</h2>
       <p class="text-sm text-gray-400 mb-5">GDP shifts, trade flows, central bank decisions — plain language, every week. Free.</p>
       <NewsletterCapture source="homepage" button-text="Subscribe free" class="max-w-sm mx-auto" />
@@ -635,7 +635,7 @@ function fmtUsd(v: number | null | undefined): string {
 // ── Adaptive Spotlight ────────────────────────────────────────────────────────
 // Map card type → Tailwind colour classes (explicit names so Tailwind JIT keeps them)
 const CARD_COLORS: Record<string, { text: string; border: string; dot: string; hover: string }> = {
-  stock_insight:     { text: 'text-indigo-400',  border: 'border-indigo-900',  dot: 'bg-indigo-400',  hover: 'hover:border-indigo-600' },
+  stock_insight:     { text: 'text-emerald-400', border: 'border-emerald-900', dot: 'bg-emerald-400', hover: 'hover:border-emerald-600' },
   geo_revenue:       { text: 'text-sky-400',     border: 'border-sky-900',     dot: 'bg-sky-400',     hover: 'hover:border-sky-600' },
   country_insight:   { text: 'text-amber-400',   border: 'border-amber-900',   dot: 'bg-amber-400',   hover: 'hover:border-amber-600' },
   trade_insight:     { text: 'text-violet-400',  border: 'border-violet-900',  dot: 'bg-violet-400',  hover: 'hover:border-violet-600' },
