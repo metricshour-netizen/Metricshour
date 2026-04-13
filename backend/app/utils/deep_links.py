@@ -332,6 +332,11 @@ def _post_clean(body):
     body = _r.sub(r'\[([A-Za-z][^\[\]]+?)\s+\([A-Z]{2,5}\)\]\(([^\)]+)\)', lambda m: '[' + m.group(1) + '](' + m.group(2) + ')', body)
     # Remove duplicate link-in-parens: [X](url) ([X](url)) → [X](url)
     body = _r.sub(r'(\[[^\]]+\]\(https://www\.metricshour\.com/[^)]+\))\s*\(\1\)', r'\1', body)
+    # Strip bare URL citations: [text](url) [https://...] → [text](url)
+    body = _r.sub(r'(\[[^\]]+\]\([^)]+\))\s+\[https?://[^\]]+\](?!\()', r'\1', body)
+    # Strip orphan bare URL citations: word [https://...] → word
+    body = _r.sub(r'\s+\[https?://[^\]]+\](?!\()', ' ', body)
+    body = _r.sub(r'(?<!\])\[https?://[^\]]+\](?!\()', '', body)
     return body
 
 def detect_entities(body: str) -> tuple[set[str], set[str]]:
