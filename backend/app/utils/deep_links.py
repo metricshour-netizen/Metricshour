@@ -327,6 +327,8 @@ def _inject_sectors(body: str, html: bool) -> str:
 def _post_clean(body):
     """Remove double-link artifacts from the injector."""
     import re as _r
+    # [[inner_text](inner_url) trailing_text](outer_url) → [inner_text](inner_url) trailing_text
+    body = _r.sub(r'\[\[([^\]]+)\]\(([^)]+)\)([^\]]*)\]\([^)]+\)', r'[\1](\2)\3', body)
     body = _r.sub(r'\[(\[[^\]]+\]\([^\)]+\))\]\([^\)]+\)', lambda m: m.group(1), body)
     body = _r.sub(r'\[([^\[\]]+?)\s*\([^\)]*\[[^\]]+\]\([^\)]+\)[^\)]*\)\]\(([^\)]+)\)', lambda m: '[' + m.group(1) + '](' + m.group(2) + ')', body)
     body = _r.sub(r'\[([A-Za-z][^\[\]]+?)\s+\([A-Z]{2,5}\)\]\(([^\)]+)\)', lambda m: '[' + m.group(1) + '](' + m.group(2) + ')', body)

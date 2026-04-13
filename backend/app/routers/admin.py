@@ -228,6 +228,22 @@ def _unique_slug(db: Session, base: str) -> str:
     return slug
 
 
+def _sanitize_body(body: str) -> str:
+    """Strip AI markdown artifacts before storing blog body."""
+    import re as _re
+    # Double (or more) exclamation marks → single
+    body = _re.sub(r'!!+', '!', body)
+    # Orphaned image tags with no URL: ![alt text] on its own line → remove line
+    body = _re.sub(r'^\s*!\[[^\]]*\]\s*$', '', body, flags=_re.MULTILINE)
+    # Double-bracket links from deep_link injection collision: [[text](url) extra](url2) → [text](url) extra
+    body = _re.sub(r'\[\[([^\]]+)\]\(([^)]+)\)([^\]]*)\]\([^)]+\)', r'[\1](\2)\3', body)
+    # Obsidian-style bare double brackets [[...]] → remove brackets, keep text
+    body = _re.sub(r'\[\[([^\]]+)\]\]', r'\1', body)
+    # Collapse triple+ blank lines
+    body = _re.sub(r'\n{3,}', '\n\n', body)
+    return body.strip()
+
+
 def _auto_excerpt(body: str, max_len: int = 280) -> str:
     """Extract a clean plaintext excerpt from markdown body."""
     import re as _re
@@ -270,12 +286,13 @@ def create_blog(
 ):
     now = datetime.now(timezone.utc)
     slug = _unique_slug(db, _slugify(body.title))
-    excerpt = body.excerpt or _auto_excerpt(body.body)
+    clean_body = _sanitize_body(body.body)
+    excerpt = body.excerpt or _auto_excerpt(clean_body)
 
     post = BlogPost(
         title=body.title,
         slug=slug,
-        body=body.body,
+        body=clean_body,
         excerpt=excerpt,
         author_name=body.author_name,
         author_slug=body.author_slug,
@@ -317,12 +334,15 @@ def update_blog(
     if post is None:
         raise HTTPException(status_code=404, detail="Blog post not found")
 
-    for field, value in body.model_dump(exclude_none=True).items():
+    updates = body.model_dump(exclude_none=True)
+    if "body" in updates:
+        updates["body"] = _sanitize_body(updates["body"])
+    for field, value in updates.items():
         setattr(post, field, value)
 
     # Auto-regenerate excerpt if body changed but no explicit excerpt provided
     if body.body and not body.excerpt:
-        post.excerpt = _auto_excerpt(body.body)
+        post.excerpt = _auto_excerpt(post.body)
 
     post.updated_at = datetime.now(timezone.utc)
     db.commit()
@@ -347,7 +367,7 @@ def publish_blog(
         raise HTTPException(status_code=409, detail="Post already published")
 
     now = datetime.now(timezone.utc)
-    post.body = inject_deep_links(post.body or "")
+    post.body = inject_deep_links(_sanitize_body(post.body or ""))
     post.status = BlogStatus.published
     post.published_at = now
     post.updated_at = now
@@ -377,22 +397,27 @@ def publish_blog(
         merged = list(dict.fromkeys(existing_country_ids + detected_country_ids))
         post.related_country_ids = merged
 
-    # Auto-create FeedEvent
-    event = FeedEvent(
-        title=post.title,
-        body=post.excerpt or _auto_excerpt(post.body),
-        event_type="blog",
-        event_subtype="article",
-        source_url=f"/blog/{post.slug}/",
-        image_url=post.cover_image_url,
-        published_at=now,
-        related_asset_ids=post.related_asset_ids,
-        related_country_ids=post.related_country_ids,
-        importance_score=post.importance_score,
-        event_data={"slug": post.slug, "author": post.author_name},
-    )
-    db.add(event)
-    db.flush()  # get event.id before committing
+    # Auto-create FeedEvent — reuse existing one if source_url already taken
+    source_url = f"/blog/{post.slug}/"
+    event = db.execute(
+        select(FeedEvent).where(FeedEvent.source_url == source_url)
+    ).scalar_one_or_none()
+    if event is None:
+        event = FeedEvent(
+            title=post.title,
+            body=post.excerpt or _auto_excerpt(post.body),
+            event_type="blog",
+            event_subtype="article",
+            source_url=source_url,
+            image_url=post.cover_image_url,
+            published_at=now,
+            related_asset_ids=post.related_asset_ids,
+            related_country_ids=post.related_country_ids,
+            importance_score=post.importance_score,
+            event_data={"slug": post.slug, "author": post.author_name},
+        )
+        db.add(event)
+        db.flush()  # get event.id before committing
 
     post.feed_event_id = event.id
     db.commit()
