@@ -54,12 +54,12 @@
 
       <!-- H1 — primary SEO heading -->
       <h1 class="text-3xl sm:text-4xl lg:text-5xl font-black text-white mb-4 leading-tight tracking-tight">
-        Which stocks get hurt when
-        <span class="text-emerald-400"> trade wars</span> escalate?
+        Which stocks feel it
+        <span class="text-emerald-400"> first?</span>
       </h1>
       <p class="text-gray-400 text-base sm:text-lg max-w-2xl mx-auto mb-8 leading-relaxed">
         MetricsHour maps where every stock earns its revenue — by country, from SEC filings.
-        When tariffs hit or a market slows, you see which companies are exposed. Instantly.
+        Rate hikes, tariffs, a slowdown in Germany — see which companies are exposed before the market prices it in.
       </p>
 
       <!-- Search bar -->
