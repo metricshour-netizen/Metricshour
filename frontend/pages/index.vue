@@ -37,7 +37,7 @@
         </NuxtLink>
         <NuxtLink to="/markets/" class="inline-flex items-center gap-1.5 bg-[#111827] border border-[#1f2937] hover:border-sky-800 text-xs text-gray-400 px-3 py-1.5 rounded-full transition-colors">
           <span class="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse inline-block"></span>
-          130+ assets live
+          300+ stocks mapped
         </NuxtLink>
         <NuxtLink
           v-if="activeSpotlight"
@@ -50,19 +50,16 @@
           <span v-if="activeSpotlight.tag" class="opacity-50 font-normal text-[10px] uppercase tracking-wider">{{ activeSpotlight.tag }} ·</span>
           {{ activeSpotlight.text }}
         </NuxtLink>
-        <span v-else class="inline-flex items-center gap-1.5 bg-[#111827] border border-emerald-900 text-xs text-emerald-400 px-3 py-1.5 rounded-full font-medium">
-          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block"></span>
-          Loading intelligence...
-        </span>
       </div>
 
       <!-- H1 — primary SEO heading -->
       <h1 class="text-3xl sm:text-4xl lg:text-5xl font-black text-white mb-4 leading-tight tracking-tight">
-        Global Financial
-        <span class="text-emerald-400"> Intelligence</span>
+        Which stocks get hurt when
+        <span class="text-emerald-400"> trade wars</span> escalate?
       </h1>
-      <p class="text-gray-500 text-base sm:text-lg max-w-xl mx-auto mb-8 leading-relaxed">
-        Connect stock revenue exposure, bilateral trade flows, and macro data — all in one place.
+      <p class="text-gray-400 text-base sm:text-lg max-w-2xl mx-auto mb-8 leading-relaxed">
+        MetricsHour maps where every stock earns its revenue — by country, from SEC filings.
+        When tariffs hit or a market slows, you see which companies are exposed. Instantly.
       </p>
 
       <!-- Search bar -->
@@ -157,6 +154,34 @@
 
     </section>
 
+    <!-- ── Proof Strip — 3 concrete differentiating data points ────────────── -->
+    <section class="mb-10">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+
+        <NuxtLink to="/stocks/aapl" class="bg-[#111827] border border-[#1f2937] hover:border-emerald-700 rounded-xl p-4 transition-all group text-left">
+          <div class="text-[10px] font-mono text-gray-600 uppercase tracking-widest mb-2">Stock → Country exposure</div>
+          <div class="text-lg font-black text-white mb-1">Apple earns <span class="text-emerald-400">19%</span> from China</div>
+          <div class="text-xs text-gray-500 leading-relaxed mb-3">A tariff escalation doesn't hit all tech stocks equally. See which are most exposed.</div>
+          <div class="text-xs text-emerald-600 group-hover:text-emerald-400 transition-colors font-semibold">See all China-exposed stocks →</div>
+        </NuxtLink>
+
+        <NuxtLink to="/trade/us--cn" class="bg-[#111827] border border-[#1f2937] hover:border-amber-700 rounded-xl p-4 transition-all group text-left">
+          <div class="text-[10px] font-mono text-gray-600 uppercase tracking-widest mb-2">Trade flow → Stock impact</div>
+          <div class="text-lg font-black text-white mb-1"><span class="text-amber-400">$585B</span> US–China trade corridor</div>
+          <div class="text-xs text-gray-500 leading-relaxed mb-3">Every major trade relationship linked to the companies that depend on it most.</div>
+          <div class="text-xs text-amber-600 group-hover:text-amber-400 transition-colors font-semibold">View the US–China corridor →</div>
+        </NuxtLink>
+
+        <NuxtLink to="/screener/" class="bg-[#111827] border border-[#1f2937] hover:border-sky-700 rounded-xl p-4 transition-all group text-left">
+          <div class="text-[10px] font-mono text-gray-600 uppercase tracking-widest mb-2">Country macro → Portfolio</div>
+          <div class="text-lg font-black text-white mb-1">S&P 500 earns <span class="text-sky-400">43%</span> outside the US</div>
+          <div class="text-xs text-gray-500 leading-relaxed mb-3">Filter any stock by how much it earns from Europe, Asia, or EM — from actual SEC filings.</div>
+          <div class="text-xs text-sky-500 group-hover:text-sky-400 transition-colors font-semibold">Screen by geography →</div>
+        </NuxtLink>
+
+      </div>
+    </section>
+
     <!-- ── Economic Calendar Strip ────────────────────────────────────────── -->
     <section class="mb-10" v-if="calendarEvents.length">
       <div class="flex items-center justify-between mb-3">
@@ -194,30 +219,30 @@
     <!-- ── Outcome Cards ──────────────────────────────────────────────────── -->
     <section class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-12">
 
-      <!-- Card 1: Country Risk -->
+      <!-- Card 1: Geographic Revenue -->
       <NuxtLink
-        to="/countries/"
+        to="/screener/"
         class="bg-[#111827] border border-[#1f2937] hover:border-emerald-700 rounded-xl p-5 transition-all group"
       >
         <div class="flex items-start gap-3 mb-3">
           <span class="text-xl">📊</span>
           <div>
-            <div class="text-[10px] font-mono font-bold tracking-widest text-emerald-600 uppercase mb-0.5">Stock Revenue Exposure</div>
+            <div class="text-[10px] font-mono font-bold tracking-widest text-emerald-600 uppercase mb-0.5">Geographic Revenue · SEC EDGAR</div>
             <h2 class="text-sm font-black text-white group-hover:text-emerald-400 transition-colors leading-snug">
-              Find Stocks by Country Risk
+              See exactly where every stock earns its money
             </h2>
           </div>
         </div>
         <p class="text-xs text-gray-500 leading-relaxed mb-3">
-          Which stocks benefit from Germany's recovery? Which are exposed to China tensions?
-          Filter by geographic revenue from SEC EDGAR filings.
+          Apple: 19% China. NVIDIA: 57% Asia. Tesla: 22% China.
+          Pulled from actual SEC 10-K filings — not estimates. Filter 300+ stocks by any country.
         </p>
         <div class="inline-flex items-center gap-1.5 text-xs text-emerald-600 group-hover:text-emerald-400 transition-colors font-semibold">
-          Show me China-exposed stocks →
+          Screen stocks by geography →
         </div>
       </NuxtLink>
 
-      <!-- Card 2: Trade Wars -->
+      <!-- Card 2: Trade Corridors -->
       <NuxtLink
         to="/trade/"
         class="bg-[#111827] border border-[#1f2937] hover:border-amber-700 rounded-xl p-5 transition-all group"
@@ -225,18 +250,18 @@
         <div class="flex items-start gap-3 mb-3">
           <span class="text-xl">🌐</span>
           <div>
-            <div class="text-[10px] font-mono font-bold tracking-widest text-amber-600 uppercase mb-0.5">Bilateral Trade</div>
+            <div class="text-[10px] font-mono font-bold tracking-widest text-amber-600 uppercase mb-0.5">Bilateral Trade · UN Comtrade</div>
             <h2 class="text-sm font-black text-white group-hover:text-amber-400 transition-colors leading-snug">
-              Track Trade Wars in Real-Time
+              1,400+ trade corridors, linked to stocks
             </h2>
           </div>
         </div>
         <p class="text-xs text-gray-500 leading-relaxed mb-3">
-          US-China deficit widening? EUR-USD trade shifting?
-          See which stocks are impacted immediately. Every bilateral relationship with top products.
+          Every major country pair: trade volume, balance, and top products.
+          Click any corridor to see the stocks most exposed to that relationship.
         </p>
         <div class="inline-flex items-center gap-1.5 text-xs text-amber-600 group-hover:text-amber-400 transition-colors font-semibold">
-          View Trade Relationships →
+          Explore trade corridors →
         </div>
       </NuxtLink>
 
@@ -248,41 +273,41 @@
         <div class="flex items-start gap-3 mb-3">
           <span class="text-xl">🌍</span>
           <div>
-            <div class="text-[10px] font-mono font-bold tracking-widest text-blue-500 uppercase mb-0.5">Country Macro</div>
+            <div class="text-[10px] font-mono font-bold tracking-widest text-blue-500 uppercase mb-0.5">Country Macro · World Bank · IMF</div>
             <h2 class="text-sm font-black text-white group-hover:text-blue-400 transition-colors leading-snug">
-              196 Countries. 80+ Indicators. Connected.
+              196 countries, 80+ indicators — all linked to markets
             </h2>
           </div>
         </div>
         <p class="text-xs text-gray-500 leading-relaxed mb-3">
-          GDP, inflation, trade balance, debt — every country linked to every stock and trade pair.
-          World Bank · IMF · UN Comtrade data.
+          Germany slows → BMW, Siemens, BASF drop. Every country page shows GDP, inflation, debt,
+          trade balance — and which stocks are tied to it.
         </p>
         <div class="inline-flex items-center gap-1.5 text-xs text-blue-500 group-hover:text-blue-400 transition-colors font-semibold">
-          Browse Countries →
+          Browse countries →
         </div>
       </NuxtLink>
 
-      <!-- Card 4: Commodities chain -->
+      <!-- Card 4: Macro rates -->
       <NuxtLink
-        to="/commodities/"
+        to="/rates/"
         class="bg-[#111827] border border-[#1f2937] hover:border-orange-700 rounded-xl p-5 transition-all group"
       >
         <div class="flex items-start gap-3 mb-3">
-          <span class="text-xl">🛢️</span>
+          <span class="text-xl">📈</span>
           <div>
-            <div class="text-[10px] font-mono font-bold tracking-widest text-orange-500 uppercase mb-0.5">Commodities Chain</div>
+            <div class="text-[10px] font-mono font-bold tracking-widest text-orange-500 uppercase mb-0.5">Rates & Yields · FRED</div>
             <h2 class="text-sm font-black text-white group-hover:text-orange-400 transition-colors leading-snug">
-              Commodity → Economy → Portfolio
+              Fed rates, yield curve, and credit spreads
             </h2>
           </div>
         </div>
         <p class="text-xs text-gray-500 leading-relaxed mb-3">
-          Oil spikes. Germany's exports fall. Auto stocks drop.
-          See the full chain — before it hits your portfolio. 80+ instruments tracked.
+          Real-time Fed funds rate, 2Y/10Y spread, TIPS breakevens, and mortgage rates —
+          alongside the earnings calendar and trade data that drives them.
         </p>
         <div class="inline-flex items-center gap-1.5 text-xs text-orange-500 group-hover:text-orange-400 transition-colors font-semibold">
-          View Commodities →
+          View rates & yield curve →
         </div>
       </NuxtLink>
 
@@ -385,6 +410,25 @@
             </div>
           </div>
         </NuxtLink>
+      </div>
+    </section>
+
+    <!-- ── Why MetricsHour ───────────────────────────────────────────────── -->
+    <section class="mb-12 border border-[#1f2937] rounded-xl p-6 bg-[#0a1020]">
+      <p class="text-[10px] font-mono text-gray-600 uppercase tracking-widest mb-5 text-center">Why not just use...</p>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 text-sm">
+        <div>
+          <div class="font-bold text-gray-300 mb-1">Bloomberg / Koyfin</div>
+          <div class="text-gray-500 text-xs leading-relaxed">Bloomberg Terminal is $24,000/year. Koyfin is $500+/year. MetricsHour is free — with the geographic revenue data they charge for.</div>
+        </div>
+        <div>
+          <div class="font-bold text-gray-300 mb-1">FRED / World Bank</div>
+          <div class="text-gray-500 text-xs leading-relaxed">FRED has the macro data. World Bank has the indicators. We connect both directly to the stocks that depend on each country's economy.</div>
+        </div>
+        <div>
+          <div class="font-bold text-gray-300 mb-1">TradingView</div>
+          <div class="text-gray-500 text-xs leading-relaxed">TradingView shows what prices did. MetricsHour shows why — trade flows, geographic revenue, and macro context in one view.</div>
+        </div>
       </div>
     </section>
 
