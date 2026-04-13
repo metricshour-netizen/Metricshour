@@ -65,6 +65,7 @@
                prose-hr:border-gray-800
                prose-code:text-emerald-400 prose-code:bg-[#0d1117] prose-code:px-1 prose-code:rounded"
         v-html="renderedBody"
+        @click="handleProseClick"
       />
 
       <!-- Share buttons -->
@@ -146,6 +147,21 @@
 
 <script setup lang="ts">
 import { marked, Renderer } from 'marked'
+
+const router = useRouter()
+
+function handleProseClick(event: MouseEvent) {
+  const anchor = (event.target as HTMLElement).closest('a')
+  if (!anchor) return
+  const href = anchor.getAttribute('href')
+  if (!href) return
+  // Let external links open normally
+  if (href.startsWith('http') && !href.includes('metricshour.com')) return
+  event.preventDefault()
+  // Strip domain to get path
+  const path = href.startsWith('http') ? new URL(href).pathname : href
+  router.push(path)
+}
 
 // Custom renderer: add explicit classes to img/a/blockquote so they display
 // correctly without requiring @tailwindcss/typography plugin
