@@ -37,7 +37,7 @@
         </NuxtLink>
         <NuxtLink to="/markets/" class="inline-flex items-center gap-1.5 bg-[#111827] border border-[#1f2937] hover:border-sky-800 text-xs text-gray-400 px-3 py-1.5 rounded-full transition-colors">
           <span class="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse inline-block"></span>
-          775 stocks tracked
+          775+ stocks tracked
         </NuxtLink>
         <NuxtLink
           v-if="activeSpotlight"
@@ -58,7 +58,7 @@
         <span class="text-emerald-400"> your stock</span> make money from?
       </h1>
       <p class="text-gray-400 text-base sm:text-lg max-w-2xl mx-auto mb-8 leading-relaxed">
-        Country revenue breakdowns for 775 stocks, from SEC filings. Plus trade flows, macro data, and earnings. Free.
+        Country revenue breakdowns for 775+ stocks, from SEC filings. Plus trade flows, macro data, and earnings. Free.
       </p>
 
       <!-- Search bar -->
@@ -234,7 +234,7 @@
         </div>
         <p class="text-xs text-gray-500 leading-relaxed mb-3">
           Apple: 19% China. NVIDIA: 57% Asia. Tesla: 22% China.
-          Pulled from actual SEC 10-K filings — not estimates. Filter 775 stocks by any country.
+          Pulled from actual SEC 10-K filings — not estimates. Filter 775+ stocks by any country.
         </p>
         <div class="inline-flex items-center gap-1.5 text-xs text-emerald-600 group-hover:text-emerald-400 transition-colors font-semibold">
           Screen stocks by geography →
