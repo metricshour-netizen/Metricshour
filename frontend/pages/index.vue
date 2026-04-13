@@ -54,12 +54,12 @@
 
       <!-- H1 — primary SEO heading -->
       <h1 class="text-3xl sm:text-4xl lg:text-5xl font-black text-white mb-4 leading-tight tracking-tight">
-        Apple earns 19% from China.
-        <span class="text-emerald-400"> What about yours?</span>
+        See exactly where
+        <span class="text-emerald-400"> every stock</span> earns its money
       </h1>
       <p class="text-gray-400 text-base sm:text-lg max-w-2xl mx-auto mb-8 leading-relaxed">
-        MetricsHour maps every stock's revenue by country — from SEC filings.
-        See which companies are exposed to any market, rate move, or slowdown before it hits the price.
+        Country revenue breakdowns for 300+ stocks, straight from SEC filings.
+        Plus trade flows, macro data, and earnings — all in one place. Free.
       </p>
 
       <!-- Search bar -->
