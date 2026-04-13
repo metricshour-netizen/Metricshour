@@ -27,9 +27,9 @@ export default defineNuxtConfig({
     head: {
       htmlAttrs: { lang: 'en' },
       charset: 'utf-8',
-      title: 'MetricsHour — Global Financial Intelligence',
+      title: 'MetricsHour — Which Countries Does Your Stock Earn From?',
       meta: [
-        { name: 'description', content: 'Stocks, macro, trade flows, and commodities in one place. Understand how global events affect your investments.' },
+        { name: 'description', content: 'Country revenue breakdowns for 775+ stocks, from SEC filings. Plus bilateral trade flows, macro data, yield curve, and earnings — all free.' },
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
         { name: 'robots', content: 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1' },
         { property: 'og:site_name', content: 'MetricsHour' },

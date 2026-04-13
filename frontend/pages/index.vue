@@ -734,20 +734,25 @@ const tickerItems = computed(() => {
 })
 
 // ── SEO ───────────────────────────────────────────────────────────────────────
+const _title = 'MetricsHour — Which Countries Does Your Stock Earn From?'
+const _desc  = 'Country revenue breakdowns for 775+ stocks, straight from SEC filings. Plus bilateral trade flows, macro data, yield curve, and earnings — all free.'
+
 useSeoMeta({
-  title: 'MetricsHour — Global Financial Intelligence',
-  description: 'Connect stock geographic revenue, bilateral trade flows, and country macro data. 196 countries, 130+ assets, 38,000+ trade pairs. Free forever.',
-  ogTitle: 'MetricsHour — Global Financial Intelligence',
-  ogDescription: 'Connect stock geographic revenue, bilateral trade flows, and country macro data. 196 countries, 130+ assets, 38,000+ trade pairs. Free forever.',
+  title: _title,
+  description: _desc,
+  ogTitle: _title,
+  ogDescription: _desc,
   ogUrl: 'https://metricshour.com/',
   ogType: 'website',
   ogImage: 'https://cdn.metricshour.com/og/section/home.png',
   ogImageWidth: '1200',
   ogImageHeight: '630',
-  twitterTitle: 'MetricsHour — Global Financial Intelligence',
-  twitterDescription: 'Connect stock geographic revenue, bilateral trade flows, and country macro data. 196 countries, 130+ assets, 38,000+ trade pairs. Free forever.',
+  ogImageAlt: 'MetricsHour — stock country revenue, trade flows and macro data',
+  twitterTitle: _title,
+  twitterDescription: _desc,
   twitterImage: 'https://cdn.metricshour.com/og/section/home.png',
   twitterCard: 'summary_large_image',
+  twitterSite: '@metricshour',
 })
 
 useHead({
@@ -759,26 +764,55 @@ useHead({
       '@graph': [
         {
           '@type': 'Organization',
+          '@id': 'https://metricshour.com/#organization',
           name: 'MetricsHour',
           url: 'https://metricshour.com',
-          logo: 'https://metricshour.com/favicon.svg',
+          logo: {
+            '@type': 'ImageObject',
+            url: 'https://metricshour.com/favicon.svg',
+            width: 512,
+            height: 512,
+          },
           sameAs: [
             'https://twitter.com/metricshour',
             'https://www.instagram.com/metricshour',
             'https://www.linkedin.com/company/metricshour',
             'https://www.facebook.com/metricshour',
           ],
-          description: 'Global financial intelligence platform — stocks, macro data, bilateral trade flows, and commodities.',
+          description: _desc,
         },
         {
           '@type': 'WebSite',
+          '@id': 'https://metricshour.com/#website',
           name: 'MetricsHour',
           url: 'https://metricshour.com',
+          publisher: { '@id': 'https://metricshour.com/#organization' },
           potentialAction: {
             '@type': 'SearchAction',
-            target: { '@type': 'EntryPoint', urlTemplate: 'https://metricshour.com/?q={search_term_string}' },
+            target: { '@type': 'EntryPoint', urlTemplate: 'https://metricshour.com/stocks/{search_term_string}' },
             'query-input': 'required name=search_term_string',
           },
+        },
+        {
+          '@type': 'WebPage',
+          '@id': 'https://metricshour.com/#webpage',
+          url: 'https://metricshour.com/',
+          name: _title,
+          description: _desc,
+          isPartOf: { '@id': 'https://metricshour.com/#website' },
+          publisher: { '@id': 'https://metricshour.com/#organization' },
+          inLanguage: 'en-US',
+        },
+        {
+          '@type': 'Dataset',
+          '@id': 'https://metricshour.com/#dataset',
+          name: 'Stock Geographic Revenue Data',
+          description: 'Country-level revenue breakdowns for 775+ publicly listed stocks, sourced from SEC EDGAR 10-K and 10-Q filings.',
+          url: 'https://metricshour.com/screener/',
+          creator: { '@id': 'https://metricshour.com/#organization' },
+          license: 'https://metricshour.com/terms/',
+          isAccessibleForFree: true,
+          keywords: ['stock revenue by country', 'geographic revenue', 'SEC EDGAR', 'equity exposure', 'country risk'],
         },
       ],
     }),
