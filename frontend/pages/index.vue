@@ -158,25 +158,25 @@
     <section class="mb-10">
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
 
-        <NuxtLink to="/stocks/aapl" class="bg-[#111827] border border-[#1f2937] hover:border-emerald-700 rounded-xl p-4 transition-all group text-left">
+        <NuxtLink to="/stocks/aapl" class="bg-[#111827] border border-[#1f2937] hover:border-violet-700 rounded-xl p-4 transition-all group text-left">
           <div class="text-[10px] font-mono text-gray-600 uppercase tracking-widest mb-2">Stock → Country exposure</div>
-          <div class="text-lg font-black text-white mb-1">Apple earns <span class="text-emerald-400">19%</span> from China</div>
+          <div class="text-lg font-black text-white mb-1">Apple earns <span class="text-violet-400">19%</span> from China</div>
           <div class="text-xs text-gray-500 leading-relaxed mb-3">A tariff escalation doesn't hit all tech stocks equally. See which are most exposed.</div>
-          <div class="text-xs text-emerald-600 group-hover:text-emerald-400 transition-colors font-semibold">See all China-exposed stocks →</div>
+          <div class="text-xs text-violet-500 group-hover:text-violet-400 transition-colors font-semibold">See all China-exposed stocks →</div>
         </NuxtLink>
 
-        <NuxtLink to="/trade/us--cn" class="bg-[#111827] border border-[#1f2937] hover:border-amber-700 rounded-xl p-4 transition-all group text-left">
+        <NuxtLink to="/trade/us--cn" class="bg-[#111827] border border-[#1f2937] hover:border-rose-700 rounded-xl p-4 transition-all group text-left">
           <div class="text-[10px] font-mono text-gray-600 uppercase tracking-widest mb-2">Trade flow → Stock impact</div>
-          <div class="text-lg font-black text-white mb-1"><span class="text-amber-400">$585B</span> US–China trade corridor</div>
+          <div class="text-lg font-black text-white mb-1"><span class="text-rose-400">$585B</span> US–China trade corridor</div>
           <div class="text-xs text-gray-500 leading-relaxed mb-3">Every major trade relationship linked to the companies that depend on it most.</div>
-          <div class="text-xs text-amber-600 group-hover:text-amber-400 transition-colors font-semibold">View the US–China corridor →</div>
+          <div class="text-xs text-rose-500 group-hover:text-rose-400 transition-colors font-semibold">View the US–China corridor →</div>
         </NuxtLink>
 
-        <NuxtLink to="/screener/" class="bg-[#111827] border border-[#1f2937] hover:border-sky-700 rounded-xl p-4 transition-all group text-left">
+        <NuxtLink to="/screener/" class="bg-[#111827] border border-[#1f2937] hover:border-amber-700 rounded-xl p-4 transition-all group text-left">
           <div class="text-[10px] font-mono text-gray-600 uppercase tracking-widest mb-2">Country macro → Portfolio</div>
-          <div class="text-lg font-black text-white mb-1">S&P 500 earns <span class="text-sky-400">43%</span> outside the US</div>
+          <div class="text-lg font-black text-white mb-1">S&P 500 earns <span class="text-amber-400">43%</span> outside the US</div>
           <div class="text-xs text-gray-500 leading-relaxed mb-3">Filter any stock by how much it earns from Europe, Asia, or EM — from actual SEC filings.</div>
-          <div class="text-xs text-sky-500 group-hover:text-sky-400 transition-colors font-semibold">Screen by geography →</div>
+          <div class="text-xs text-amber-500 group-hover:text-amber-400 transition-colors font-semibold">Screen by geography →</div>
         </NuxtLink>
 
       </div>
