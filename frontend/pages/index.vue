@@ -54,12 +54,11 @@
 
       <!-- H1 — primary SEO heading -->
       <h1 class="text-3xl sm:text-4xl lg:text-5xl font-black text-white mb-4 leading-tight tracking-tight">
-        See exactly where
-        <span class="text-emerald-400"> every stock</span> earns its money
+        Which countries does
+        <span class="text-emerald-400"> your stock</span> make money from?
       </h1>
       <p class="text-gray-400 text-base sm:text-lg max-w-2xl mx-auto mb-8 leading-relaxed">
-        Country revenue breakdowns for 300+ stocks, straight from SEC filings.
-        Plus trade flows, macro data, and earnings — all in one place. Free.
+        Country revenue breakdowns for 300+ stocks, from SEC filings. Plus trade flows, macro data, and earnings. Free.
       </p>
 
       <!-- Search bar -->
