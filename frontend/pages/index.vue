@@ -54,12 +54,12 @@
 
       <!-- H1 — primary SEO heading -->
       <h1 class="text-3xl sm:text-4xl lg:text-5xl font-black text-white mb-4 leading-tight tracking-tight">
-        Which stocks feel it
-        <span class="text-emerald-400"> first?</span>
+        Apple earns 19% from China.
+        <span class="text-emerald-400"> What about yours?</span>
       </h1>
       <p class="text-gray-400 text-base sm:text-lg max-w-2xl mx-auto mb-8 leading-relaxed">
-        MetricsHour maps where every stock earns its revenue — by country, from SEC filings.
-        Rate hikes, tariffs, a slowdown in Germany — see which companies are exposed before the market prices it in.
+        MetricsHour maps every stock's revenue by country — from SEC filings.
+        See which companies are exposed to any market, rate move, or slowdown before it hits the price.
       </p>
 
       <!-- Search bar -->
