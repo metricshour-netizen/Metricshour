@@ -54,8 +54,8 @@
 
       <!-- H1 — primary SEO heading -->
       <h1 class="text-3xl sm:text-4xl lg:text-5xl font-black text-white mb-4 leading-tight tracking-tight">
-        Which countries does
-        <span class="text-emerald-400"> your stock</span> make money from?
+        See where
+        <span class="text-emerald-400"> your stocks</span> make money from
       </h1>
       <p class="text-gray-400 text-base sm:text-lg max-w-2xl mx-auto mb-8 leading-relaxed">
         Country revenue breakdowns for 775+ stocks, from SEC filings. Plus trade flows, macro data, and earnings. Free.
@@ -734,7 +734,7 @@ const tickerItems = computed(() => {
 })
 
 // ── SEO ───────────────────────────────────────────────────────────────────────
-const _title = 'MetricsHour — Which Countries Does Your Stock Earn From?'
+const _title = 'MetricsHour — See Where Your Stocks Make Money From'
 const _desc  = 'Country revenue breakdowns for 775+ stocks, straight from SEC filings. Plus bilateral trade flows, macro data, yield curve, and earnings — all free.'
 
 useSeoMeta({

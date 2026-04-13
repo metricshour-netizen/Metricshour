@@ -27,7 +27,7 @@ export default defineNuxtConfig({
     head: {
       htmlAttrs: { lang: 'en' },
       charset: 'utf-8',
-      title: 'MetricsHour — Which Countries Does Your Stock Earn From?',
+      title: 'MetricsHour — See Where Your Stocks Make Money From',
       meta: [
         { name: 'description', content: 'Country revenue breakdowns for 775+ stocks, from SEC filings. Plus bilateral trade flows, macro data, yield curve, and earnings — all free.' },
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
