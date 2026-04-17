@@ -291,7 +291,7 @@ def create_blog(
     now = datetime.now(timezone.utc)
     slug = _unique_slug(db, _slugify(body.title))
     clean_body = _sanitize_body(body.body)
-    excerpt = body.excerpt or _auto_excerpt(clean_body)
+    excerpt = _auto_excerpt(body.excerpt if body.excerpt else clean_body)
 
     post = BlogPost(
         title=body.title,
@@ -341,6 +341,8 @@ def update_blog(
     updates = body.model_dump(exclude_none=True)
     if "body" in updates:
         updates["body"] = _sanitize_body(updates["body"])
+    if "excerpt" in updates:
+        updates["excerpt"] = _auto_excerpt(updates["excerpt"])
     for field, value in updates.items():
         setattr(post, field, value)
 
