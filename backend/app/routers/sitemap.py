@@ -41,6 +41,7 @@ STATIC_ROUTE_TEMPLATES = [
     (f"{BASE}/etfs/",         "0.7", "daily"),
     (f"{BASE}/fx/",           "0.7", "daily"),
     (f"{BASE}/china/",        "0.7", "daily"),
+    (f"{BASE}/nigeria/",      "0.7", "daily"),
     (f"{BASE}/indices/",      "0.7", "daily"),
     (f"{BASE}/screener/",     "0.8", "daily"),
     (f"{BASE}/rates/",        "0.8", "daily"),

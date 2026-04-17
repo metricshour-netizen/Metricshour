@@ -1043,6 +1043,7 @@ def generate_section_images() -> dict:
         ("etfs",        "ETFs",                 "Index Funds · Bonds · Sector ETFs · Global"),
         ("fx",          "Forex",                "Major Pairs · Crosses · Real-time Rates"),
         ("rates",       "Interest Rates",       "Fed Funds · Treasury Yields · Inflation"),
+        ("nigeria",     "Nigerian Stocks",      "NGX · LSE · Seplat · Airtel Africa · Dangote"),
     ]
     count = 0
     for key, title, subtitle in sections:

@@ -208,10 +208,49 @@ function stockUrl(s: any) {
   return `/stocks/${s.symbol}`
 }
 
+const { public: { r2PublicUrl } } = useRuntimeConfig()
+const ogImage = r2PublicUrl
+  ? `${r2PublicUrl}/og/section/nigeria.png`
+  : 'https://cdn.metricshour.com/og/section/nigeria.png'
+
 useSeoMeta({
   title: 'Nigerian Stocks — NGX & LSE Listed Companies | MetricsHour',
-  description: 'Browse Nigerian Exchange (NGX) and LSE dual-listed Nigerian stocks. Seplat Energy, Airtel Africa, Dangote Cement, MTN Nigeria, Zenith Bank and more.',
-  ogTitle: 'Nigerian Stocks | MetricsHour',
-  ogDescription: 'Nigerian Exchange (NGX) equities and LSE dual-listed Nigerian companies with live prices.',
+  description: 'Browse Nigerian Exchange (NGX) and LSE dual-listed Nigerian stocks. Seplat Energy (SEPL.L), Airtel Africa (AAF.L), Dangote Cement, MTN Nigeria, Zenith Bank and more with live prices.',
+  ogTitle: 'Nigerian Stocks — NGX & LSE | MetricsHour',
+  ogDescription: 'Nigerian Exchange (NGX) equities and LSE dual-listed companies — Seplat Energy, Airtel Africa, Dangote Cement, MTN Nigeria, Zenith Bank — with live prices.',
+  ogUrl: 'https://metricshour.com/nigeria/',
+  ogType: 'website',
+  ogImage,
+  ogImageWidth: '1200',
+  ogImageHeight: '630',
+  ogImageType: 'image/png',
+  twitterCard: 'summary_large_image',
+  twitterTitle: 'Nigerian Stocks | MetricsHour',
+  twitterDescription: 'NGX & LSE-listed Nigerian equities with live prices — Seplat Energy, Airtel Africa, Dangote Cement and more.',
+  twitterImage: ogImage,
+})
+
+useHead({
+  link: [{ rel: 'canonical', href: 'https://metricshour.com/nigeria/' }],
+  script: [
+    {
+      type: 'application/ld+json',
+      innerHTML: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'CollectionPage',
+        name: 'Nigerian Stocks — NGX & LSE Listed Companies',
+        description: 'Nigerian Exchange (NGX) and LSE dual-listed Nigerian stocks including Seplat Energy, Airtel Africa, Dangote Cement, MTN Nigeria, and Zenith Bank.',
+        url: 'https://metricshour.com/nigeria/',
+        inLanguage: 'en',
+        breadcrumb: {
+          '@type': 'BreadcrumbList',
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://metricshour.com' },
+            { '@type': 'ListItem', position: 2, name: 'Nigerian Stocks', item: 'https://metricshour.com/nigeria/' },
+          ],
+        },
+      }),
+    },
+  ],
 })
 </script>

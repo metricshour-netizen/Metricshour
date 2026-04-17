@@ -692,7 +692,12 @@ const _seoTitle = computed(() => {
       .join(', ')
     return `${sym} Revenue: ${top2} — MetricsHour`
   }
-  return `${sym} — ${name} | Geographic Revenue — MetricsHour`
+  if (revs.length === 1) {
+    return `${sym} — ${name} | Geographic Revenue — MetricsHour`
+  }
+  // No geo revenue (e.g. LSE/NGX stocks) — focus on price & exchange
+  const exch = (stock.value as any).exchange || ''
+  return `${sym} Stock Price${exch ? ` (${exch})` : ''} — ${name} | MetricsHour`
 })
 
 const _seoDesc = computed(() => {
@@ -712,15 +717,25 @@ const _seoDesc = computed(() => {
       .map((r: any) => `${r.country.name} ${(r.revenue_pct as number).toFixed(0)}%`)
       .join(', ')
     parts.push(`earns ${revStr}`)
+    if (capStr) parts.push(`market cap ${capStr}`)
+    parts.push(`Geographic revenue from SEC EDGAR${fy}`)
+  } else {
+    // No geo revenue: describe via exchange, sector, price, currency
+    const exch = s.exchange ? `listed on ${s.exchange}` : ''
+    const sector = s.sector ? `${s.sector} sector` : ''
+    const currency = s.currency ? `prices in ${s.currency}` : ''
+    const hq = s.country?.name ? `headquartered in ${s.country.name}` : ''
+    const details = [exch, sector, hq, currency].filter(Boolean).join(', ')
+    if (details) parts.push(details)
+    if (capStr) parts.push(`market cap ${capStr}`)
+    parts.push('Live stock price, chart and financial data on MetricsHour')
   }
-  if (capStr) parts.push(`market cap ${capStr}`)
-  parts.push(`Geographic revenue from SEC EDGAR${fy}`)
   return parts.join('. ') + '.'
 })
 
-// noindex only if the entire stock record failed to load — name/sector/country is still indexable content
+// noindex only if the stock record failed to load after fetch completed
 const _hasContent = computed(() => {
-  if (!stock.value) return true // still loading — don't noindex prematurely
+  if (pending.value) return true // still loading — don't noindex prematurely
   return !!stock.value // any loaded stock has at least name, symbol, sector
 })
 
