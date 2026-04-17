@@ -346,6 +346,15 @@ def _post_clean(body):
     # Strip orphan bare URL citations: word [https://...] → word
     body = _r.sub(r'\s+\[https?://[^\]]+\](?!\()', ' ', body)
     body = _r.sub(r'(?<!\])\[https?://[^\]]+\](?!\()', '', body)
+    # Normalize non-www internal links → www
+    body = _r.sub(r'\(https://metricshour\.com/', '(https://www.metricshour.com/', body)
+    # Strip placeholder hero/cover image links that AI generates in body (fake URLs)
+    body = _r.sub(r'\[[^\]]*\]\(hero-image-url\)', '', body, flags=_r.IGNORECASE)
+    body = _r.sub(r'\[[^\]]*\]\(https?://(?:www\.)?metricshour\.com/images/[^\)]+\)', '', body, flags=_r.IGNORECASE)
+    # Strip blog cover CDN links embedded in body text
+    body = _r.sub(r'\[[^\]]*\]\(https://cdn\.metricshour\.com/blog-covers/[^\)]+\)', '', body, flags=_r.IGNORECASE)
+    # Clean up blank lines left by stripped links
+    body = _r.sub(r'\n{3,}', '\n\n', body)
     return body
 
 def detect_entities(body: str) -> tuple[set[str], set[str]]:
