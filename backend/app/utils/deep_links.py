@@ -6,7 +6,7 @@ Max 2 links per entity to avoid over-linking.
 """
 import re
 
-BASE = "https://www.metricshour.com"
+BASE = "https://metricshour.com"
 MAX_PER_ENTITY = 3
 
 STOCKS = {
@@ -85,6 +85,7 @@ STOCKS = {
     "RTX":   ["RTX", "Raytheon"],
     "SAP":   ["SAP"],
     "SBUX":  ["Starbucks"],
+    "SEPLAT":      ["Seplat Energy", "Seplat"],
     "SHEL":  ["Shell"],
     "SLB":   ["Schlumberger"],
     "SONY":  ["Sony"],
@@ -110,6 +111,21 @@ STOCKS = {
 
 # Short tickers skip auto-match by ticker text
 SKIP_TICKER_MATCH = {"C", "V", "T", "BA", "DE", "GE", "MS", "BP", "MA"}
+
+# Stocks with non-standard URL paths (e.g. exchange-specific pages)
+STOCK_URL_OVERRIDES: dict[str, str] = {
+    "SEPLAT":     f"{BASE}/nigeria/sepl.l/",
+    "SEPL.L":     f"{BASE}/nigeria/sepl.l/",
+    "AAF.L":      f"{BASE}/nigeria/aaf.l/",
+    "DANGCEM":    f"{BASE}/nigeria/dangcem/",
+    "MTNN":       f"{BASE}/nigeria/mtnn/",
+    "ZENITHBANK": f"{BASE}/nigeria/zenithbank/",
+    "GTCO":       f"{BASE}/nigeria/gtco/",
+    "ACCESSCORP": f"{BASE}/nigeria/accesscorp/",
+    "FBNH":       f"{BASE}/nigeria/fbnh/",
+    "BUAFOODS":   f"{BASE}/nigeria/buafoods/",
+    "BUACEMENT":  f"{BASE}/nigeria/buacement/",
+}
 
 COUNTRIES = {
     "China": "cn", "Germany": "de", "Japan": "jp", "India": "in",
@@ -223,7 +239,7 @@ def _replace_in_html_text(body: str, pattern: str, repl_fn, remaining: list) -> 
 
 
 def _inject_stock(body: str, ticker: str, names: list, html: bool) -> str:
-    url = f"{BASE}/stocks/{ticker}"
+    url = STOCK_URL_OVERRIDES.get(ticker, f"{BASE}/stocks/{ticker}")
 
     def make_link_html(t): return f'<a href="{url}" class="link-stock">{t}</a>'
     def make_link_md(t): return f'[{t}]({url})'
