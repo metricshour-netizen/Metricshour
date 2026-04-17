@@ -348,11 +348,25 @@ def _post_clean(body):
     body = _r.sub(r'(?<!\])\[https?://[^\]]+\](?!\()', '', body)
     # Normalize non-www internal links → www
     body = _r.sub(r'\(https://metricshour\.com/', '(https://www.metricshour.com/', body)
-    # Strip placeholder hero/cover image links that AI generates in body (fake URLs)
-    body = _r.sub(r'\[[^\]]*\]\(hero-image-url\)', '', body, flags=_r.IGNORECASE)
-    body = _r.sub(r'\[[^\]]*\]\(https?://(?:www\.)?metricshour\.com/images/[^\)]+\)', '', body, flags=_r.IGNORECASE)
-    # Strip blog cover CDN links embedded in body text
-    body = _r.sub(r'\[[^\]]*\]\(https://cdn\.metricshour\.com/blog-covers/[^\)]+\)', '', body, flags=_r.IGNORECASE)
+    # Strip placeholder hero/cover image links (with optional leading !)
+    body = _r.sub(r'!?\[[^\]]*\]\(hero-image-url\)', '', body, flags=_r.IGNORECASE)
+    body = _r.sub(r'!?\[[^\]]*\]\(https?://(?:www\.)?metricshour\.com/images/[^\)]+\)', '', body, flags=_r.IGNORECASE)
+    # Strip blog cover CDN links embedded in body text (with optional leading !)
+    body = _r.sub(r'!?\[[^\]]*\]\(https://cdn\.metricshour\.com/blog-covers/[^\)]+\)', '', body, flags=_r.IGNORECASE)
+    # Strip lone ! left behind after image link removal
+    body = _r.sub(r'^!\s*$', '', body, flags=_r.MULTILINE)
+    # Strip links to stock tickers not in our STOCKS dict (AI hallucinations)
+    def _check_stock_link(m):
+        ticker = m.group(2).rstrip('/')
+        if ticker.upper() not in STOCKS:
+            return m.group(1)  # keep text, drop link
+        return m.group(0)
+    body = _r.sub(
+        r'\[([^\]]+)\]\(https?://(?:www\.)?metricshour\.com/stocks/([A-Z0-9.]+)/?(?:[^\)]*)\)',
+        _check_stock_link, body
+    )
+    # Strip path-style link texts: [/some/path](url) → strip the link, keep URL text
+    body = _r.sub(r'\[(/[^\]]+)\]\(https?://(?:www\.)?metricshour\.com([^\)]+)\)', lambda m: m.group(2), body)
     # Clean up blank lines left by stripped links
     body = _r.sub(r'\n{3,}', '\n\n', body)
     return body

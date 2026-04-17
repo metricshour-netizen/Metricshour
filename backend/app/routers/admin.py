@@ -233,8 +233,12 @@ def _sanitize_body(body: str) -> str:
     import re as _re
     # Double (or more) exclamation marks → single
     body = _re.sub(r'!!+', '!', body)
-    # Orphaned image tags with no URL (alt may contain [brackets]): remove line
+    # Orphaned image tags with no URL: remove line
     body = _re.sub(r'^\s*!\[(?:[^\[\]]|\[[^\]]*\])*\]\s*$', '', body, flags=_re.MULTILINE)
+    # Orphaned image tags with any URL: remove line (AI-generated fake image embeds)
+    body = _re.sub(r'^\s*!\[[^\]]*\]\([^\)]+\)\s*$', '', body, flags=_re.MULTILINE)
+    # Lone ! on its own line (leftover after image strip)
+    body = _re.sub(r'^!\s*$', '', body, flags=_re.MULTILINE)
     # Double-bracket links from deep_link injection collision: [[text](url) extra](url2) → [text](url) extra
     body = _re.sub(r'\[\[([^\]]+)\]\(([^)]+)\)([^\]]*)\]\([^)]+\)', r'[\1](\2)\3', body)
     # Obsidian-style bare double brackets [[...]] → remove brackets, keep text
