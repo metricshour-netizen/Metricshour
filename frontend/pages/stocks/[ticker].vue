@@ -47,7 +47,7 @@
             <div class="flex items-start gap-4">
               <div class="text-right">
                 <div class="text-4xl font-extrabold text-white tabular-nums tracking-tight">
-                  {{ stock.price ? `$${stock.price.close.toFixed(2)}` : '—' }}
+                  {{ stock.price ? fmtStockPrice(stock.price.close, stock.currency) : '—' }}
                 </div>
                 <div v-if="stock.price?.change_pct != null" class="text-sm font-bold tabular-nums mt-1"
                      :class="stock.price.change_pct >= 0 ? 'text-emerald-400' : 'text-red-400'">
@@ -527,9 +527,9 @@ const priceChartOption = computed(() => {
         const p = params[0]
         const raw = data[p.dataIndex]
         const lines = [`<b>${p.name}</b>`]
-        lines.push(`Close: <b style="color:${lineColor}">$${raw.c?.toFixed(2)}</b>`)
-        if (raw.o != null) lines.push(`Open: $${raw.o?.toFixed(2)}`)
-        if (raw.h != null) lines.push(`High: $${raw.h?.toFixed(2)} · Low: $${raw.l?.toFixed(2)}`)
+        lines.push(`Close: <b style="color:${lineColor}">${fmtStockPrice(raw.c, stock.value?.currency)}</b>`)
+        if (raw.o != null) lines.push(`Open: ${fmtStockPrice(raw.o, stock.value?.currency)}`)
+        if (raw.h != null) lines.push(`High: ${fmtStockPrice(raw.h, stock.value?.currency)} · Low: ${fmtStockPrice(raw.l, stock.value?.currency)}`)
         return lines.join('<br/>')
       },
     },
@@ -551,7 +551,7 @@ const priceChartOption = computed(() => {
       axisLabel: {
         color: '#4b5563',
         fontSize: 10,
-        formatter: (v: number) => `$${v.toFixed(0)}`,
+        formatter: (v: number) => fmtStockPrice(v, stock.value?.currency),
       },
     },
     series: [{
@@ -615,6 +615,14 @@ const geoRisk = computed(() => {
   if (top > 20) return 'MEDIUM'
   return 'LOW'
 })
+
+function fmtStockPrice(v: number | null | undefined, currency?: string): string {
+  if (v == null) return '—'
+  if (currency === 'GBp') return `${v.toFixed(2)}p`
+  if (currency === 'CNY') return `¥${v.toFixed(2)}`
+  if (currency === 'NGN') return `₦${v.toFixed(2)}`
+  return `$${v.toFixed(2)}`
+}
 
 function fmtCap(v: number | null): string {
   if (!v) return '—'

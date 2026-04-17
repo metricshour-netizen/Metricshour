@@ -205,7 +205,7 @@ const paginated  = computed(() => {
 })
 
 function stockUrl(s: any) {
-  return `/stocks/${s.symbol}`
+  return `/nigeria/${s.symbol.toLowerCase()}/`
 }
 
 const { public: { r2PublicUrl } } = useRuntimeConfig()

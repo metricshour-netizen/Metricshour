@@ -12,7 +12,7 @@ from datetime import date
 from fastapi import APIRouter, Depends
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy import select, or_
 
 from sqlalchemy.orm import aliased
 
@@ -274,6 +274,19 @@ def sitemap(db: Session = Depends(get_db)):
         if symbol not in china_with_prices:
             continue
         entries.append(_url(f"{BASE}/china/{symbol}/", "0.5", "daily", today))
+
+    # Nigeria stocks → /nigeria/{symbol}/
+    for (symbol,) in db.execute(
+        select(Asset.symbol).where(
+            Asset.is_active == True,
+            Asset.symbol.isnot(None),
+            or_(
+                Asset.exchange == "NGX",
+                Asset.symbol.in_(["SEPL.L", "AAF.L"]),
+            ),
+        )
+    ):
+        entries.append(_url(f"{BASE}/nigeria/{symbol.lower()}/", "0.5", "daily", today))
 
     # Rates series → /rates/{series_id}/
     for (series_id,) in db.execute(
