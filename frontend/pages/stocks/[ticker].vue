@@ -721,14 +721,14 @@ const _seoDesc = computed(() => {
     parts.push(`Geographic revenue from SEC EDGAR${fy}`)
   } else {
     // No geo revenue: describe via exchange, sector, price, currency
-    const exch = s.exchange ? `listed on ${s.exchange}` : ''
+    const exch = s.exchange ? `Listed on ${s.exchange}` : ''
     const sector = s.sector ? `${s.sector} sector` : ''
     const currency = s.currency ? `prices in ${s.currency}` : ''
     const hq = s.country?.name ? `headquartered in ${s.country.name}` : ''
     const details = [exch, sector, hq, currency].filter(Boolean).join(', ')
     if (details) parts.push(details)
     if (capStr) parts.push(`market cap ${capStr}`)
-    parts.push('Live stock price, chart and financial data on MetricsHour')
+    parts.push('Price chart, data and analysis on MetricsHour')
   }
   return parts.join('. ') + '.'
 })

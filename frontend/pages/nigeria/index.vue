@@ -144,8 +144,8 @@
         <div class="bg-[#111827] border border-[#1f2937] rounded-xl p-4">
           <div class="text-xs font-semibold text-white mb-2">Dual-Listed Companies</div>
           <p class="text-xs text-gray-500 leading-relaxed">
-            Seplat Energy (SEPL.L) and Airtel Africa (AAF.L) trade on the London Stock Exchange in addition
-            to the NGX. Their LSE prices are in GBp (pence). Multiply by 0.01 to convert to GBP.
+            Seplat Energy (SEPL.L) and Airtel Africa (AAF.L) are dual-listed on the London Stock Exchange
+            and the NGX. LSE prices are in GBp (pence) — divide by 100 for GBP.
           </p>
         </div>
       </div>
@@ -215,7 +215,7 @@ const ogImage = r2PublicUrl
 
 useSeoMeta({
   title: 'Nigerian Stocks — NGX & LSE Listed Companies | MetricsHour',
-  description: 'Browse Nigerian Exchange (NGX) and LSE dual-listed Nigerian stocks. Seplat Energy (SEPL.L), Airtel Africa (AAF.L), Dangote Cement, MTN Nigeria, Zenith Bank and more with live prices.',
+  description: 'Nigerian Exchange (NGX) and LSE-listed stocks with live prices — Seplat Energy (SEPL.L), Airtel Africa (AAF.L), Dangote Cement, MTN Nigeria, Zenith Bank.',
   ogTitle: 'Nigerian Stocks — NGX & LSE | MetricsHour',
   ogDescription: 'Nigerian Exchange (NGX) equities and LSE dual-listed companies — Seplat Energy, Airtel Africa, Dangote Cement, MTN Nigeria, Zenith Bank — with live prices.',
   ogUrl: 'https://metricshour.com/nigeria/',
