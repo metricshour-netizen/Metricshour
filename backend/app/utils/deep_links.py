@@ -7,7 +7,7 @@ Max 2 links per entity to avoid over-linking.
 import re
 
 BASE = "https://www.metricshour.com"
-MAX_PER_ENTITY = 999  # link every occurrence
+MAX_PER_ENTITY = 3
 
 STOCKS = {
     "AAPL":  ["Apple"],
@@ -183,6 +183,11 @@ def _is_html(body: str) -> bool:
     return bool(re.search(r'<(p|h[1-6]|ul|ol|table|div)\b', body[:500], re.IGNORECASE))
 
 
+def _in_heading(body: str, match_start: int) -> bool:
+    line_start = body.rfind('\n', 0, match_start) + 1
+    return body[line_start:line_start + 1] == '#'
+
+
 def _count_linked(body: str, text: str, html: bool) -> int:
     if html:
         return sum(1 for m in re.finditer(r'<a\b[^>]*>.*?</a>', body, re.DOTALL | re.IGNORECASE)
@@ -236,8 +241,8 @@ def _inject_stock(body: str, ticker: str, names: list, html: bool) -> str:
                     if rem[0] <= 0: return mo.group()
                     start = mo.start()
                     before = body[:start]
-                    # skip if inside existing link text [... or inside link URL ](url
                     if re.search(r'\[[^\]]*$', before) or re.search(r'\]\([^)]*$', before): return mo.group()
+                    if _in_heading(body, start): return mo.group()
                     rem[0] -= 1
                     return make_link_md(mo.group())
                 body = re.sub(pat, sub_md, body)
@@ -257,6 +262,7 @@ def _inject_stock(body: str, ticker: str, names: list, html: bool) -> str:
                 start = mo.start()
                 before = body[:start]
                 if re.search(r'\[[^\]]*$', before) or re.search(r'\]\([^)]*$', before): return mo.group()
+                if _in_heading(body, start): return mo.group()
                 rem[0] -= 1
                 return f'[{n}]({url})'
             body = re.sub(pat, sub_md2, body)
@@ -280,6 +286,7 @@ def _inject_country(body: str, name: str, code: str, html: bool) -> str:
             start = mo.start()
             before = body[:start]
             if re.search(r'\[[^\]]*$', before) or re.search(r'\]\([^)]*$', before): return mo.group()
+            if _in_heading(body, start): return mo.group()
             rem[0] -= 1
             return f'[{name}]({url})'
         body = re.sub(pat, sub_md, body)
