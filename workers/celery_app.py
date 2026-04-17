@@ -88,6 +88,7 @@ app = Celery('metricshour', include=[
     'tasks.fred_rates',
     'tasks.earnings_calendar',
     'tasks.edgar_revenue',
+    'tasks.nigeria_stocks',
 ])
 
 # Use SSL only for rediss:// URLs (Upstash); skip for local redis:// (DragonflyDB)
@@ -130,6 +131,11 @@ app.conf.update(
         'china-stocks-daily-9am': {
             'task': 'tasks.china_stocks.fetch_china_prices',
             'schedule': crontab(hour=9, minute=0),
+        },
+        # Nigeria LSE-listed stocks EOD — daily 17:00 UTC (LSE close ~16:30 UTC)
+        'nigeria-stocks-daily-17h': {
+            'task': 'tasks.nigeria_stocks.fetch_nigeria_prices',
+            'schedule': crontab(hour=17, minute=0),
         },
         'price-alert-checker-every-1min': {
             'task': 'tasks.price_alert_checker.check_price_alerts',
