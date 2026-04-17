@@ -19,8 +19,7 @@ load_dotenv('/root/metricshour/backend/.env')
 
 from app.database import SessionLocal
 from app.models.asset import Asset, AssetType
-from sqlalchemy import select
-from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy import select, text
 
 db = SessionLocal()
 
@@ -135,18 +134,20 @@ for s in STOCKS:
         skipped += 1
         continue
 
-    asset = Asset(
-        symbol=s['symbol'],
-        name=s['name'],
-        asset_type=AssetType.stock,
-        exchange=s['exchange'],
-        currency=s['currency'],
-        sector=s['sector'],
-        industry=s['industry'],
-        country_id=s['country_id'],
-        is_active=s['is_active'],
-    )
-    db.add(asset)
+    db.execute(text("""
+        INSERT INTO assets (symbol, name, asset_type, exchange, currency, sector, industry, country_id, is_active)
+        VALUES (:symbol, :name, :asset_type, :exchange, :currency, :sector, :industry, :country_id, :is_active)
+    """), {
+        'symbol': s['symbol'],
+        'name': s['name'],
+        'asset_type': 'stock',
+        'exchange': s['exchange'],
+        'currency': s['currency'],
+        'sector': s['sector'],
+        'industry': s['industry'],
+        'country_id': s['country_id'],
+        'is_active': s['is_active'],
+    })
     print(f'  ADD   {s["symbol"]} — {s["name"]} ({s["exchange"]})')
     inserted += 1
 
