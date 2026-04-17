@@ -192,6 +192,11 @@ class BlogOut(BaseModel):
         from_attributes = True
 
 
+class BlogFullOut(BlogOut):
+    body: str | None = None
+    excerpt: str | None = None
+
+
 class AuthorIn(BaseModel):
     slug: str
     name: str
@@ -279,6 +284,18 @@ def list_blogs(
     return db.execute(
         select(BlogPost).order_by(BlogPost.created_at.desc())
     ).scalars().all()
+
+
+@router.get("/blogs/{post_id}", response_model=BlogFullOut)
+def get_blog(
+    post_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_admin_user),
+):
+    post = db.get(BlogPost, post_id)
+    if not post:
+        raise HTTPException(status_code=404, detail="Blog post not found")
+    return post
 
 
 @router.post("/blogs", response_model=BlogOut, status_code=status.HTTP_201_CREATED)
