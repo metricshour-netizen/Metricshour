@@ -199,7 +199,7 @@ const route = useRoute()
 const symbol = computed(() => String(route.params.symbol).toUpperCase())
 const { get } = useApi()
 
-const { data: stock, pending, error } = useAsyncData(
+const { data: stock, pending, error } = await useAsyncData(
   `china-${symbol.value}`,
   () => get<any>(`/api/assets/${symbol.value}`).catch(() => null),
 )
@@ -295,12 +295,28 @@ function fmtNewsDate(ts: string): string {
 
 const ogImageUrl = computed(() => `https://cdn.metricshour.com/og/china/${symbol.value.toLowerCase()}.png`)
 
+const _chinaTitle = computed(() => stock.value
+  ? `${stock.value.name} (${stock.value.symbol}) — China A-Share | MetricsHour`
+  : 'China A-Share | MetricsHour')
+const _chinaDesc = computed(() => stock.value
+  ? `${stock.value.name} (${stock.value.symbol}) stock price and data. Listed on the ${stock.value.exchange === 'SHG' ? 'Shanghai Stock Exchange' : 'Shenzhen Stock Exchange'}. Priced in CNY.`
+  : '')
+
 useSeoMeta({
-  title: computed(() => stock.value ? `${stock.value.name} (${stock.value.symbol}) — China A-Share | MetricsHour` : 'China A-Share | MetricsHour'),
-  description: computed(() => stock.value ? `${stock.value.name} stock price and data. Listed on ${stock.value.exchange}. Priced in CNY.` : ''),
+  title: _chinaTitle,
+  description: _chinaDesc,
+  ogTitle: _chinaTitle,
+  ogDescription: _chinaDesc,
+  ogUrl: computed(() => `https://metricshour.com/china/${symbol.value.toLowerCase()}/`),
+  ogType: 'website',
   ogImage: ogImageUrl,
+  ogImageWidth: '1200',
+  ogImageHeight: '630',
   twitterCard: 'summary_large_image',
+  twitterTitle: _chinaTitle,
+  twitterDescription: _chinaDesc,
   twitterImage: ogImageUrl,
+  robots: 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1',
 })
 useHead(computed(() => ({
   link: [{ rel: 'canonical', href: `https://metricshour.com/china/${symbol.value.toLowerCase()}/` }],

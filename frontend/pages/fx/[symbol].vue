@@ -398,5 +398,36 @@ useSeoMeta({
 
 useHead(computed(() => ({
   link: [{ rel: 'canonical', href: `https://metricshour.com/fx/${symbol.toLowerCase()}/` }],
+  script: asset.value ? [{
+    type: 'application/ld+json',
+    innerHTML: JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'WebPage',
+      name: _seoTitle.value,
+      url: `https://metricshour.com/fx/${symbol.toLowerCase()}/`,
+      description: _seoDesc.value,
+      breadcrumb: {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://metricshour.com' },
+          { '@type': 'ListItem', position: 2, name: 'Forex', item: 'https://metricshour.com/fx/' },
+          { '@type': 'ListItem', position: 3, name: symbol, item: `https://metricshour.com/fx/${symbol.toLowerCase()}/` },
+        ],
+      },
+      mainEntity: {
+        '@type': 'FinancialProduct',
+        name: asset.value.name,
+        description: fxDescription(symbol, asset.value.name),
+        url: `https://metricshour.com/fx/${symbol.toLowerCase()}/`,
+        category: 'Foreign Exchange',
+        offers: asset.value.price ? {
+          '@type': 'Offer',
+          price: String(asset.value.price.close),
+          priceCurrency: quoteCcy,
+        } : undefined,
+      },
+      isPartOf: { '@type': 'WebSite', name: 'MetricsHour', url: 'https://metricshour.com' },
+    }),
+  }] : [],
 })))
 </script>

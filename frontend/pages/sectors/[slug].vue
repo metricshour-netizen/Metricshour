@@ -200,15 +200,27 @@ function fmtPrice(v: number): string {
   return `$${v.toFixed(4)}`
 }
 
-useSeoMeta(computed(() => ({
-  title: sector.value ? `${sector.value.name} Sector Stocks — MetricsHour` : 'Sector — MetricsHour',
-  description: sector.value
+useSeoMeta({
+  title: computed(() => sector.value ? `${sector.value.name} Sector Stocks — MetricsHour` : 'Sector — MetricsHour'),
+  description: computed(() => sector.value
     ? `${sector.value.name} sector: ${sector.value.stock_count} companies tracked with geographic revenue exposure from SEC EDGAR. ${sector.value.description}`
-    : '',
-  ogTitle: sector.value ? `${sector.value.name} Sector — MetricsHour` : 'Sector',
-  ogUrl: `https://metricshour.com/sectors/${slug.value}/`,
+    : ''),
+  ogTitle: computed(() => sector.value ? `${sector.value.name} Sector Stocks — MetricsHour` : 'Sector — MetricsHour'),
+  ogDescription: computed(() => sector.value
+    ? `${sector.value.name} sector: ${sector.value.stock_count} companies tracked with geographic revenue exposure from SEC EDGAR. ${sector.value.description}`
+    : ''),
+  ogUrl: computed(() => `https://metricshour.com/sectors/${slug.value}/`),
   ogType: 'website',
-})))
+  ogImage: 'https://cdn.metricshour.com/og/section/stocks.png',
+  ogImageWidth: '1200',
+  ogImageHeight: '630',
+  twitterCard: 'summary_large_image',
+  twitterTitle: computed(() => sector.value ? `${sector.value.name} Sector Stocks — MetricsHour` : 'Sector — MetricsHour'),
+  twitterDescription: computed(() => sector.value
+    ? `${sector.value.name} sector: ${sector.value.stock_count} companies tracked with geographic revenue exposure from SEC EDGAR.`
+    : ''),
+  robots: 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1',
+})
 
 useHead(computed(() => ({
   link: [{ rel: 'canonical', href: `https://metricshour.com/sectors/${slug.value}/` }],
