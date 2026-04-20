@@ -74,7 +74,6 @@ export default defineNuxtConfig({
       },
     },
     '/sitemap.xml': { redirect: { to: 'https://api.metricshour.com/sitemap.xml', statusCode: 301 } },
-    '/robots.txt': { redirect: { to: 'https://api.metricshour.com/robots.txt', statusCode: 301 } },
 
     // Edge cache headers — Cloudflare respects s-maxage; client gets max-age
     // Share preview pages (social crawlers) — 5 min edge cache, stale ok for up to 1h
