@@ -18,7 +18,7 @@ export default defineEventHandler((event) => {
   const canonical = lowerPath.endsWith('/') ? lowerPath : lowerPath + '/'
   const qs = query ? '?' + query : ''
 
-  if (path + (path.endsWith('/') ? '' : '/') !== canonical) {
+  if (path !== canonical) {
     return sendRedirect(event, canonical + qs, 301)
   }
 })
