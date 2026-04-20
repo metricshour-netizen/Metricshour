@@ -198,11 +198,13 @@ echarts.use([LineChart, GridComponent, TooltipComponent, CanvasRenderer])
 const route = useRoute()
 const symbol = computed(() => String(route.params.symbol).toUpperCase())
 const { get } = useApi()
+const { r2Fetch } = useR2Fetch()
 
 const { data: stock, pending, error } = await useAsyncData(
   `china-${symbol.value}`,
-  () => get<any>(`/api/assets/${symbol.value}`).catch(() => null),
+  () => r2Fetch<any>(`snapshots/stocks/${symbol.value.toLowerCase()}.json`, `/api/assets/${symbol.value}`).catch(() => null),
 )
+if (!stock.value) throw createError({ statusCode: 404, statusMessage: 'China A-share not found' })
 
 // ── Related China stocks (must be before server:false calls for SSR) ─────────
 const { public: { apiBase: _apiBase } } = useRuntimeConfig()
@@ -295,12 +297,35 @@ function fmtNewsDate(ts: string): string {
 
 const ogImageUrl = computed(() => `https://cdn.metricshour.com/og/china/${symbol.value.toLowerCase()}.png`)
 
-const _chinaTitle = computed(() => stock.value
-  ? `${stock.value.name} (${stock.value.symbol}) — China A-Share | MetricsHour`
-  : 'China A-Share | MetricsHour')
-const _chinaDesc = computed(() => stock.value
-  ? `${stock.value.name} (${stock.value.symbol}) stock price and data. Listed on the ${stock.value.exchange === 'SHG' ? 'Shanghai Stock Exchange' : 'Shenzhen Stock Exchange'}. Priced in CNY.`
-  : '')
+function _exchangeName(exch: string): string {
+  return exch === 'SHG' ? 'Shanghai Stock Exchange' : 'Shenzhen Stock Exchange'
+}
+
+const _chinaTitle = computed(() => {
+  if (!stock.value) return `${symbol.value} — China A-Share | MetricsHour`
+  const s = stock.value
+  const price = s.price?.close
+  if (price != null) {
+    return `${s.name} (${s.symbol}) Stock Price ¥${price.toFixed(2)} — MetricsHour`
+  }
+  return `${s.name} (${s.symbol}) — China A-Share Stock | MetricsHour`
+})
+
+const _chinaDesc = computed(() => {
+  if (!stock.value) return ''
+  const s = stock.value
+  const exch = _exchangeName(s.exchange)
+  const parts: string[] = [`${s.name} (${s.symbol}) is a China A-share stock listed on the ${exch}`]
+  if (s.price?.close != null) {
+    const chg = s.price.change_pct
+    const chgStr = chg != null ? ` (${chg >= 0 ? '+' : ''}${chg.toFixed(2)}% today)` : ''
+    parts.push(`current price ¥${s.price.close.toFixed(2)}${chgStr}`)
+  }
+  parts.push('Live price chart, history, and AI insights on MetricsHour')
+  return parts.join('. ') + '.'
+})
+
+const _hasContent = computed(() => !pending.value && !!stock.value)
 
 useSeoMeta({
   title: _chinaTitle,
@@ -316,7 +341,9 @@ useSeoMeta({
   twitterTitle: _chinaTitle,
   twitterDescription: _chinaDesc,
   twitterImage: ogImageUrl,
-  robots: 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1',
+  robots: computed(() => _hasContent.value
+    ? 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1'
+    : 'noindex, follow'),
 })
 useHead(computed(() => ({
   link: [{ rel: 'canonical', href: `https://metricshour.com/china/${symbol.value.toLowerCase()}/` }],
@@ -326,9 +353,9 @@ useHead(computed(() => ({
       innerHTML: JSON.stringify({
         '@context': 'https://schema.org',
         '@type': 'WebPage',
-        name: `${stock.value.name} (${stock.value.symbol}) — China A-Share | MetricsHour`,
+        name: _chinaTitle.value,
         url: `https://metricshour.com/china/${symbol.value.toLowerCase()}/`,
-        description: `${stock.value.name} stock price and data. Listed on the ${stock.value.exchange === 'SHG' ? 'Shanghai Stock Exchange' : 'Shenzhen Stock Exchange'} (${stock.value.exchange}). Priced in CNY.`,
+        description: _chinaDesc.value,
         datePublished: '2026-04-03',
         dateModified: stock.value.price?.timestamp ? stock.value.price.timestamp.slice(0, 10) : new Date().toISOString().slice(0, 10),
         breadcrumb: {
@@ -336,14 +363,14 @@ useHead(computed(() => ({
           itemListElement: [
             { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://metricshour.com' },
             { '@type': 'ListItem', position: 2, name: 'China A-Shares', item: 'https://metricshour.com/china/' },
-            { '@type': 'ListItem', position: 3, name: stock.value.symbol, item: `https://metricshour.com/china/${symbol.value.toLowerCase()}/` },
+            { '@type': 'ListItem', position: 3, name: stock.value.name, item: `https://metricshour.com/china/${symbol.value.toLowerCase()}/` },
           ],
         },
         mainEntity: {
           '@type': 'Corporation',
           name: stock.value.name,
           tickerSymbol: stock.value.symbol,
-          description: `${stock.value.name} is a China A-share stock listed on the ${stock.value.exchange === 'SHG' ? 'Shanghai Stock Exchange' : 'Shenzhen Stock Exchange'}.`,
+          description: `${stock.value.name} is a China A-share stock listed on the ${_exchangeName(stock.value.exchange)} (${stock.value.exchange}). Priced in CNY.`,
         },
       }),
     },
