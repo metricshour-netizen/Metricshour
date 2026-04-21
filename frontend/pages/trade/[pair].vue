@@ -409,6 +409,13 @@ if (!data.value) throw createError({ statusCode: 404, statusMessage: 'Trade corr
 const isoA = data.value.exporter?.code ?? codeA.toUpperCase()
 const isoB = data.value.importer?.code ?? codeB.toUpperCase()
 
+// 301 to canonical iso-iso slug (e.g. /trade/united-states--china/ → /trade/us-cn/)
+// Stops 826 duplicate name-slug pages from competing with the canonical ISO form.
+const canonicalPair = `${isoA.toLowerCase()}-${isoB.toLowerCase()}`
+if (pair.toLowerCase() !== canonicalPair) {
+  await navigateTo(`/trade/${canonicalPair}/`, { redirectCode: 301, external: false })
+}
+
 const { data: pageSummary } = useAsyncData(
   `summary-trade-${isoA}-${isoB}`,
   () => get<any>(`/api/summaries/trade/${isoA}-${isoB}`).catch(() => null),
