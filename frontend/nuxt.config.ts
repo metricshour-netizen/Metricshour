@@ -44,9 +44,6 @@ export default defineNuxtConfig({
       link: [
         { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
         { rel: 'alternate', type: 'application/rss+xml', title: 'MetricsHour Blog', href: 'https://api.metricshour.com/rss.xml' },
-        { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
-        { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
-        { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap' },
       ],
       script: [
         {
@@ -138,10 +135,10 @@ export default defineNuxtConfig({
     '/feed': { headers: { 'Cache-Control': 'public, s-maxage=300, max-age=60, stale-while-revalidate=3600' } },
     '/feed/**': { headers: { 'Cache-Control': 'public, s-maxage=300, max-age=60, stale-while-revalidate=3600' } },
 
-    '/register/': { redirect: { to: '/join', statusCode: 301 } },
-    '/register': { redirect: { to: '/join', statusCode: 301 } },
-    '/signup/': { redirect: { to: '/join', statusCode: 301 } },
-    '/signup': { redirect: { to: '/join', statusCode: 301 } },
+    '/register/': { redirect: { to: '/join/', statusCode: 301 } },
+    '/register': { redirect: { to: '/join/', statusCode: 301 } },
+    '/signup/': { redirect: { to: '/join/', statusCode: 301 } },
+    '/signup': { redirect: { to: '/join/', statusCode: 301 } },
     // Common commodity name aliases → canonical ticker URLs
     '/commodities/gold/': { redirect: { to: '/commodities/xauusd/', statusCode: 301 } },
     '/commodities/gold': { redirect: { to: '/commodities/xauusd/', statusCode: 301 } },

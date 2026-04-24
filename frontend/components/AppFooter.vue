@@ -5,22 +5,48 @@
       <NuxtLink to="/" class="text-emerald-500/60 hover:text-emerald-400 font-bold tracking-tight text-sm transition-colors">METRICSHOUR</NuxtLink>
     </div>
 
-    <!-- Nav links -->
-    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap gap-x-6 gap-y-2 justify-center text-xs text-gray-600">
-      <NuxtLink to="/markets/"     class="hover:text-gray-400 transition-colors">Markets</NuxtLink>
-      <NuxtLink to="/stocks/"      class="hover:text-gray-400 transition-colors">Stocks</NuxtLink>
-      <NuxtLink to="/sectors/"     class="hover:text-gray-400 transition-colors">Sectors</NuxtLink>
-      <NuxtLink to="/countries/"   class="hover:text-gray-400 transition-colors">Countries</NuxtLink>
-      <NuxtLink to="/trade/"       class="hover:text-gray-400 transition-colors">Trade</NuxtLink>
-      <NuxtLink to="/commodities/" class="hover:text-gray-400 transition-colors">Commodities</NuxtLink>
-      <NuxtLink to="/china/"       class="hover:text-gray-400 transition-colors">China A-Shares</NuxtLink>
-      <NuxtLink to="/rates/"        class="hover:text-gray-400 transition-colors">Rates</NuxtLink>
-      <NuxtLink to="/yield-curve/" class="hover:text-gray-400 transition-colors">Yield Curve</NuxtLink>
-      <NuxtLink to="/earnings/"    class="hover:text-gray-400 transition-colors">Earnings</NuxtLink>
-      <NuxtLink to="/feed/"        class="hover:text-gray-400 transition-colors">Feed</NuxtLink>
-      <NuxtLink to="/blog/"        class="hover:text-gray-400 transition-colors">Blog</NuxtLink>
-      <NuxtLink to="/login/"       class="hover:text-gray-400 transition-colors">Sign In</NuxtLink>
-      <NuxtLink to="/join/"        class="hover:text-emerald-400 text-emerald-600 transition-colors font-medium">Join Free</NuxtLink>
+    <!-- Nav links — grouped by category for crawlability -->
+    <div class="max-w-7xl mx-auto px-4 py-4 grid grid-cols-2 sm:grid-cols-4 gap-y-4 gap-x-8 text-xs text-gray-600">
+      <div>
+        <div class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Markets</div>
+        <div class="flex flex-col gap-1.5">
+          <NuxtLink to="/markets/"     class="hover:text-gray-400 transition-colors">Overview</NuxtLink>
+          <NuxtLink to="/stocks/"      class="hover:text-gray-400 transition-colors">Stocks</NuxtLink>
+          <NuxtLink to="/crypto/"      class="hover:text-gray-400 transition-colors">Crypto</NuxtLink>
+          <NuxtLink to="/etfs/"        class="hover:text-gray-400 transition-colors">ETFs</NuxtLink>
+          <NuxtLink to="/fx/"          class="hover:text-gray-400 transition-colors">FX</NuxtLink>
+          <NuxtLink to="/commodities/" class="hover:text-gray-400 transition-colors">Commodities</NuxtLink>
+          <NuxtLink to="/sectors/"     class="hover:text-gray-400 transition-colors">Sectors</NuxtLink>
+        </div>
+      </div>
+      <div>
+        <div class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Economy</div>
+        <div class="flex flex-col gap-1.5">
+          <NuxtLink to="/countries/"   class="hover:text-gray-400 transition-colors">Countries</NuxtLink>
+          <NuxtLink to="/trade/"       class="hover:text-gray-400 transition-colors">Trade Flows</NuxtLink>
+          <NuxtLink to="/compare/"     class="hover:text-gray-400 transition-colors">Compare</NuxtLink>
+          <NuxtLink to="/blocs/"       class="hover:text-gray-400 transition-colors">Blocs</NuxtLink>
+          <NuxtLink to="/china/"       class="hover:text-gray-400 transition-colors">China A-Shares</NuxtLink>
+        </div>
+      </div>
+      <div>
+        <div class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Tools</div>
+        <div class="flex flex-col gap-1.5">
+          <NuxtLink to="/screener/"    class="hover:text-gray-400 transition-colors">Screener</NuxtLink>
+          <NuxtLink to="/rates/"       class="hover:text-gray-400 transition-colors">Interest Rates</NuxtLink>
+          <NuxtLink to="/yield-curve/" class="hover:text-gray-400 transition-colors">Yield Curve</NuxtLink>
+          <NuxtLink to="/earnings/"    class="hover:text-gray-400 transition-colors">Earnings</NuxtLink>
+          <NuxtLink to="/feed/"        class="hover:text-gray-400 transition-colors">Live Feed</NuxtLink>
+        </div>
+      </div>
+      <div>
+        <div class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Resources</div>
+        <div class="flex flex-col gap-1.5">
+          <NuxtLink to="/blog/"        class="hover:text-gray-400 transition-colors">Blog</NuxtLink>
+          <NuxtLink to="/login/"       class="hover:text-gray-400 transition-colors">Sign In</NuxtLink>
+          <NuxtLink to="/join/"        class="hover:text-emerald-400 text-emerald-600 transition-colors font-medium">Join Free</NuxtLink>
+        </div>
+      </div>
     </div>
 
     <!-- Legal links -->
