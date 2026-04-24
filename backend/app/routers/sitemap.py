@@ -20,7 +20,7 @@ from app.database import get_db
 from app.models.asset import Asset, AssetType, Price, StockCountryRevenue
 from app.models.country import Country, TradePair, CountryIndicator
 from app.models.summary import PageSummary
-from app.models.feed import BlogPost
+from app.models.feed import BlogPost, BlogAuthor
 from app.models.macro import MacroSeries
 
 router = APIRouter()
@@ -221,6 +221,12 @@ def sitemap(db: Session = Depends(get_db)):
         dates = [d for d in (post.published_at, post.updated_at) if d is not None]
         lm = max(dates).date().isoformat() if dates else today
         entries.append(_url(f"{BASE}/blog/{post.slug}/", "0.8", "weekly", lm))
+
+    # Blog authors → /blog/authors/{slug}/
+    for (slug,) in db.execute(
+        select(BlogAuthor.slug).where(BlogAuthor.slug.isnot(None))
+    ):
+        entries.append(_url(f"{BASE}/blog/authors/{slug}/", "0.6", "weekly", today))
 
     # Crypto → /crypto/{symbol}/
     for (symbol,) in db.execute(
