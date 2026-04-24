@@ -182,6 +182,29 @@
         </div>
       </div>
 
+      <!-- FAQ -->
+      <div class="mb-6">
+        <h2 class="text-sm font-bold text-white mb-3">Frequently Asked Questions</h2>
+        <div class="space-y-2">
+          <div class="bg-[#111827] border border-[#1f2937] rounded-lg px-4 py-3">
+            <p class="text-sm font-medium text-gray-300 mb-1">What exchange is {{ stock.name }} listed on?</p>
+            <p class="text-sm text-gray-500 leading-relaxed">{{ stock.name }} ({{ stock.symbol }}) is listed on the {{ stock.exchange === 'SHG' ? 'Shanghai Stock Exchange (SSE)' : 'Shenzhen Stock Exchange (SZSE)' }}, one of mainland China's two major stock exchanges.</p>
+          </div>
+          <div class="bg-[#111827] border border-[#1f2937] rounded-lg px-4 py-3">
+            <p class="text-sm font-medium text-gray-300 mb-1">What currency are {{ stock.name }} shares traded in?</p>
+            <p class="text-sm text-gray-500 leading-relaxed">{{ stock.name }} shares are denominated in Chinese Yuan (CNY ¥). All prices shown on this page are in CNY.</p>
+          </div>
+          <div class="bg-[#111827] border border-[#1f2937] rounded-lg px-4 py-3">
+            <p class="text-sm font-medium text-gray-300 mb-1">What is a China A-share stock?</p>
+            <p class="text-sm text-gray-500 leading-relaxed">China A-shares are renminbi-denominated shares of mainland Chinese companies listed on the Shanghai or Shenzhen Stock Exchange. They are accessible to domestic investors and qualified foreign investors via the Stock Connect programme.</p>
+          </div>
+          <div class="bg-[#111827] border border-[#1f2937] rounded-lg px-4 py-3">
+            <p class="text-sm font-medium text-gray-300 mb-1">Where can I find {{ stock.name }} price history and market analysis?</p>
+            <p class="text-sm text-gray-500 leading-relaxed">MetricsHour provides daily price data, interactive charts, and AI-generated market insights for {{ stock.name }} and 300+ China A-share stocks. Prices update daily after the Shanghai and Shenzhen markets close.</p>
+          </div>
+        </div>
+      </div>
+
       <p class="text-xs text-gray-700 mt-4">Data: Tiingo · Prices in CNY · Updated daily after Shanghai/Shenzhen market close (07:00 UTC)</p>
     </main>
   </div>
@@ -348,6 +371,35 @@ useSeoMeta({
 useHead(computed(() => ({
   link: [{ rel: 'canonical', href: `https://metricshour.com/china/${symbol.value.toLowerCase()}/` }],
   script: stock.value ? [
+    {
+      type: 'application/ld+json',
+      innerHTML: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        mainEntity: [
+          {
+            '@type': 'Question',
+            name: `What exchange is ${stock.value.name} listed on?`,
+            acceptedAnswer: { '@type': 'Answer', text: `${stock.value.name} (${stock.value.symbol}) is listed on the ${stock.value.exchange === 'SHG' ? 'Shanghai Stock Exchange (SSE)' : 'Shenzhen Stock Exchange (SZSE)'}, one of mainland China's two major stock exchanges.` },
+          },
+          {
+            '@type': 'Question',
+            name: `What currency are ${stock.value.name} shares traded in?`,
+            acceptedAnswer: { '@type': 'Answer', text: `${stock.value.name} shares are denominated in Chinese Yuan (CNY ¥). All prices are quoted in CNY.` },
+          },
+          {
+            '@type': 'Question',
+            name: 'What is a China A-share stock?',
+            acceptedAnswer: { '@type': 'Answer', text: "China A-shares are renminbi-denominated shares of mainland Chinese companies listed on the Shanghai or Shenzhen Stock Exchange. They are accessible to domestic investors and qualified foreign investors via the Stock Connect programme." },
+          },
+          {
+            '@type': 'Question',
+            name: `Where can I find ${stock.value.name} price history and market analysis?`,
+            acceptedAnswer: { '@type': 'Answer', text: `MetricsHour provides daily price data, interactive charts, and AI-generated market insights for ${stock.value.name} and 300+ China A-share stocks at metricshour.com/china/${symbol.value.toLowerCase()}/.` },
+          },
+        ],
+      }),
+    },
     {
       type: 'application/ld+json',
       innerHTML: JSON.stringify({
