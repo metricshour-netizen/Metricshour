@@ -181,7 +181,7 @@
         </div>
       </div>
 
-      <p class="text-xs text-gray-700 text-center">Data: Tiingo · FRED · NYSE · NASDAQ · CME</p>
+      <p class="text-xs text-gray-700 text-center">Data: FRED · NYSE · NASDAQ · CME</p>
 
       <!-- Newsletter -->
       <div class="mt-8 border border-gray-800 rounded-xl p-6 bg-gray-900/40">

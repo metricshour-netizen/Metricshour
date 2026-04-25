@@ -154,7 +154,7 @@ This generates 3 drafts (country spotlight + stock exposure + trade insight) and
 
 ## Critical rules
 
-1. **Never reference Bloomberg as a data source** — use "World Bank", "UN Comtrade", "Yahoo Finance"
+1. **Never reference Bloomberg, Yahoo Finance, or Tiingo as a data source** — use "World Bank", "UN Comtrade", "SEC EDGAR", "FRED", "ECB" (public government/institutional sources only)
 2. **Never show stale data as current** — display N/A before wrong data
 3. **Never edit production files directly** — always `git pull` after push
 4. **Never commit .env files or API keys**

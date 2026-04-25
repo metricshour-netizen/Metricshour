@@ -872,7 +872,7 @@ def _stock_social_card(a, db) -> bytes:
         hero_number=hero_num,
         hero_desc=hero_desc,
         facts=facts,
-        source="Yahoo Finance / MetricsHour",
+        source="MetricsHour",
         cta=f"Track {a.symbol} on MetricsHour  \u2192",
     )
 

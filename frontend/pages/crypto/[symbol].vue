@@ -158,7 +158,6 @@
             </div>
           </a>
         </div>
-        <p class="text-[10px] text-gray-700 mt-3 pt-3 border-t border-[#1f2937]">Source: Tiingo News</p>
       </div>
 
       <!-- About -->

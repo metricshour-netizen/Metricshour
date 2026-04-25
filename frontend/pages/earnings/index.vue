@@ -77,7 +77,7 @@
 
       <div v-else class="text-center py-16">
         <p class="text-gray-600 text-sm mb-2">No upcoming earnings data yet.</p>
-        <p class="text-gray-700 text-xs">Worker fetches daily at 7:30am UTC via yfinance.</p>
+        <p class="text-gray-700 text-xs">Worker fetches daily at 7:30am UTC.</p>
       </div>
     </template>
 
@@ -131,7 +131,7 @@
       </div>
     </template>
 
-    <p class="text-xs text-gray-700 mt-6">Data: yfinance · SEC EDGAR · Updated daily</p>
+    <p class="text-xs text-gray-700 mt-6">Data: SEC EDGAR · Updated daily</p>
   </main>
 </template>
 

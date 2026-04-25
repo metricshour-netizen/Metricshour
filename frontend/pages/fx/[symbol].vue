@@ -177,7 +177,7 @@
         </div>
       </div>
 
-      <p class="text-xs text-gray-700 text-center mb-8">Data: Tiingo · FRED · ECB</p>
+      <p class="text-xs text-gray-700 text-center mb-8">Data: FRED · ECB</p>
 
       <!-- Newsletter -->
       <div class="border border-gray-800 rounded-xl p-6 bg-gray-900/40">

@@ -205,7 +205,7 @@
         </div>
       </div>
 
-      <p class="text-xs text-gray-700 mt-4">Data: Tiingo · Prices in CNY · Updated daily after Shanghai/Shenzhen market close (07:00 UTC)</p>
+      <p class="text-xs text-gray-700 mt-4">Data: SSE · SZSE · Prices in CNY · Updated daily after Shanghai/Shenzhen market close (07:00 UTC)</p>
     </main>
   </div>
 </template>

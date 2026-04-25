@@ -151,7 +151,7 @@
       </div>
 
       <p class="text-xs text-gray-700 text-center mt-6">
-        LSE prices via Yahoo Finance · NGX prices not available via free APIs · Updated daily
+        LSE prices · NGX prices not available · Updated daily
       </p>
     </main>
   </div>

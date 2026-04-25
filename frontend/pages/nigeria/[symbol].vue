@@ -166,7 +166,6 @@
             </div>
           </a>
         </div>
-        <p class="text-[10px] text-gray-700 mt-3 pt-3 border-t border-[#1f2937]">Source: Tiingo News</p>
       </div>
 
       <!-- Nigeria context -->
@@ -222,8 +221,8 @@
       </div>
 
       <p class="text-xs text-gray-700 text-center mt-4">
-        <template v-if="isLSE">LSE prices via Yahoo Finance (GBp) · Updated daily</template>
-        <template v-else>NGX prices not available via free APIs · Data: Yahoo Finance / Tiingo</template>
+        <template v-if="isLSE">LSE prices (GBp) · Updated daily</template>
+        <template v-else>NGX prices not available · Updated daily</template>
       </p>
     </main>
   </div>
