@@ -1,11 +1,7 @@
 <template>
   <div class="min-h-screen bg-[#0a0e1a] flex flex-col">
-    <!-- Nav logo only -->
-    <div class="border-b border-[#1f2937] px-6 py-4">
-      <NuxtLink to="/" class="text-emerald-400 font-bold tracking-tight text-lg">METRICSHOUR</NuxtLink>
-    </div>
 
-    <div class="flex-1 flex items-center justify-center px-4 py-12">
+    <div class="flex-1 flex items-center justify-center px-4 py-8">
       <div class="w-full max-w-4xl flex flex-col lg:flex-row gap-12 lg:gap-16 items-center lg:items-start">
 
         <!-- Left: value props (desktop only) -->

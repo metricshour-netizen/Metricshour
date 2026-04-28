@@ -1,11 +1,7 @@
 <template>
   <div class="min-h-screen bg-[#0a0e1a] flex flex-col">
-    <!-- Nav logo only -->
-    <div class="border-b border-[#1f2937] px-6 py-4">
-      <NuxtLink to="/" class="text-emerald-400 font-bold tracking-tight text-lg">METRICSHOUR</NuxtLink>
-    </div>
 
-    <div class="flex-1 flex items-center justify-center px-4 py-12">
+    <div class="flex-1 flex items-center justify-center px-4 py-8">
       <div class="w-full max-w-sm">
         <h1 class="text-white font-bold text-2xl mb-1">Welcome back</h1>
         <p class="text-gray-500 text-sm mb-8">Sign in to your MetricsHour account</p>

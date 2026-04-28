@@ -60,7 +60,10 @@
             <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
           </svg>
         </button>
-        <NuxtLink v-if="!isLoggedIn" to="/join/" class="text-xs bg-emerald-700 hover:bg-emerald-600 text-white px-2.5 py-1.5 rounded-lg font-semibold transition-colors">Join</NuxtLink>
+        <template v-if="!isLoggedIn">
+          <NuxtLink to="/login/" class="text-xs text-gray-300 hover:text-white transition-colors font-medium">Sign In</NuxtLink>
+          <NuxtLink to="/join/" class="text-xs bg-emerald-700 hover:bg-emerald-600 text-white px-2.5 py-1.5 rounded-lg font-semibold transition-colors">Join</NuxtLink>
+        </template>
         <NuxtLink to="/feed/" class="text-emerald-300 font-semibold text-sm flex items-center gap-1">
           <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
           {{ isLoggedIn ? 'For You' : 'Feed' }}
