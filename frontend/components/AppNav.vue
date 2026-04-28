@@ -53,21 +53,18 @@
         <button class="text-lg leading-none" :title="isDark ? 'Switch to light mode' : 'Switch to dark mode'" @click="toggleTheme">{{ isDark ? '☀️' : '🌙' }}</button>
       </div>
 
-      <!-- Mobile right: search + Join (logged-out) + Feed + hamburger -->
-      <div class="flex sm:hidden items-center gap-3">
-        <button @click="searchOpen = true" class="text-gray-400 hover:text-white transition-colors p-1" aria-label="Search">
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
-          </svg>
-        </button>
+      <!-- Mobile right: auth CTAs (logged-out) OR Feed (logged-in) + hamburger -->
+      <div class="flex sm:hidden items-center gap-2">
         <template v-if="!isLoggedIn">
-          <NuxtLink to="/login/" class="text-xs text-gray-300 hover:text-white transition-colors font-medium">Sign In</NuxtLink>
-          <NuxtLink to="/join/" class="text-xs bg-emerald-700 hover:bg-emerald-600 text-white px-2.5 py-1.5 rounded-lg font-semibold transition-colors">Join</NuxtLink>
+          <NuxtLink to="/login/" class="text-xs text-gray-300 hover:text-white transition-colors font-medium px-1">Sign In</NuxtLink>
+          <NuxtLink to="/join/" class="text-xs bg-emerald-700 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg font-semibold transition-colors">Join</NuxtLink>
         </template>
-        <NuxtLink to="/feed/" class="text-emerald-300 font-semibold text-sm flex items-center gap-1">
-          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-          {{ isLoggedIn ? 'For You' : 'Feed' }}
-        </NuxtLink>
+        <template v-else>
+          <NuxtLink to="/feed/" class="text-emerald-300 font-semibold text-sm flex items-center gap-1">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            For You
+          </NuxtLink>
+        </template>
         <button @click="menuOpen = !menuOpen" class="text-gray-400 hover:text-white transition-colors p-2 -mr-2" aria-label="Menu">
           <svg v-if="!menuOpen" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
