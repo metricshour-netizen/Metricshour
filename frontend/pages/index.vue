@@ -54,10 +54,10 @@
 
       <!-- H1 — primary SEO heading -->
       <h1 class="text-3xl sm:text-4xl lg:text-5xl font-black text-emerald-400 mb-4 leading-tight tracking-tight">
-        Markets Move Fast. Know What's Driving Them Before Anyone Else.
+        Markets Move Fast. Know What Drives Them.
       </h1>
       <p class="text-gray-400 text-base sm:text-lg max-w-2xl mx-auto mb-8 leading-relaxed">
-        Real-time data on stocks, countries, trade flows and macro trends. So you can act on facts, not guesswork.
+        Track stocks, commodities, countries and macro risks with fast, data-driven insights.
       </p>
 
       <!-- Search bar -->
