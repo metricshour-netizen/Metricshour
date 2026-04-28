@@ -53,13 +53,14 @@
         <button class="text-lg leading-none" :title="isDark ? 'Switch to light mode' : 'Switch to dark mode'" @click="toggleTheme">{{ isDark ? '☀️' : '🌙' }}</button>
       </div>
 
-      <!-- Mobile right: search + Feed + hamburger -->
+      <!-- Mobile right: search + Join (logged-out) + Feed + hamburger -->
       <div class="flex sm:hidden items-center gap-3">
         <button @click="searchOpen = true" class="text-gray-400 hover:text-white transition-colors p-1" aria-label="Search">
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
           </svg>
         </button>
+        <NuxtLink v-if="!isLoggedIn" to="/join/" class="text-xs bg-emerald-700 hover:bg-emerald-600 text-white px-2.5 py-1.5 rounded-lg font-semibold transition-colors">Join</NuxtLink>
         <NuxtLink to="/feed/" class="text-emerald-300 font-semibold text-sm flex items-center gap-1">
           <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
           {{ isLoggedIn ? 'For You' : 'Feed' }}

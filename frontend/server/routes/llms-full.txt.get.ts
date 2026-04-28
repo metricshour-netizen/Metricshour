@@ -5,10 +5,12 @@ export default defineEventHandler((event) => {
   setResponseHeader(event, 'Content-Type', 'text/plain; charset=utf-8')
   setResponseHeader(event, 'Cache-Control', 'public, max-age=3600')
 
-  // Check .output/public first (written by Celery task), fall back to source
+  // Check .output/public first (written by Celery task), fall back to source, then llms.txt
   const candidates = [
     join(process.cwd(), '../public/llms-full.txt'),
     join(process.cwd(), 'public/llms-full.txt'),
+    join(process.cwd(), '../public/llms.txt'),
+    join(process.cwd(), 'public/llms.txt'),
   ]
 
   for (const p of candidates) {
@@ -17,6 +19,5 @@ export default defineEventHandler((event) => {
     }
   }
 
-  setResponseStatus(event, 404)
-  return 'llms-full.txt not yet generated'
+  return '# MetricsHour\n\n> Full content not yet generated. Check back shortly.'
 })

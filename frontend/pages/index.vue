@@ -53,12 +53,11 @@
       </div>
 
       <!-- H1 — primary SEO heading -->
-      <h1 class="text-3xl sm:text-4xl lg:text-5xl font-black text-white mb-4 leading-tight tracking-tight">
-        See where
-        <span class="text-emerald-400"> your stocks</span> make money from
+      <h1 class="text-3xl sm:text-4xl lg:text-5xl font-black text-emerald-400 mb-4 leading-tight tracking-tight">
+        Markets Move Fast. Understand What Moves Them — Before Everyone Else.
       </h1>
       <p class="text-gray-400 text-base sm:text-lg max-w-2xl mx-auto mb-8 leading-relaxed">
-        Country revenue breakdowns for 775+ stocks, from SEC filings. Plus trade flows, macro data, and earnings. Free.
+        Fast, data-driven insights on stocks, commodities, countries, trade flows, and macro trends — so you can act with confidence.
       </p>
 
       <!-- Search bar -->
@@ -146,9 +145,10 @@
         </NuxtLink>
       </div>
 
-      <div v-if="!isLoggedIn" class="flex items-center justify-center gap-3 mt-5">
-        <NuxtLink to="/join/" class="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors">Create Free Account</NuxtLink>
-        <NuxtLink to="/login/" class="text-sm text-gray-400 hover:text-white transition-colors">Sign In →</NuxtLink>
+      <p class="text-xs text-gray-500 text-center mt-3 mb-1">For traders, investors and decision-makers.</p>
+      <div class="flex items-center justify-center gap-3 mt-3">
+        <NuxtLink to="/markets/" class="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors">Explore Markets</NuxtLink>
+        <NuxtLink to="/feed/" class="text-sm text-gray-400 hover:text-white transition-colors">Get Daily Brief →</NuxtLink>
       </div>
 
     </section>

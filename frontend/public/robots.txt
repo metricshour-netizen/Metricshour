@@ -1,6 +1,8 @@
 User-agent: *
 Allow: /
 Disallow: /admin/
+# Full-name trade slug variants (e.g. /trade/united-states--china/) redirect to ISO canonical — disallow to preserve crawl budget
+Disallow: /trade/*--*/
 
 # AI scrapers — no training data, but allow Google AI Overview (SGE visibility)
 User-agent: GPTBot

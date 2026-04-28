@@ -437,6 +437,14 @@ const { data: stock, pending, error } = await useAsyncData(
 )
 if (!stock.value) throw createError({ statusCode: 404, statusMessage: 'Stock not found' })
 
+// ETFs and crypto have dedicated pages — redirect to canonical asset-type URL
+if (stock.value.asset_type === 'etf') {
+  await navigateTo(`/etfs/${ticker.toLowerCase()}/`, { redirectCode: 301 })
+}
+if (stock.value.asset_type === 'crypto') {
+  await navigateTo(`/crypto/${ticker.toLowerCase()}/`, { redirectCode: 301 })
+}
+
 // entity type depends on asset_type (commodity vs stock)
 const summaryEntityType = computed(() =>
   stock.value?.asset_type === 'commodity' ? 'commodity' : 'stock'

@@ -574,9 +574,10 @@ const _seoDesc = computed(() => {
   const rate = _ind.value.interest_rate_pct != null ? `${(_ind.value.interest_rate_pct as number).toFixed(2)}%` : null
   const parts: string[] = []
   if (gdp && grow) parts.push(`${name}'s GDP is ${gdp} (${grow} growth)`)
-  else parts.push(`${name} economy and macro data`)
+  else parts.push(`${name} economy: GDP, inflation, interest rates, trade balance and fiscal indicators`)
   if (inf)  parts.push(`inflation ${inf}`)
   if (rate) parts.push(`interest rate ${rate}`)
+  if (!inf && !rate) parts.push(`trade balance, unemployment and fiscal data`)
   parts.push('80+ indicators from World Bank, IMF and UN Comtrade')
   return parts.join('. ') + '.'
 })
