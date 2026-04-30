@@ -104,7 +104,7 @@
           <NuxtLink
             v-for="c in relatedCountries"
             :key="c.id"
-            :to="`/countries/${c.code.toLowerCase()}`"
+            :to="`/countries/${c.code}`"
             class="inline-flex items-center gap-1.5 text-xs bg-[#111827] border border-[#1f2937] hover:border-blue-500/40 text-gray-300 hover:text-blue-400 px-3 py-1.5 rounded-lg transition-colors"
           >
             <span>{{ c.flag }}</span>
