@@ -201,6 +201,7 @@
         <div class="flex items-center gap-2">
           <h2 class="text-sm font-bold text-white font-mono uppercase tracking-widest">Top Movers</h2>
           <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block"></span>
+          <span v-if="moversFreshLabel" class="text-[10px] font-mono text-gray-600 ml-1">· {{ moversFreshLabel }}</span>
         </div>
         <div class="flex items-center gap-1.5 flex-wrap">
           <button @click="activeMoversTab = 'gainers'"
@@ -761,6 +762,9 @@ function assetLink(symbol: string, assetType: string): string {
   const sym = symbol.toLowerCase()
   if (assetType === 'commodity') return `/commodities/${sym}`
   if (assetType === 'index') return `/indices/${sym}`
+  if (assetType === 'crypto') return `/crypto/${sym}`
+  if (assetType === 'etf') return `/etfs/${sym}`
+  if (assetType === 'fx') return `/fx/${sym}`
   return `/stocks/${sym}`
 }
 
@@ -821,11 +825,38 @@ const filteredAssets = computed(() => {
   return assetsWithChange.value.filter((a: any) => a.asset_type === moversTypeFilter.value)
 })
 
-const topGainer = computed(() =>
+const topGainers = computed(() =>
   assetsWithChange.value
     .filter((a: any) => a._chg > 0 && a.asset_type === 'stock')
-    .sort((a: any, b: any) => b._chg - a._chg)[0] ?? null
+    .sort((a: any, b: any) => b._chg - a._chg)
+    .slice(0, 3)
 )
+const topGainerIndex = ref(0)
+const topGainer = computed(() => topGainers.value[topGainerIndex.value] ?? null)
+let topGainerTimer: ReturnType<typeof setInterval> | null = null
+onMounted(() => {
+  topGainerTimer = setInterval(() => {
+    const len = topGainers.value.length
+    if (len > 1) topGainerIndex.value = (topGainerIndex.value + 1) % len
+  }, 6000)
+})
+onUnmounted(() => { if (topGainerTimer) clearInterval(topGainerTimer) })
+
+// Data freshness: most recent fetched_at across the assets pool
+const moversFreshLabel = computed(() => {
+  const pool = assetsWithChange.value
+  if (!pool.length) return ''
+  const latest = pool.reduce((acc: number, a: any) => {
+    const t = new Date(a.price?.fetched_at || a.price?.timestamp || 0).getTime()
+    return t > acc ? t : acc
+  }, 0)
+  if (!latest) return ''
+  const ageS = Math.floor((Date.now() - latest) / 1000)
+  if (ageS < 60) return 'Updated just now'
+  if (ageS < 3600) return `Updated ${Math.floor(ageS / 60)} min ago`
+  if (ageS < 86400) return `Updated ${Math.floor(ageS / 3600)}h ago`
+  return `Updated ${Math.floor(ageS / 86400)}d ago`
+})
 
 const gainers = computed(() =>
   filteredAssets.value.filter((a: any) => a._chg > 0)
