@@ -35,10 +35,20 @@
           <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block"></span>
           196 countries tracked
         </NuxtLink>
-        <NuxtLink to="/markets/" class="inline-flex items-center gap-1.5 bg-[#111827] border border-[#1f2937] hover:border-sky-800 text-xs text-gray-400 px-3 py-1.5 rounded-full transition-colors">
-          <span class="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse inline-block"></span>
-          775+ stocks tracked
-        </NuxtLink>
+        <template v-if="topGainer">
+          <NuxtLink :to="assetLink(topGainer.symbol, topGainer.asset_type)"
+            class="inline-flex items-center gap-1.5 bg-[#111827] border border-emerald-900 hover:border-emerald-600 text-xs text-emerald-400 px-3 py-1.5 rounded-full transition-colors font-semibold"
+            title="Today's top gaining stock">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block"></span>
+            ▲ {{ topGainer.symbol }} {{ fmtChange(topGainer._chg) }} today
+          </NuxtLink>
+        </template>
+        <template v-else>
+          <NuxtLink to="/markets/" class="inline-flex items-center gap-1.5 bg-[#111827] border border-[#1f2937] hover:border-sky-800 text-xs text-gray-400 px-3 py-1.5 rounded-full transition-colors">
+            <span class="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse inline-block"></span>
+            775+ stocks tracked
+          </NuxtLink>
+        </template>
         <NuxtLink
           v-if="activeSpotlight"
           :to="activeSpotlight.link"
@@ -184,6 +194,89 @@
       </div>
     </section>
 
+    <!-- ── Top Movers ────────────────────────────────────────────────────── -->
+    <section class="mb-10">
+      <!-- Header: title + mood tabs + view all -->
+      <div class="flex items-center justify-between mb-3 flex-wrap gap-3">
+        <div class="flex items-center gap-2">
+          <h2 class="text-sm font-bold text-white font-mono uppercase tracking-widest">Top Movers</h2>
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block"></span>
+        </div>
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <button @click="activeMoversTab = 'gainers'"
+            class="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors"
+            :class="activeMoversTab === 'gainers' ? 'bg-emerald-900 border-emerald-700 text-emerald-300' : 'border-[#1f2937] text-gray-500 hover:border-gray-600 hover:text-gray-300'">
+            ▲ Gainers
+          </button>
+          <button @click="activeMoversTab = 'losers'"
+            class="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors"
+            :class="activeMoversTab === 'losers' ? 'bg-red-950 border-red-800 text-red-300' : 'border-[#1f2937] text-gray-500 hover:border-gray-600 hover:text-gray-300'">
+            ▼ Losers
+          </button>
+          <button @click="activeMoversTab = 'active'"
+            class="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors"
+            :class="activeMoversTab === 'active' ? 'bg-sky-950 border-sky-800 text-sky-300' : 'border-[#1f2937] text-gray-500 hover:border-gray-600 hover:text-gray-300'">
+            ◈ Active
+          </button>
+          <NuxtLink to="/markets/" class="ml-2 text-xs text-emerald-600 hover:text-emerald-400 transition-colors">View all →</NuxtLink>
+        </div>
+      </div>
+
+      <!-- Asset type filter chips -->
+      <div class="flex items-center gap-1.5 mb-4 flex-wrap">
+        <span class="text-[10px] font-mono text-gray-600 uppercase tracking-wider">Filter:</span>
+        <button v-for="f in [
+          { key: 'stock',     label: 'Stocks' },
+          { key: 'crypto',    label: 'Crypto' },
+          { key: 'commodity', label: 'Commodities' },
+          { key: 'fx',        label: 'FX' },
+          { key: 'all',       label: 'All' },
+        ]" :key="f.key"
+          @click="moversTypeFilter = (f.key as any)"
+          class="px-2.5 py-1 rounded-md text-[11px] font-mono border transition-colors"
+          :class="moversTypeFilter === f.key
+            ? 'bg-[#1f2937] border-gray-600 text-white'
+            : 'border-[#1f2937] text-gray-600 hover:border-gray-700 hover:text-gray-400'">
+          {{ f.label }}
+        </button>
+      </div>
+
+      <!-- Loading skeleton -->
+      <div v-if="moversLoading" class="space-y-2">
+        <div v-for="i in 8" :key="i" class="h-14 bg-[#111827] rounded-lg animate-pulse"/>
+      </div>
+
+      <!-- Movers list -->
+      <div v-else-if="currentMovers.length" class="space-y-2">
+        <NuxtLink v-for="s in currentMovers" :key="s.symbol"
+          :to="assetLink(s.symbol, s.asset_type)"
+          class="flex items-center gap-3 bg-[#111827] border border-[#1f2937] hover:border-emerald-500 rounded-lg px-3 py-2.5 transition-colors group">
+          <span class="text-lg leading-none shrink-0">{{ s.country?.flag || (s.asset_type === 'crypto' ? '🪙' : '🏢') }}</span>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-1.5">
+              <span class="text-xs font-mono font-bold group-hover:text-emerald-300" :class="tickerTypeColor(s.asset_type)">{{ s.symbol }}</span>
+              <span class="text-xs text-gray-500 truncate">{{ s.name }}</span>
+            </div>
+            <span v-if="activeMoversTab === 'active'" class="text-[10px] text-gray-700 font-mono tabular-nums">{{ fmtCap(s.market_cap_usd) }}</span>
+            <span v-else class="text-[10px] text-gray-700">{{ s.sector || s.asset_type }}</span>
+          </div>
+          <div class="text-right shrink-0">
+            <div class="text-sm font-semibold tabular-nums font-mono text-white">{{ fmtTickerPrice(s.price.close) }}</div>
+            <div class="text-xs font-semibold tabular-nums font-mono"
+                 :class="s._chg != null ? (s._chg >= 0 ? 'text-emerald-400' : 'text-red-400') : 'text-gray-600'">
+              <template v-if="s._chg != null">{{ s._chg >= 0 ? '▲' : '▼' }} {{ Math.abs(s._chg).toFixed(2) }}%</template>
+              <template v-else>—</template>
+            </div>
+          </div>
+        </NuxtLink>
+      </div>
+
+      <!-- Empty state -->
+      <div v-else class="text-center py-6 text-gray-600 text-sm">
+        No {{ activeMoversTab }} in {{ moversTypeFilter === 'all' ? 'any category' : moversTypeFilter + 's' }} right now.
+      </div>
+    </section>
+
     <!-- ── Economic Calendar Strip ────────────────────────────────────────── -->
     <section class="mb-10" v-if="calendarEvents.length">
       <div class="flex items-center justify-between mb-3">
@@ -315,64 +408,26 @@
 
     </section>
 
-    <!-- ── Live data: Top Stocks + G20 Countries ──────────────────────────── -->
-    <section class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
-
-      <!-- Top Stocks by Market Cap -->
-      <div>
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-sm font-bold text-white font-mono uppercase tracking-widest">Top Stocks</h2>
-          <NuxtLink to="/stocks/" class="text-xs text-emerald-600 hover:text-emerald-400 transition-colors">View all →</NuxtLink>
-        </div>
-        <div v-if="stocksPending" class="space-y-2">
-          <div v-for="i in 5" :key="i" class="h-14 bg-[#111827] rounded-lg animate-pulse"/>
-        </div>
-        <div v-else-if="stocksError" class="text-red-400 text-sm">Failed to load stocks</div>
-        <div v-else class="space-y-2">
-          <NuxtLink
-            v-for="s in topStocks"
-            :key="s.symbol"
-            :to="`/stocks/${s.symbol.toLowerCase()}`"
-            class="flex items-center gap-3 bg-[#111827] border border-[#1f2937] hover:border-emerald-500 rounded-lg px-3 py-2.5 transition-colors group"
-          >
-            <span class="text-lg leading-none shrink-0" aria-hidden="true">{{ s.country?.flag || '🏢' }}</span>
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-1.5">
-                <span class="text-xs font-mono font-bold text-emerald-400 group-hover:text-emerald-300">{{ s.symbol }}</span>
-                <span class="text-xs text-gray-500 truncate">{{ s.name }}</span>
-              </div>
-              <span class="text-[10px] text-gray-700">{{ s.sector }}</span>
-            </div>
-            <div class="text-right shrink-0">
-              <div class="text-sm font-semibold tabular-nums font-mono" :class="s.price?.close ? 'text-white' : 'text-gray-600'">{{ s.price?.close ? fmtTickerPrice(s.price.close) : '—' }}</div>
-              <div class="text-[10px] text-gray-600 tabular-nums font-mono mt-0.5">{{ fmtCap(s.market_cap_usd) }}</div>
-            </div>
-          </NuxtLink>
-        </div>
+    <!-- ── G20 Countries ─────────────────────────────────────────────────── -->
+    <section class="mb-12">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-sm font-bold text-white font-mono uppercase tracking-widest">G20 Countries</h2>
+        <NuxtLink to="/countries/" class="text-xs text-emerald-600 hover:text-emerald-400 transition-colors">View all 196 →</NuxtLink>
       </div>
-
-      <!-- G20 Countries -->
-      <div>
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-sm font-bold text-white font-mono uppercase tracking-widest">G20 Countries</h2>
-          <NuxtLink to="/countries/" class="text-xs text-emerald-600 hover:text-emerald-400 transition-colors">View all 196 →</NuxtLink>
-        </div>
-        <div v-if="countriesPending" class="grid grid-cols-4 sm:grid-cols-5 gap-2">
-          <div v-for="i in 20" :key="i" class="h-16 bg-[#111827] rounded-lg animate-pulse"/>
-        </div>
-        <div v-else class="grid grid-cols-4 sm:grid-cols-5 gap-2">
-          <NuxtLink
-            v-for="c in (countries?.length ? countries : G20_FALLBACK)"
-            :key="c.code"
-            :to="`/countries/${c.code.toLowerCase()}`"
-            class="bg-[#111827] border border-[#1f2937] hover:border-emerald-500 rounded-lg p-2 transition-colors flex flex-col items-center"
-          >
-            <div class="text-xl mb-0.5" aria-hidden="true">{{ c.flag }}</div>
-            <div class="text-[9px] font-mono text-gray-600 text-center leading-tight">{{ c.name.split(' ')[0] }}</div>
-          </NuxtLink>
-        </div>
+      <div v-if="countriesPending" class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-10 gap-2">
+        <div v-for="i in 20" :key="i" class="h-16 bg-[#111827] rounded-lg animate-pulse"/>
       </div>
-
+      <div v-else class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-10 gap-2">
+        <NuxtLink
+          v-for="c in (countries?.length ? countries : G20_FALLBACK)"
+          :key="c.code"
+          :to="`/countries/${c.code.toLowerCase()}`"
+          class="bg-[#111827] border border-[#1f2937] hover:border-emerald-500 rounded-lg p-2 transition-colors flex flex-col items-center"
+        >
+          <div class="text-xl mb-0.5" aria-hidden="true">{{ c.flag }}</div>
+          <div class="text-[9px] font-mono text-gray-600 text-center leading-tight">{{ c.name.split(' ')[0] }}</div>
+        </NuxtLink>
+      </div>
     </section>
 
     <!-- ── Major Trade Relationships ─────────────────────────────────────── -->
@@ -485,19 +540,12 @@ const G20_FALLBACK = [
   { code: 'EU', flag: '🇪🇺', name: 'European Union' },
 ]
 
-// ── Top Stocks ────────────────────────────────────────────────────────────────
-const { data: allStocks, pending: stocksPending, error: stocksError } = useAsyncData(
-  'top-stocks',
-  () => get<any[]>('/api/assets', { type: 'stock', limit: '10' }).catch(() => []),
-)
-
 // ── Trade pairs ───────────────────────────────────────────────────────────────
 const { data: trades, pending: tradesPending } = useAsyncData(
   'top-trades',
   () => get<any[]>('/api/trade', { limit: '8' }).catch(() => []),
 )
 
-const topStocks = computed(() => (allStocks.value ?? []).slice(0, 5))
 const topTrades = computed(() => (trades.value ?? []).slice(0, 6))
 
 // ── Economic Calendar (from recent feed events) ────────────────────────────
@@ -687,6 +735,23 @@ onUnmounted(() => { if (spotlightTimer) clearInterval(spotlightTimer) })
 const TICKER_SYMBOLS = ['BTC', 'ETH', 'SOL', 'AAPL', 'NVDA', 'TSLA', 'MSFT', 'SPY', 'QQQ', 'XAUUSD', 'WTI', 'EURUSD', 'USDJPY', 'BNB', 'XAGUSD']
 const tickerPaused = ref(false)
 
+// ── Top Movers ────────────────────────────────────────────────────────────────
+const activeMoversTab = ref<'gainers' | 'losers' | 'active'>('gainers')
+const moversTypeFilter = ref<'stock' | 'crypto' | 'commodity' | 'fx' | 'all'>('stock')
+
+function fmtChange(pct: number | null | undefined): string {
+  if (pct == null) return '—'
+  return `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`
+}
+
+function isPriceFresh(asset: any): boolean {
+  const ts = asset.price?.fetched_at || asset.price?.timestamp
+  if (!ts) return false
+  const ageMs = Date.now() - new Date(ts).getTime()
+  if (asset.asset_type === 'crypto') return ageMs < 60 * 60 * 1000
+  return ageMs < 48 * 60 * 60 * 1000
+}
+
 const { data: tickerRaw } = useAsyncData('ticker',
   () => get<any[]>('/api/assets').catch(() => []),
   { server: false },
@@ -734,6 +799,55 @@ const tickerItems = computed(() => {
       return { symbol: a.symbol, assetType: a.asset_type, priceStr: fmtTickerPrice(p.close), changePct: Math.abs(chgPct).toFixed(2) + '%', dir, typeColor: tickerTypeColor(a.asset_type) }
     })
     .filter(Boolean) as { symbol: string; priceStr: string; changePct: string; dir: number; typeColor: string }[]
+})
+
+const assetsWithChange = computed(() =>
+  (tickerRaw.value ?? [])
+    .filter((a: any) =>
+      a.price?.close &&
+      isPriceFresh(a) &&
+      (a.price.change_pct != null || (a.price.open && a.price.open > 0))
+    )
+    .map((a: any) => {
+      const p = a.price
+      const chg: number = p.change_pct != null ? p.change_pct : (p.close - p.open) / p.open * 100
+      return { ...a, _chg: chg }
+    })
+)
+
+const filteredAssets = computed(() => {
+  if (moversTypeFilter.value === 'all') return assetsWithChange.value
+  return assetsWithChange.value.filter((a: any) => a.asset_type === moversTypeFilter.value)
+})
+
+const topGainer = computed(() =>
+  assetsWithChange.value
+    .filter((a: any) => a._chg > 0 && a.asset_type === 'stock')
+    .sort((a: any, b: any) => b._chg - a._chg)[0] ?? null
+)
+
+const gainers = computed(() =>
+  filteredAssets.value.filter((a: any) => a._chg > 0)
+    .sort((a: any, b: any) => b._chg - a._chg).slice(0, 8)
+)
+
+const losers = computed(() =>
+  filteredAssets.value.filter((a: any) => a._chg < 0)
+    .sort((a: any, b: any) => a._chg - b._chg).slice(0, 8)
+)
+
+const activeByMarketCap = computed(() =>
+  filteredAssets.value
+    .filter((a: any) => a.market_cap_usd)
+    .sort((a: any, b: any) => (b.market_cap_usd ?? 0) - (a.market_cap_usd ?? 0))
+    .slice(0, 8)
+)
+
+const moversLoading = computed(() => !tickerRaw.value)
+const currentMovers = computed(() => {
+  if (activeMoversTab.value === 'gainers') return gainers.value
+  if (activeMoversTab.value === 'losers') return losers.value
+  return activeByMarketCap.value
 })
 
 // ── SEO ───────────────────────────────────────────────────────────────────────
