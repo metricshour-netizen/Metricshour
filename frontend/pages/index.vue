@@ -851,8 +851,8 @@ const currentMovers = computed(() => {
 })
 
 // ── SEO ───────────────────────────────────────────────────────────────────────
-const _title = 'MetricsHour — See Where Your Stocks Make Money From'
-const _desc  = 'Country revenue breakdowns for 775+ stocks, straight from SEC filings. Plus bilateral trade flows, macro data, yield curve, and earnings — all free.'
+const _title = 'MetricsHour — Global Markets, Trade & Macro Intelligence'
+const _desc  = 'Track 775+ stocks by geographic revenue, bilateral trade flows, macro indicators, yield curves, and earnings — all from primary sources. Free.'
 
 useSeoMeta({
   title: _title,
