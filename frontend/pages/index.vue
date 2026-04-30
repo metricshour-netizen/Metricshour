@@ -155,6 +155,18 @@
         </NuxtLink>
       </div>
 
+      <!-- Recent blog posts strip -->
+      <div v-if="recentBlogs?.length" class="flex items-center gap-2 mt-4 max-w-xl mx-auto overflow-x-auto pb-1 scrollbar-hide">
+        <span class="text-[10px] font-mono text-gray-600 uppercase tracking-wider shrink-0">Analysis:</span>
+        <NuxtLink
+          v-for="post in recentBlogs"
+          :key="post.slug"
+          :to="`/blog/${post.slug}`"
+          class="shrink-0 text-[11px] text-gray-400 hover:text-emerald-400 bg-[#111827] border border-[#1f2937] hover:border-emerald-800 px-2.5 py-1 rounded-full transition-colors max-w-[200px] truncate"
+        >{{ post.title }}</NuxtLink>
+        <NuxtLink to="/blog/" class="shrink-0 text-[11px] text-emerald-700 hover:text-emerald-500 transition-colors whitespace-nowrap">See all →</NuxtLink>
+      </div>
+
       <p class="text-xs text-gray-500 text-center mt-3 mb-1">For traders, investors and decision-makers.</p>
       <div class="flex items-center justify-center gap-3 mt-3">
         <NuxtLink to="/markets/" class="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors">Explore Markets</NuxtLink>
@@ -166,29 +178,32 @@
 
     </section>
 
-    <!-- ── Proof Strip — 3 concrete differentiating data points ────────────── -->
+    <!-- ── Proof Strip — live data, rotates daily ───────────────────────────── -->
     <section class="mb-10">
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
 
-        <NuxtLink to="/stocks/aapl" class="bg-[#111827] border border-[#1f2937] hover:border-violet-700 rounded-xl p-4 transition-all group text-left">
+        <!-- Card 1: rotating stock → country exposure (daily rotation) -->
+        <NuxtLink :to="`/stocks/${card1.symbol.toLowerCase()}`" class="bg-[#111827] border border-[#1f2937] hover:border-violet-700 rounded-xl p-4 transition-all group text-left">
           <div class="text-[10px] font-mono text-gray-600 uppercase tracking-widest mb-2">Stock → Country exposure</div>
-          <div class="text-lg font-black text-white mb-1">Apple earns <span class="text-violet-400">19%</span> from China</div>
-          <div class="text-xs text-gray-500 leading-relaxed mb-3">A tariff escalation doesn't hit all tech stocks equally. See which are most exposed.</div>
-          <div class="text-xs text-violet-500 group-hover:text-violet-400 transition-colors font-semibold">See all China-exposed stocks →</div>
+          <div class="text-lg font-black text-white mb-1">{{ card1.name }} earns <span class="text-violet-400">{{ card1.pct }}%</span> from {{ card1.region }}</div>
+          <div class="text-xs text-gray-500 leading-relaxed mb-3">A tariff escalation doesn't hit all stocks equally. See which are most exposed.</div>
+          <div class="text-xs text-violet-500 group-hover:text-violet-400 transition-colors font-semibold">See {{ card1.region }}-exposed stocks →</div>
         </NuxtLink>
 
+        <!-- Card 2: US–China trade value pulled live from DB -->
         <NuxtLink to="/trade/us--cn" class="bg-[#111827] border border-[#1f2937] hover:border-rose-700 rounded-xl p-4 transition-all group text-left">
           <div class="text-[10px] font-mono text-gray-600 uppercase tracking-widest mb-2">Trade flow → Stock impact</div>
-          <div class="text-lg font-black text-white mb-1"><span class="text-rose-400">$585B</span> US–China trade corridor</div>
+          <div class="text-lg font-black text-white mb-1"><span class="text-rose-400">{{ usChina ? fmtUsd(usChina.trade_value_usd) : '$649B' }}</span> US–China trade corridor</div>
           <div class="text-xs text-gray-500 leading-relaxed mb-3">Every major trade relationship linked to the companies that depend on it most.</div>
           <div class="text-xs text-rose-500 group-hover:text-rose-400 transition-colors font-semibold">View the US–China corridor →</div>
         </NuxtLink>
 
-        <NuxtLink to="/screener/" class="bg-[#111827] border border-[#1f2937] hover:border-amber-700 rounded-xl p-4 transition-all group text-left">
+        <!-- Card 3: rotating daily macro stat -->
+        <NuxtLink :to="card3.link" class="bg-[#111827] border border-[#1f2937] hover:border-amber-700 rounded-xl p-4 transition-all group text-left">
           <div class="text-[10px] font-mono text-gray-600 uppercase tracking-widest mb-2">Country macro → Portfolio</div>
-          <div class="text-lg font-black text-white mb-1">S&P 500 earns <span class="text-amber-400">43%</span> outside the US</div>
+          <div class="text-lg font-black text-white mb-1">{{ card3.label }} <span class="text-amber-400">{{ card3.pct }}%</span> {{ card3.desc }}</div>
           <div class="text-xs text-gray-500 leading-relaxed mb-3">Filter any stock by how much it earns from Europe, Asia, or EM — from actual SEC filings.</div>
-          <div class="text-xs text-amber-500 group-hover:text-amber-400 transition-colors font-semibold">Screen by geography →</div>
+          <div class="text-xs text-amber-500 group-hover:text-amber-400 transition-colors font-semibold">{{ card3.cta }}</div>
         </NuxtLink>
 
       </div>
@@ -544,10 +559,48 @@ const G20_FALLBACK = [
 // ── Trade pairs ───────────────────────────────────────────────────────────────
 const { data: trades, pending: tradesPending } = useAsyncData(
   'top-trades',
-  () => get<any[]>('/api/trade', { limit: '8' }).catch(() => []),
+  () => get<any[]>('/api/trade', { limit: '12' }).catch(() => []),
 )
 
 const topTrades = computed(() => (trades.value ?? []).slice(0, 6))
+
+// US-CN corridor — pulled live from trade data
+const usChina = computed(() =>
+  (trades.value ?? []).find((t: any) =>
+    (t.exporter?.code === 'US' && t.importer?.code === 'CN') ||
+    (t.exporter?.code === 'CN' && t.importer?.code === 'US'),
+  ),
+)
+
+// ── Recent blog posts (for the strip below search) ────────────────────────────
+const { data: recentBlogs } = useAsyncData(
+  'home-blogs',
+  () => get<any[]>('/api/blog', { limit: '5' }).catch(() => []),
+  { server: false },
+)
+
+// ── Proof strip — daily rotation ──────────────────────────────────────────────
+const CARD1_POOL = [
+  { symbol: 'QCOM', name: 'Qualcomm',  pct: 63, region: 'China' },
+  { symbol: 'SBUX', name: 'Starbucks', pct: 19, region: 'China' },
+  { symbol: 'TSLA', name: 'Tesla',     pct: 11, region: 'China' },
+  { symbol: 'NVDA', name: 'NVIDIA',    pct: 57, region: 'Asia' },
+  { symbol: 'AAPL', name: 'Apple',     pct: 19, region: 'China' },
+  { symbol: 'RIO',  name: 'Rio Tinto', pct: 57, region: 'China' },
+  { symbol: 'BHP',  name: 'BHP',       pct: 58, region: 'China' },
+]
+const CARD3_POOL = [
+  { label: 'S&P 500 earns',   pct: 43, desc: 'outside the US',    link: '/screener/',     cta: 'Screen by geography →' },
+  { label: 'QCOM earns',      pct: 63, desc: 'from China',         link: '/stocks/qcom',   cta: 'See full exposure →' },
+  { label: 'Rio Tinto earns', pct: 57, desc: 'from China',         link: '/stocks/rio',    cta: 'See full exposure →' },
+  { label: 'Starbucks earns', pct: 19, desc: 'from China',         link: '/stocks/sbux',   cta: 'See full exposure →' },
+  { label: 'S&P 500 earns',   pct: 43, desc: 'internationally',    link: '/screener/',     cta: 'Screen by geography →' },
+  { label: 'NVIDIA earns',    pct: 57, desc: 'from Asia',          link: '/stocks/nvda',   cta: 'See full exposure →' },
+  { label: 'Tesla earns',     pct: 11, desc: 'from China',         link: '/stocks/tsla',   cta: 'See full exposure →' },
+]
+const _dayIndex = Math.floor(Date.now() / 86400000)
+const card1 = computed(() => CARD1_POOL[_dayIndex % CARD1_POOL.length])
+const card3 = computed(() => CARD3_POOL[_dayIndex % CARD3_POOL.length])
 
 // ── Economic Calendar (from recent feed events) ────────────────────────────
 const { data: feedData } = useAsyncData(
