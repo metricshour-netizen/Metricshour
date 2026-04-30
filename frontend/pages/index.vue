@@ -806,6 +806,7 @@ const assetsWithChange = computed(() =>
     .filter((a: any) =>
       a.price?.close &&
       isPriceFresh(a) &&
+      /[A-Z]/i.test(a.symbol) &&
       (a.price.change_pct != null || (a.price.open && a.price.open > 0))
     )
     .map((a: any) => {
