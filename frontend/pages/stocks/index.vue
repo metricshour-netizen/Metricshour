@@ -181,7 +181,7 @@ const sectors = computed(() => {
 
 const filtered = computed(() => {
   if (!stocks.value) return []
-  let list = stocks.value as any[]
+  let list = (stocks.value as any[]).filter((s: any) => /[A-Z]/i.test(s.symbol))
 
   if (activeSector.value) {
     list = list.filter((s: any) => s.sector === activeSector.value)

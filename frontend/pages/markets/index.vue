@@ -456,7 +456,9 @@ function showSection(type: string) {
 
 const filtered = computed(() => {
   if (!allAssets.value) return []
-  let list = allAssets.value as any[]
+  let list = (allAssets.value as any[]).filter((a: any) =>
+    activeTab.value === 'china' || /[A-Z]/i.test(a.symbol)
+  )
   if (activeTab.value !== 'all') list = list.filter((a: any) => a.asset_type === activeTab.value)
   if (!search.value.trim()) return list
   const q = search.value.toLowerCase().trim()
