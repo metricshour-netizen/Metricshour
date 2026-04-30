@@ -3,7 +3,7 @@
     <div class="mb-8">
       <h1 class="text-xl sm:text-2xl font-bold text-white">Bilateral Trade</h1>
       <p class="text-gray-500 text-sm mt-1">
-        380 country pairs · Trade flows, top products, dependency ratios · UN Comtrade data
+        2,700+ trade corridors · Trade flows, top products, dependency ratios · UN Comtrade data
       </p>
     </div>
 
@@ -21,7 +21,7 @@
         </div>
         <div class="divide-y divide-[#1f2937]">
           <NuxtLink
-            v-for="p in pairs"
+            v-for="p in visiblePairs"
             :key="p.id"
             :to="`/trade/${p.exporter?.slug ?? p.exporter?.code?.toLowerCase()}--${p.importer?.slug ?? p.importer?.code?.toLowerCase()}`"
             class="block hover:bg-[#1a2235] transition-colors"
@@ -62,6 +62,16 @@
           </NuxtLink>
         </div>
       </div>
+
+      <div v-if="visibleCount < pairs.length" class="mt-6 text-center">
+        <button
+          @click="loadMore"
+          class="px-6 py-2.5 bg-[#111827] border border-[#1f2937] hover:border-emerald-700 text-sm text-gray-300 hover:text-white rounded-lg transition-colors"
+        >
+          Show more ({{ pairs.length - visibleCount }} remaining)
+        </button>
+      </div>
+      <p class="text-xs text-gray-600 text-center mt-3">Showing {{ visibleCount }} of {{ pairs.length }} corridors</p>
     </template>
 
     <template v-else>
@@ -83,6 +93,14 @@ const { data: pairs, pending } = useAsyncData('trade-pairs',
   () => get<any[]>('/api/trade').catch(() => []),
 )
 
+const PAGE_SIZE = 100
+const visibleCount = ref(PAGE_SIZE)
+const visiblePairs = computed(() => (pairs.value ?? []).slice(0, visibleCount.value))
+
+function loadMore() {
+  visibleCount.value = Math.min(visibleCount.value + PAGE_SIZE, (pairs.value ?? []).length)
+}
+
 function fmtUsd(v: number | null): string {
   if (v == null) return '—'
   const abs = Math.abs(v)
@@ -94,23 +112,23 @@ function fmtUsd(v: number | null): string {
 }
 
 const features = [
-  { icon: '⚖️', title: 'Trade Balance', desc: 'Total trade value, exports, imports, and bilateral balance for 380 country pairs.' },
+  { icon: '⚖️', title: 'Trade Balance', desc: 'Total trade value, exports, imports, and bilateral balance for 2,700+ trade corridors.' },
   { icon: '📦', title: 'Top Products', desc: 'What countries actually trade — the top export and import products, not just dollar totals.' },
   { icon: '📈', title: 'GDP Dependency', desc: "Trade value as a % of each country's GDP — reveals true economic dependency between partners." },
 ]
 
 useSeoMeta({
-  title: 'Bilateral Trade Flows: 380 Country Pairs — MetricsHour',
-  description: 'Trade flows between 380 country pairs. Exports, imports, top products, and GDP dependency ratios sourced from UN Comtrade.',
-  ogTitle: 'Bilateral Trade Flows: 380 Country Pairs — MetricsHour',
-  ogDescription: 'Trade flows between 380 country pairs. Exports, imports, top products, and GDP dependency ratios sourced from UN Comtrade.',
+  title: 'Bilateral Trade Flows: 2,700+ Trade Corridors — MetricsHour',
+  description: 'Trade flows between 2,700+ country pairs. Exports, imports, top products, and GDP dependency ratios sourced from UN Comtrade.',
+  ogTitle: 'Bilateral Trade Flows: 2,700+ Trade Corridors — MetricsHour',
+  ogDescription: 'Trade flows between 2,700+ country pairs. Exports, imports, top products, and GDP dependency ratios sourced from UN Comtrade.',
   ogUrl: 'https://metricshour.com/trade/',
   ogType: 'website',
   ogImage: 'https://cdn.metricshour.com/og/section/trade.png',
   ogImageWidth: '1200',
   ogImageHeight: '630',
-  twitterTitle: 'Bilateral Trade Flows: 380 Country Pairs — MetricsHour',
-  twitterDescription: 'Trade flows between 380 country pairs. Exports, imports, top products, and GDP dependency ratios sourced from UN Comtrade.',
+  twitterTitle: 'Bilateral Trade Flows: 2,700+ Trade Corridors — MetricsHour',
+  twitterDescription: 'Trade flows between 2,700+ country pairs. Exports, imports, top products, and GDP dependency ratios sourced from UN Comtrade.',
   twitterImage: 'https://cdn.metricshour.com/og/section/trade.png',
   twitterCard: 'summary_large_image',
   robots: 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1',
@@ -125,7 +143,7 @@ useHead(computed(() => ({
       '@type': 'CollectionPage',
       name: 'Bilateral Trade — MetricsHour',
       url: 'https://metricshour.com/trade/',
-      description: 'Trade flows between 380 country pairs. Exports, imports, top products, and GDP dependency ratios from UN Comtrade.',
+      description: 'Trade flows between 2,700+ country pairs. Exports, imports, top products, and GDP dependency ratios from UN Comtrade.',
       isPartOf: { '@type': 'WebSite', name: 'MetricsHour', url: 'https://metricshour.com' },
       mainEntity: {
         '@type': 'ItemList',

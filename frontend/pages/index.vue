@@ -348,7 +348,7 @@
           <div>
             <div class="text-[10px] font-mono font-bold tracking-widest text-amber-600 uppercase mb-0.5">Bilateral Trade · UN Comtrade</div>
             <h2 class="text-sm font-black text-white group-hover:text-amber-400 transition-colors leading-snug">
-              1,400+ trade corridors, linked to stocks
+              2,700+ trade corridors, linked to stocks
             </h2>
           </div>
         </div>

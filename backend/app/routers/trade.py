@@ -17,7 +17,7 @@ def list_trade_pairs(
     request: Request,
     exporter: str | None = None,
     importer: str | None = None,
-    limit: int = Query(default=100, ge=1, le=500),
+    limit: int = Query(default=3000, ge=1, le=3000),
     db: Session = Depends(get_db),
 ) -> list[dict]:
     # Subquery: best year per (exporter, importer) pair.
