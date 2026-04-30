@@ -88,8 +88,6 @@
         ·
         <a href="https://data.imf.org" target="_blank" rel="noopener noreferrer" class="hover:text-gray-500 transition-colors">IMF</a>
         ·
-        <span class="text-gray-700">Marketstack</span>
-        ·
         <a href="https://fred.stlouisfed.org" target="_blank" rel="noopener noreferrer" class="hover:text-gray-500 transition-colors">FRED</a>
       </p>
       <p>© {{ new Date().getFullYear() }} MetricsHour · All rights reserved</p>
