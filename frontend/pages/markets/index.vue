@@ -347,7 +347,7 @@
         No assets match "{{ search }}"
       </div>
 
-      <p class="text-xs text-gray-700 mt-2">Data: Marketstack · FRED · SEC EDGAR · ECB · Tiingo</p>
+      <p class="text-xs text-gray-700 mt-2">Data: FRED · SEC EDGAR · ECB · Licensed market data</p>
 
       </template><!-- end card view -->
     </template>

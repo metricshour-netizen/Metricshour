@@ -394,7 +394,7 @@ useHead(computed(() => ({
         '@context': 'https://schema.org',
         '@type': 'Dataset',
         name: `${index.value.name} (${symbol}) Price Data`,
-        description: `Current and historical price data for ${index.value.name}. Source: Marketstack.`,
+        description: `Current and historical price data for ${index.value.name}.`,
         url: `https://metricshour.com/indices/${symbol.toLowerCase()}/`,
         creator: { '@type': 'Organization', name: 'MetricsHour', url: 'https://metricshour.com' },
         license: 'https://metricshour.com/terms/',

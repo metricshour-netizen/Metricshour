@@ -67,7 +67,7 @@
         No indices match "{{ search }}"
       </div>
 
-      <p class="text-xs text-gray-700 mt-4">Data: Marketstack · CBOE · Exchange feeds</p>
+      <p class="text-xs text-gray-700 mt-4">Data: CBOE · Exchange feeds</p>
     </template>
   </main>
 </template>

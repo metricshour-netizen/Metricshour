@@ -8,7 +8,7 @@
     <section class="mb-10">
       <h2 class="text-lg font-semibold text-white mb-3">What is MetricsHour?</h2>
       <p class="text-gray-400 text-sm leading-relaxed mb-3">
-        MetricsHour is a macroeconomic data terminal covering 196 countries, 775+ stocks, 1,400+ bilateral trade corridors,
+        MetricsHour is a macroeconomic data terminal covering 196 countries, 775+ stocks, 2,700+ bilateral trade corridors,
         and 21 commodities. We aggregate data from public institutions — the World Bank, IMF, UN Comtrade, SEC EDGAR,
         and the US Census Bureau — and present it in a clean, analyst-grade interface.
       </p>
@@ -43,8 +43,8 @@
           <p class="text-xs text-gray-400">Geographic revenue breakdowns for 100+ publicly-listed US companies, extracted from annual and quarterly filings. FY2023/FY2024 data. Updated quarterly as filings are published.</p>
         </div>
         <div class="bg-[#111827] border border-[#1f2937] rounded-lg p-4">
-          <div class="text-sm font-semibold text-emerald-400 mb-1">REST Countries API + Tiingo</div>
-          <p class="text-xs text-gray-400">Country metadata, flags, ISO codes, and currency data via REST Countries. Real-time US stock prices, intraday data, FX rates, and crypto OHLC via Tiingo IEX. Price data updates every 15 minutes during market hours, crypto every 5 minutes.</p>
+          <div class="text-sm font-semibold text-emerald-400 mb-1">REST Countries API</div>
+          <p class="text-xs text-gray-400">Country metadata, flags, ISO codes, and currency data. Real-time stock prices, FX rates, and crypto OHLC from licensed market data providers. Price data updates every 15 minutes during market hours, crypto every 5 minutes.</p>
         </div>
       </div>
     </section>

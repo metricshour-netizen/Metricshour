@@ -12,7 +12,7 @@
         </div>
         <p class="text-gray-500 text-xs max-w-2xl">
           China A-shares are mainland Chinese stocks traded on the Shanghai and Shenzhen exchanges.
-          Prices are denominated in Chinese Yuan (CNY). Data sourced from Tiingo.
+          Prices are denominated in Chinese Yuan (CNY).
         </p>
       </div>
     </div>
@@ -102,7 +102,7 @@
         </div>
       </div>
 
-      <p class="text-xs text-gray-700 text-center mt-6">Data: Tiingo · Prices in CNY · Updated daily after market close</p>
+      <p class="text-xs text-gray-700 text-center mt-6">Prices in CNY · Updated daily after market close</p>
     </main>
   </div>
 </template>
@@ -143,7 +143,7 @@ const paginated = computed(() => {
 
 useSeoMeta({
   title: 'China A-Shares — Shanghai & Shenzhen Stocks | MetricsHour',
-  description: 'Browse China A-share stocks listed on the Shanghai (SHG) and Shenzhen (SHE) exchanges with live CNY prices. Powered by Tiingo.',
+  description: 'Browse China A-share stocks listed on the Shanghai (SHG) and Shenzhen (SHE) exchanges with live CNY prices.',
   ogTitle: 'China A-Shares | MetricsHour',
   ogDescription: 'Shanghai and Shenzhen listed stocks with live CNY prices.',
   ogImage: 'https://cdn.metricshour.com/og/section/china.png',

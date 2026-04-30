@@ -39,7 +39,7 @@ const open = ref(null)
 const faqs = [
   {
     q: 'What is MetricsHour?',
-    a: 'MetricsHour is a macroeconomic data platform covering 196 countries, 130+ stocks, and 38,000+ bilateral trade pairs. We connect SEC EDGAR geographic revenue data, World Bank macro indicators, and UN Comtrade bilateral trade flows in one place.',
+    a: 'MetricsHour is a macroeconomic data platform covering 196 countries, 775+ stocks, and 2,700+ bilateral trade corridors. We connect SEC EDGAR geographic revenue data, World Bank macro indicators, and UN Comtrade bilateral trade flows in one place.',
   },
   {
     q: 'Is MetricsHour free?',
@@ -47,7 +47,7 @@ const faqs = [
   },
   {
     q: 'Where does the data come from?',
-    a: 'We aggregate data from public institutions: World Bank (GDP, inflation, governance), IMF (WEO forecasts), UN Comtrade (bilateral trade flows), SEC EDGAR (geographic revenue from 10-K filings), and Marketstack (live prices). All sources are credited on every data page.',
+    a: 'We aggregate data from public institutions: World Bank (GDP, inflation, governance), IMF (WEO forecasts), UN Comtrade (bilateral trade flows), SEC EDGAR (geographic revenue from 10-K filings), and licensed market data providers (live prices). All sources are credited on every data page.',
   },
   {
     q: 'How often is data updated?',
@@ -59,7 +59,7 @@ const faqs = [
   },
   {
     q: 'How many trade pairs does MetricsHour cover?',
-    a: 'We cover 38,000+ bilateral trade relationships across 170 countries. Each pair shows total trade volume, top exported products, and links to both countries\' macro profiles.',
+    a: 'We cover 2,700+ bilateral trade corridors across 170 countries. Each corridor shows total trade volume, top exported products, and links to both countries\' macro profiles.',
   },
   {
     q: 'Can I create an account?',
@@ -71,7 +71,7 @@ const faqs = [
   },
   {
     q: 'Is the data accurate?',
-    a: 'We source directly from institutional data providers (World Bank, IMF, UN, SEC) and do not manually modify figures. Some indicators have reporting lags of 1–2 years, which we display clearly. Live prices come from Marketstack and may have a short delay.',
+    a: 'We source directly from institutional data providers (World Bank, IMF, UN, SEC) and do not manually modify figures. Some indicators have reporting lags of 1–2 years, which we display clearly. Live prices may have a short delay.',
   },
   {
     q: 'Do you have an API?',

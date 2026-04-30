@@ -197,7 +197,7 @@
         </div>
       </div>
 
-      <p class="text-xs text-gray-700 text-center mb-8">Data: Tiingo</p>
+      <p class="text-xs text-gray-700 text-center mb-8">Data: Licensed market data</p>
 
       <!-- Newsletter -->
       <div class="border border-gray-800 rounded-xl p-6 bg-gray-900/40">
@@ -418,7 +418,7 @@ function buildCryptoFaqs(a: any) {
   const faqs: { '@type': string; name: string; acceptedAnswer: { '@type': string; text: string } }[] = []
   const push = (q: string, ans: string) => faqs.push({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: ans } })
   const p = a.price ?? {}
-  if (p.close != null) push(`What is ${a.name}'s price today?`, `${a.name} (${a.symbol}) is currently priced at $${p.close.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 6 })} USD. Data sourced from Tiingo.`)
+  if (p.close != null) push(`What is ${a.name}'s price today?`, `${a.name} (${a.symbol}) is currently priced at $${p.close.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 6 })} USD.`)
   if (p.change_pct != null) push(`How much has ${a.name} moved today?`, `${a.name} has moved ${p.change_pct >= 0 ? '+' : ''}${p.change_pct.toFixed(2)}% in the last 24 hours.`)
   if (a.market_cap_usd != null) {
     const cap = a.market_cap_usd >= 1e12 ? `$${(a.market_cap_usd / 1e12).toFixed(2)} trillion` : `$${(a.market_cap_usd / 1e9).toFixed(1)} billion`
