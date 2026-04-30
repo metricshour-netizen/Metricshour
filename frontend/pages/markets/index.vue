@@ -416,7 +416,7 @@ onMounted(() => {
 })
 
 const { data: allAssets, pending } = useAsyncData('markets-all',
-  () => get<any[]>('/api/assets').catch(() => []),
+  () => get<any[]>('/api/assets', { limit: 2000 }).catch(() => []),
 )
 
 const { data: chinaAssets, pending: chinaPending } = useAsyncData('markets-china',

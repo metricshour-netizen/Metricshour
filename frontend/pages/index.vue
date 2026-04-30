@@ -72,7 +72,7 @@
             @keydown.up.prevent="moveFocus(-1)"
             @keydown.enter.prevent="selectFocused"
             @focus="searchQuery.length >= 2 && (searchOpen = true)"
-            placeholder="Search countries, stocks, trade pairs..."
+            placeholder="Search Gold, NVDA, China, Oil…"
             class="w-full bg-[#111827] border border-[#1f2937] focus:border-emerald-500 text-white rounded-lg px-4 py-3.5 pl-9 text-sm focus:outline-none transition-colors font-mono"
             autocomplete="off"
             spellcheck="false"
@@ -148,7 +148,10 @@
       <p class="text-xs text-gray-500 text-center mt-3 mb-1">For traders, investors and decision-makers.</p>
       <div class="flex items-center justify-center gap-3 mt-3">
         <NuxtLink to="/markets/" class="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors">Explore Markets</NuxtLink>
-        <NuxtLink to="/feed/" class="text-sm text-gray-400 hover:text-white transition-colors">Get Daily Brief →</NuxtLink>
+        <NuxtLink to="/feed/" class="text-sm border border-[#1f2937] hover:border-emerald-700 hover:text-white text-gray-300 px-4 py-2.5 rounded-lg transition-colors flex items-center gap-2">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block"></span>
+          What's Moving Today
+        </NuxtLink>
       </div>
 
     </section>
@@ -433,10 +436,10 @@
 
     <!-- ── Newsletter capture ─────────────────────────────────────────────── -->
     <section class="max-w-xl mx-auto px-4 py-10 text-center">
-      <p class="text-xs font-mono text-emerald-500 uppercase tracking-widest mb-2">Weekly Briefing</p>
-      <h2 class="text-xl font-bold text-white mb-2">The macro moves that matter, explained.</h2>
-      <p class="text-sm text-gray-400 mb-5">GDP shifts, trade flows, central bank decisions — plain language, every week. Free.</p>
-      <NewsletterCapture source="homepage" button-text="Subscribe free" class="max-w-sm mx-auto" />
+      <p class="text-xs font-mono text-emerald-500 uppercase tracking-widest mb-2">Daily Brief</p>
+      <h2 class="text-xl font-bold text-white mb-2">Markets don't wait. Neither should you.</h2>
+      <p class="text-sm text-gray-400 mb-5">Stocks moving, macro shifting, central banks reacting — one clear signal, every morning. Free.</p>
+      <NewsletterCapture source="homepage" button-text="Get the daily brief" class="max-w-sm mx-auto" />
     </section>
 
     <!-- ── Data sources ───────────────────────────────────────────────────── -->

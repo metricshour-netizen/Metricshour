@@ -4,8 +4,9 @@
     <NuxtPage />
     <AppFooter />
 
-    <!-- Floating feedback button -->
+    <!-- Floating feedback button — appears after scrolling past hero -->
     <button
+      v-show="feedbackVisible"
       class="fixed bottom-6 right-4 z-50 bg-[#1f2937] hover:bg-[#374151] border border-[#374151] text-gray-300 text-xs font-semibold px-3 py-2 rounded-full shadow-lg transition-all flex items-center gap-1.5"
       @click="feedbackOpen = true"
     >
@@ -49,7 +50,14 @@ const feedbackMsg = ref('')
 const feedbackEmail = ref('')
 const sending = ref(false)
 const feedbackSent = ref(false)
+const feedbackVisible = ref(false)
 const route = useRoute()
+
+onMounted(() => {
+  const onScroll = () => { feedbackVisible.value = window.scrollY > 300 }
+  window.addEventListener('scroll', onScroll, { passive: true })
+  onUnmounted(() => window.removeEventListener('scroll', onScroll))
+})
 
 async function submitFeedback() {
   if (!feedbackMsg.value.trim()) return

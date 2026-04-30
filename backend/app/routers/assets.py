@@ -19,7 +19,7 @@ def list_assets(
     country_code: str | None = None,
     exchange: str | None = None,
     ids: str | None = None,
-    limit: int = Query(default=500, ge=1, le=500),
+    limit: int = Query(default=2000, ge=1, le=2000),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
 ) -> list[dict]:

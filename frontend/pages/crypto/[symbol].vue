@@ -411,7 +411,7 @@ useSeoMeta({
   twitterImage: 'https://cdn.metricshour.com/og/section/crypto.png',
   twitterTitle: _seoTitle,
   twitterDescription: _seoDesc,
-  robots: 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1',
+  robots: computed(() => asset.value ? 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1' : 'noindex, follow'),
 })
 
 function buildCryptoFaqs(a: any) {
