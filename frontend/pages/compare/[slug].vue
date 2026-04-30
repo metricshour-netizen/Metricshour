@@ -145,7 +145,7 @@
         </div>
 
         <NuxtLink
-          :to="`/trade/${countryA?.slug ?? codeA}--${countryB?.slug ?? codeB}`"
+          :to="`/trade/${codeA}-${codeB}`"
           class="inline-flex items-center gap-1 text-xs text-emerald-500 hover:text-emerald-300 mt-3 transition-colors"
         >
           Full trade analysis →
@@ -195,7 +195,7 @@
           <NuxtLink :to="`/countries/${codeB}`" class="text-blue-400 hover:text-blue-300 transition-colors">
             {{ countryB.name }} Economy →
           </NuxtLink>
-          <NuxtLink v-if="trade" :to="`/trade/${countryA?.slug ?? codeA}--${countryB?.slug ?? codeB}`" class="text-gray-400 hover:text-white transition-colors">
+          <NuxtLink v-if="trade" :to="`/trade/${codeA}-${codeB}`" class="text-gray-400 hover:text-white transition-colors">
             {{ countryA.name }}–{{ countryB.name }} Trade →
           </NuxtLink>
           <NuxtLink to="/countries/" class="text-gray-500 hover:text-gray-300 transition-colors">

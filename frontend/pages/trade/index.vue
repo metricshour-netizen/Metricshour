@@ -23,7 +23,7 @@
           <NuxtLink
             v-for="p in visiblePairs"
             :key="p.id"
-            :to="`/trade/${p.exporter?.slug ?? p.exporter?.code?.toLowerCase()}--${p.importer?.slug ?? p.importer?.code?.toLowerCase()}`"
+            :to="`/trade/${p.exporter?.code?.toLowerCase()}-${p.importer?.code?.toLowerCase()}`"
             class="block hover:bg-[#1a2235] transition-colors"
           >
             <!-- Mobile row -->
@@ -89,8 +89,10 @@
 <script setup lang="ts">
 const { get } = useApi()
 
+// server: false — 2,700+ rows is too large to embed in SSR HTML; sitemap covers all ≥$1B pairs
 const { data: pairs, pending } = useAsyncData('trade-pairs',
   () => get<any[]>('/api/trade').catch(() => []),
+  { server: false },
 )
 
 const PAGE_SIZE = 100
@@ -151,7 +153,7 @@ useHead(computed(() => ({
           '@type': 'ListItem',
           position: i + 1,
           name: `${p.exporter?.name} – ${p.importer?.name}`,
-          item: `https://metricshour.com/trade/${p.exporter?.slug ?? p.exporter?.code?.toLowerCase()}--${p.importer?.slug ?? p.importer?.code?.toLowerCase()}/`,
+          item: `https://metricshour.com/trade/${p.exporter?.code?.toLowerCase()}-${p.importer?.code?.toLowerCase()}/`,
         })),
       },
     }),

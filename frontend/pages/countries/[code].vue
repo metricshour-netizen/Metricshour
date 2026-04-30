@@ -284,7 +284,7 @@
                 <td class="py-2.5">
                   <div class="flex items-center gap-2 flex-wrap">
                     <NuxtLink
-                      :to="`/trade/${code.toLowerCase()}--${p.partner.slug ?? p.partner.code.toLowerCase()}`"
+                      :to="`/trade/${code.toLowerCase()}-${p.partner.code.toLowerCase()}`"
                       class="flex items-center gap-2 hover:text-emerald-400 transition-colors"
                     >
                       <span aria-hidden="true">{{ p.partner.flag }}</span>
@@ -311,7 +311,7 @@
               <NuxtLink
                 v-for="p in (tradePartners || []).slice(0, 6)"
                 :key="p.partner.code"
-                :to="`/trade/${code.toLowerCase()}--${p.partner.slug ?? p.partner.code.toLowerCase()}`"
+                :to="`/trade/${code.toLowerCase()}-${p.partner.code.toLowerCase()}`"
                 class="flex items-center gap-1.5 text-[11px] text-emerald-700 hover:text-emerald-400 bg-[#0d1117] border border-[#1f2937] hover:border-emerald-800 px-2 py-1 rounded transition-colors"
               >
                 <span aria-hidden="true">{{ p.partner.flag }}</span>

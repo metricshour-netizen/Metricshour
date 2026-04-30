@@ -191,7 +191,7 @@
         </NuxtLink>
 
         <!-- Card 2: US–China trade value pulled live from DB -->
-        <NuxtLink to="/trade/us--cn" class="bg-[#111827] border border-[#1f2937] hover:border-rose-700 rounded-xl p-4 transition-all group text-left">
+        <NuxtLink to="/trade/us-cn" class="bg-[#111827] border border-[#1f2937] hover:border-rose-700 rounded-xl p-4 transition-all group text-left">
           <div class="text-[10px] font-mono text-gray-600 uppercase tracking-widest mb-2">Trade flow → Stock impact</div>
           <div class="text-lg font-black text-white mb-1"><span class="text-rose-400">{{ usChina ? fmtUsd(usChina.trade_value_usd) : '$649B' }}</span> US–China trade corridor</div>
           <div class="text-xs text-gray-500 leading-relaxed mb-3">Every major trade relationship linked to the companies that depend on it most.</div>
@@ -459,7 +459,7 @@
         <NuxtLink
           v-for="t in topTrades"
           :key="`${t.exporter?.code}-${t.importer?.code}`"
-          :to="`/trade/${t.exporter?.slug ?? t.exporter?.code?.toLowerCase()}--${t.importer?.slug ?? t.importer?.code?.toLowerCase()}`"
+          :to="`/trade/${t.exporter?.code?.toLowerCase()}-${t.importer?.code?.toLowerCase()}`"
           class="bg-[#111827] border border-[#1f2937] hover:border-emerald-500 rounded-lg p-4 transition-colors group"
         >
           <div class="flex items-center gap-2 mb-2">
