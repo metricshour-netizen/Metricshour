@@ -44,7 +44,7 @@
         </div>
         <div class="bg-[#111827] border border-[#1f2937] rounded-lg p-4">
           <div class="text-sm font-semibold text-emerald-400 mb-1">REST Countries API + Tiingo</div>
-          <p class="text-xs text-gray-400">Country metadata, flags, ISO codes, and currency data via REST Countries. Real-time US stock prices, intraday data, FX rates, and crypto OHLC via Tiingo IEX (yfinance as secondary fallback). Price data updates every 15 minutes during market hours, crypto every 5 minutes.</p>
+          <p class="text-xs text-gray-400">Country metadata, flags, ISO codes, and currency data via REST Countries. Real-time US stock prices, intraday data, FX rates, and crypto OHLC via Tiingo IEX. Price data updates every 15 minutes during market hours, crypto every 5 minutes.</p>
         </div>
       </div>
     </section>
