@@ -7,6 +7,7 @@ Runs daily at 7:30am UTC.
 """
 
 import logging
+import math
 import os
 from datetime import date, timedelta
 
@@ -23,6 +24,17 @@ log = logging.getLogger(__name__)
 
 BATCH_SIZE = 100
 TIINGO_KEY = os.environ.get("TIINGO_API_KEY", "")
+
+
+def _safe_float(v) -> float | None:
+    """Convert a value to float, returning None for NaN, None, or unparseable."""
+    if v is None:
+        return None
+    try:
+        f = float(v)
+        return None if math.isnan(f) else f
+    except (ValueError, TypeError):
+        return None
 
 
 def _fetch_tiingo_revenue(symbol: str) -> dict[str, float]:
@@ -81,9 +93,9 @@ def _fetch_earnings(symbol: str) -> list[dict]:
             try:
                 # idx is a DatetimeTZDtype; convert to date
                 report_date = idx.date() if hasattr(idx, "date") else date.fromisoformat(str(idx)[:10])
-                eps_est = float(row.get("EPS Estimate", None) or 0) or None
-                eps_act = float(row.get("Reported EPS", None) or 0) or None
-                surprise = float(row.get("Surprise(%)", None) or 0) or None
+                eps_est = _safe_float(row.get("EPS Estimate"))
+                eps_act = _safe_float(row.get("Reported EPS"))
+                surprise = _safe_float(row.get("Surprise(%)"))
                 rows.append({
                     "report_date": report_date,
                     "eps_estimate": eps_est,
