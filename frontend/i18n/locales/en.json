@@ -2,7 +2,7 @@
   "emailAlert": {
     "title": "Get alerts for {name}",
     "subtitle": "Free — no password needed",
-    "placeholder": "your@email.com",
+    "placeholder": "Enter your email address",
     "submit": "Set Alert",
     "submitting": "Setting up...",
     "success": "You'll be notified when {name} changes",
