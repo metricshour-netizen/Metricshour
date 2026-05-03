@@ -123,6 +123,26 @@ class PageView(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
 
 
+class EmailAlert(Base):
+    """
+    Email-only asset alert — no account required.
+    Captures email + asset for unauthenticated users.
+    """
+    __tablename__ = "email_alerts"
+    __table_args__ = (
+        Index("ix_email_alerts_email_asset", "email", "asset_symbol"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    asset_symbol: Mapped[str] = mapped_column(String(20), nullable=False)
+    asset_name: Mapped[str] = mapped_column(String(200), nullable=True)
+    asset_type: Mapped[str] = mapped_column(String(20), nullable=False, default="stock")
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    unsubscribe_token: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 class NewsletterSubscriber(Base):
     __tablename__ = "newsletter_subscribers"
 

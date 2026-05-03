@@ -1,5 +1,170 @@
 # MetricsHour — Progress & Session Log
 
+## Session 2026-05-01 — 15 blog batch: craft, clean, schedule ✅
+
+### 15 keyword-targeted blog posts — all drafted and scheduled
+
+**Pipeline:** craft_blog.py (Gemini 2.5 Pro → Grok → Claude editorial) run for all 15 topics from keyword research session.
+
+**Issue encountered:** Two `nohup` processes ran in parallel → 21 posts published with 9 duplicates.
+- Fix: `DELETE /api/admin/blogs/{id}?force=true` on 9 lower-ID duplicates
+- Reverted remaining 13 to draft via SQL: `UPDATE blog_posts SET status='draft' WHERE id IN (...)`
+- Note: `BlogUpdate` has no `status` field — SQL is the only way to revert published→draft
+
+**Word counts:** Gemini 2.5 Pro returned 503 errors during morning peak → Flash fallback → short drafts. Re-ran short posts with `--draft-id` flag + `--topic` context injection until all cleared 1000w.
+
+**Fluff audit:** Regex scan across all 15 — 14 clean, 1 fixed (ID=164 "comprehensive").
+
+**Scheduled:** 15 cron entries added to Contabo crontab, 03:00 UTC daily May 2–16. `scheduled_publish.py` self-removes each line after firing + sends Telegram notify.
+
+| Date | ID | Title | Words |
+|------|----|-------|-------|
+| May 2 | 148 | Microsoft Revenue by Country | 1,091 |
+| May 3 | 150 | Amazon Revenue by Country | 1,002 |
+| May 4 | 152 | Google Alphabet Revenue by Country | 1,063 |
+| May 5 | 154 | Meta Revenue by Country | 1,129 |
+| May 6 | 156 | How the US-China Trade War Affects Your 401k | 1,164 |
+| May 7 | 158 | US-Mexico Trade Relationship 2026 | 1,052 |
+| May 8 | 160 | BOJ Rate Hike: Yen Headwind Stocks | 1,146 |
+| May 9 | 163 | Germany vs France Economy 2026 | 1,157 |
+| May 10 | 164 | India vs Vietnam Manufacturing 2026 | 1,065 |
+| May 11 | 165 | Japan vs South Korea Economy 2026 | 1,381 |
+| May 12 | 166 | What Is Geographic Revenue Exposure? | 1,197 |
+| May 13 | 167 | 15 S&P 500 Stocks Highest Foreign Revenue | 1,227 |
+| May 14 | 168 | How Currency Exchange Rates Affect Earnings | 1,246 |
+| May 15 | 169 | What Is a Trade Deficit? | 1,419 |
+| May 16 | 170 | Disney Revenue by Country | 1,006 |
+
+---
+
+## Session 2026-04-30 — Homepage UX, markets fix, about page, SEO, blog drafts ✅
+
+### Markets page — Indices/FX/Bonds showing 0 (FIXED)
+- Root cause: API `limit=500`, assets ordered by `market_cap DESC NULLS LAST`. 789 stocks with market caps filled all 500 slots; indices/FX/bonds have NULL market_cap → fell beyond position 500
+- Backend: raised `limit` max 500→2000 in `assets.py`
+- Frontend: `markets/index.vue` now requests `limit=2000`
+- Result: index=18, fx=10, bond=3, crypto=50, etf=99, stock=789, commodity=17 all visible in tabs
+- Commit: 8361ab4, deployed ✅
+
+### Homepage copy refresh (commit 8361ab4)
+- Search placeholder: "Search countries, stocks, trade pairs..." → "Search Gold, NVDA, China, Oil…"
+- Secondary CTA: plain text "Get Daily Brief →" → outlined button with live emerald pulse dot + "What's Moving Today"
+- Newsletter section: "Weekly Briefing" → "Daily Brief"; headline "Markets don't wait. Neither should you."; subtext updated; button "Get the daily brief"
+
+### About page data consistency (commit 8361ab4)
+- "100+ stocks" → "775+ stocks", "380+ corridors" → "1,400+ corridors", "20 commodities" → "21 commodities"
+- Replaced stale "REST Countries + Marketstack" data source block with "REST Countries + Tiingo" (Tiingo IEX primary, yfinance fallback; correct update frequencies)
+
+### SEO — conditional noindex on asset detail pages (commit 8361ab4)
+- `etfs/[symbol].vue`, `crypto/[symbol].vue`, `fx/[symbol].vue` — all hardcoded `robots: 'index, follow'`
+- Now: `robots: computed(() => asset.value ? 'index, follow...' : 'noindex, follow')` — matches what stocks already had
+- Addresses Google Search Console soft 404 + noindex validation failures
+
+### Feedback bubble UX (commit 8361ab4)
+- Added scroll-triggered visibility: hidden on initial load, appears after 300px scroll
+- Prevents overlap with hero CTAs on mobile
+
+### Blog drafts — published
+- **ID 141 (BOJ)** — FLAGGED: entire post is based on watcher parsing failure ("BOJ published corrupted file"). Awaiting user confirmation to delete.
+- **ID 142 (KO)** — "Coca-Cola Q1 2026: How 60% International Revenue Creates Currency Risk". Expanded to 995w, title fixed from ALL-CAPS, slug cleaned. Published ✅ `/blog/coca-cola-q1-2026-international-revenue-currency-risk/`
+- **ID 143 (FOMC)** — "Fed Holds at 3.75% as Four Members Dissent: What a Divided FOMC Means for Markets". Expanded to 1,018w, title fixed, slug cleaned. Published ✅ `/blog/fed-holds-3-75-percent-four-members-dissent-fomc-april-2026/`
+- All 3 pipelines confirmed: Gemini 2.5 Pro → Grok 4.1 Fast → Claude Sonnet 4.6
+
+### Sitemap / Search Console
+- Sitemap: 2,621 URLs, auto-rebuilt daily at 07:00 UTC — no manual action needed
+- GSC action needed: click "Validate Fix" on soft 404 + noindex coverage issues (fixes now deployed)
+
+---
+
+## Session 2026-04-25 — Source attribution purge + blog drafts fixed + Apple CEO post ✅
+
+### Source attribution (commit 9e76e4e)
+- Removed Yahoo Finance and Tiingo from ALL user-visible text across 9 frontend pages
+- `stocks/[ticker].vue`, `crypto/[symbol].vue`, `nigeria/[symbol].vue` — removed "Source: Tiingo News" labels
+- `nigeria/index.vue` — removed "via Yahoo Finance"
+- `earnings/index.vue` — "Data: yfinance · SEC EDGAR" → "Data: SEC EDGAR"
+- `china/[symbol].vue` — "Data: Tiingo" → "Data: SSE · SZSE"
+- `etfs/[symbol].vue` — "Data: Tiingo · NYSE · NASDAQ" → "Data: NYSE · NASDAQ"
+- `indices/[symbol].vue` — "Data: Tiingo · FRED · NYSE…" → "Data: FRED · NYSE…"
+- `fx/[symbol].vue` — "Data: Tiingo · FRED · ECB" → "Data: FRED · ECB"
+- `og_images.py` — "Yahoo Finance / MetricsHour" → "MetricsHour"
+- AGENTS.md rule updated: Yahoo Finance and Tiingo now explicitly banned alongside Bloomberg
+- Deployed + CF purged ✅
+
+### Blog drafts — fixed and published
+- **ID 136** (UnitedHealth earnings) — 919w, published. Title fixed from ALL-CAPS to "UnitedHealth Earnings: The Latin America Revenue Bet Wall Street Misses"
+- **ID 137** (ECB digital euro) — 984w, published. Title fixed to "Digital Euro: ECB Sets Open Standards to Challenge Visa and Mastercard"
+- **ID 138** (Apple CEO) — was 88-word stub (announcement_watcher auto-draft, NOT through pipeline). Ran craft_blog.py (Gemini→Grok→Claude) to rebuild. Category set to "markets". Published after pipeline complete.
+
+---
+
+## Session 2026-04-24 — SEO speed fix, FAQ schema, sitemap audit ✅
+
+### Speed
+- Removed render-blocking Google Fonts from nuxt.config.ts
+- Self-hosted JetBrains Mono at `/public/fonts/jetbrains-mono.woff2` (31KB woff2 latin variable)
+- @font-face in `assets/css/main.css` with font-display:swap
+- Commits: e6213c1, deployed + CF purged
+
+### Canonical / redirects
+- `/register/` and `/signup/` fixed: was double-hop → `/join` → `/join/`; now single 301 → `/join/`
+- All canonical tags verified clean across all page types
+
+### China A-shares FAQ schema (94090a6)
+- FAQPage JSON-LD + visible FAQ section on all 289 `/china/[symbol]/` pages
+- 4 Q&As: exchange, currency, A-share definition, where to track
+- Server-side rendered from stock data — Googlebot gets it in initial HTML
+
+### Sitemap (2b4af0a)
+- Audited: 2,619 URLs; all trailing slashes, lowercase, HTTPS; no private pages; all lastmod fresh
+- Added blog author pages: /blog/authors/metricshour-team/ + /blog/authors/metricshour-research/
+
+### GitHub PAT
+- Old PAT expired; new PAT set on both local repo and Netcup 2026-04-24
+
+### Footer
+- Regrouped into 4 columns: Markets / Economy / Tools / Resources
+- @tailwindcss/typography added (used by blog prose classes)
+
+---
+
+## Session 2026-04-03 — Tiingo integration complete + China A-shares full rollout ✅
+
+### Blog audit (all 57 posts)
+- 57/57 clean; 13 fixed via Gemini 2.5 Pro; no temporal fluff, no banned phrases, all 700w+
+
+### Tiingo API (key in backend/.env, field in config.py)
+- **Crypto** (`workers/tasks/crypto.py`): `GET /tiingo/crypto/prices` no startDate = real OHLC; batches 5/req across 10 calls; 40/50 coins; running `Crypto (Tiingo): upserted 40 1m + 40 1d prices` every minute
+- **News** (`backend/app/routers/news.py`): `GET /api/news/{symbol}`; Redis 900s; ≤8 articles; shown on /stocks/[ticker] + /crypto/[symbol]
+- **IEX intraday** (`workers/tasks/iex_intraday.py`): 1m quotes US stocks, market hours only, batch 100
+- **China A-shares** (`workers/tasks/china_stocks.py`): 300 stocks daily EOD; SHG=6xxxxx, SHE=0xxxxx/3xxxxx; 220 names backfilled from Tiingo
+
+### China A-shares pages (all live, all 200)
+- `/china/index.vue` — listing (search, 50/page, CNY prices)
+- `/china/[symbol].vue` — detail (price chart, news, stats, ogImage, canonical)
+- `/markets/` — China tab added (all stocks w/prices when active; top 10 on All tab)
+- Footer — China A-Shares link added (between Commodities and Rates)
+- NOT in nav (too crowded — discoverable via markets + footer)
+
+### SEO + CDN
+- Sitemap: `/china/` + 289 `/china/{symbol}/` URLs (price-gated); total 2,577 URLs
+- OG: `GET /og/china/{symbol}.png` endpoint; `og/section/china.png` on R2 CDN ✅
+- Cache-Control: `/og/china/*` = 24h edge
+- CF cache purged; all verified 200
+
+### Marketstack removed — all-in on Tiingo
+- `workers/tasks/stocks.py` rewritten: Tiingo IEX replaces Marketstack
+- `GET /iex/?tickers=...` batch 100; returns tngoLast/open/high/low/volume
+- yfinance kept as fallback; no more Marketstack references anywhere
+- Log format: `Stocks: upserted X/Y prices (tiingo_iex=X, yfinance=Y)`
+
+### Health check (2026-04-03) ✅
+- All services active: api, worker, frontend
+- Pages: /, /markets/, /china/, /china/600000, /stocks/, /crypto/, /rates/, /screener/, /earnings/ — all 200
+- API: health OK, AAPL $255.92, BTC open/close real OHLC, 600000 = Shanghai Pudong Dev Bank, news 8 articles
+- Crypto (Tiingo): upserted 42 1m + 42 1d prices — running every minute
+- Sitemap: 2,577 URLs
+
 ## Session 2026-04-01 — S&P 500 expansion + Marketstack caching + new asset pages ✅
 
 ### Marketstack API key updated + smart caching

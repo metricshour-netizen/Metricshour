@@ -1,6 +1,19 @@
 export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
 
+  modules: ['@nuxtjs/i18n'],
+
+  i18n: {
+    strategy: 'prefix_except_default',
+    defaultLocale: 'en',
+    locales: [
+      { code: 'en', language: 'en-US', file: 'en.json', name: 'English' },
+    ],
+    langDir: 'locales/',
+    baseUrl: 'https://metricshour.com',
+    detectBrowserLanguage: false,
+  },
+
   css: ['~/assets/css/main.css'],
 
   postcss: {

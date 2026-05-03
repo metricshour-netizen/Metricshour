@@ -67,9 +67,18 @@
                 @click="toggleFollow"
               >{{ isFollowing ? '★ Following' : '☆ Follow' }}</button>
               <button
-                @click="isLoggedIn ? (showAlertModal = true) : (showAuthModal = true)"
+                @click="isLoggedIn ? (showAlertModal = true) : (showEmailAlertModal = true)"
                 class="mt-1 flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-lg border border-amber-800 text-amber-400 hover:bg-amber-900/20 transition-colors"
-              >🔔 Set Alert</button>
+              >🔔 Alert</button>
+              <ShareCard
+                type="stock"
+                :symbol="stock.symbol"
+                :name="stock.name"
+                :price="stock.price?.close"
+                :change-pct="stock.price?.change_pct"
+                :geo-risk="geoRisk"
+                :top-revenue="shareRevenue"
+              />
             </div>
           </div>
         </template>
@@ -208,6 +217,35 @@
           SEC EDGAR geographic revenue data not yet available for {{ stock.symbol }}.
           Revenue breakdown is sourced from annual 10-K filings and may not be available for all companies.
         </div>
+      </div>
+
+      <!-- Earnings Impact Estimate -->
+      <div v-if="earningsImpact" class="bg-[#111827] border border-[#1f2937] rounded-xl p-6 mb-6">
+        <div class="flex items-start justify-between mb-3 flex-wrap gap-2">
+          <h2 class="text-base font-bold text-white">{{ $t('earningsImpact.title') }}</h2>
+          <span class="text-[10px] text-gray-600 bg-[#1f2937] px-2 py-1 rounded">{{ $t('earningsImpact.disclaimer') }}</span>
+        </div>
+        <p class="text-sm text-gray-300 leading-relaxed">
+          {{ $t('earningsImpact.formula', {
+            country: earningsImpact.country,
+            value: earningsImpact.impact >= 0 ? `+$${earningsImpact.impact.toFixed(2)}` : `-$${Math.abs(earningsImpact.impact).toFixed(2)}`
+          }) }}
+        </p>
+        <p class="text-[10px] text-gray-600 mt-2">{{ $t('earningsImpact.source') }}</p>
+      </div>
+
+      <!-- Macro Risk Timeline -->
+      <div v-if="revenueHistory && revenueHistory.length >= 3" class="bg-[#111827] border border-[#1f2937] rounded-xl p-6 mb-6">
+        <div class="flex items-center justify-between mb-1">
+          <h2 class="text-base font-bold text-white">{{ $t('macroRisk.title') }}</h2>
+          <span class="text-[10px] text-gray-500">{{ $t('macroRisk.source') }}</span>
+        </div>
+        <p class="text-xs text-gray-600 mb-4">China revenue % vs CNY/USD exchange rate · {{ revenueHistory[0]?.year }}–{{ revenueHistory[revenueHistory.length - 1]?.year }}</p>
+        <EChartLine
+          :option="macroRiskChartOption"
+          height="180px"
+          :aria-label="`${stock.symbol} China revenue vs CNY/USD over time`"
+        />
       </div>
 
       <!-- Price Chart — full width above the 2-col grid -->
@@ -350,45 +388,50 @@
         </div>
       </div>
 
-      <!-- Related Stocks -->
-      <div v-if="stock.sector" class="bg-[#111827] border border-[#1f2937] rounded-xl p-6 mb-6">
+      <!-- Comparable Stocks — lower China exposure in same sector -->
+      <div v-if="stock.sector && (comparableStocks?.length || comparableLoading)" class="bg-[#111827] border border-[#1f2937] rounded-xl p-6 mb-6">
         <div class="flex items-center justify-between mb-1">
-          <h2 class="text-base font-bold text-white">Related Stocks</h2>
+          <h2 class="text-base font-bold text-white">{{ $t('comparableStocks.title') }}</h2>
           <span class="text-xs text-gray-500 bg-[#1f2937] px-2 py-1 rounded">{{ stock.sector }}</span>
         </div>
         <p class="text-xs text-gray-500 mb-4">
-          {{ stock.sector }} sector peers — compare geographic revenue exposure and market cap across similar companies.
-          Click any stock to see its full geographic revenue breakdown from SEC EDGAR.
+          {{ $t('comparableStocks.subtitle', { sector: stock.sector }) }} — similar market cap, less China exposure.
         </p>
-        <div v-if="relatedLoading" class="space-y-2">
-          <div v-for="i in 4" :key="i" class="h-10 bg-[#1f2937] rounded-lg animate-pulse"/>
+        <div v-if="comparableLoading" class="space-y-2">
+          <div v-for="i in 3" :key="i" class="h-10 bg-[#1f2937] rounded-lg animate-pulse"/>
         </div>
-        <div v-else-if="!relatedStocks?.length" class="text-gray-600 text-xs">No related stocks found</div>
+        <div v-else-if="!comparableStocks?.length" class="text-gray-600 text-xs">{{ $t('comparableStocks.noResults') }}</div>
         <div v-else class="divide-y divide-[#1f2937]">
           <NuxtLink
-            v-for="s in relatedStocks"
+            v-for="s in comparableStocks"
             :key="s.symbol"
             :to="`/stocks/${s.symbol.toLowerCase()}`"
             class="flex items-center justify-between py-3 hover:bg-[#1f2937] -mx-2 px-2 rounded-lg transition-colors"
           >
-            <div class="flex items-center gap-3">
-              <span class="text-lg leading-none" aria-hidden="true">{{ s.country?.flag || '🏢' }}</span>
-              <div>
+            <div class="flex items-center gap-3 min-w-0 flex-1">
+              <div class="min-w-0">
                 <div class="text-sm font-bold text-emerald-400">{{ s.symbol }}</div>
                 <div class="text-xs text-gray-500 truncate max-w-[180px]">{{ s.name }}</div>
               </div>
             </div>
-            <span class="text-sm font-semibold text-white tabular-nums">{{ fmtCap(s.market_cap_usd) }}</span>
+            <div class="flex items-center gap-4 shrink-0">
+              <div class="text-right hidden sm:block">
+                <div class="text-[10px] text-gray-600">{{ $t('comparableStocks.cn') }}</div>
+                <div class="text-xs tabular-nums font-semibold" :class="s.china_pct > 0 ? 'text-red-400' : 'text-gray-600'">{{ s.china_pct }}%</div>
+              </div>
+              <div class="text-right hidden sm:block">
+                <div class="text-[10px] text-gray-600">{{ $t('comparableStocks.us') }}</div>
+                <div class="text-xs tabular-nums font-semibold text-blue-400">{{ s.us_pct }}%</div>
+              </div>
+              <span class="text-sm font-semibold text-white tabular-nums">{{ fmtCap(s.market_cap_usd) }}</span>
+            </div>
           </NuxtLink>
         </div>
-        <!-- Compare link for first peer -->
-        <div v-if="relatedStocks?.length" class="mt-4 pt-4 border-t border-[#1f2937]">
+        <div v-if="comparableStocks?.length" class="mt-4 pt-3 border-t border-[#1f2937]">
           <NuxtLink
-            :to="`/compare/${[stock.country?.code?.toLowerCase() ?? 'us', relatedStocks[0].country?.code?.toLowerCase() ?? 'us'].sort().join('-vs-')}`"
+            :to="`/screener/?sector=${encodeURIComponent(stock.sector)}&china_max=${Math.max(0, currentChinaPct - 1)}&sort_by=china_pct&sort_dir=asc`"
             class="text-xs text-emerald-600 hover:text-emerald-400 transition-colors"
-          >
-            Compare {{ stock.country?.name || 'HQ country' }} vs {{ relatedStocks[0].country?.name || 'peer country' }} economy →
-          </NuxtLink>
+          >View all low-China {{ stock.sector }} stocks in Screener →</NuxtLink>
         </div>
       </div>
 
@@ -413,6 +456,12 @@
     v-model="showAlertModal"
     :asset="stock ? { id: stock.id, symbol: stock.symbol, name: stock.name } : null"
     :current-price="stock?.price?.close"
+  />
+  <EmailAlertModal
+    v-model="showEmailAlertModal"
+    :asset-symbol="stock?.symbol ?? ''"
+    :asset-name="stock?.name ?? ''"
+    asset-type="stock"
   />
 </template>
 
@@ -580,18 +629,113 @@ const priceRangeLabel = computed(() => {
   return `${from.toLocaleDateString()} → ${to.toLocaleDateString()}`
 })
 
-const { data: sectorStocks, pending: relatedLoading } = useAsyncData(
-  `related-${ticker}`,
+// Current China % for this stock (from revenue data)
+const currentChinaPct = computed(() => {
+  const revs = stock.value?.country_revenues ?? []
+  const cnRev = (revs as any[]).find((r: any) => r.country?.code === 'CN')
+  return cnRev ? Math.round(cnRev.revenue_pct) : 0
+})
+
+const currentMcapB = computed(() => {
+  const mcap = stock.value?.market_cap_usd
+  return mcap ? mcap / 1e9 : null
+})
+
+const { data: comparableData, pending: comparableLoading } = useAsyncData(
+  `comparable-${ticker}`,
   async () => {
-    if (!stock.value?.sector) return []
-    return get<any[]>('/api/assets', { type: 'stock', sector: stock.value.sector })
+    if (!stock.value?.sector) return { results: [] }
+    const chinaCap = currentChinaPct.value > 0 ? currentChinaPct.value - 1 : 1
+    const params: Record<string, any> = {
+      sector: stock.value.sector,
+      china_max: chinaCap,
+      sort_by: 'market_cap',
+      limit: 10,
+    }
+    if (currentMcapB.value) {
+      params.market_cap_min = Math.round(currentMcapB.value * 0.5)
+      params.market_cap_max = Math.round(currentMcapB.value * 2)
+    }
+    return $fetch<any>(`${apiBase}/api/screener`, { params })
   },
-  { watch: [() => stock.value?.sector] },
+  { server: false, watch: [() => stock.value?.sector, currentChinaPct] },
 )
 
-const relatedStocks = computed(() =>
-  (sectorStocks.value ?? []).filter((s: any) => s.symbol !== ticker).slice(0, 6),
+const comparableStocks = computed(() =>
+  (comparableData.value?.results ?? [])
+    .filter((s: any) => s.symbol !== ticker)
+    .slice(0, 3),
 )
+
+// Revenue history for macro risk chart
+const { data: revenueHistory } = useAsyncData(
+  `rev-history-${ticker}`,
+  () => $fetch<any[]>(`${apiBase}/api/screener/revenue-history/${ticker}`).catch(() => []),
+  { server: false },
+)
+
+// Earnings data for impact estimate
+const { data: earningsData } = useAsyncData(
+  `earnings-${ticker}`,
+  () => $fetch<any[]>(`${apiBase}/api/earnings/stocks/${ticker}`).catch(() => []),
+  { server: false },
+)
+
+const earningsImpact = computed(() => {
+  if (!stock.value?.country_revenues?.length) return null
+  const revs = stock.value.country_revenues as any[]
+  if (!revs.length) return null
+  const topRev = revs[0]
+  const latestEps = (earningsData.value ?? []).find((e: any) => e.eps_actual != null)?.eps_actual
+  if (latestEps == null) return null
+  const impact = (topRev.revenue_pct / 100) * Math.abs(latestEps) * 0.20
+  return {
+    country: topRev.country?.name ?? 'top market',
+    impact: latestEps >= 0 ? -impact : impact,
+  }
+})
+
+const macroRiskChartOption = computed(() => {
+  if (!revenueHistory.value?.length) return {}
+  const data = revenueHistory.value
+  const years = data.map((d: any) => String(d.year))
+  const chinaPcts = data.map((d: any) => d.china_pct)
+
+  return {
+    backgroundColor: 'transparent',
+    grid: { top: 30, right: 20, bottom: 30, left: 50, containLabel: false },
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: '#1f2937',
+      borderColor: '#374151',
+      textStyle: { color: '#d1d5db', fontSize: 11 },
+    },
+    xAxis: {
+      type: 'category',
+      data: years,
+      axisLabel: { color: '#4b5563', fontSize: 10 },
+      axisLine: { lineStyle: { color: '#1f2937' } },
+    },
+    yAxis: {
+      type: 'value',
+      name: 'Revenue %',
+      nameTextStyle: { color: '#4b5563', fontSize: 10 },
+      splitLine: { lineStyle: { color: '#1a2235', type: 'dashed' } },
+      axisLabel: { color: '#4b5563', fontSize: 10, formatter: (v: number) => `${v}%` },
+    },
+    series: [{
+      name: 'China Rev %',
+      type: 'line',
+      data: chinaPcts,
+      smooth: true,
+      symbol: 'circle',
+      symbolSize: 5,
+      lineStyle: { color: '#ef4444', width: 2 },
+      itemStyle: { color: '#ef4444' },
+      areaStyle: { color: 'rgba(239,68,68,0.1)' },
+    }],
+  }
+})
 
 // Trade flow links — link to bilateral trade pages for top revenue countries
 const tradeFlowLinks = computed(() => {
@@ -658,6 +802,18 @@ function fmtGdp(v: number | null | undefined): string {
 
 const showAuthModal = ref(false)
 const showAlertModal = ref(false)
+const showEmailAlertModal = ref(false)
+
+// Share card revenue data
+const shareRevenue = computed(() => {
+  const revs = stock.value?.country_revenues as any[] ?? []
+  return revs.slice(0, 3).map((r: any) => ({
+    code: r.country.code,
+    name: r.country.name,
+    flag: r.country.flag,
+    pct: Math.round(r.revenue_pct),
+  }))
+})
 const isFollowing = ref(false)
 
 onMounted(async () => {

@@ -53,6 +53,19 @@
               class="text-xs bg-[#1f2937] text-gray-300 px-2 py-1 rounded"
             >{{ g }}</span>
           </div>
+          <!-- Share card + email alert -->
+          <ShareCard
+            type="country"
+            :name="country.name"
+            :flag="country.flag"
+            :gdp="fmt('gdp_usd', country.indicators?.gdp_usd)"
+            :gdp-growth="country.indicators?.gdp_growth_pct ?? null"
+            :top-partners="sharePartners"
+          />
+          <button
+            @click="showEmailAlertModal = true"
+            class="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-amber-800 text-amber-400 hover:bg-amber-900/20 transition-colors"
+          >🔔 Alert</button>
           <!-- Follow button -->
           <button
             class="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors"
@@ -450,6 +463,12 @@
     </template>
   </main>
   <AuthModal v-model="showAuthModal" />
+  <EmailAlertModal
+    v-model="showEmailAlertModal"
+    :asset-symbol="code.toUpperCase()"
+    :asset-name="country?.name ?? code.toUpperCase()"
+    asset-type="country"
+  />
 </template>
 
 <script setup lang="ts">
@@ -503,9 +522,22 @@ const { data: pageInsights } = useAsyncData(
   { server: false },
 )
 
-// ── Follow ────────────────────────────────────────────────────────────────────
+// ── Follow + modals ───────────────────────────────────────────────────────────
 const showAuthModal = ref(false)
+const showEmailAlertModal = ref(false)
 const isFollowing = ref(false)
+
+const sharePartners = computed(() => {
+  const partners = country.value?.trade_partners as any[] ?? []
+  return partners.slice(0, 3).map((p: any) => ({
+    code: p.country?.code ?? '',
+    name: p.country?.name ?? '',
+    flag: p.country?.flag ?? '',
+    value: p.exports_usd >= 1e9
+      ? `$${(p.exports_usd / 1e9).toFixed(0)}B`
+      : p.exports_usd >= 1e6 ? `$${(p.exports_usd / 1e6).toFixed(0)}M` : '',
+  }))
+})
 
 onMounted(async () => {
   // Fire-and-forget page view tracking
