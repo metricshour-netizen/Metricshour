@@ -79,7 +79,7 @@ def stock_moving(ticker: str, db: Session = Depends(get_db)):
     """), {'ticker': ticker}).mappings().first()
 
     rev_rows = db.execute(text("""
-        SELECT c.code, c.name, c.flag, scr.revenue_pct, scr.fiscal_year,
+        SELECT c.code, c.name, c.flag_emoji AS flag, scr.revenue_pct, scr.fiscal_year,
                ci_gdp.value AS gdp_growth,
                ci_inf.value AS inflation
         FROM stock_country_revenues scr
