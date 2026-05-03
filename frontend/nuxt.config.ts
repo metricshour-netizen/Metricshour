@@ -9,7 +9,6 @@ export default defineNuxtConfig({
     locales: [
       { code: 'en', language: 'en-US', file: 'en.json', name: 'English' },
     ],
-    langDir: 'locales/',
     baseUrl: 'https://metricshour.com',
     detectBrowserLanguage: false,
   },
