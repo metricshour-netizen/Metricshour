@@ -282,7 +282,7 @@ const PRESETS = [
   { key: 'noChinaExposure',   filters: { china_max: 0 } },
   { key: 'lowChina',          filters: { china_max: 5 } },
   { key: 'highUs',            filters: { us_min: 70 } },
-  { key: 'techSector',        filters: { sector: 'Information Technology' } },
+  { key: 'techSector',        filters: { sector: 'Technology' } },
   { key: 'largeCap',          filters: { market_cap_min: 100 } },
   { key: 'chinaExposed',      filters: { china_min: 20 } },
   { key: 'tariffProof',       filters: { china_max: 5, eu_max: 5 } },

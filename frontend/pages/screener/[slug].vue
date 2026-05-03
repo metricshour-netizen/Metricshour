@@ -200,7 +200,7 @@ const SLUG_MAP: Record<string, SlugConfig> = {
     metaTitle: 'Tech Stocks Geographic Revenue Exposure — MetricsHour',
     metaDesc: 'Screen technology sector stocks by China, US, and EU revenue exposure. Data from SEC EDGAR 10-K geographic filings.',
     intro: 'Technology sector stocks screened by geographic revenue exposure from SEC EDGAR filings. Tech companies often have significant international revenue — particularly from China — and are frequently subject to export controls, tariffs, and geopolitical restrictions. Use this screen to assess China revenue risk within the technology sector.',
-    filters: { sector: 'Information Technology', sort_by: 'china_pct', sort_dir: 'desc', limit: 100 },
+    filters: { sector: 'Technology', sort_by: 'china_pct', sort_dir: 'desc', limit: 100 },
     badges: ['Sector: Technology'],
   },
 }
