@@ -1,20 +1,17 @@
 """
-Why is X moving — endpoint for stocks with significant intraday price moves.
+GET /api/stocks/{ticker}/moving  — why-is-X-moving page data
+GET /api/movers                  — list active movers (sitemap)
 
-GET /api/stocks/{ticker}/moving
-  Returns move data + intelligence insights + top revenue countries.
-  Returns 404 if the stock is not currently moving (>3% from open).
-
-GET /api/movers
-  Returns list of currently-moving ticker symbols (for sitemap).
+Redis is used when available (written by Celery detect_movers task).
+Falls back to live DB query so the page works before the first Celery run.
 """
 import json
 import logging
+from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy import text
 from sqlalchemy.orm import Session
-from fastapi import Depends
 
 from app.database import get_db
 from app.storage import get_redis
@@ -22,27 +19,56 @@ from app.storage import get_redis
 log = logging.getLogger(__name__)
 router = APIRouter()
 
+_THRESHOLD = 3.0
 
-def _get_moving_data(ticker: str) -> dict | None:
-    redis = get_redis()
-    raw = redis.get(f'moving:{ticker.upper()}')
-    if not raw:
-        return None
+
+def _redis_moving(ticker: str) -> dict | None:
     try:
-        return json.loads(raw)
+        raw = get_redis().get(f'moving:{ticker}')
+        return json.loads(raw) if raw else None
     except Exception:
         return None
 
 
+def _db_moving(ticker: str, db: Session) -> dict | None:
+    """Compute move data live from the prices table (same formula as _price_dict)."""
+    row = db.execute(text("""
+        SELECT a.symbol, a.name, p.open, p.close
+        FROM assets a
+        JOIN prices p ON p.asset_id = a.id
+        WHERE UPPER(a.symbol) = :ticker
+          AND a.asset_type = 'stock'
+          AND p.interval = '1d'
+          AND p.open IS NOT NULL AND p.open > 0
+          AND p.close IS NOT NULL
+        ORDER BY p.timestamp DESC
+        LIMIT 1
+    """), {'ticker': ticker}).mappings().first()
+
+    if not row:
+        return None
+    pct = (row['close'] - row['open']) / row['open'] * 100
+    if abs(pct) < _THRESHOLD:
+        return None
+    return {
+        'symbol': row['symbol'],
+        'name': row['name'],
+        'direction': 'up' if pct > 0 else 'down',
+        'pct_change': round(abs(pct), 2),
+        'price_open': round(row['open'], 2),
+        'price_current': round(row['close'], 2),
+        'triggered_at': datetime.now(timezone.utc).isoformat(),
+    }
+
+
 @router.get('/api/stocks/{ticker}/moving')
 def stock_moving(ticker: str, db: Session = Depends(get_db)):
-    """Return move data + context for a currently-moving stock. 404 if not moving."""
     ticker = ticker.upper()
-    data = _get_moving_data(ticker)
+
+    data = _redis_moving(ticker) or _db_moving(ticker, db)
     if not data:
         raise HTTPException(status_code=404, detail='Stock is not currently moving')
 
-    # Pull latest AI insight for this stock
     insight_row = db.execute(text("""
         SELECT summary, generated_at
         FROM page_insights
@@ -52,13 +78,10 @@ def stock_moving(ticker: str, db: Session = Depends(get_db)):
         LIMIT 1
     """), {'ticker': ticker}).mappings().first()
 
-    # Pull top 3 revenue countries with basic macro context
     rev_rows = db.execute(text("""
-        SELECT
-            c.code, c.name, c.flag,
-            scr.revenue_pct, scr.fiscal_year,
-            ci_gdp.value    AS gdp_growth,
-            ci_inf.value    AS inflation
+        SELECT c.code, c.name, c.flag, scr.revenue_pct, scr.fiscal_year,
+               ci_gdp.value AS gdp_growth,
+               ci_inf.value AS inflation
         FROM stock_country_revenues scr
         JOIN assets a    ON a.id = scr.asset_id
         JOIN countries c ON c.id = scr.country_id
@@ -82,8 +105,8 @@ def stock_moving(ticker: str, db: Session = Depends(get_db)):
     return {
         **data,
         'insight': {
-            'summary': insight_row['summary'] if insight_row else None,
-            'generated_at': insight_row['generated_at'].isoformat() if insight_row else None,
+            'summary': insight_row['summary'],
+            'generated_at': insight_row['generated_at'].isoformat(),
         } if insight_row else None,
         'top_revenues': [
             {
@@ -102,17 +125,16 @@ def stock_moving(ticker: str, db: Session = Depends(get_db)):
 
 @router.get('/api/movers')
 def list_movers():
-    """Return all currently-moving stock tickers (used by sitemap)."""
-    redis = get_redis()
-    members = redis.smembers('moving_tickers')
-    result = []
-    for sym_bytes in members:
-        sym = sym_bytes.decode() if isinstance(sym_bytes, bytes) else sym_bytes
-        raw = redis.get(f'moving:{sym}')
-        if raw:
-            try:
+    try:
+        redis = get_redis()
+        members = redis.smembers('moving_tickers')
+        result = []
+        for sym_bytes in members:
+            sym = sym_bytes.decode() if isinstance(sym_bytes, bytes) else sym_bytes
+            raw = redis.get(f'moving:{sym}')
+            if raw:
                 d = json.loads(raw)
                 result.append({'symbol': sym, 'direction': d.get('direction'), 'pct_change': d.get('pct_change')})
-            except Exception:
-                pass
-    return result
+        return result
+    except Exception:
+        return []
