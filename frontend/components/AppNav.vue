@@ -24,7 +24,7 @@
         <div class="relative" @mouseenter="toolsOpen = true" @mouseleave="toolsOpen = false">
           <button
             class="flex items-center gap-1 hover:text-white transition-colors font-medium"
-            :class="isToolsActive ? 'text-amber-400' : ''"
+            :class="isToolsActive ? 'text-emerald-400' : ''"
             @click="toolsOpen = !toolsOpen"
           >
             Tools
@@ -56,7 +56,7 @@
         <template v-if="isLoggedIn && user">
           <div class="flex items-center gap-3">
             <NuxtLink to="/watchlist" class="text-xs text-gray-400 hover:text-white transition-colors font-medium" title="Watchlist">⭐ Watchlist</NuxtLink>
-            <NuxtLink to="/alerts" class="text-xs text-amber-400 hover:text-amber-300 transition-colors font-medium" title="Price Alerts">🔔 Alerts</NuxtLink>
+            <NuxtLink to="/alerts" class="text-xs text-emerald-400 hover:text-emerald-300 transition-colors font-medium" title="Price Alerts">🔔 Alerts</NuxtLink>
             <NuxtLink v-if="user?.is_admin" to="/admin/dashboard" class="text-xs text-gray-500 hover:text-purple-400 transition-colors hidden md:block font-medium" title="Admin">⚙️ Admin</NuxtLink>
             <NuxtLink v-if="user?.is_admin" to="/admin/blog" class="text-xs text-gray-500 hover:text-purple-400 transition-colors hidden md:block font-medium" title="Blog CRM">✍️ CRM</NuxtLink>
             <span class="text-xs text-gray-600 hidden md:block truncate max-w-[110px]">{{ user.email }}</span>
@@ -121,7 +121,7 @@
       <div class="border-b border-[#1f2937]">
         <button
           @click="mobileToolsOpen = !mobileToolsOpen"
-          class="flex items-center justify-between w-full py-3.5 text-sm text-amber-400/90 font-medium"
+          class="flex items-center justify-between w-full py-3.5 text-sm text-emerald-400/90 font-medium"
         >
           <span>Tools</span>
           <svg class="w-4 h-4 transition-transform" :class="mobileToolsOpen ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -144,7 +144,7 @@
 
       <template v-if="isLoggedIn && user">
         <NuxtLink to="/watchlist" @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">⭐ Watchlist <span class="text-gray-600 text-xs">→</span></NuxtLink>
-        <NuxtLink to="/alerts"   @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-amber-400 hover:text-amber-300 border-b border-[#1f2937]">🔔 Alerts <span class="text-gray-600 text-xs">→</span></NuxtLink>
+        <NuxtLink to="/alerts"   @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-emerald-400 hover:text-emerald-300 border-b border-[#1f2937]">🔔 Alerts <span class="text-gray-600 text-xs">→</span></NuxtLink>
       </template>
 
       <div class="py-3 space-y-3">

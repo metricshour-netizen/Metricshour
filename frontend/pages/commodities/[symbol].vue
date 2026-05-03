@@ -20,6 +20,21 @@
             <p class="text-xs text-gray-500 font-mono">{{ symbol.toUpperCase() }} · {{ meta.unit }} · {{ meta.category }}</p>
           </div>
         </div>
+        <!-- Follow / Alert / Share -->
+        <div v-if="asset" class="flex flex-wrap gap-2 mt-3">
+          <button
+            class="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-lg border transition-colors"
+            :class="isFollowing
+              ? 'border-emerald-700 text-emerald-400 bg-emerald-900/20 hover:bg-red-900/20 hover:text-red-400 hover:border-red-700'
+              : 'border-[#374151] text-gray-400 hover:border-emerald-600 hover:text-emerald-400'"
+            @click="toggleFollow"
+          >{{ isFollowing ? '★ Following' : '☆ Follow' }}</button>
+          <button
+            @click="showEmailAlertModal = true"
+            class="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-lg border border-[#374151] text-gray-400 hover:border-amber-600 hover:text-amber-400 transition-colors"
+          >🔔 Alert</button>
+          <ShareCard type="commodity" :slug="symbol.toUpperCase()" :name="meta.name" />
+        </div>
       </div>
       <div class="text-right">
         <div v-if="latestPrice" class="text-3xl font-extrabold text-white tabular-nums">
@@ -165,12 +180,45 @@
 
     </div>
   </main>
+  <EmailAlertModal
+    v-if="asset"
+    v-model="showEmailAlertModal"
+    :assetSymbol="asset.symbol ?? symbol.toUpperCase()"
+    :assetName="meta.name"
+    assetType="commodity"
+  />
 </template>
 
 <script setup lang="ts">
 const route = useRoute()
 const symbol = route.params.symbol as string
-const { get } = useApi()
+const { get, post, del } = useApi()
+const { isLoggedIn } = useAuth()
+
+const showEmailAlertModal = ref(false)
+const isFollowing = ref(false)
+
+onMounted(async () => {
+  if (!isLoggedIn.value || !asset.value?.id) return
+  try {
+    const follows = await get<any[]>('/api/feed/follows')
+    isFollowing.value = follows.some((f: any) => f.entity_type === 'asset' && f.entity_id === asset.value!.id)
+  } catch { /* ignore */ }
+})
+
+async function toggleFollow() {
+  if (!isLoggedIn.value) return
+  if (!asset.value?.id) return
+  try {
+    if (isFollowing.value) {
+      await del(`/api/feed/follows/asset/${asset.value.id}`)
+      isFollowing.value = false
+    } else {
+      await post('/api/feed/follows', { entity_type: 'asset', entity_id: asset.value.id })
+      isFollowing.value = true
+    }
+  } catch { /* ignore */ }
+}
 
 // ── Static commodity metadata ────────────────────────────────────────────────
 const COMMODITY_META: Record<string, any> = {

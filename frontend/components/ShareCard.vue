@@ -17,16 +17,12 @@
 
 <script setup lang="ts">
 const props = defineProps<{
-  /** 'stock' or 'country' — determines OG image URL path */
-  type: 'stock' | 'country'
-  /** Ticker symbol (stocks) or ISO2 country code (countries) — lowercase */
+  type: 'stock' | 'country' | 'crypto' | 'fx' | 'etf' | 'commodity'
   slug: string
-  /** Display name for share title and filename */
   name: string
 }>()
 
 const { sharePage, downloadOgImage, downloading } = useShareCard()
-// Use API base (has CORS headers for metricshour.com) — not R2 CDN (no CORS headers)
 const { public: { apiBase } } = useRuntimeConfig()
 
 const canShare = ref(false)
@@ -34,15 +30,26 @@ onMounted(() => {
   canShare.value = typeof navigator.share === 'function'
 })
 
-const ogImageUrl = computed(() => {
-  if (props.type === 'stock') return `${apiBase}/og/stocks/${props.slug.toLowerCase()}.png`
-  return `${apiBase}/og/countries/${props.slug.toLowerCase()}.png`
-})
+const OG_PATH: Record<string, string> = {
+  stock: 'stocks', country: 'countries', crypto: 'crypto',
+  fx: 'fx', etf: 'etfs', commodity: 'commodities',
+}
+
+const ogImageUrl = computed(() =>
+  `${apiBase}/og/${OG_PATH[props.type]}/${props.slug.toLowerCase()}.png`,
+)
+
+const TITLE_SUFFIX: Record<string, string> = {
+  stock: '— Revenue by Country | MetricsHour',
+  country: 'Economy — GDP & Macro Data | MetricsHour',
+  crypto: '— Crypto Price & Data | MetricsHour',
+  fx: '— Live Exchange Rate | MetricsHour',
+  etf: '— ETF Price & Data | MetricsHour',
+  commodity: '— Price & Market Data | MetricsHour',
+}
 
 const shareTitle = computed(() =>
-  props.type === 'stock'
-    ? `${props.name} — Revenue by Country | MetricsHour`
-    : `${props.name} Economy — GDP & Macro Data | MetricsHour`,
+  `${props.name} ${TITLE_SUFFIX[props.type] ?? '| MetricsHour'}`,
 )
 
 function onShare() {

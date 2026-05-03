@@ -139,7 +139,7 @@
       <template v-if="showSection('fx') && fxFiltered.length">
         <SectionHeader color="bg-teal-400" label="FX Majors" />
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 mb-8">
-          <div v-for="a in fxFiltered" :key="a.symbol" class="bg-[#111827] border border-[#1f2937] hover:border-teal-500/40 rounded-xl p-4 transition-colors group">
+          <NuxtLink v-for="a in fxFiltered" :key="a.symbol" :to="`/fx/${a.symbol.toLowerCase()}`" class="bg-[#111827] border border-[#1f2937] hover:border-teal-500/40 rounded-xl p-4 transition-colors group">
             <div class="flex items-start justify-between mb-2">
               <span class="text-lg">💱</span>
               <span class="text-[10px] font-bold text-teal-400/70 bg-teal-400/10 px-1.5 py-0.5 rounded">FX</span>
@@ -147,7 +147,7 @@
             <div class="text-sm font-bold text-white group-hover:text-teal-300 transition-colors">{{ a.symbol }}</div>
             <div class="text-xs text-gray-500 truncate">{{ a.name }}</div>
             <PriceBadge :asset="a" />
-          </div>
+          </NuxtLink>
         </div>
       </template>
 
