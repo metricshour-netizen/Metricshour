@@ -26,7 +26,8 @@ const props = defineProps<{
 }>()
 
 const { sharePage, downloadOgImage, downloading } = useShareCard()
-const { public: { r2PublicUrl } } = useRuntimeConfig()
+// Use API base (has CORS headers for metricshour.com) — not R2 CDN (no CORS headers)
+const { public: { apiBase } } = useRuntimeConfig()
 
 const canShare = ref(false)
 onMounted(() => {
@@ -34,9 +35,8 @@ onMounted(() => {
 })
 
 const ogImageUrl = computed(() => {
-  const base = r2PublicUrl || 'https://cdn.metricshour.com'
-  if (props.type === 'stock') return `${base}/og/stocks/${props.slug.toLowerCase()}.png`
-  return `${base}/og/countries/${props.slug.toLowerCase()}.png`
+  if (props.type === 'stock') return `${apiBase}/og/stocks/${props.slug.toLowerCase()}.png`
+  return `${apiBase}/og/countries/${props.slug.toLowerCase()}.png`
 })
 
 const shareTitle = computed(() =>
