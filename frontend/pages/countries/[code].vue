@@ -56,11 +56,8 @@
           <!-- Share card + email alert -->
           <ShareCard
             type="country"
+            :slug="code"
             :name="country.name"
-            :flag="country.flag"
-            :gdp="fmt('gdp_usd', country.indicators?.gdp_usd)"
-            :gdp-growth="country.indicators?.gdp_growth_pct ?? null"
-            :top-partners="sharePartners"
           />
           <button
             @click="showEmailAlertModal = true"
@@ -527,17 +524,6 @@ const showAuthModal = ref(false)
 const showEmailAlertModal = ref(false)
 const isFollowing = ref(false)
 
-const sharePartners = computed(() => {
-  const partners = country.value?.trade_partners as any[] ?? []
-  return partners.slice(0, 3).map((p: any) => ({
-    code: p.country?.code ?? '',
-    name: p.country?.name ?? '',
-    flag: p.country?.flag ?? '',
-    value: p.exports_usd >= 1e9
-      ? `$${(p.exports_usd / 1e9).toFixed(0)}B`
-      : p.exports_usd >= 1e6 ? `$${(p.exports_usd / 1e6).toFixed(0)}M` : '',
-  }))
-})
 
 onMounted(async () => {
   // Fire-and-forget page view tracking

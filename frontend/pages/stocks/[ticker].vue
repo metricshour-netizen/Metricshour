@@ -83,12 +83,8 @@
               </NuxtLink>
               <ShareCard
                 type="stock"
-                :symbol="stock.symbol"
+                :slug="stock.symbol"
                 :name="stock.name"
-                :price="stock.price?.close"
-                :change-pct="stock.price?.change_pct"
-                :geo-risk="geoRisk"
-                :top-revenue="shareRevenue"
               />
             </div>
           </div>
@@ -820,16 +816,6 @@ const showAuthModal = ref(false)
 const showAlertModal = ref(false)
 const showEmailAlertModal = ref(false)
 
-// Share card revenue data
-const shareRevenue = computed(() => {
-  const revs = stock.value?.country_revenues as any[] ?? []
-  return revs.slice(0, 3).map((r: any) => ({
-    code: r.country.code,
-    name: r.country.name,
-    flag: r.country.flag,
-    pct: Math.round(r.revenue_pct),
-  }))
-})
 const isFollowing = ref(false)
 
 onMounted(async () => {
