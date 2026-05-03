@@ -44,7 +44,7 @@
               </div>
             </div>
           </div>
-          <!-- Follow / Alert / Share -->
+          <!-- Follow / Alert / Share / Why moving? -->
           <div class="flex flex-wrap gap-2 mt-4">
             <button
               class="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-lg border transition-colors"
@@ -58,6 +58,14 @@
               class="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-lg border border-[#374151] text-gray-400 hover:border-amber-600 hover:text-amber-400 transition-colors"
             >🔔 Alert</button>
             <ShareCard type="crypto" :slug="asset.symbol" :name="asset.name" />
+            <NuxtLink
+              v-if="asset.price?.change_pct != null && Math.abs(asset.price.change_pct) >= 3"
+              :to="`/crypto/${asset.symbol.toLowerCase()}/moving/`"
+              class="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-lg border transition-colors animate-pulse"
+              :class="asset.price.change_pct >= 0
+                ? 'border-emerald-700 text-emerald-400 bg-emerald-900/10 hover:bg-emerald-900/20'
+                : 'border-red-800 text-red-400 bg-red-900/10 hover:bg-red-900/20'"
+            >{{ asset.price.change_pct >= 0 ? '▲' : '▼' }} Why moving?</NuxtLink>
           </div>
         </template>
       </div>

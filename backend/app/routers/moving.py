@@ -123,6 +123,67 @@ def stock_moving(ticker: str, db: Session = Depends(get_db)):
     }
 
 
+def _db_moving_asset(symbol: str, asset_type: str, db: Session) -> dict | None:
+    """Generic move check for commodity/crypto/etf/fx assets."""
+    row = db.execute(text("""
+        SELECT a.symbol, a.name, p.open, p.close
+        FROM assets a
+        JOIN prices p ON p.asset_id = a.id
+        WHERE UPPER(a.symbol) = :symbol
+          AND a.asset_type = :asset_type
+          AND p.interval = '1d'
+          AND p.open IS NOT NULL AND p.open > 0
+          AND p.close IS NOT NULL
+        ORDER BY p.timestamp DESC
+        LIMIT 1
+    """), {'symbol': symbol, 'asset_type': asset_type}).mappings().first()
+
+    if not row:
+        return None
+    pct = (row['close'] - row['open']) / row['open'] * 100
+    if abs(pct) < _THRESHOLD:
+        return None
+    return {
+        'symbol': row['symbol'],
+        'name': row['name'],
+        'direction': 'up' if pct > 0 else 'down',
+        'pct_change': round(abs(pct), 2),
+        'price_open': round(row['open'], 4),
+        'price_current': round(row['close'], 4),
+        'triggered_at': datetime.now(timezone.utc).isoformat(),
+    }
+
+
+def _get_insight(entity_types: list[str], code: str, db: Session) -> dict | None:
+    placeholders = ', '.join(f"'{t}'" for t in entity_types)
+    row = db.execute(text(f"""
+        SELECT summary, generated_at FROM page_insights
+        WHERE entity_type IN ({placeholders}) AND entity_code = :code
+        ORDER BY generated_at DESC LIMIT 1
+    """), {'code': code}).mappings().first()
+    if not row:
+        return None
+    return {'summary': row['summary'], 'generated_at': row['generated_at'].isoformat()}
+
+
+@router.get('/api/commodities/{symbol}/moving')
+def commodity_moving(symbol: str, db: Session = Depends(get_db)):
+    symbol = symbol.upper()
+    data = _db_moving_asset(symbol, 'commodity', db)
+    if not data:
+        raise HTTPException(status_code=404, detail='Commodity is not currently moving')
+    return {**data, 'insight': _get_insight(['commodity_insight', 'commodity'], symbol, db)}
+
+
+@router.get('/api/crypto/{symbol}/moving')
+def crypto_moving(symbol: str, db: Session = Depends(get_db)):
+    symbol = symbol.upper()
+    data = _db_moving_asset(symbol, 'crypto', db)
+    if not data:
+        raise HTTPException(status_code=404, detail='Crypto is not currently moving')
+    return {**data, 'insight': _get_insight(['crypto_insight', 'crypto'], symbol, db)}
+
+
 @router.get('/api/movers')
 def list_movers():
     try:

@@ -20,7 +20,7 @@
             <p class="text-xs text-gray-500 font-mono">{{ symbol.toUpperCase() }} · {{ meta.unit }} · {{ meta.category }}</p>
           </div>
         </div>
-        <!-- Follow / Alert / Share -->
+        <!-- Follow / Alert / Share / Why moving? -->
         <div v-if="asset" class="flex flex-wrap gap-2 mt-3">
           <button
             class="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-lg border transition-colors"
@@ -34,6 +34,14 @@
             class="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-lg border border-[#374151] text-gray-400 hover:border-amber-600 hover:text-amber-400 transition-colors"
           >🔔 Alert</button>
           <ShareCard type="commodity" :slug="symbol.toUpperCase()" :name="meta.name" />
+          <NuxtLink
+            v-if="change24h != null && Math.abs(change24h) >= 3"
+            :to="`/commodities/${symbol.toLowerCase()}/moving/`"
+            class="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-lg border transition-colors animate-pulse"
+            :class="change24h >= 0
+              ? 'border-emerald-700 text-emerald-400 bg-emerald-900/10 hover:bg-emerald-900/20'
+              : 'border-red-800 text-red-400 bg-red-900/10 hover:bg-red-900/20'"
+          >{{ change24h >= 0 ? '▲' : '▼' }} Why moving?</NuxtLink>
         </div>
       </div>
       <div class="text-right">
