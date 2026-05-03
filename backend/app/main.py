@@ -102,6 +102,12 @@ async def security_headers(request: Request, call_next) -> Response:
             cc = "public, s-maxage=3600, stale-while-revalidate=3600"
         elif path.startswith("/api/search"):
             cc = "public, s-maxage=300, stale-while-revalidate=60"
+        elif path.startswith("/api/earnings"):
+            # Earnings updated daily by Celery — 1hr edge cache, 4hr stale fallback
+            cc = "public, s-maxage=3600, stale-while-revalidate=14400"
+        elif path.startswith("/api/movers"):
+            # Movers refresh every ~15min via Celery detect_movers
+            cc = "public, s-maxage=60, stale-while-revalidate=30"
         elif path.startswith("/og/"):
             # OG images change at most once a day
             cc = "public, s-maxage=86400, stale-while-revalidate=3600"

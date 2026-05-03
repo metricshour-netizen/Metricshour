@@ -45,34 +45,34 @@
             <span class="text-lg font-bold text-white">{{ fmt('inflation_pct', country.indicators?.inflation_pct) }}</span>
           </div>
         </div>
-        <div class="flex items-center gap-3 mt-3 flex-wrap">
-          <div class="flex gap-2 flex-wrap">
+        <div class="mt-3 space-y-2">
+          <!-- Grouping badges — own row -->
+          <div v-if="country.groupings?.length" class="flex gap-2 flex-wrap">
             <span
               v-for="g in country.groupings"
               :key="g"
               class="text-xs bg-[#1f2937] text-gray-300 px-2 py-1 rounded"
             >{{ g }}</span>
           </div>
-          <!-- Share card + email alert -->
-          <ShareCard
-            type="country"
-            :slug="code"
-            :name="country.name"
-          />
-          <button
-            @click="showEmailAlertModal = true"
-            class="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-amber-800 text-amber-400 hover:bg-amber-900/20 transition-colors"
-          >🔔 Alert</button>
-          <!-- Follow button -->
-          <button
-            class="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors"
-            :class="isFollowing
-              ? 'border-emerald-700 text-emerald-400 bg-emerald-900/20 hover:bg-red-900/20 hover:text-red-400 hover:border-red-700'
-              : 'border-[#1f2937] text-gray-400 hover:border-emerald-700 hover:text-emerald-400'"
-            @click="toggleFollow"
-          >
-            {{ isFollowing ? '★ Following' : '☆ Follow' }}
-          </button>
+          <!-- Action buttons — always on their own row, left-aligned -->
+          <div class="flex gap-2 flex-wrap">
+            <ShareCard
+              type="country"
+              :slug="code"
+              :name="country.name"
+            />
+            <button
+              @click="showEmailAlertModal = true"
+              class="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-amber-800 text-amber-400 hover:bg-amber-900/20 transition-colors"
+            >🔔 Alert</button>
+            <button
+              class="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors"
+              :class="isFollowing
+                ? 'border-emerald-700 text-emerald-400 bg-emerald-900/20 hover:bg-red-900/20 hover:text-red-400 hover:border-red-700'
+                : 'border-[#1f2937] text-gray-400 hover:border-emerald-700 hover:text-emerald-400'"
+              @click="toggleFollow"
+            >{{ isFollowing ? '★ Following' : '☆ Follow' }}</button>
+          </div>
         </div>
       </div>
 

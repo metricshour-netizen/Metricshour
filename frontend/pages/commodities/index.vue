@@ -1,8 +1,17 @@
 <template>
   <main class="max-w-7xl mx-auto px-4 py-10">
-    <div class="mb-6">
-      <h1 class="text-xl sm:text-2xl font-bold text-white">Commodities</h1>
-      <p class="text-gray-500 text-sm mt-1">Energy · Metals · Agriculture — 21 instruments tracked globally</p>
+    <div class="mb-6 flex items-start justify-between gap-4">
+      <div>
+        <h1 class="text-xl sm:text-2xl font-bold text-white">Commodities</h1>
+        <p class="text-gray-500 text-sm mt-1">Energy · Metals · Agriculture — 21 instruments tracked globally</p>
+      </div>
+      <button
+        @click="showMovers = !showMovers"
+        class="shrink-0 flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border transition-all"
+        :class="showMovers
+          ? 'bg-amber-950 border-amber-700 text-amber-400'
+          : 'border-[#1f2937] text-gray-500 hover:border-amber-700 hover:text-amber-400'"
+      >🔥 What's Moving</button>
     </div>
 
     <!-- Search -->
@@ -24,46 +33,97 @@
     <template v-else>
       <p v-if="search" class="text-xs text-gray-600 mb-4">{{ matchCount }} result{{ matchCount !== 1 ? 's' : '' }} for "{{ search }}"</p>
 
-      <template v-for="group in filteredGroups" :key="group.name">
-        <div v-if="group.items.length" class="mb-10">
-          <!-- Group header -->
-          <div class="flex items-center gap-3 mb-4">
-            <span class="text-lg">{{ group.icon }}</span>
-            <h2 class="text-sm font-extrabold text-white uppercase tracking-widest">{{ group.name }}</h2>
-            <span class="text-[10px] text-gray-600 bg-[#1f2937] px-2 py-0.5 rounded-full">{{ group.items.length }}</span>
-            <div class="flex-1 h-px bg-[#1f2937]"/>
-          </div>
-
-          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-            <NuxtLink
-              v-for="c in group.items"
-              :key="c.symbol"
-              :to="`/commodities/${c.symbol.toLowerCase()}`"
-              class="bg-[#111827] border border-[#1f2937] hover:border-emerald-500/60 rounded-xl p-4 transition-all hover:bg-[#131d2e] group"
-            >
-              <div class="flex items-start justify-between mb-3">
-                <span class="text-2xl">{{ c.icon }}</span>
-                <span class="text-[10px] text-gray-600 bg-[#1f2937] px-1.5 py-0.5 rounded font-mono">{{ c.symbol }}</span>
-              </div>
-              <div class="text-sm font-bold text-white mb-0.5 group-hover:text-emerald-300 transition-colors leading-tight">
-                {{ apiMap[c.symbol]?.name ?? c.name }}
-              </div>
-              <div class="text-[10px] text-gray-600 mb-2">{{ group.name }}</div>
-              <div class="mt-auto">
-                <template v-if="apiMap[c.symbol]?.price?.close != null">
-                  <div class="text-base font-extrabold text-white tabular-nums">${{ fmtPrice(apiMap[c.symbol].price.close) }}</div>
-                  <div class="text-[10px] mt-0.5 flex items-center gap-1"
-                    :class="apiMap[c.symbol].price.timestamp ? 'text-emerald-700' : 'text-gray-600'">
-                    <span class="w-1 h-1 rounded-full inline-block"
-                      :class="apiMap[c.symbol].price.timestamp ? 'bg-emerald-600' : 'bg-gray-600'"></span>
-                    {{ fmtTs(apiMap[c.symbol].price.timestamp) }}
-                  </div>
-                </template>
-                <div v-else class="text-base font-extrabold text-gray-700 tabular-nums">—</div>
-              </div>
-            </NuxtLink>
-          </div>
+      <!-- What's Moving view: flat sorted list by |change_pct| -->
+      <template v-if="showMovers">
+        <div class="mb-3 flex items-center gap-2">
+          <span class="text-xs text-amber-400 font-semibold">Sorted by 24h move</span>
+          <span class="text-[10px] text-gray-600">· {{ moversFlat.length }} instruments</span>
         </div>
+        <div class="bg-[#0d1520] border border-[#1f2937] rounded-xl overflow-hidden mb-6">
+          <div class="hidden sm:grid grid-cols-[2fr_1fr_1fr_1fr] gap-4 px-4 py-2.5 text-[11px] text-gray-600 uppercase tracking-widest font-semibold bg-[#111827]">
+            <span>Commodity</span>
+            <span class="text-right">Price</span>
+            <span class="text-right">24h Change</span>
+            <span class="text-right">Updated</span>
+          </div>
+          <NuxtLink
+            v-for="item in moversFlat"
+            :key="item.symbol"
+            :to="`/commodities/${item.symbol.toLowerCase()}`"
+            class="grid grid-cols-[2fr_1fr_1fr] sm:grid-cols-[2fr_1fr_1fr_1fr] gap-4 items-center px-4 py-3 border-t border-[#1f2937] hover:bg-[#131d2e] transition-colors group"
+            :class="Math.abs(item.change_pct ?? 0) >= 3
+              ? (item.change_pct >= 0 ? 'border-l-2 border-l-emerald-700' : 'border-l-2 border-l-red-800')
+              : ''"
+          >
+            <div class="flex items-center gap-3">
+              <span class="text-xl shrink-0">{{ item.icon }}</span>
+              <div>
+                <div class="text-sm font-bold text-white group-hover:text-amber-300 transition-colors">{{ item.name }}</div>
+                <div class="text-[10px] text-gray-600 font-mono">{{ item.symbol }} · {{ item.category }}</div>
+              </div>
+            </div>
+            <div class="text-right text-sm font-bold text-white tabular-nums">
+              {{ item.price != null ? `$${fmtPrice(item.price)}` : '—' }}
+            </div>
+            <div class="text-right text-sm font-bold tabular-nums"
+              :class="item.change_pct == null ? 'text-gray-700' : item.change_pct >= 0 ? 'text-emerald-400' : 'text-red-400'">
+              {{ item.change_pct != null ? (item.change_pct >= 0 ? '+' : '') + item.change_pct.toFixed(2) + '%' : '—' }}
+            </div>
+            <div class="hidden sm:block text-right text-[10px] text-gray-600">{{ item.ts ? fmtTs(item.ts) : '—' }}</div>
+          </NuxtLink>
+        </div>
+      </template>
+
+      <!-- Default grouped card view -->
+      <template v-else>
+        <template v-for="group in filteredGroups" :key="group.name">
+          <div v-if="group.items.length" class="mb-10">
+            <!-- Group header -->
+            <div class="flex items-center gap-3 mb-4">
+              <span class="text-lg">{{ group.icon }}</span>
+              <h2 class="text-sm font-extrabold text-white uppercase tracking-widest">{{ group.name }}</h2>
+              <span class="text-[10px] text-gray-600 bg-[#1f2937] px-2 py-0.5 rounded-full">{{ group.items.length }}</span>
+              <div class="flex-1 h-px bg-[#1f2937]"/>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+              <NuxtLink
+                v-for="c in group.items"
+                :key="c.symbol"
+                :to="`/commodities/${c.symbol.toLowerCase()}`"
+                class="bg-[#111827] border border-[#1f2937] hover:border-emerald-500/60 rounded-xl p-4 transition-all hover:bg-[#131d2e] group"
+              >
+                <div class="flex items-start justify-between mb-3">
+                  <span class="text-2xl">{{ c.icon }}</span>
+                  <span class="text-[10px] text-gray-600 bg-[#1f2937] px-1.5 py-0.5 rounded font-mono">{{ c.symbol }}</span>
+                </div>
+                <div class="text-sm font-bold text-white mb-0.5 group-hover:text-emerald-300 transition-colors leading-tight">
+                  {{ apiMap[c.symbol]?.name ?? c.name }}
+                </div>
+                <div class="text-[10px] text-gray-600 mb-2">{{ group.name }}</div>
+                <div class="mt-auto">
+                  <template v-if="apiMap[c.symbol]?.price?.close != null">
+                    <div class="flex items-baseline gap-2">
+                      <div class="text-base font-extrabold text-white tabular-nums">${{ fmtPrice(apiMap[c.symbol].price.close) }}</div>
+                      <div v-if="apiMap[c.symbol].price.change_pct != null"
+                        class="text-[11px] font-bold tabular-nums"
+                        :class="apiMap[c.symbol].price.change_pct >= 0 ? 'text-emerald-400' : 'text-red-400'">
+                        {{ apiMap[c.symbol].price.change_pct >= 0 ? '+' : '' }}{{ apiMap[c.symbol].price.change_pct.toFixed(2) }}%
+                      </div>
+                    </div>
+                    <div class="text-[10px] mt-0.5 flex items-center gap-1"
+                      :class="apiMap[c.symbol].price.timestamp ? 'text-emerald-700' : 'text-gray-600'">
+                      <span class="w-1 h-1 rounded-full inline-block"
+                        :class="apiMap[c.symbol].price.timestamp ? 'bg-emerald-600' : 'bg-gray-600'"></span>
+                      {{ fmtTs(apiMap[c.symbol].price.timestamp) }}
+                    </div>
+                  </template>
+                  <div v-else class="text-base font-extrabold text-gray-700 tabular-nums">—</div>
+                </div>
+              </NuxtLink>
+            </div>
+          </div>
+        </template>
       </template>
 
       <div v-if="matchCount === 0 && search" class="text-center py-16 text-gray-600 text-sm">
@@ -130,6 +190,8 @@ const ALL_GROUPS = [
   },
 ]
 
+const showMovers = ref(false)
+
 const filteredGroups = computed(() => {
   if (!search.value.trim()) return ALL_GROUPS
   const q = search.value.toLowerCase().trim()
@@ -146,6 +208,19 @@ const filteredGroups = computed(() => {
 const matchCount = computed(() =>
   filteredGroups.value.reduce((sum, g) => sum + g.items.length, 0)
 )
+
+const moversFlat = computed(() => {
+  const all = ALL_GROUPS.flatMap(g =>
+    g.items.map(item => ({
+      ...item,
+      category: g.name,
+      price: apiMap.value[item.symbol]?.price?.close ?? null,
+      change_pct: apiMap.value[item.symbol]?.price?.change_pct ?? null,
+      ts: apiMap.value[item.symbol]?.price?.timestamp ?? null,
+    }))
+  )
+  return all.sort((a, b) => Math.abs(b.change_pct ?? 0) - Math.abs(a.change_pct ?? 0))
+})
 
 function fmtPrice(v: number): string {
   if (v >= 1000) return v.toLocaleString(undefined, { maximumFractionDigits: 0 })

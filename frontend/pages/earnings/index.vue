@@ -39,16 +39,16 @@
             <div class="flex-1 h-px bg-[#1f2937]"/>
           </div>
 
-          <!-- Events table -->
-          <div class="bg-[#0d1520] border border-[#1f2937] rounded-xl overflow-hidden">
+          <!-- Desktop table -->
+          <div class="hidden sm:block bg-[#0d1520] border border-[#1f2937] rounded-xl overflow-hidden">
             <table class="w-full text-sm">
               <thead class="bg-[#111827] text-[10px] text-gray-500 uppercase tracking-widest">
                 <tr>
                   <th class="px-4 py-2.5 text-left">Company</th>
-                  <th class="px-4 py-2.5 text-left hidden sm:table-cell">Sector</th>
+                  <th class="px-4 py-2.5 text-left">Sector</th>
                   <th class="px-4 py-2.5 text-right">Date</th>
-                  <th class="px-4 py-2.5 text-right hidden sm:table-cell">EPS Est.</th>
-                  <th class="px-4 py-2.5 text-right hidden sm:table-cell">Rev. Est.</th>
+                  <th class="px-4 py-2.5 text-right">EPS Est.</th>
+                  <th class="px-4 py-2.5 text-right">Rev. Est.</th>
                   <th class="px-4 py-2.5 text-right hidden md:table-cell">Mkt Cap</th>
                 </tr>
               </thead>
@@ -59,18 +59,19 @@
                     <NuxtLink :to="`/stocks/${ev.symbol.toLowerCase()}/`" class="flex items-center gap-2">
                       <span class="font-mono text-xs text-emerald-400 font-bold w-12 flex-shrink-0">{{ ev.symbol }}</span>
                       <div class="min-w-0">
-                        <span class="text-white text-xs truncate block max-w-[120px] sm:max-w-none">{{ ev.name }}</span>
+                        <span class="text-white text-xs truncate block">{{ ev.name }}</span>
                         <span v-if="ev.period" class="text-[10px] text-gray-600 font-mono">{{ ev.period }}</span>
                       </div>
                     </NuxtLink>
                   </td>
-                  <td class="px-4 py-3 text-gray-500 text-xs hidden sm:table-cell">{{ ev.sector ?? '—' }}</td>
+                  <td class="px-4 py-3 text-gray-500 text-xs">{{ ev.sector ?? '—' }}</td>
                   <td class="px-4 py-3 text-right text-gray-300 text-xs tabular-nums whitespace-nowrap">{{ fmtDate(ev.report_date) }}</td>
-                  <td class="px-4 py-3 text-right text-gray-400 text-xs tabular-nums hidden sm:table-cell">
+                  <td class="px-4 py-3 text-right text-gray-400 text-xs tabular-nums">
                     {{ ev.eps_estimate != null ? `$${ev.eps_estimate.toFixed(2)}` : '—' }}
                   </td>
-                  <td class="px-4 py-3 text-right text-gray-400 text-xs tabular-nums hidden sm:table-cell">
-                    {{ fmtRevenue(ev.revenue_estimate) }}
+                  <td class="px-4 py-3 text-right text-xs tabular-nums">
+                    <span v-if="ev.revenue_estimate != null" class="text-gray-400">{{ fmtRevenue(ev.revenue_estimate) }}</span>
+                    <span v-else class="text-gray-700 text-[10px]">{{ ev.period ?? 'N/A' }}</span>
                   </td>
                   <td class="px-4 py-3 text-right text-gray-600 text-xs tabular-nums hidden md:table-cell">
                     {{ fmtMktCap(ev.market_cap_usd) }}
@@ -78,6 +79,43 @@
                 </tr>
               </tbody>
             </table>
+          </div>
+
+          <!-- Mobile cards -->
+          <div class="sm:hidden space-y-2">
+            <NuxtLink
+              v-for="ev in week.events"
+              :key="ev.symbol + ev.report_date"
+              :to="`/stocks/${ev.symbol.toLowerCase()}/`"
+              class="block bg-[#0d1520] border border-[#1f2937] rounded-xl p-3 hover:border-emerald-500/40 transition-colors"
+            >
+              <div class="flex items-start justify-between gap-2 mb-2">
+                <div class="flex items-center gap-2 min-w-0">
+                  <span class="font-mono text-xs text-emerald-400 font-bold shrink-0">{{ ev.symbol }}</span>
+                  <span class="text-white text-xs truncate">{{ ev.name }}</span>
+                </div>
+                <span class="text-gray-300 text-xs tabular-nums whitespace-nowrap shrink-0">{{ fmtDate(ev.report_date) }}</span>
+              </div>
+              <div class="flex items-center gap-2 mb-2">
+                <span v-if="ev.period" class="text-[10px] font-mono text-emerald-700 bg-emerald-900/20 px-1.5 py-0.5 rounded">{{ ev.period }}</span>
+                <span v-if="ev.sector" class="text-[10px] text-gray-600">{{ ev.sector }}</span>
+                <span v-if="ev.market_cap_usd" class="text-[10px] text-gray-700 ml-auto">{{ fmtMktCap(ev.market_cap_usd) }}</span>
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <div class="bg-[#111827] rounded-lg px-2.5 py-1.5">
+                  <div class="text-[10px] text-gray-600 uppercase tracking-wide mb-0.5">EPS Est.</div>
+                  <div class="text-sm font-bold tabular-nums" :class="ev.eps_estimate != null ? 'text-white' : 'text-gray-700'">
+                    {{ ev.eps_estimate != null ? `$${ev.eps_estimate.toFixed(2)}` : '—' }}
+                  </div>
+                </div>
+                <div class="bg-[#111827] rounded-lg px-2.5 py-1.5">
+                  <div class="text-[10px] text-gray-600 uppercase tracking-wide mb-0.5">Rev. Est.</div>
+                  <div class="text-sm font-bold tabular-nums" :class="ev.revenue_estimate != null ? 'text-white' : 'text-gray-700'">
+                    {{ ev.revenue_estimate != null ? fmtRevenue(ev.revenue_estimate) : '—' }}
+                  </div>
+                </div>
+              </div>
+            </NuxtLink>
           </div>
         </div>
       </template>
@@ -95,14 +133,15 @@
       </div>
 
       <template v-else-if="recentData?.events?.length">
-        <div class="bg-[#0d1520] border border-[#1f2937] rounded-xl overflow-hidden mb-4">
+        <!-- Desktop table -->
+        <div class="hidden sm:block bg-[#0d1520] border border-[#1f2937] rounded-xl overflow-hidden mb-4">
           <table class="w-full text-sm">
             <thead class="bg-[#111827] text-[10px] text-gray-500 uppercase tracking-widest">
               <tr>
                 <th class="px-4 py-2.5 text-left">Company</th>
-                <th class="px-4 py-2.5 text-right hidden sm:table-cell">Prev EPS</th>
-                <th class="px-4 py-2.5 text-right hidden sm:table-cell">EPS Est.</th>
-                <th class="px-4 py-2.5 text-right hidden sm:table-cell">EPS Actual</th>
+                <th class="px-4 py-2.5 text-right">Prev EPS</th>
+                <th class="px-4 py-2.5 text-right">EPS Est.</th>
+                <th class="px-4 py-2.5 text-right">EPS Actual</th>
                 <th class="px-4 py-2.5 text-right hidden md:table-cell">Revenue</th>
                 <th class="px-4 py-2.5 text-right hidden lg:table-cell">Mkt Cap</th>
                 <th class="px-4 py-2.5 text-right">Surprise</th>
@@ -115,32 +154,28 @@
                   <NuxtLink :to="`/stocks/${ev.symbol.toLowerCase()}/`" class="flex items-center gap-2">
                     <span class="font-mono text-xs text-emerald-400 font-bold w-12 flex-shrink-0">{{ ev.symbol }}</span>
                     <div class="min-w-0">
-                      <span class="text-white text-xs truncate block max-w-[100px] sm:max-w-none">{{ ev.name }}</span>
+                      <span class="text-white text-xs truncate block">{{ ev.name }}</span>
                       <span v-if="ev.period" class="text-[10px] text-gray-600 font-mono">{{ ev.period }} · {{ fmtDate(ev.report_date) }}</span>
                     </div>
                   </NuxtLink>
                 </td>
-                <td class="px-4 py-3 text-right text-gray-600 text-xs tabular-nums hidden sm:table-cell">
+                <td class="px-4 py-3 text-right text-gray-600 text-xs tabular-nums">
                   {{ ev.prev_eps != null ? `$${ev.prev_eps.toFixed(2)}` : '—' }}
                 </td>
-                <td class="px-4 py-3 text-right text-gray-500 text-xs tabular-nums hidden sm:table-cell">
+                <td class="px-4 py-3 text-right text-gray-500 text-xs tabular-nums">
                   {{ ev.eps_estimate != null ? `$${ev.eps_estimate.toFixed(2)}` : '—' }}
                 </td>
-                <td class="px-4 py-3 text-right text-xs tabular-nums font-medium hidden sm:table-cell">
+                <td class="px-4 py-3 text-right text-xs tabular-nums font-medium">
                   <span v-if="ev.eps_actual != null" class="flex items-center justify-end gap-1">
                     <span :class="epsVsPrevColor(ev.eps_actual, ev.prev_eps)" class="text-[10px]">{{ epsDirection(ev.eps_actual, ev.prev_eps) }}</span>
                     <span class="text-white">${{ ev.eps_actual.toFixed(2) }}</span>
                   </span>
                   <span v-else class="text-gray-600">—</span>
                 </td>
-                <td class="px-4 py-3 text-right text-gray-400 text-xs tabular-nums hidden md:table-cell">
-                  <span v-if="ev.revenue_actual != null">
-                    {{ fmtRevenue(ev.revenue_actual) }}
-                  </span>
-                  <span v-else-if="ev.revenue_estimate != null" class="text-gray-600">
-                    {{ fmtRevenue(ev.revenue_estimate) }}<span class="text-[10px] ml-0.5">E</span>
-                  </span>
-                  <span v-else class="text-gray-700">—</span>
+                <td class="px-4 py-3 text-right text-xs tabular-nums hidden md:table-cell">
+                  <span v-if="ev.revenue_actual != null" class="text-gray-400">{{ fmtRevenue(ev.revenue_actual) }}</span>
+                  <span v-else-if="ev.revenue_estimate != null" class="text-gray-600">{{ fmtRevenue(ev.revenue_estimate) }}<span class="text-[10px] ml-0.5">E</span></span>
+                  <span v-else class="text-gray-700 text-[10px]">no data</span>
                 </td>
                 <td class="px-4 py-3 text-right text-gray-600 text-xs tabular-nums hidden lg:table-cell">
                   {{ fmtMktCap(ev.market_cap_usd) }}
@@ -157,6 +192,69 @@
               </tr>
             </tbody>
           </table>
+        </div>
+
+        <!-- Mobile cards -->
+        <div class="sm:hidden space-y-2 mb-4">
+          <NuxtLink
+            v-for="ev in recentData.events"
+            :key="ev.symbol + ev.report_date"
+            :to="`/stocks/${ev.symbol.toLowerCase()}/`"
+            class="block bg-[#0d1520] border rounded-xl p-3 hover:border-emerald-500/40 transition-colors"
+            :class="ev.surprise_pct != null && ev.surprise_pct > 0 ? 'border-emerald-900/60' : ev.surprise_pct != null && ev.surprise_pct < 0 ? 'border-red-900/60' : 'border-[#1f2937]'"
+          >
+            <!-- Header row: ticker + name + beat/miss badge -->
+            <div class="flex items-start justify-between gap-2 mb-1.5">
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="font-mono text-xs text-emerald-400 font-bold shrink-0">{{ ev.symbol }}</span>
+                <span class="text-white text-xs truncate">{{ ev.name }}</span>
+              </div>
+              <div class="flex items-center gap-1 shrink-0">
+                <span class="font-semibold text-xs tabular-nums" :class="surpriseColor(ev.surprise_pct)">{{ fmtSurprise(ev.surprise_pct) }}</span>
+                <span v-if="ev.surprise_pct != null" class="text-[10px] font-bold px-1.5 py-0.5 rounded"
+                  :class="ev.surprise_pct > 0 ? 'bg-emerald-900/50 text-emerald-400' : 'bg-red-900/50 text-red-400'">
+                  {{ ev.surprise_pct > 0 ? 'BEAT' : 'MISS' }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Period + date -->
+            <div class="flex items-center gap-2 mb-2">
+              <span v-if="ev.period" class="text-[10px] font-mono text-emerald-700 bg-emerald-900/20 px-1.5 py-0.5 rounded">{{ ev.period }}</span>
+              <span class="text-[10px] text-gray-600">{{ fmtDate(ev.report_date) }}</span>
+              <span v-if="ev.market_cap_usd" class="text-[10px] text-gray-700 ml-auto">{{ fmtMktCap(ev.market_cap_usd) }}</span>
+            </div>
+
+            <!-- EPS row -->
+            <div class="grid grid-cols-3 gap-2 mb-2">
+              <div class="bg-[#111827] rounded-lg px-2 py-1.5">
+                <div class="text-[10px] text-gray-600 uppercase tracking-wide mb-0.5">Prev EPS</div>
+                <div class="text-xs tabular-nums text-gray-500">{{ ev.prev_eps != null ? `$${ev.prev_eps.toFixed(2)}` : '—' }}</div>
+              </div>
+              <div class="bg-[#111827] rounded-lg px-2 py-1.5">
+                <div class="text-[10px] text-gray-600 uppercase tracking-wide mb-0.5">Est.</div>
+                <div class="text-xs tabular-nums text-gray-400">{{ ev.eps_estimate != null ? `$${ev.eps_estimate.toFixed(2)}` : '—' }}</div>
+              </div>
+              <div class="bg-[#111827] rounded-lg px-2 py-1.5">
+                <div class="text-[10px] text-gray-600 uppercase tracking-wide mb-0.5">Actual</div>
+                <div v-if="ev.eps_actual != null" class="flex items-center gap-0.5">
+                  <span :class="epsVsPrevColor(ev.eps_actual, ev.prev_eps)" class="text-[10px]">{{ epsDirection(ev.eps_actual, ev.prev_eps) }}</span>
+                  <span class="text-xs font-bold tabular-nums text-white">${{ ev.eps_actual.toFixed(2) }}</span>
+                </div>
+                <div v-else class="text-xs text-gray-700">—</div>
+              </div>
+            </div>
+
+            <!-- Revenue row -->
+            <div class="bg-[#111827] rounded-lg px-2.5 py-1.5">
+              <div class="text-[10px] text-gray-600 uppercase tracking-wide mb-0.5">Revenue</div>
+              <div class="text-xs tabular-nums">
+                <span v-if="ev.revenue_actual != null" class="text-gray-300 font-medium">{{ fmtRevenue(ev.revenue_actual) }}</span>
+                <span v-else-if="ev.revenue_estimate != null" class="text-gray-500">{{ fmtRevenue(ev.revenue_estimate) }} <span class="text-[10px] text-gray-600">est.</span></span>
+                <span v-else class="text-gray-700 text-[10px]">No revenue data</span>
+              </div>
+            </div>
+          </NuxtLink>
         </div>
         <p class="text-xs text-gray-700">Sorted by EPS surprise. Positive = beat estimates.</p>
       </template>

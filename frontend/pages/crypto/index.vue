@@ -1,8 +1,17 @@
 <template>
   <main class="max-w-7xl mx-auto px-4 py-10">
-    <div class="mb-6">
-      <h1 class="text-xl sm:text-2xl font-bold text-white">Crypto Markets</h1>
-      <p class="text-gray-500 text-sm mt-1">Top cryptocurrencies by market cap — live prices 24/7</p>
+    <div class="mb-6 flex items-start justify-between gap-4">
+      <div>
+        <h1 class="text-xl sm:text-2xl font-bold text-white">Crypto Markets</h1>
+        <p class="text-gray-500 text-sm mt-1">Top cryptocurrencies by market cap — live prices 24/7</p>
+      </div>
+      <button
+        @click="showMovers = !showMovers"
+        class="shrink-0 flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border transition-all"
+        :class="showMovers
+          ? 'bg-orange-950 border-orange-700 text-orange-400'
+          : 'border-[#1f2937] text-gray-500 hover:border-orange-700 hover:text-orange-400'"
+      >🔥 What's Moving</button>
     </div>
 
     <!-- Search -->
@@ -38,7 +47,10 @@
           v-for="(coin, idx) in filtered"
           :key="coin.symbol"
           :to="`/crypto/${coin.symbol.toLowerCase()}/`"
-          class="grid grid-cols-[2fr_1fr_1fr] sm:grid-cols-[2fr_1fr_1fr_1fr_1fr] gap-4 items-center bg-[#111827] border border-[#1f2937] hover:border-orange-500/50 rounded-xl px-4 py-3.5 transition-all hover:bg-[#131d2e] group"
+          class="grid grid-cols-[2fr_1fr_1fr] sm:grid-cols-[2fr_1fr_1fr_1fr_1fr] gap-4 items-center bg-[#111827] rounded-xl px-4 py-3.5 transition-all hover:bg-[#131d2e] group border"
+          :class="showMovers && Math.abs(coin.price?.change_pct ?? 0) >= 3
+            ? (coin.price?.change_pct >= 0 ? 'border-emerald-700/60 hover:border-emerald-600' : 'border-red-800/60 hover:border-red-700')
+            : 'border-[#1f2937] hover:border-orange-500/50'"
         >
           <!-- Rank + Name -->
           <div class="flex items-center gap-3">
@@ -116,12 +128,16 @@ const { data: coins, pending } = useAsyncData('crypto',
     .catch(() => []),
 )
 
+const showMovers = ref(false)
+
 const filtered = computed(() => {
   const q = search.value.toLowerCase().trim()
-  if (!q) return coins.value ?? []
-  return (coins.value ?? []).filter((c: any) =>
-    c.name.toLowerCase().includes(q) || c.symbol.toLowerCase().includes(q)
-  )
+  let list = coins.value ?? []
+  if (q) list = list.filter((c: any) => c.name.toLowerCase().includes(q) || c.symbol.toLowerCase().includes(q))
+  if (showMovers.value) {
+    list = [...list].sort((a, b) => Math.abs(b.price?.change_pct ?? 0) - Math.abs(a.price?.change_pct ?? 0))
+  }
+  return list
 })
 
 function fmtPrice(v: number): string {
