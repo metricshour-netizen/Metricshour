@@ -106,7 +106,7 @@
     </div>
 
     <!-- Mobile dropdown menu -->
-    <div v-if="menuOpen" class="sm:hidden border-t border-[#1f2937] bg-[#0a0e1a] px-4 py-2">
+    <div v-if="menuOpen" class="sm:hidden border-t border-[#1f2937] bg-[#0a0e1a] px-4 py-2 max-h-[calc(100vh-3rem)] overflow-y-auto">
       <NuxtLink to="/"            @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-emerald-400 font-semibold border-b border-[#1f2937]">Home <span class="text-gray-600 text-xs">→</span></NuxtLink>
       <NuxtLink to="/markets/"    @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">Markets <span class="text-gray-600 text-xs">→</span></NuxtLink>
       <NuxtLink to="/countries/"  @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">Countries <span class="text-gray-600 text-xs">→</span></NuxtLink>
@@ -186,13 +186,11 @@ const toolsOpen = ref(false)
 const mobileToolsOpen = ref(false)
 
 const TOOLS = [
-  { to: '/screener/',    icon: '🔍', label: 'Stock Screener',    desc: 'Filter by revenue exposure' },
-  { to: '/screener/no-china-exposure/', icon: '🛡️', label: 'No China Exposure', desc: 'Zero China revenue stocks' },
-  { to: '/screener/tariff-proof-stocks/', icon: '⚡', label: 'Tariff-Proof Stocks', desc: 'Low China & EU exposure' },
-  { to: '/yield-curve/', icon: '📈', label: 'Yield Curve',       desc: 'US Treasury rates' },
-  { to: '/earnings/',    icon: '📅', label: 'Earnings Calendar', desc: 'Upcoming & recent results' },
-  { to: '/rates/',       icon: '💹', label: 'Rates & Yields',    desc: 'Central bank & FRED data' },
-  { to: '/compare/',     icon: '⚖️', label: 'Compare Countries', desc: 'Side-by-side macro data' },
+  { to: '/screener/',    icon: '🔍', label: 'Global Risk Screener', desc: 'Filter stocks by geopolitical exposure' },
+  { to: '/yield-curve/', icon: '📈', label: 'Yield Curve',          desc: 'US Treasury rates' },
+  { to: '/earnings/',    icon: '📅', label: 'Earnings Calendar',    desc: 'Upcoming & recent results' },
+  { to: '/rates/',       icon: '💹', label: 'Rates & Yields',       desc: 'Central bank & FRED data' },
+  { to: '/compare/',     icon: '⚖️', label: 'Compare Countries',    desc: 'Side-by-side macro data' },
 ]
 
 const TOOL_PATHS = new Set(TOOLS.map(t => t.to))

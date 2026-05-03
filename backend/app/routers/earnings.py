@@ -11,7 +11,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 
 from app.database import get_db
 from app.models.earnings import EarningsEvent
@@ -20,7 +20,20 @@ from app.models.asset import Asset
 router = APIRouter(tags=["earnings"])
 
 
-def _event_dict(ev: EarningsEvent, asset: Asset | None = None) -> dict:
+_PrevEv = aliased(EarningsEvent)
+_prev_eps_subq = (
+    select(_PrevEv.eps_actual)
+    .where(_PrevEv.symbol == EarningsEvent.symbol)
+    .where(_PrevEv.report_date < EarningsEvent.report_date)
+    .where(_PrevEv.eps_actual.isnot(None))
+    .order_by(_PrevEv.report_date.desc())
+    .limit(1)
+    .correlate(EarningsEvent)
+    .scalar_subquery()
+)
+
+
+def _event_dict(ev: EarningsEvent, asset: Asset | None = None, prev_eps: float | None = None) -> dict:
     return {
         "symbol": ev.symbol,
         "name": asset.name if asset else ev.symbol,
@@ -30,6 +43,7 @@ def _event_dict(ev: EarningsEvent, asset: Asset | None = None) -> dict:
         "period": ev.period,
         "eps_estimate": ev.eps_estimate,
         "eps_actual": ev.eps_actual,
+        "prev_eps": prev_eps,
         "revenue_estimate": ev.revenue_estimate,
         "revenue_actual": ev.revenue_actual,
         "surprise_pct": ev.surprise_pct,
@@ -53,7 +67,7 @@ def get_upcoming_earnings(
     until = today + timedelta(days=days)
 
     rows = db.execute(
-        select(EarningsEvent, Asset)
+        select(EarningsEvent, Asset, _prev_eps_subq.label("prev_eps"))
         .join(Asset, EarningsEvent.asset_id == Asset.id, isouter=True)
         .where(EarningsEvent.report_date >= today)
         .where(EarningsEvent.report_date <= until)
@@ -61,9 +75,9 @@ def get_upcoming_earnings(
     ).all()
 
     weeks: dict[str, list] = {}
-    for ev, asset in rows:
+    for ev, asset, prev_eps in rows:
         label = _week_label(ev.report_date)
-        weeks.setdefault(label, []).append(_event_dict(ev, asset))
+        weeks.setdefault(label, []).append(_event_dict(ev, asset, prev_eps=prev_eps))
 
     return {
         "days": days,
@@ -82,7 +96,7 @@ def get_recent_earnings(
     since = today - timedelta(days=days)
 
     rows = db.execute(
-        select(EarningsEvent, Asset)
+        select(EarningsEvent, Asset, _prev_eps_subq.label("prev_eps"))
         .join(Asset, EarningsEvent.asset_id == Asset.id, isouter=True)
         .where(EarningsEvent.report_date >= since)
         .where(EarningsEvent.report_date < today)
@@ -93,7 +107,7 @@ def get_recent_earnings(
     return {
         "days": days,
         "total": len(rows),
-        "events": [_event_dict(ev, asset) for ev, asset in rows],
+        "events": [_event_dict(ev, asset, prev_eps=prev_eps) for ev, asset, prev_eps in rows],
     }
 
 

@@ -46,9 +46,10 @@
                 <tr>
                   <th class="px-4 py-2.5 text-left">Company</th>
                   <th class="px-4 py-2.5 text-left hidden sm:table-cell">Sector</th>
-                  <th class="px-4 py-2.5 text-right">Report Date</th>
-                  <th class="px-4 py-2.5 text-right hidden md:table-cell">EPS Est.</th>
-                  <th class="px-4 py-2.5 text-right hidden lg:table-cell">Mkt Cap</th>
+                  <th class="px-4 py-2.5 text-right">Date</th>
+                  <th class="px-4 py-2.5 text-right hidden sm:table-cell">EPS Est.</th>
+                  <th class="px-4 py-2.5 text-right hidden sm:table-cell">Rev. Est.</th>
+                  <th class="px-4 py-2.5 text-right hidden md:table-cell">Mkt Cap</th>
                 </tr>
               </thead>
               <tbody>
@@ -57,15 +58,21 @@
                   <td class="px-4 py-3">
                     <NuxtLink :to="`/stocks/${ev.symbol.toLowerCase()}/`" class="flex items-center gap-2">
                       <span class="font-mono text-xs text-emerald-400 font-bold w-12 flex-shrink-0">{{ ev.symbol }}</span>
-                      <span class="text-white text-xs truncate max-w-[140px] sm:max-w-none">{{ ev.name }}</span>
+                      <div class="min-w-0">
+                        <span class="text-white text-xs truncate block max-w-[120px] sm:max-w-none">{{ ev.name }}</span>
+                        <span v-if="ev.period" class="text-[10px] text-gray-600 font-mono">{{ ev.period }}</span>
+                      </div>
                     </NuxtLink>
                   </td>
                   <td class="px-4 py-3 text-gray-500 text-xs hidden sm:table-cell">{{ ev.sector ?? '—' }}</td>
-                  <td class="px-4 py-3 text-right text-gray-300 text-xs tabular-nums">{{ fmtDate(ev.report_date) }}</td>
-                  <td class="px-4 py-3 text-right text-gray-400 text-xs tabular-nums hidden md:table-cell">
+                  <td class="px-4 py-3 text-right text-gray-300 text-xs tabular-nums whitespace-nowrap">{{ fmtDate(ev.report_date) }}</td>
+                  <td class="px-4 py-3 text-right text-gray-400 text-xs tabular-nums hidden sm:table-cell">
                     {{ ev.eps_estimate != null ? `$${ev.eps_estimate.toFixed(2)}` : '—' }}
                   </td>
-                  <td class="px-4 py-3 text-right text-gray-600 text-xs tabular-nums hidden lg:table-cell">
+                  <td class="px-4 py-3 text-right text-gray-400 text-xs tabular-nums hidden sm:table-cell">
+                    {{ fmtRevenue(ev.revenue_estimate) }}
+                  </td>
+                  <td class="px-4 py-3 text-right text-gray-600 text-xs tabular-nums hidden md:table-cell">
                     {{ fmtMktCap(ev.market_cap_usd) }}
                   </td>
                 </tr>
@@ -93,9 +100,11 @@
             <thead class="bg-[#111827] text-[10px] text-gray-500 uppercase tracking-widest">
               <tr>
                 <th class="px-4 py-2.5 text-left">Company</th>
-                <th class="px-4 py-2.5 text-right">Date</th>
+                <th class="px-4 py-2.5 text-right hidden sm:table-cell">Prev EPS</th>
                 <th class="px-4 py-2.5 text-right hidden sm:table-cell">EPS Est.</th>
                 <th class="px-4 py-2.5 text-right hidden sm:table-cell">EPS Actual</th>
+                <th class="px-4 py-2.5 text-right hidden md:table-cell">Revenue</th>
+                <th class="px-4 py-2.5 text-right hidden lg:table-cell">Mkt Cap</th>
                 <th class="px-4 py-2.5 text-right">Surprise</th>
               </tr>
             </thead>
@@ -105,25 +114,51 @@
                 <td class="px-4 py-3">
                   <NuxtLink :to="`/stocks/${ev.symbol.toLowerCase()}/`" class="flex items-center gap-2">
                     <span class="font-mono text-xs text-emerald-400 font-bold w-12 flex-shrink-0">{{ ev.symbol }}</span>
-                    <span class="text-white text-xs truncate max-w-[120px] sm:max-w-none">{{ ev.name }}</span>
+                    <div class="min-w-0">
+                      <span class="text-white text-xs truncate block max-w-[100px] sm:max-w-none">{{ ev.name }}</span>
+                      <span v-if="ev.period" class="text-[10px] text-gray-600 font-mono">{{ ev.period }} · {{ fmtDate(ev.report_date) }}</span>
+                    </div>
                   </NuxtLink>
                 </td>
-                <td class="px-4 py-3 text-right text-gray-400 text-xs tabular-nums">{{ fmtDate(ev.report_date) }}</td>
+                <td class="px-4 py-3 text-right text-gray-600 text-xs tabular-nums hidden sm:table-cell">
+                  {{ ev.prev_eps != null ? `$${ev.prev_eps.toFixed(2)}` : '—' }}
+                </td>
                 <td class="px-4 py-3 text-right text-gray-500 text-xs tabular-nums hidden sm:table-cell">
                   {{ ev.eps_estimate != null ? `$${ev.eps_estimate.toFixed(2)}` : '—' }}
                 </td>
-                <td class="px-4 py-3 text-right text-white text-xs tabular-nums font-medium hidden sm:table-cell">
-                  {{ ev.eps_actual != null ? `$${ev.eps_actual.toFixed(2)}` : '—' }}
+                <td class="px-4 py-3 text-right text-xs tabular-nums font-medium hidden sm:table-cell">
+                  <span v-if="ev.eps_actual != null" class="flex items-center justify-end gap-1">
+                    <span :class="epsVsPrevColor(ev.eps_actual, ev.prev_eps)" class="text-[10px]">{{ epsDirection(ev.eps_actual, ev.prev_eps) }}</span>
+                    <span class="text-white">${{ ev.eps_actual.toFixed(2) }}</span>
+                  </span>
+                  <span v-else class="text-gray-600">—</span>
                 </td>
-                <td class="px-4 py-3 text-right text-xs tabular-nums font-semibold"
-                  :class="surpriseColor(ev.surprise_pct)">
-                  {{ fmtSurprise(ev.surprise_pct) }}
+                <td class="px-4 py-3 text-right text-gray-400 text-xs tabular-nums hidden md:table-cell">
+                  <span v-if="ev.revenue_actual != null">
+                    {{ fmtRevenue(ev.revenue_actual) }}
+                  </span>
+                  <span v-else-if="ev.revenue_estimate != null" class="text-gray-600">
+                    {{ fmtRevenue(ev.revenue_estimate) }}<span class="text-[10px] ml-0.5">E</span>
+                  </span>
+                  <span v-else class="text-gray-700">—</span>
+                </td>
+                <td class="px-4 py-3 text-right text-gray-600 text-xs tabular-nums hidden lg:table-cell">
+                  {{ fmtMktCap(ev.market_cap_usd) }}
+                </td>
+                <td class="px-4 py-3 text-right text-xs tabular-nums">
+                  <div class="flex items-center justify-end gap-1.5">
+                    <span class="font-semibold" :class="surpriseColor(ev.surprise_pct)">{{ fmtSurprise(ev.surprise_pct) }}</span>
+                    <span v-if="ev.surprise_pct != null" class="text-[10px] font-bold px-1 py-0.5 rounded"
+                      :class="ev.surprise_pct > 0 ? 'bg-emerald-900/50 text-emerald-400' : 'bg-red-900/50 text-red-400'">
+                      {{ ev.surprise_pct > 0 ? 'BEAT' : 'MISS' }}
+                    </span>
+                  </div>
                 </td>
               </tr>
             </tbody>
           </table>
         </div>
-        <p class="text-xs text-gray-700">Sorted by EPS surprise. Positive surprise = beat estimates.</p>
+        <p class="text-xs text-gray-700">Sorted by EPS surprise. Positive = beat estimates.</p>
       </template>
 
       <div v-else class="text-center py-16">
@@ -159,6 +194,13 @@ function fmtMktCap(v: number | null): string {
   return `$${(v / 1e6).toFixed(0)}M`
 }
 
+function fmtRevenue(v: number | null): string {
+  if (!v) return '—'
+  if (v >= 1e12) return `$${(v / 1e12).toFixed(2)}T`
+  if (v >= 1e9)  return `$${(v / 1e9).toFixed(1)}B`
+  return `$${(v / 1e6).toFixed(0)}M`
+}
+
 function fmtSurprise(v: number | null): string {
   if (v == null) return '—'
   return (v >= 0 ? '+' : '') + v.toFixed(1) + '%'
@@ -172,9 +214,19 @@ function surpriseColor(v: number | null): string {
   return 'text-red-600'
 }
 
+function epsDirection(actual: number | null, prev: number | null): string {
+  if (actual == null || prev == null) return ''
+  return actual > prev ? '▲' : actual < prev ? '▼' : '='
+}
+
+function epsVsPrevColor(actual: number | null, prev: number | null): string {
+  if (actual == null || prev == null) return 'text-gray-600'
+  return actual > prev ? 'text-emerald-400' : actual < prev ? 'text-red-400' : 'text-gray-600'
+}
+
 useSeoMeta({
   title: 'Earnings Calendar — Upcoming & Recent S&P 500 Results — MetricsHour',
-  description: 'Track upcoming earnings reports and recent results for S&P 500 companies. EPS estimates, actuals, and surprise percentages.',
+  description: 'Track upcoming earnings reports and recent results for S&P 500 companies. EPS estimates, actuals, revenue, and surprise percentages.',
   ogTitle: 'Earnings Calendar — MetricsHour',
   ogDescription: 'Upcoming earnings reports and recent EPS results for S&P 500 stocks.',
   ogUrl: 'https://metricshour.com/earnings/',

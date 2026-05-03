@@ -53,6 +53,14 @@ const feedbackSent = ref(false)
 const feedbackVisible = ref(false)
 const route = useRoute()
 
+const BASE_URL = 'https://metricshour.com'
+useHead(computed(() => ({
+  link: [
+    { rel: 'alternate', hreflang: 'en', href: `${BASE_URL}${route.path}` },
+    { rel: 'alternate', hreflang: 'x-default', href: `${BASE_URL}${route.path}` },
+  ],
+})))
+
 onMounted(() => {
   const onScroll = () => { feedbackVisible.value = window.scrollY > 300 }
   window.addEventListener('scroll', onScroll, { passive: true })
