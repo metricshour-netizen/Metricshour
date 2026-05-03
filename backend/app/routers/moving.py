@@ -87,12 +87,12 @@ def stock_moving(ticker: str, db: Session = Depends(get_db)):
         JOIN countries c ON c.id = scr.country_id
         LEFT JOIN country_indicators ci_gdp
             ON ci_gdp.country_id = c.id AND ci_gdp.indicator = 'gdp_growth_pct'
-            AND ci_gdp.year = (SELECT MAX(year) FROM country_indicators
-                               WHERE country_id = c.id AND indicator = 'gdp_growth_pct')
+            AND ci_gdp.period_date = (SELECT MAX(period_date) FROM country_indicators
+                                      WHERE country_id = c.id AND indicator = 'gdp_growth_pct')
         LEFT JOIN country_indicators ci_inf
             ON ci_inf.country_id = c.id AND ci_inf.indicator = 'inflation_pct'
-            AND ci_inf.year = (SELECT MAX(year) FROM country_indicators
-                               WHERE country_id = c.id AND indicator = 'inflation_pct')
+            AND ci_inf.period_date = (SELECT MAX(period_date) FROM country_indicators
+                                      WHERE country_id = c.id AND indicator = 'inflation_pct')
         WHERE UPPER(a.symbol) = :ticker AND a.asset_type = 'stock'
           AND scr.fiscal_year = (
               SELECT MAX(scr2.fiscal_year) FROM stock_country_revenues scr2
