@@ -1,5 +1,64 @@
 # MetricsHour — Progress & Session Log
 
+## Session 2026-05-03 (part 4) — F6 Hreflang, Earnings Calendar enrichment, Nav cleanup ✅
+
+### Hreflang (F6 — was deferred, now done)
+- Global `useHead` computed in `app.vue`: emits `hreflang="en"` + `hreflang="x-default"` on every page
+- Verified live on all page types. Ready for Spanish: extend array when /es/ routes exist.
+
+### Earnings Calendar — rich UI
+- Backend: `prev_eps` added via aliased correlated subquery in both `/upcoming` and `/recent` endpoints
+- Upcoming tab: fiscal quarter badge, Revenue Est. column (hidden sm), Mkt Cap at md breakpoint
+- Recent tab: Prev EPS with ▲▼ indicator, BEAT/MISS pill, Revenue Actual column, Mkt Cap column
+
+### Navigation
+- "No China Exposure" + "Tariff-Proof Stocks" removed from Tools (still in screener)
+- "Stock Screener" → "Global Risk Screener"
+- Mobile menu: `max-h-[calc(100vh-3rem)] overflow-y-auto` — all items now scrollable
+
+### SEO audit (during Google revalidation)
+- Sitemap: 2,638 URLs, 0 dupes, all categories correct
+- All page types: correct canonical, hreflang=2, noindex=False, no redirect chains
+- robots.txt clean, Google-Extended allowed
+
+---
+
+## Session 2026-05-03 (part 3) — Why moving routing fix ✅
+
+### Why is X moving — actually fixed (3 bugs, 1 routing issue)
+1. **Redis dependency removed** — endpoint falls back to live DB query; works before Celery fires
+2. **`year` → `period_date`** in country_indicators SQL — 500 error
+3. **`flag` → `flag_emoji`** in countries SQL — 500 error
+4. **Nuxt routing trap** — `[ticker].vue` + `[ticker]/moving.vue` = parent layout + invisible child. Fixed by renaming `[ticker].vue` → `[ticker]/index.vue`.
+
+Verified: `/stocks/intc/moving/` title = "Why is INTC up 6.89% today?" ✅
+
+---
+
+## Session 2026-05-03 (part 2) — Share card fix, EmailAlertModal i18n, Feature 6 (Why moving) ✅
+
+### Share card — actual root cause fix
+html2canvas approach was fundamentally broken: async capture → stale user gesture → `link.click()` blocked by Safari. Previous "fix" (mobile URL share) was correct but desktop still used html2canvas.
+
+Real fix: use pre-generated OG PNGs already on R2 CDN (`cdn.metricshour.com/og/stocks/{ticker}.png` / `og/countries/{code}.png`).
+- Desktop: `fetch(ogImageUrl)` → blob → `URL.createObjectURL` → `link.click()`. Downloads never hit popup blockers, so async is fine on desktop.
+- Mobile: `navigator.share({ url: window.location.href })` — synchronous, preserves user gesture.
+- ShareCard.vue simplified to 2 props: `slug` + `name`. No off-screen DOM, no html2canvas.
+
+### EmailAlertModal i18n fix
+`useNuxtApp().$i18n.t()` → `const { t } = useI18n()` (correct composable for @nuxtjs/i18n v10).
+
+### Feature 6 — Why is X moving — complete ✅
+- `workers/tasks/movers.py`: Celery task every 15min, detects `|change_pct| ≥ 3%` vs today's open, writes `moving:{SYMBOL}` Redis key (48h TTL) + `moving_tickers` SET
+- `GET /api/stocks/{ticker}/moving`: move data + latest AI insight + top revenue countries with GDP/inflation. 404 if not moving.
+- `GET /api/movers`: enumerates all active movers (for sitemap)
+- `pages/stocks/[ticker]/moving.vue`: SSR page — direction badge, price hero, intelligence insight, revenue country macro cards, CTA to full page, comparable stocks. Redirects to stock page if not moving.
+- `[ticker].vue`: pulsing "▲ Why moving?" / "▼ Why moving?" badge when `|change_pct| ≥ 3%`
+- Sitemap: scans `moving_tickers` Redis SET, adds `/stocks/{sym}/moving/` entries (priority 0.9, hourly)
+- Cache rule: 5min edge TTL for `/stocks/*/moving/` pages
+
+---
+
 ## Session 2026-05-03 — Feature sprint: i18n infra, screener overhaul, share cards, email alerts, comparable stocks, SEO pages ✅
 
 ### Phase 0 — Full codebase audit
