@@ -89,6 +89,7 @@ app = Celery('metricshour', include=[
     'tasks.earnings_calendar',
     'tasks.edgar_revenue',
     'tasks.nigeria_stocks',
+    'tasks.movers',
 ])
 
 # Use SSL only for rediss:// URLs (Upstash); skip for local redis:// (DragonflyDB)
@@ -147,6 +148,10 @@ app.conf.update(
         },
         'stocks-every-15min': {
             'task': 'tasks.stocks.fetch_stock_prices',
+            'schedule': 900.0,
+        },
+        'movers-every-15min': {
+            'task': 'tasks.movers.detect_movers',
             'schedule': 900.0,
         },
         'indices-etfs-every-30min': {

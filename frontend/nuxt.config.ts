@@ -107,6 +107,9 @@ export default defineNuxtConfig({
     // Dynamic entity pages — 30 min edge cache, stale up to 24h
     '/countries/**': { headers: { 'Cache-Control': 'public, s-maxage=1800, max-age=300, stale-while-revalidate=86400' } },
     '/stocks/**': { headers: { 'Cache-Control': 'public, s-maxage=1800, max-age=300, stale-while-revalidate=86400' } },
+    // "Why moving" pages — 5 min edge cache (move data changes often, page expires within 48h)
+    '/stocks/*/moving/': { headers: { 'Cache-Control': 'public, s-maxage=300, max-age=60, stale-while-revalidate=3600' } },
+    '/stocks/*/moving': { headers: { 'Cache-Control': 'public, s-maxage=300, max-age=60, stale-while-revalidate=3600' } },
     // Top 50 trade corridors — 8h edge cache (data is annual, safe to cache aggressively)
     '/trade/united-states--china/': { headers: { 'Cache-Control': 'public, s-maxage=28800, max-age=3600, stale-while-revalidate=604800' } },
     '/trade/united-states--germany/': { headers: { 'Cache-Control': 'public, s-maxage=28800, max-age=3600, stale-while-revalidate=604800' } },

@@ -22,6 +22,7 @@ from app.routers import screener as screener_router
 from app.routers import news as news_router
 from app.routers import blocs as blocs_router
 from app.routers import email_alerts as email_alerts_router
+from app.routers import moving as moving_router
 
 if settings.sentry_dsn:
     sentry_sdk.init(
@@ -136,6 +137,7 @@ app.include_router(screener_router.router, prefix="/api")  # GET /api/screener, 
 app.include_router(news_router.router, prefix="/api")     # GET /api/news/{symbol} — Tiingo news
 app.include_router(blocs_router.router, prefix="/api")  # GET /api/blocs/, /api/blocs/{slug}
 app.include_router(email_alerts_router.router, prefix="/api")  # POST /api/email-alerts (no auth required)
+app.include_router(moving_router.router)  # GET /api/stocks/{ticker}/moving, GET /api/movers
 
 
 Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)

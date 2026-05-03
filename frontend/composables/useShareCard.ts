@@ -1,10 +1,27 @@
 /**
- * Client-only html2canvas wrapper for branded share card generation.
- * Always lazy-loads html2canvas to avoid SSR issues.
+ * Share card generation.
+ * Mobile: navigator.share URL (synchronous, preserves user gesture).
+ * Desktop: html2canvas PNG download.
  */
 
 export function useShareCard() {
   const generating = ref(false)
+
+  async function shareUrl(title: string, url: string): Promise<void> {
+    if (navigator.share) {
+      try {
+        await navigator.share({ title, url })
+        return
+      } catch {
+        // User cancelled — do nothing
+        return
+      }
+    }
+    // Desktop fallback: copy URL to clipboard
+    try {
+      await navigator.clipboard.writeText(url)
+    } catch { /* ignore */ }
+  }
 
   async function captureElement(el: HTMLElement, filename: string): Promise<void> {
     if (!el) return
@@ -14,36 +31,28 @@ export function useShareCard() {
       const canvas = await html2canvas(el, {
         backgroundColor: '#0a0d14',
         scale: 2,
-        useCORS: true,
-        allowTaint: false,
+        useCORS: false,
+        allowTaint: true,
         logging: false,
+        // Ignore external resources that cause taint
+        ignoreElements: (node) => node.tagName === 'IMG' && !(node as HTMLImageElement).src.startsWith('data:'),
       })
 
-      if (navigator.share && navigator.canShare) {
-        canvas.toBlob(async (blob) => {
-          if (!blob) return
-          const file = new File([blob], `${filename}.png`, { type: 'image/png' })
-          try {
-            await navigator.share({ files: [file], title: filename })
-          } catch {
-            // User cancelled or not supported — fall back to download
-            _download(canvas, filename)
-          }
-        }, 'image/png')
-      } else {
-        _download(canvas, filename)
-      }
+      canvas.toBlob((blob) => {
+        if (!blob) return
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.download = `${filename}.png`
+        link.href = url
+        link.click()
+        setTimeout(() => URL.revokeObjectURL(url), 5000)
+      }, 'image/png')
+    } catch (e) {
+      console.warn('Share card generation failed:', e)
     } finally {
       generating.value = false
     }
   }
 
-  function _download(canvas: HTMLCanvasElement, filename: string) {
-    const link = document.createElement('a')
-    link.download = `${filename}.png`
-    link.href = canvas.toDataURL('image/png')
-    link.click()
-  }
-
-  return { captureElement, generating }
+  return { captureElement, shareUrl, generating }
 }

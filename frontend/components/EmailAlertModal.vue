@@ -64,6 +64,7 @@ const emit = defineEmits<{
   'update:modelValue': [value: boolean]
 }>()
 
+const { t } = useI18n()
 const { public: { apiBase } } = useRuntimeConfig()
 
 const email = ref('')
@@ -99,7 +100,7 @@ async function submit() {
       submitted.value = true
     }
   } catch {
-    error.value = useNuxtApp().$i18n.t('emailAlert.error')
+    error.value = t('emailAlert.error')
   } finally {
     submitting.value = false
   }

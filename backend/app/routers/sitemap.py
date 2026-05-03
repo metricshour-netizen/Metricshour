@@ -16,8 +16,11 @@ from sqlalchemy import select, or_
 
 from sqlalchemy.orm import aliased
 
+import json
+
 from app.database import get_db
 from app.models.asset import Asset, AssetType, Price, StockCountryRevenue
+from app.storage import get_redis
 from app.models.country import Country, TradePair, CountryIndicator
 from app.models.summary import PageSummary
 from app.models.feed import BlogPost, BlogAuthor
@@ -303,6 +306,17 @@ def sitemap(db: Session = Depends(get_db)):
         )
     ):
         entries.append(_url(f"{BASE}/nigeria/{symbol.lower()}/", "0.5", "daily", today))
+
+    # "Why is X moving" pages — dynamically generated when stock moves >3%
+    try:
+        redis = get_redis()
+        moving_syms = redis.smembers('moving_tickers')
+        for sym_bytes in moving_syms:
+            sym = sym_bytes.decode() if isinstance(sym_bytes, bytes) else sym_bytes
+            if redis.exists(f'moving:{sym}'):
+                entries.append(_url(f"{BASE}/stocks/{sym.lower()}/moving/", "0.9", "hourly", today))
+    except Exception:
+        pass  # Redis unavailable — skip movers, don't fail sitemap
 
     # Rates series → /rates/{series_id}/
     for (series_id,) in db.execute(

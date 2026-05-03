@@ -70,6 +70,17 @@
                 @click="isLoggedIn ? (showAlertModal = true) : (showEmailAlertModal = true)"
                 class="mt-1 flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-lg border border-amber-800 text-amber-400 hover:bg-amber-900/20 transition-colors"
               >🔔 Alert</button>
+              <!-- "Why moving" badge — only shown when stock has >3% move -->
+              <NuxtLink
+                v-if="isSignificantMove"
+                :to="`/stocks/${ticker.toLowerCase()}/moving/`"
+                class="mt-1 flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-lg border transition-colors animate-pulse"
+                :class="stock.price.change_pct >= 0
+                  ? 'border-emerald-700 text-emerald-400 bg-emerald-900/10 hover:bg-emerald-900/20'
+                  : 'border-red-800 text-red-400 bg-red-900/10 hover:bg-red-900/20'"
+              >
+                {{ stock.price.change_pct >= 0 ? '▲' : '▼' }} Why moving?
+              </NuxtLink>
               <ShareCard
                 type="stock"
                 :symbol="stock.symbol"
@@ -757,6 +768,11 @@ const topCountryPct = computed(() => {
   const revs = stock.value?.country_revenues ?? []
   if (!revs.length) return 0
   return Math.max(...revs.map((r: any) => r.revenue_pct))
+})
+
+const isSignificantMove = computed(() => {
+  const pct = stock.value?.price?.change_pct
+  return pct != null && Math.abs(pct) >= 3
 })
 
 const geoRisk = computed(() => {

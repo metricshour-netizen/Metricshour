@@ -1,5 +1,49 @@
 # MetricsHour — Progress & Session Log
 
+## Session 2026-05-03 — Feature sprint: i18n infra, screener overhaul, share cards, email alerts, comparable stocks, SEO pages ✅
+
+### Phase 0 — Full codebase audit
+- Mapped all 60 frontend pages, 10 components, 3 composables, 70+ backend endpoints
+- Identified 11 feature gaps across 3 categories: partial, missing, complete
+- Output structured audit report before writing any code
+
+### Phase 1 — Foundation
+- **@nuxtjs/i18n v10 installed** — `strategy: prefix_except_default`, English default (no URL change), `i18n/locales/en.json` with 82 keys
+- **`useTruncate` composable** — `truncateAtSentence()` + `truncateAtWord()`, sentence-boundary safe
+- **`useShareCard` composable** — html2canvas lazy-load wrapper, mobile native share sheet + desktop download fallback
+- **`TranslationService`** — `backend/app/services/translation.py`: Gemini 2.0 Flash + Redis cache (`translation:{lang}:{hash}`, TTL 30d/24h/7d). Batch mode for cost efficiency.
+
+### Phase 2 — High priority features
+- **Email-only alert capture (F9)**: `email_alerts` DB table (migration 0021), `POST /api/email-alerts`, `GET /api/email-alerts/unsubscribe`, `EmailAlertModal.vue` — no auth required, dedup, rate-limited
+- **ShareCard component (F2)**: `ShareCard.vue` — stock card (ticker/price/change/geo-revenue/GEO RISK badge) + country card (flag/GDP/partners). html2canvas at 2x scale. Added to stock + country page headers.
+- **Comparable stocks (F3)**: Replaced "Related Stocks" with "Lower China Exposure" panel — uses `/api/screener` with sector + `china_max` + market cap 0.5x–2x range. Shows CN%/US% per peer. Links to filtered screener.
+
+### Phase 3 — Screener
+- **EU/JP/IN/EM filters (F4b)**: Backend SQL extended with `SUM(CASE WHEN c.is_eu=true)` for EU, single-code pivots for JP/IN, 32-country list for EM. 4 new filter params in `/api/screener`.
+- **Range sliders (F4a)**: `RangeSlider.vue` dual-handle component (6 colour variants). All 8 filter pairs now sliders.
+- **CSV export (F4d)**: `GET /api/screener/export` streaming CSV endpoint. Frontend export button with auto-dated filename.
+- **5 new presets (F4e)**: Tariff-proof (CN<5%+EU<5%), Europe exposed (EU>20%), India growth (IN>10%), Domestic only (US>80%). Active preset highlighted.
+- **EU% sort column**: Added to sort dropdown + results table.
+- **10 screener SEO pages (F5)**: `pages/screener/[slug].vue` — each slug has unique H1, meta title (≤60c), meta desc (≤155c), intro paragraph, pre-filtered results. All 10 slugs in sitemap.
+
+### Phase 4 — Depth features
+- **Revenue history endpoint**: `GET /api/screener/revenue-history/{symbol}` — multi-year fiscal data, 6h cache.
+- **Earnings impact (F7)**: Section on stock page — `(top_country_pct / 100) × abs(eps_actual) × 0.20`. Hidden if no EPS data. Labelled "Estimated — not financial advice".
+- **Macro risk timeline (F8)**: ECharts line chart on stock page — China rev % by year. Renders only if ≥3 years data.
+
+### Verified live
+- `https://api.metricshour.com/api/screener` → EU/JP/IN/EM fields present ✅
+- `https://api.metricshour.com/api/screener/export?china_max=5` → CSV streaming ✅
+- `https://metricshour.com/screener/tariff-proof-stocks/` → 200, correct title/desc/canonical ✅
+- `https://api.metricshour.com/sitemap.xml` → all 10 screener slugs present ✅
+- `POST /api/email-alerts` → `{"status":"created"}` ✅
+- Migration 0021 applied on Netcup ✅
+
+### Deferred (not started)
+- **F6: Why is X moving pages** — requires Celery price-change trigger (>3%), dynamic sitemap mutation, 48h page expiration. Scoped but not implemented.
+
+---
+
 ## Session 2026-05-01 — 15 blog batch: craft, clean, schedule ✅
 
 ### 15 keyword-targeted blog posts — all drafted and scheduled
