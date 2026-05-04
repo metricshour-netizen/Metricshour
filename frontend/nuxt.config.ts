@@ -82,7 +82,7 @@ export default defineNuxtConfig({
         'Referrer-Policy': 'strict-origin-when-cross-origin',
       },
     },
-    '/sitemap.xml': { redirect: { to: 'https://api.metricshour.com/sitemap.xml', statusCode: 301 } },
+    // sitemap.xml is now served via server/routes/sitemap.xml.get.ts (proxy to FastAPI)
 
     // Edge cache headers — Cloudflare respects s-maxage; client gets max-age
     // Share preview pages (social crawlers) — 5 min edge cache, stale ok for up to 1h
