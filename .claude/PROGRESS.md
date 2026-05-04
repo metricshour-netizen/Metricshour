@@ -1,5 +1,107 @@
 # MetricsHour — Progress & Session Log
 
+## Session 2026-05-04 (part 1) — Data quality, homepage layout, market status, sitemap fix ✅
+
+### Currency-aware price display
+- `fmtPrice(v, currency)` replaces `fmtTickerPrice()` on homepage — shows `353.20p` not `$353.20` for Airtel Africa (GBp), plus £/¥/₦/€ support
+- Same fix applied to ticker strip at top of homepage
+- China A-share names: already proper English names in DB (no enrichment needed)
+- China A-shares now visible in global movers panel — fixed `assetsWithChange` filter that excluded numeric-only symbols
+
+### Homepage layout
+- Top Movers section moved to first content section after hero buttons
+- `id="movers"` added to the Top Movers section
+- "What's Moving Today" button: `/feed/` → `/#movers`
+
+### Market open/close awareness
+- `_market_open(asset)` helper in `assets.py` — handles NYSE/NASDAQ, LSE, SHG/SHE, NGX hours
+- `market_open: bool` added to `get_asset()` response
+- Green ● Open / grey ● Closed badge on stock/china/nigeria detail pages
+
+### Trade page ShareCard
+- `ShareCard` component extended: added `type="trade"` support
+- ShareCard added to `trade/[pair].vue` header
+
+### SEO/Sitemap critical fix
+- `metricshour.com/sitemap.xml` was returning HTML meta-refresh (invisible to Google)
+- Fixed: `frontend/server/routes/sitemap.xml.get.ts` proxies FastAPI XML directly
+- `nuxt.config.ts` routeRules redirect removed (was intercepting before server route)
+- `robots.txt`: `Sitemap: https://metricshour.com/sitemap.xml`
+- Verified: 2,639 URLs, `application/xml`, `s-maxage=3600` ✓
+
+### Blog drafts
+- 12 batch posts (IDs 154-170) from May 1 batch: publishing 1/day via Contabo crontab ✓
+- 2 ECB posts (IDs 171-172, ~1100w) from announcement_watcher (single pipeline) — NOT published, awaiting user decision
+
+### Deploy
+- 3 deploys on Netcup. All passed. CF cache purged each time.
+- Commits: 99a53dd, a672cc7, 0f929a4
+
+---
+
+## Session 2026-05-03 (part 6) — Earnings mobile, country buttons, movers, cache, CLAUDE.md ✅
+
+### Earnings Calendar — mobile-first layout
+- Both Upcoming and Recent tabs: kept desktop table, added `sm:hidden` mobile card layout
+- Upcoming mobile: 2-col grid (EPS Est / Rev Est), fiscal period tag, sector, mkt cap, date
+- Recent mobile: beat/miss badge at top-right, 3-col EPS grid (Prev/Est/Actual), revenue row
+- Revenue null fix: shows "No revenue data" or "est. $X.XB" instead of bare `—`
+
+### Country page — uniform action buttons
+- Separated grouping badges (`<div class="flex gap-2 flex-wrap">`) from action buttons into two explicit rows
+- Share / Alert / Follow always on their own row, left-aligned, regardless of groupings count
+- Wraps cleanly on mobile
+
+### Commodities index — What's Moving
+- `🔥 What's Moving` toggle button in header
+- Active: flattens all groups into sorted list by |change_pct|, shows row view with change % + timestamp
+- Rows with |change_pct| ≥ 3% get left accent border (green/red)
+- Default card view: now shows change_pct inline under price (green/red, no `—` if null)
+
+### Crypto index — What's Moving
+- `🔥 What's Moving` toggle button in header
+- Active: sorts rows by |change_pct| descending; rows ≥ 3% move get colored border highlight
+
+### Edge cache (backend/app/main.py)
+- Added `/api/earnings` → 1hr edge, 4hr stale-while-revalidate
+- Added `/api/movers` → 60s edge, 30s stale-while-revalidate
+
+### CLAUDE.md
+- Fully rewritten to reflect current infra: Netcup primary, DragonflyDB, Tiingo, Nuxt SSR, Traefik/Coolify
+- Removed all references to Hetzner-primary / Upstash / CoinGecko / Marketstack / SSG/CF Pages
+
+### Deploy
+- Committed d4653d2, pushed. Run on Netcup:
+  `git -C /root/metricshour pull && systemctl restart metricshour-api && bash /root/metricshour/deploy/frontend.sh`
+
+---
+
+## Session 2026-05-03 (part 5) — Nav green, FX clickable, Follow/Alert/Share, Earnings revenue ✅
+
+### Tools button: amber → emerald
+- `AppNav.vue`: `text-amber-400` → `text-emerald-400` on Tools + Alerts nav (desktop + mobile)
+
+### Screener EDGAR footer — no change needed
+- "Revenue data from SEC EDGAR · 49 of 50 shown stocks have EDGAR data" = dynamic data-quality note. Working as designed.
+
+### FX cards clickable on markets page
+- `pages/markets/index.vue`: FX section `<div v-for>` → `<NuxtLink :to="/fx/{symbol}">`
+
+### Follow/Alert/Share on all asset detail pages
+- Added to `pages/fx/[symbol].vue`, `pages/crypto/[symbol].vue`, `pages/etfs/[symbol].vue`, `pages/commodities/[symbol].vue`
+- Follow toggles via `POST/DELETE /api/feed/follows`, checked on mount for logged-in users
+- Alert always shows `EmailAlertModal`
+- Share uses extended `ShareCard.vue` (now supports stock/country/crypto/fx/etf/commodity)
+
+### Earnings revenue from Tiingo
+- `workers/tasks/earnings_calendar.py`: after EPS upsert, backfills `revenue_actual` from Tiingo fundamentals for up to 500 rows missing revenue
+- Backfill triggered immediately after deploy
+
+### Deploy
+- Built + deployed frontend. CF cache purged. Worker restarted. Revenue backfill task triggered.
+
+---
+
 ## Session 2026-05-03 (part 4) — F6 Hreflang, Earnings Calendar enrichment, Nav cleanup ✅
 
 ### Hreflang (F6 — was deferred, now done)
