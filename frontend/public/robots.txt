@@ -21,4 +21,4 @@ Disallow: /
 User-agent: Bytespider
 Disallow: /
 
-Sitemap: https://api.metricshour.com/sitemap.xml
+Sitemap: https://metricshour.com/sitemap.xml
