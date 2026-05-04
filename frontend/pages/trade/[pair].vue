@@ -53,7 +53,7 @@
               Exports, imports, trade balance, top products, and macro context.
               <template v-if="td?.data_source">Source: <a href="https://comtradeplus.un.org" target="_blank" rel="noopener noreferrer" class="underline hover:text-gray-300 transition-colors">{{ td.data_source }}</a>.</template>
             </p>
-            <!-- Balance callout -->
+            <!-- Balance callout + share -->
             <div v-if="td" class="sm:text-right">
               <div class="text-xs text-gray-500 uppercase tracking-wider mb-1">Trade Balance</div>
               <div class="text-2xl sm:text-3xl font-extrabold tabular-nums" :class="(td.balance_usd ?? 0) >= 0 ? 'text-emerald-400' : 'text-red-400'">
@@ -66,6 +66,13 @@
               <a v-if="td.data_source" href="https://comtradeplus.un.org" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded text-[10px] font-mono bg-[#111827] border border-[#1f2937] text-gray-500 hover:text-gray-400 transition-colors">
                 <span class="text-emerald-700">◆</span> {{ td.data_source }}
               </a>
+              <div class="mt-3 flex justify-end">
+                <ShareCard
+                  type="trade"
+                  :slug="pair"
+                  :name="`${data.exporter.name}–${data.importer.name} Trade`"
+                />
+              </div>
             </div>
           </div>
         </template>

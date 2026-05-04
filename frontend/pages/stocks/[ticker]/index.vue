@@ -57,7 +57,15 @@
                   <template v-if="stock.price">Last updated · <span class="font-mono text-emerald-700">{{ fmtPriceTs(stock.price.fetched_at || stock.price.timestamp) }}</span></template>
                   <template v-else>Awaiting price feed</template>
                 </div>
-                <div class="text-sm font-semibold text-gray-400 mt-1">{{ fmtCap(stock.market_cap_usd) }} market cap</div>
+                <div class="flex items-center gap-2 mt-1">
+                  <div class="text-sm font-semibold text-gray-400">{{ fmtCap(stock.market_cap_usd) }} market cap</div>
+                  <span v-if="stock.market_open === true" class="inline-flex items-center gap-1 text-[10px] font-mono font-semibold text-emerald-400">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block"></span>Open
+                  </span>
+                  <span v-else-if="stock.market_open === false" class="inline-flex items-center gap-1 text-[10px] font-mono text-gray-600">
+                    <span class="w-1.5 h-1.5 rounded-full bg-gray-600 inline-block"></span>Closed
+                  </span>
+                </div>
               </div>
               <button
                 class="mt-1 flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-lg border transition-colors"

@@ -170,7 +170,7 @@
       <p class="text-xs text-gray-500 text-center mt-3 mb-1">For traders, investors and decision-makers.</p>
       <div class="flex items-center justify-center gap-3 mt-3">
         <NuxtLink to="/markets/" class="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors">Explore Markets</NuxtLink>
-        <NuxtLink to="/feed/" class="text-sm border border-[#1f2937] hover:border-emerald-700 hover:text-white text-gray-300 px-4 py-2.5 rounded-lg transition-colors flex items-center gap-2">
+        <NuxtLink to="/#movers" class="text-sm border border-[#1f2937] hover:border-emerald-700 hover:text-white text-gray-300 px-4 py-2.5 rounded-lg transition-colors flex items-center gap-2">
           <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block"></span>
           What's Moving Today
         </NuxtLink>
@@ -178,39 +178,8 @@
 
     </section>
 
-    <!-- ── Proof Strip — live data, rotates daily ───────────────────────────── -->
-    <section class="mb-10">
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-
-        <!-- Card 1: rotating stock → country exposure (daily rotation) -->
-        <NuxtLink :to="`/stocks/${card1.symbol.toLowerCase()}`" class="bg-[#111827] border border-[#1f2937] hover:border-violet-700 rounded-xl p-4 transition-all group text-left">
-          <div class="text-[10px] font-mono text-gray-600 uppercase tracking-widest mb-2">Stock → Country exposure</div>
-          <div class="text-lg font-black text-white mb-1">{{ card1.name }} earns <span class="text-violet-400">{{ card1.pct }}%</span> from {{ card1.region }}</div>
-          <div class="text-xs text-gray-500 leading-relaxed mb-3">A tariff escalation doesn't hit all stocks equally. See which are most exposed.</div>
-          <div class="text-xs text-violet-500 group-hover:text-violet-400 transition-colors font-semibold">See {{ card1.region }}-exposed stocks →</div>
-        </NuxtLink>
-
-        <!-- Card 2: US–China trade value pulled live from DB -->
-        <NuxtLink to="/trade/us-cn" class="bg-[#111827] border border-[#1f2937] hover:border-rose-700 rounded-xl p-4 transition-all group text-left">
-          <div class="text-[10px] font-mono text-gray-600 uppercase tracking-widest mb-2">Trade flow → Stock impact</div>
-          <div class="text-lg font-black text-white mb-1"><span class="text-rose-400">{{ usChina ? fmtUsd(usChina.trade_value_usd) : '$649B' }}</span> US–China trade corridor</div>
-          <div class="text-xs text-gray-500 leading-relaxed mb-3">Every major trade relationship linked to the companies that depend on it most.</div>
-          <div class="text-xs text-rose-500 group-hover:text-rose-400 transition-colors font-semibold">View the US–China corridor →</div>
-        </NuxtLink>
-
-        <!-- Card 3: rotating daily macro stat -->
-        <NuxtLink :to="card3.link" class="bg-[#111827] border border-[#1f2937] hover:border-amber-700 rounded-xl p-4 transition-all group text-left">
-          <div class="text-[10px] font-mono text-gray-600 uppercase tracking-widest mb-2">Country macro → Portfolio</div>
-          <div class="text-lg font-black text-white mb-1">{{ card3.label }} <span class="text-amber-400">{{ card3.pct }}%</span> {{ card3.desc }}</div>
-          <div class="text-xs text-gray-500 leading-relaxed mb-3">Filter any stock by how much it earns from Europe, Asia, or EM — from actual SEC filings.</div>
-          <div class="text-xs text-amber-500 group-hover:text-amber-400 transition-colors font-semibold">{{ card3.cta }}</div>
-        </NuxtLink>
-
-      </div>
-    </section>
-
     <!-- ── Top Movers ────────────────────────────────────────────────────── -->
-    <section class="mb-10">
+    <section id="movers" class="mb-10">
       <!-- Header: title + mood tabs + view all -->
       <div class="flex items-center justify-between mb-3 flex-wrap gap-3">
         <div class="flex items-center gap-2">
@@ -277,7 +246,7 @@
             <span v-else class="text-[10px] text-gray-700">{{ s.sector || s.asset_type }}</span>
           </div>
           <div class="text-right shrink-0">
-            <div class="text-sm font-semibold tabular-nums font-mono text-white">{{ fmtTickerPrice(s.price.close) }}</div>
+            <div class="text-sm font-semibold tabular-nums font-mono text-white">{{ fmtPrice(s.price.close, s.currency) }}</div>
             <div class="text-xs font-semibold tabular-nums font-mono"
                  :class="s._chg != null ? (s._chg >= 0 ? 'text-emerald-400' : 'text-red-400') : 'text-gray-600'">
               <template v-if="s._chg != null">{{ s._chg >= 0 ? '▲' : '▼' }} {{ Math.abs(s._chg).toFixed(2) }}%</template>
@@ -290,6 +259,37 @@
       <!-- Empty state -->
       <div v-else class="text-center py-6 text-gray-600 text-sm">
         No {{ activeMoversTab }} in {{ moversTypeFilter === 'all' ? 'any category' : moversTypeFilter + 's' }} right now.
+      </div>
+    </section>
+
+    <!-- ── Proof Strip — live data, rotates daily ───────────────────────────── -->
+    <section class="mb-10">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+
+        <!-- Card 1: rotating stock → country exposure (daily rotation) -->
+        <NuxtLink :to="`/stocks/${card1.symbol.toLowerCase()}`" class="bg-[#111827] border border-[#1f2937] hover:border-violet-700 rounded-xl p-4 transition-all group text-left">
+          <div class="text-[10px] font-mono text-gray-600 uppercase tracking-widest mb-2">Stock → Country exposure</div>
+          <div class="text-lg font-black text-white mb-1">{{ card1.name }} earns <span class="text-violet-400">{{ card1.pct }}%</span> from {{ card1.region }}</div>
+          <div class="text-xs text-gray-500 leading-relaxed mb-3">A tariff escalation doesn't hit all stocks equally. See which are most exposed.</div>
+          <div class="text-xs text-violet-500 group-hover:text-violet-400 transition-colors font-semibold">See {{ card1.region }}-exposed stocks →</div>
+        </NuxtLink>
+
+        <!-- Card 2: US–China trade value pulled live from DB -->
+        <NuxtLink to="/trade/us-cn" class="bg-[#111827] border border-[#1f2937] hover:border-rose-700 rounded-xl p-4 transition-all group text-left">
+          <div class="text-[10px] font-mono text-gray-600 uppercase tracking-widest mb-2">Trade flow → Stock impact</div>
+          <div class="text-lg font-black text-white mb-1"><span class="text-rose-400">{{ usChina ? fmtUsd(usChina.trade_value_usd) : '$649B' }}</span> US–China trade corridor</div>
+          <div class="text-xs text-gray-500 leading-relaxed mb-3">Every major trade relationship linked to the companies that depend on it most.</div>
+          <div class="text-xs text-rose-500 group-hover:text-rose-400 transition-colors font-semibold">View the US–China corridor →</div>
+        </NuxtLink>
+
+        <!-- Card 3: rotating daily macro stat -->
+        <NuxtLink :to="card3.link" class="bg-[#111827] border border-[#1f2937] hover:border-amber-700 rounded-xl p-4 transition-all group text-left">
+          <div class="text-[10px] font-mono text-gray-600 uppercase tracking-widest mb-2">Country macro → Portfolio</div>
+          <div class="text-lg font-black text-white mb-1">{{ card3.label }} <span class="text-amber-400">{{ card3.pct }}%</span> {{ card3.desc }}</div>
+          <div class="text-xs text-gray-500 leading-relaxed mb-3">Filter any stock by how much it earns from Europe, Asia, or EM — from actual SEC filings.</div>
+          <div class="text-xs text-amber-500 group-hover:text-amber-400 transition-colors font-semibold">{{ card3.cta }}</div>
+        </NuxtLink>
+
       </div>
     </section>
 
@@ -829,7 +829,14 @@ function tickerTypeColor(type: string): string {
   return map[type] ?? 'text-gray-400'
 }
 
-function fmtTickerPrice(v: number): string {
+function fmtPrice(v: number | null | undefined, currency?: string): string {
+  if (v == null) return '—'
+  if (currency === 'GBp') return `${v.toFixed(2)}p`
+  if (currency === 'GBP') return `£${v.toFixed(2)}`
+  if (currency === 'CNY') return `¥${v.toFixed(2)}`
+  if (currency === 'NGN') return `₦${v.toFixed(2)}`
+  if (currency === 'JPY') return `¥${v.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+  if (currency === 'EUR') return `€${v.toFixed(2)}`
   if (v >= 10000) return `$${v.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
   if (v >= 1) return `$${v.toFixed(2)}`
   return `$${v.toFixed(4)}`
@@ -853,7 +860,7 @@ const tickerItems = computed(() => {
         return null  // skip assets with no change data — don't show 0.0%
       }
       const dir = chgPct >= 0 ? 1 : -1
-      return { symbol: a.symbol, assetType: a.asset_type, priceStr: fmtTickerPrice(p.close), changePct: Math.abs(chgPct).toFixed(2) + '%', dir, typeColor: tickerTypeColor(a.asset_type) }
+      return { symbol: a.symbol, assetType: a.asset_type, priceStr: fmtPrice(p.close, a.currency), changePct: Math.abs(chgPct).toFixed(2) + '%', dir, typeColor: tickerTypeColor(a.asset_type) }
     })
     .filter(Boolean) as { symbol: string; priceStr: string; changePct: string; dir: number; typeColor: string }[]
 })

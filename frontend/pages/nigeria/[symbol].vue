@@ -42,9 +42,15 @@
                    :class="stock.price.change_pct >= 0 ? 'text-emerald-400' : 'text-red-400'">
                 {{ stock.price.change_pct >= 0 ? '▲' : '▼' }} {{ Math.abs(stock.price.change_pct).toFixed(2) }}% today
               </div>
-              <div class="text-xs text-gray-600 mt-1">
+              <div class="text-xs text-gray-600 mt-1 flex items-center gap-2 flex-wrap">
                 <template v-if="stock.price">Updated · <span class="font-mono text-emerald-700">{{ fmtTs(stock.price.fetched_at || stock.price.timestamp) }}</span></template>
                 <template v-else>Awaiting price data</template>
+                <span v-if="stock.market_open === true" class="inline-flex items-center gap-1 text-[10px] font-mono font-semibold text-emerald-400">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block"></span>Open
+                </span>
+                <span v-else-if="stock.market_open === false" class="inline-flex items-center gap-1 text-[10px] font-mono text-gray-600">
+                  <span class="w-1.5 h-1.5 rounded-full bg-gray-600 inline-block"></span>Closed
+                </span>
               </div>
             </div>
           </div>

@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func
@@ -8,6 +9,27 @@ from app.models import Asset, AssetType, Country, Price, StockCountryRevenue
 from app.storage import cache_get, cache_set
 
 router = APIRouter(prefix="/assets", tags=["assets"])
+
+
+def _market_open(asset: Asset) -> bool:
+    """Return True if the asset's primary exchange is currently in regular trading hours."""
+    if asset.asset_type in (AssetType.crypto, AssetType.fx):
+        return True  # 24/7 markets
+    if asset.asset_type not in (AssetType.stock, AssetType.etf, AssetType.index):
+        return False
+    now = datetime.now(timezone.utc)
+    wd = now.weekday()   # 0=Mon … 6=Sun
+    m = now.hour * 60 + now.minute
+    ex = (asset.exchange or '').upper()
+    if ex in ('NYSE', 'NASDAQ', 'NYSE ARCA', 'NYSE MKT', 'AMEX', 'BATS'):
+        return wd < 5 and 13 * 60 + 30 <= m < 21 * 60
+    if ex == 'LSE':
+        return wd < 5 and 8 * 60 <= m < 16 * 60 + 30
+    if ex in ('SHG', 'SHE', 'SSE'):  # Shanghai / Shenzhen — morning + afternoon session (UTC)
+        return wd < 5 and (1 * 60 + 30 <= m < 3 * 60 + 30 or 5 * 60 <= m < 7 * 60)
+    if ex in ('NGX', 'NSE'):  # Nigerian Exchange — 10:00–14:30 WAT = 09:00–13:30 UTC
+        return wd < 5 and 9 * 60 <= m < 13 * 60 + 30
+    return False
 
 
 @router.get("")
@@ -418,6 +440,7 @@ def get_asset(request: Request, symbol: str, db: Session = Depends(get_db)) -> d
     result = _asset_summary(asset, country)
     result["price"] = _price_dict(latest_price) if latest_price else None
     result["country_revenues"] = revenues
+    result["market_open"] = _market_open(asset)
 
     # Prices are updated every 15min — cache for 15min so data is never stale
     cache_set(cache_key, result, ttl_seconds=900)

@@ -17,7 +17,7 @@
 
 <script setup lang="ts">
 const props = defineProps<{
-  type: 'stock' | 'country' | 'crypto' | 'fx' | 'etf' | 'commodity'
+  type: 'stock' | 'country' | 'crypto' | 'fx' | 'etf' | 'commodity' | 'trade'
   slug: string
   name: string
 }>()
@@ -32,7 +32,7 @@ onMounted(() => {
 
 const OG_PATH: Record<string, string> = {
   stock: 'stocks', country: 'countries', crypto: 'crypto',
-  fx: 'fx', etf: 'etfs', commodity: 'commodities',
+  fx: 'fx', etf: 'etfs', commodity: 'commodities', trade: 'trade',
 }
 
 const ogImageUrl = computed(() =>
@@ -46,6 +46,7 @@ const TITLE_SUFFIX: Record<string, string> = {
   fx: '— Live Exchange Rate | MetricsHour',
   etf: '— ETF Price & Data | MetricsHour',
   commodity: '— Price & Market Data | MetricsHour',
+  trade: '— Bilateral Trade Data | MetricsHour',
 }
 
 const shareTitle = computed(() =>
