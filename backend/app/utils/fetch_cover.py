@@ -172,15 +172,16 @@ def fetch_unsplash_image(query: str) -> bytes | None:
         return None
 
 
-def attach_cover(post_id: int, post_title: str, db) -> str | None:
+def attach_cover(post_id: int, post_title: str, db, query: str | None = None) -> str | None:
     """
     Fetch an Unsplash image for post_title, upload to R2, update post.cover_image_url.
     Returns the CDN URL on success, None on failure.
     db must be an open SQLAlchemy Session.
+    Pass query to override the auto-generated search terms (e.g. from Grok).
     """
     from app.models.feed import BlogPost
 
-    query = _keywords_from_title(post_title)
+    query = query or _keywords_from_title(post_title)
     log.info("fetch_cover: post %d — query %r", post_id, query)
 
     image_bytes = fetch_unsplash_image(query)

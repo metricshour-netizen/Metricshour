@@ -513,6 +513,7 @@ async def upload_cover(
 @router.post("/blogs/{post_id}/fetch-cover", response_model=dict)
 def fetch_cover_endpoint(
     post_id: int,
+    query: str | None = Query(default=None, description="Override Unsplash search query (e.g. Grok-generated)"),
     db: Session = Depends(get_db),
     _: User = Depends(get_admin_user),
 ):
@@ -520,7 +521,7 @@ def fetch_cover_endpoint(
     post = db.get(BlogPost, post_id)
     if post is None:
         raise HTTPException(status_code=404, detail="Blog post not found")
-    url = attach_cover(post_id, post.title, db)
+    url = attach_cover(post_id, post.title, db, query=query)
     if not url:
         raise HTTPException(status_code=502, detail="Could not fetch cover from Unsplash — check UNSPLASH_ACCESS_KEY")
     return {"url": url}
