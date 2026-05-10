@@ -1,5 +1,53 @@
 # MetricsHour — Progress & Session Log
 
+## Session 2026-05-10 — Lens v1, Macro Calendar, Company Profiles, Compare embeds, SEO fix ✅
+
+### P0 — SEO noindex fix
+- `stocks/fx/crypto/etfs/blocs` pages: `noindex` now only emitted on 404 (was emitted unconditionally)
+
+### Task 4 — Compare page embeds + CSV
+- `ShareCard` + `ShareEmbed` added to `/compare/[slug]`
+- `/embed/compare/[slug]` embed page built (`frontend/pages/embed/compare/[slug].vue`)
+- Movers CSV download wired up
+
+### Task 8 — Macro Calendar
+- `MacroCalendarEvent` model + migration 0022
+- `workers/tasks/macro_calendar.py` — fetches FRED releases + central bank events
+- `/api/calendar` endpoint (`backend/app/routers/calendar.py`)
+- `/calendar` frontend page with upcoming events table + alert button per row
+- Country detail page: upcoming calendar events section
+- Stock detail page: "What to Watch" section (relevant macro events)
+- Homepage: calendar link added to nav
+
+### Task 9 — Company Profiles
+- `CompanyProfile` model + migration 0022 (shared with Task 8)
+- `workers/tasks/company_enrichment.py` — Wikipedia enricher for ~500 stocks
+- Stock detail page: company card (description, HQ, founded, employees, CEO)
+
+### Lens v1
+- `backend/app/utils/lens_scoring.py` — risk scoring engine
+- `/api/lens/stocks` + `/api/lens/forex` endpoints (`backend/app/routers/lens.py`)
+- 5 frontend pages: `lens/index.vue`, `lens/stocks/[ticker].vue`, `lens/forex/[pair].vue`
+- `lens/crypto/[symbol].vue` + `lens/commodities/[commodity].vue` — `LensComingSoon` stubs
+- `LensComingSoon` component built
+- Lens + Calendar added to AppNav (desktop + mobile)
+- Sitemap updated with lens + calendar routes
+- Alternatives section added to `lens/stocks/[ticker].vue`
+
+### Bug fix
+- `SessionLocal` import missing in new tasks (`company_enrichment.py`, `macro_calendar.py`) — fixed
+
+### FRED beat task name fix (session 2026-05-10 deploy)
+- `celery_app.py`: `fred_rates.fetch_fred_rates` → `fred_rates.fetch_all` (matches `@app.task(name=...)`)
+- Was a local Netcup edit; committed + deployed today
+
+### Deploy
+- Commits: a888ac4, 9d5503e, 8ee3328, fc1e0f6
+- Migration 0022 applied on Netcup
+- Worker restarted, frontend built + CF cache purged ✓
+
+---
+
 ## Session 2026-05-04 (part 1) — Data quality, homepage layout, market status, sitemap fix ✅
 
 ### Currency-aware price display
