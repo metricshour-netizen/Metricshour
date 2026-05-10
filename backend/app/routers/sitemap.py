@@ -349,8 +349,8 @@ def sitemap(db: Session = Depends(get_db)):
             a_lower, b_lower = key[0].lower(), key[1].lower()
             entries.append(_url(f"{BASE}/compare/{a_lower}-vs-{b_lower}/", "0.5", "weekly", today))
 
-    # Lens stock pages → /lens/stocks/{symbol} — top 200 stocks with revenue or price data
-    lens_stock_candidates = list(stocks_with_content)[:200]
+    # Lens stock pages → /lens/stocks/{symbol} — only stocks with EDGAR revenue data (Lens differentiator)
+    lens_stock_candidates = list(stocks_with_revenue)[:200]
     for symbol in sorted(lens_stock_candidates):
         lm = lastmod_map.get(("stock_insight", symbol)) or today
         entries.append(_url(f"{BASE}/lens/stocks/{symbol.lower()}/", "0.8", "daily", lm))

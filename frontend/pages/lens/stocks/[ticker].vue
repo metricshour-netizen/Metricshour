@@ -237,10 +237,13 @@ function fmtTs(iso: string | null | undefined): string {
 }
 
 const _name = lensData.value?.name || ticker
+const _hasLensContent = computed(() =>
+  (lensData.value?.geo_risk?.length ?? 0) > 0 || (lensData.value?.stress_test != null)
+)
 useSeoMeta({
   title: `${ticker} Pre-Trade Analysis — MetricsHour Lens`,
   description: `Lens analysis for ${_name}: geographic risk, macro drivers, cost estimate. Risk level: ${lensData.value?.risk?.level || 'loading'}.`,
-  robots: 'index, follow',
+  robots: computed(() => _hasLensContent.value ? 'index, follow' : 'noindex, follow'),
 })
 useHead({ link: [{ rel: 'canonical', href: `https://metricshour.com/lens/stocks/${ticker.toLowerCase()}/` }] })
 </script>
