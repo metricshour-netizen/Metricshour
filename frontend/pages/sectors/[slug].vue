@@ -60,7 +60,7 @@
               <NuxtLink
                 v-for="(s, i) in sector.stocks"
                 :key="s.symbol"
-                :to="`/stocks/${s.symbol.toLowerCase()}`"
+                :to="`/stocks/${s.symbol.toLowerCase()}/`"
                 class="block hover:bg-[#1a2235] transition-colors"
               >
                 <!-- Mobile -->
@@ -117,7 +117,7 @@
                 <NuxtLink
                   v-for="c in sector.top_countries"
                   :key="c.code"
-                  :to="`/countries/${c.code.toLowerCase()}`"
+                  :to="`/countries/${c.code.toLowerCase()}/`"
                   class="flex items-center justify-between px-4 py-3 hover:bg-[#1a2235] transition-colors"
                 >
                   <div class="flex items-center gap-2">
@@ -144,7 +144,7 @@
                 <NuxtLink
                   v-for="other in otherSectors"
                   :key="other.slug"
-                  :to="`/sectors/${other.slug}`"
+                  :to="`/sectors/${other.slug}/`"
                   class="flex items-center justify-between px-4 py-2.5 hover:bg-[#1a2235] transition-colors"
                 >
                   <span class="flex items-center gap-2 text-sm text-gray-300">

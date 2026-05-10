@@ -228,7 +228,7 @@
         <div v-if="stock.country_revenues?.length" class="space-y-3.5">
           <div v-for="(r, i) in stock.country_revenues" :key="r.country.code" class="flex items-center gap-3">
             <NuxtLink
-              :to="`/countries/${r.country.code.toLowerCase()}`"
+              :to="`/countries/${r.country.code.toLowerCase()}/`"
               class="w-32 sm:w-44 flex items-center gap-2 shrink-0 min-w-0 group"
             >
               <span class="text-base shrink-0" aria-hidden="true">{{ r.country.flag }}</span>
@@ -252,7 +252,7 @@
               {{ r.revenue_pct.toFixed(1) }}%
             </span>
             <NuxtLink
-              :to="`/countries/${r.country.code.toLowerCase()}`"
+              :to="`/countries/${r.country.code.toLowerCase()}/`"
               class="shrink-0 text-[10px] font-semibold text-emerald-600 hover:text-emerald-400 border border-emerald-900 hover:border-emerald-600 px-2 py-1 rounded transition-colors whitespace-nowrap hidden sm:inline-flex items-center gap-0.5"
             >
               View country →
@@ -373,7 +373,7 @@
               <div class="text-xs text-gray-500">Headquarters country</div>
             </div>
             <NuxtLink
-              :to="`/countries/${stock.country.code.toLowerCase()}`"
+              :to="`/countries/${stock.country.code.toLowerCase()}/`"
               class="ml-auto text-xs text-emerald-500 hover:text-emerald-400 transition-colors font-semibold"
             >View macro →</NuxtLink>
           </div>
@@ -457,7 +457,7 @@
           <NuxtLink
             v-for="s in comparableStocks"
             :key="s.symbol"
-            :to="`/stocks/${s.symbol.toLowerCase()}`"
+            :to="`/stocks/${s.symbol.toLowerCase()}/`"
             class="flex items-center justify-between py-3 hover:bg-[#1f2937] -mx-2 px-2 rounded-lg transition-colors"
           >
             <div class="flex items-center gap-3 min-w-0 flex-1">

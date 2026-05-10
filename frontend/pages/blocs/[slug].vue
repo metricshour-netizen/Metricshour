@@ -125,11 +125,11 @@
                 v-for="s in bloc.exposed_stocks.slice(0, 15)"
                 :key="s.symbol"
                 class="border-b border-[#1f2937] last:border-0 px-4 py-3 hover:bg-[#1a2332] transition-colors cursor-pointer"
-                @click="navigateTo(`/stocks/${s.symbol}/`)"
+                @click="navigateTo(`/stocks/${s.symbol.toLowerCase()}/`)"
               >
                 <div class="flex items-center justify-between gap-2">
                   <div class="min-w-0">
-                    <NuxtLink :to="`/stocks/${s.symbol}/`" class="text-emerald-400 font-mono text-xs font-bold hover:text-emerald-300 transition-colors">
+                    <NuxtLink :to="`/stocks/${s.symbol.toLowerCase()}/`" class="text-emerald-400 font-mono text-xs font-bold hover:text-emerald-300 transition-colors">
                       {{ s.symbol }}
                     </NuxtLink>
                     <div class="text-gray-400 text-xs truncate">{{ s.name }}</div>

@@ -294,14 +294,14 @@
                 <td class="py-2.5">
                   <div class="flex items-center gap-2 flex-wrap">
                     <NuxtLink
-                      :to="`/trade/${code.toLowerCase()}-${p.partner.code.toLowerCase()}`"
+                      :to="`/trade/${code.toLowerCase()}-${p.partner.code.toLowerCase()}/`"
                       class="flex items-center gap-2 hover:text-emerald-400 transition-colors"
                     >
                       <span aria-hidden="true">{{ p.partner.flag }}</span>
                       <span class="text-white">{{ p.partner.name }}</span>
                     </NuxtLink>
                     <NuxtLink
-                      :to="`/countries/${p.partner.code.toLowerCase()}`"
+                      :to="`/countries/${p.partner.code.toLowerCase()}/`"
                       class="text-[10px] text-gray-600 hover:text-emerald-400 transition-colors whitespace-nowrap hidden sm:inline"
                     >macro →</NuxtLink>
                   </div>
@@ -321,7 +321,7 @@
               <NuxtLink
                 v-for="p in (tradePartners || []).slice(0, 6)"
                 :key="p.partner.code"
-                :to="`/trade/${code.toLowerCase()}-${p.partner.code.toLowerCase()}`"
+                :to="`/trade/${code.toLowerCase()}-${p.partner.code.toLowerCase()}/`"
                 class="flex items-center gap-1.5 text-[11px] text-emerald-700 hover:text-emerald-400 bg-[#0d1117] border border-[#1f2937] hover:border-emerald-800 px-2 py-1 rounded transition-colors"
               >
                 <span aria-hidden="true">{{ p.partner.flag }}</span>
@@ -348,7 +348,7 @@
           <NuxtLink
             v-for="s in exposedStocks"
             :key="s.symbol"
-            :to="`/stocks/${s.symbol.toLowerCase()}`"
+            :to="`/stocks/${s.symbol.toLowerCase()}/`"
             class="flex items-center gap-3 group hover:bg-[#1f2937] rounded-lg px-2 py-1 -mx-2 transition-colors"
           >
             <span class="w-16 text-xs font-mono font-bold text-emerald-400 group-hover:text-emerald-300 shrink-0">{{ s.symbol }}</span>
@@ -381,7 +381,7 @@
           <NuxtLink
             v-for="(s, i) in localStocks"
             :key="s.symbol"
-            :to="`/stocks/${s.symbol.toLowerCase()}`"
+            :to="`/stocks/${s.symbol.toLowerCase()}/`"
             class="flex items-center gap-3 hover:bg-[#1f2937] rounded-lg px-2 py-2 -mx-2 transition-colors group"
           >
             <span class="text-xs text-gray-600 w-4 shrink-0">{{ i + 1 }}</span>
@@ -432,7 +432,7 @@
           <NuxtLink
             v-for="p in (tradePartners || []).slice(0, 6)"
             :key="p.partner.code"
-            :to="`/compare/${[code.toLowerCase(), p.partner.code.toLowerCase()].sort().join('-vs-')}`"
+            :to="`/compare/${[code.toLowerCase(), p.partner.code.toLowerCase()].sort().join('-vs-')}/`"
             class="flex items-center gap-1.5 text-xs text-emerald-600 hover:text-emerald-400 bg-[#0d1117] border border-[#1f2937] hover:border-emerald-800 px-3 py-2 rounded-lg transition-colors"
           >
             <span aria-hidden="true">{{ country.flag }}</span>

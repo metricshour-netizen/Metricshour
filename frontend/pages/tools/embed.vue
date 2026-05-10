@@ -152,6 +152,6 @@ useSeoMeta({
 })
 
 useHead({
-  link: [{ rel: 'canonical', href: 'https://metricshour.com/tools/embed' }],
+  link: [{ rel: 'canonical', href: 'https://metricshour.com/tools/embed/' }],
 })
 </script>
