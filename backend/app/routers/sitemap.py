@@ -60,6 +60,8 @@ STATIC_ROUTE_TEMPLATES = [
     (f"{BASE}/rates/",        "0.8", "daily"),
     (f"{BASE}/yield-curve/",  "0.7", "daily"),
     (f"{BASE}/earnings/",     "0.7", "daily"),
+    (f"{BASE}/calendar/",     "0.8", "daily"),
+    (f"{BASE}/lens/",         "0.9", "daily"),
     (f"{BASE}/feed/",         "0.8", "hourly"),
     (f"{BASE}/blog/",         "0.8", "weekly"),
     (f"{BASE}/faq/",          "0.6", "monthly"),
@@ -351,6 +353,21 @@ def sitemap(db: Session = Depends(get_db)):
             seen_compare.add(key)
             a_lower, b_lower = key[0].lower(), key[1].lower()
             entries.append(_url(f"{BASE}/compare/{a_lower}-vs-{b_lower}/", "0.5", "weekly", today))
+
+    # Lens stock pages → /lens/stocks/{symbol} — top 200 stocks with revenue or price data
+    lens_stock_candidates = list(stocks_with_content)[:200]
+    for symbol in sorted(lens_stock_candidates):
+        lm = lastmod_map.get(("stock_insight", symbol)) or today
+        entries.append(_url(f"{BASE}/lens/stocks/{symbol.lower()}/", "0.8", "daily", lm))
+
+    # Lens forex pages → /lens/forex/{pair}
+    LENS_FX_PAIRS = [
+        "eurusd", "gbpusd", "usdjpy", "audusd", "usdcad", "usdchf", "nzdusd",
+        "eurgbp", "eurjpy", "gbpjpy", "usdcny", "usdmxn", "usdbrl", "usdsgd",
+        "usdinr", "usdkrw", "usdtry", "usdzar",
+    ]
+    for pair in LENS_FX_PAIRS:
+        entries.append(_url(f"{BASE}/lens/forex/{pair}/", "0.7", "daily", today))
 
     xml = (
         '<?xml version="1.0" encoding="UTF-8"?>\n'

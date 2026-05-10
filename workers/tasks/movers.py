@@ -31,6 +31,7 @@ def detect_movers():
             SELECT DISTINCT ON (a.symbol)
                 a.symbol,
                 a.name,
+                a.currency,
                 p.open   AS price_open,
                 p.close  AS price_close
             FROM assets a
@@ -52,6 +53,7 @@ def detect_movers():
                 payload = {
                     'symbol': sym,
                     'name': r['name'],
+                    'currency': r['currency'] or 'USD',
                     'direction': 'up' if pct > 0 else 'down',
                     'pct_change': round(abs(pct), 2),
                     'price_open': round(r['price_open'], 2),

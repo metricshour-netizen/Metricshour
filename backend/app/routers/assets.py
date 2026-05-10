@@ -6,6 +6,7 @@ from sqlalchemy import select, func
 from app.database import get_db
 from app.limiter import limiter
 from app.models import Asset, AssetType, Country, Price, StockCountryRevenue
+from app.models.company_profile import CompanyProfile
 from app.storage import cache_get, cache_set
 
 router = APIRouter(prefix="/assets", tags=["assets"])
@@ -258,6 +259,45 @@ _SECTOR_META: dict[str, dict] = {
 SECTOR_SLUG_MAP: dict[str, str] = {meta["name"]: slug for slug, meta in _SECTOR_META.items()}
 
 
+@router.get("/fx-rates")
+def get_fx_rates(db: Session = Depends(get_db)):
+    """Return latest FX prices as a currency→USD rate map.
+    Pairs like EURUSD → EUR/USD rate (EUR per 1 USD inverted).
+    Pairs like USDCNY → USD/CNY rate (CNY per USD).
+    The response maps each non-USD currency to its USD equivalent.
+    """
+    cached = cache_get('fx_rates')
+    if cached:
+        return cached
+
+    from sqlalchemy import text
+    rows = db.execute(text("""
+        SELECT a.symbol, p.close
+        FROM assets a
+        JOIN LATERAL (
+            SELECT close FROM prices WHERE asset_id = a.id
+            ORDER BY timestamp DESC LIMIT 1
+        ) p ON true
+        WHERE a.asset_type = 'fx'
+          AND p.close IS NOT NULL
+    """)).mappings().all()
+
+    rates: dict[str, float] = {'USD': 1.0}
+    for r in rows:
+        sym, close = r['symbol'], float(r['close'])
+        if len(sym) == 6:
+            base, quote = sym[:3].upper(), sym[3:].upper()
+            if quote == 'USD':          # e.g. EURUSD — rate = USD per 1 EUR
+                rates[base] = close
+            elif base == 'USD':         # e.g. USDJPY — rate = 1/close USD per 1 JPY
+                if close:
+                    rates[quote] = round(1.0 / close, 8)
+
+    result = {'rates': rates, 'base': 'USD'}
+    cache_set('fx_rates', result, ttl=900)  # 15-min cache
+    return result
+
+
 @router.get("/sectors")
 @limiter.limit("60/minute")
 def list_sectors(request: Request, db: Session = Depends(get_db)) -> list[dict]:
@@ -442,9 +482,37 @@ def get_asset(request: Request, symbol: str, db: Session = Depends(get_db)) -> d
     result["country_revenues"] = revenues
     result["market_open"] = _market_open(asset)
 
+    # Company profile enrichment (stocks only)
+    if asset.asset_type == AssetType.stock:
+        profile = db.execute(
+            select(CompanyProfile).where(CompanyProfile.asset_id == asset.id)
+        ).scalar_one_or_none()
+        if profile:
+            result["profile"] = _profile_dict(profile)
+
     # Prices are updated every 15min — cache for 15min so data is never stale
     cache_set(cache_key, result, ttl_seconds=900)
     return result
+
+
+def _profile_dict(p: CompanyProfile) -> dict:
+    """Return only non-null profile fields."""
+    fields = {
+        'ceo_name': p.ceo_name,
+        'ceo_since_year': p.ceo_since_year,
+        'founded_year': p.founded_year,
+        'hq_city': p.hq_city,
+        'hq_country_code': p.hq_country_code,
+        'employees': p.employees,
+        'website': p.website,
+        'is_soe': p.is_soe,
+        'chinese_name': p.chinese_name,
+        'pinyin_name': p.pinyin_name,
+        'primary_listing': p.primary_listing,
+        'cross_listing': p.cross_listing,
+        'csrc_industry': p.csrc_industry,
+    }
+    return {k: v for k, v in fields.items() if v is not None and v is not False}
 
 
 def _price_dict(p: Price) -> dict:

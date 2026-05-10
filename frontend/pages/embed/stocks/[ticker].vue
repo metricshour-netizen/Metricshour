@@ -10,7 +10,7 @@
           <div class="meta">{{ stock.exchange }} · {{ stock.currency || 'USD' }}</div>
         </div>
         <div class="price-block">
-          <div class="price">{{ stock.price ? `$${stock.price.close?.toFixed(2)}` : '—' }}</div>
+          <div class="price">{{ stock.price ? fmtPrice(stock.price.close, stock.currency) : '—' }}</div>
           <div v-if="stock.price?.change_pct != null" class="change" :class="stock.price.change_pct >= 0 ? 'pos' : 'neg'">
             {{ stock.price.change_pct >= 0 ? '▲' : '▼' }} {{ Math.abs(stock.price.change_pct).toFixed(2) }}%
           </div>
@@ -50,6 +50,7 @@ useHead({ meta: [{ name: 'robots', content: 'noindex' }] })
 const route = useRoute()
 const ticker = computed(() => String(route.params.ticker).toUpperCase())
 const { get } = useApi()
+const { fmtPrice } = useCurrency()
 
 const { data: stock, pending } = useAsyncData(
   `embed-stock-${ticker.value}`,
@@ -79,10 +80,10 @@ watch([chartData, chartEl], () => {
       backgroundColor: '#1f2937',
       borderColor: '#374151',
       textStyle: { color: '#e5e7eb', fontSize: 11 },
-      formatter: (p: any) => `${p[0].axisValue}<br/>$${p[0].value?.toFixed(2)}`,
+      formatter: (p: any) => `${p[0].axisValue}<br/>${fmtPrice(p[0].value, stock.value?.currency)}`,
     },
     xAxis: { type: 'category', data: prices.map((p: any) => p.t.slice(0, 10)), axisLabel: { color: '#6b7280', fontSize: 10 }, axisLine: { lineStyle: { color: '#1f2937' } } },
-    yAxis: { type: 'value', axisLabel: { color: '#6b7280', fontSize: 10, formatter: (v: number) => `$${v.toFixed(0)}` }, splitLine: { lineStyle: { color: '#1a2030' } } },
+    yAxis: { type: 'value', axisLabel: { color: '#6b7280', fontSize: 10, formatter: (v: number) => fmtPrice(v, stock.value?.currency) }, splitLine: { lineStyle: { color: '#1a2030' } } },
     series: [{ type: 'line', data: prices.map((p: any) => p.c), smooth: true, symbol: 'none', lineStyle: { color: '#10b981', width: 2 }, areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(16,185,129,0.2)' }, { offset: 1, color: 'rgba(16,185,129,0)' }] } } }],
   })
 }, { immediate: true })

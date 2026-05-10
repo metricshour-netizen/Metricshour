@@ -90,6 +90,8 @@ app = Celery('metricshour', include=[
     'tasks.edgar_revenue',
     'tasks.nigeria_stocks',
     'tasks.movers',
+    'tasks.macro_calendar',
+    'tasks.company_enrichment',
 ])
 
 # Use SSL only for rediss:// URLs (Upstash); skip for local redis:// (DragonflyDB)
@@ -173,6 +175,14 @@ app.conf.update(
         'feed-generator-every-3min': {
             'task': 'tasks.feed_generator.generate_feed_events',
             'schedule': 180.0,
+        },
+        'macro-calendar-sync-daily-615am': {
+            'task': 'tasks.macro_calendar.sync_macro_events',
+            'schedule': crontab(hour=6, minute=15),
+        },
+        'company-enrichment-weekly-sunday-4am': {
+            'task': 'tasks.company_enrichment.enrich_companies',
+            'schedule': crontab(hour=4, minute=0, day_of_week=0),
         },
         'sitemap-indexnow-daily-4am': {
             # CF Pages no longer serves traffic — skip the deploy hook, just ping IndexNow + Bing

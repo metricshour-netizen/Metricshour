@@ -31,11 +31,11 @@
         </h1>
 
         <div class="flex items-baseline gap-4 mb-2">
-          <span class="text-4xl font-extrabold text-white tabular-nums">${{ data.price_current?.toFixed(2) }}</span>
+          <span class="text-4xl font-extrabold text-white tabular-nums">{{ fmtPrice(data.price_current, data.currency) }}</span>
           <span class="text-lg font-bold tabular-nums" :class="data.direction === 'up' ? 'text-emerald-400' : 'text-red-400'">
             {{ data.direction === 'up' ? '+' : '-' }}{{ data.pct_change }}%
           </span>
-          <span class="text-sm text-gray-600">Open: ${{ data.price_open?.toFixed(2) }}</span>
+          <span class="text-sm text-gray-600">Open: {{ fmtPrice(data.price_open, data.currency) }}</span>
         </div>
         <p class="text-xs text-gray-600">{{ timeAgo(data.triggered_at) }}</p>
       </div>
@@ -97,6 +97,7 @@
 <script setup lang="ts">
 const route = useRoute()
 const { public: { apiBase } } = useRuntimeConfig()
+const { fmtPrice } = useCurrency()
 const ticker = (route.params.ticker as string).toUpperCase()
 
 const { data, error } = await useAsyncData(

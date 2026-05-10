@@ -307,7 +307,7 @@ useSeoMeta({
   twitterCard: 'summary_large_image',
   twitterTitle: _seoTitle,
   twitterDescription: _seoDesc,
-  robots: computed(() => (!bloc.value && !pending.value) ? 'noindex, follow' : 'index, follow, max-snippet:-1, max-image-preview:large'),
+  robots: 'index, follow, max-snippet:-1, max-image-preview:large',
 })
 
 useHead(computed(() => ({

@@ -18,9 +18,7 @@
         <template v-else>
           <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-6">
             <div class="flex items-start gap-4">
-              <div class="w-14 h-14 rounded-xl bg-orange-900/30 border border-orange-800/40 flex items-center justify-center text-2xl shrink-0">
-                {{ COIN_META[asset.symbol]?.icon ?? '🪙' }}
-              </div>
+              <CryptoIcon :symbol="asset.symbol" :size="56" />
               <div>
                 <div class="flex items-center gap-2 flex-wrap mb-1">
                   <h1 class="text-3xl font-extrabold text-white tracking-tight">{{ asset.name }}</h1>
@@ -467,7 +465,7 @@ useSeoMeta({
   twitterImage: 'https://cdn.metricshour.com/og/section/crypto.png',
   twitterTitle: _seoTitle,
   twitterDescription: _seoDesc,
-  robots: computed(() => asset.value ? 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1' : 'noindex, follow'),
+  robots: 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1',
 })
 
 function buildCryptoFaqs(a: any) {

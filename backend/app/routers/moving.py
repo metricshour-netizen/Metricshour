@@ -33,7 +33,7 @@ def _redis_moving(ticker: str) -> dict | None:
 def _db_moving(ticker: str, db: Session) -> dict | None:
     """Compute move data live from the prices table (same formula as _price_dict)."""
     row = db.execute(text("""
-        SELECT a.symbol, a.name, p.open, p.close
+        SELECT a.symbol, a.name, a.currency, p.open, p.close
         FROM assets a
         JOIN prices p ON p.asset_id = a.id
         WHERE UPPER(a.symbol) = :ticker
@@ -53,6 +53,7 @@ def _db_moving(ticker: str, db: Session) -> dict | None:
     return {
         'symbol': row['symbol'],
         'name': row['name'],
+        'currency': row['currency'] or 'USD',
         'direction': 'up' if pct > 0 else 'down',
         'pct_change': round(abs(pct), 2),
         'price_open': round(row['open'], 2),

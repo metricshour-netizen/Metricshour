@@ -7,6 +7,8 @@ from .summary import PageSummary, PageInsight
 from .user import AlertDelivery, MacroAlert
 from .macro import MacroSeries
 from .earnings import EarningsEvent
+from .macro_calendar import MacroCalendarEvent
+from .company_profile import CompanyProfile
 
 __all__ = [
     "Base",
@@ -35,4 +37,6 @@ __all__ = [
     "EarningsEvent",
     "EmailAlert",
     "NewsletterSubscriber",
+    "MacroCalendarEvent",
+    "CompanyProfile",
 ]

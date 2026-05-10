@@ -204,12 +204,15 @@
             ◈ Active
           </button>
           <NuxtLink to="/markets/" class="ml-2 text-xs text-emerald-600 hover:text-emerald-400 transition-colors">View all →</NuxtLink>
+          <button @click="downloadMoversCSV" class="flex items-center gap-1 px-2 py-1 text-xs rounded border border-[#1f2937] text-gray-500 hover:border-emerald-700 hover:text-emerald-400 transition-colors" :title="'Download CSV'">
+            ↓ CSV
+          </button>
         </div>
       </div>
 
       <!-- Asset type filter chips -->
-      <div class="flex items-center gap-1.5 mb-4 flex-wrap">
-        <span class="text-[10px] font-mono text-gray-600 uppercase tracking-wider">Filter:</span>
+      <div class="flex items-center gap-1.5 mb-2 flex-wrap">
+        <span class="text-[10px] font-mono text-gray-600 uppercase tracking-wider">Asset:</span>
         <button v-for="f in [
           { key: 'stock',     label: 'Stocks' },
           { key: 'crypto',    label: 'Crypto' },
@@ -226,6 +229,26 @@
         </button>
       </div>
 
+      <!-- Region filter chips (stocks only) -->
+      <div v-if="moversTypeFilter === 'stock' || moversTypeFilter === 'all'" class="flex items-center gap-1.5 mb-4 flex-wrap">
+        <span class="text-[10px] font-mono text-gray-600 uppercase tracking-wider">Region:</span>
+        <button v-for="r in [
+          { key: 'global',  label: '🌐 Global' },
+          { key: 'us',      label: '🇺🇸 US' },
+          { key: 'europe',  label: '🇪🇺 Europe' },
+          { key: 'asia',    label: '🌏 Asia' },
+          { key: 'em',      label: '🌍 EM' },
+        ]" :key="r.key"
+          @click="moversRegionFilter = (r.key as any)"
+          class="px-2.5 py-1 rounded-md text-[11px] font-mono border transition-colors"
+          :class="moversRegionFilter === r.key
+            ? 'bg-[#1f2937] border-gray-600 text-white'
+            : 'border-[#1f2937] text-gray-600 hover:border-gray-700 hover:text-gray-400'">
+          {{ r.label }}
+        </button>
+      </div>
+      <div v-else class="mb-4" />
+
       <!-- Loading skeleton -->
       <div v-if="moversLoading" class="space-y-2">
         <div v-for="i in 8" :key="i" class="h-14 bg-[#111827] rounded-lg animate-pulse"/>
@@ -236,14 +259,18 @@
         <NuxtLink v-for="s in currentMovers" :key="s.symbol"
           :to="assetLink(s.symbol, s.asset_type)"
           class="flex items-center gap-3 bg-[#111827] border border-[#1f2937] hover:border-emerald-500 rounded-lg px-3 py-2.5 transition-colors group">
-          <span class="text-lg leading-none shrink-0">{{ s.country?.flag || (s.asset_type === 'crypto' ? '🪙' : '🏢') }}</span>
+          <StockLogo v-if="s.asset_type === 'stock' || s.asset_type === 'etf'" :symbol="s.symbol" :size="32" />
+          <span v-else class="text-lg leading-none shrink-0">{{ s.country?.flag || (s.asset_type === 'crypto' ? '🪙' : '🏢') }}</span>
           <div class="flex-1 min-w-0">
-            <div class="flex items-center gap-1.5">
+            <div class="flex items-center gap-1.5 flex-wrap">
               <span class="text-xs font-mono font-bold group-hover:text-emerald-300" :class="tickerTypeColor(s.asset_type)">{{ s.symbol }}</span>
-              <span class="text-xs text-gray-500 truncate">{{ s.name }}</span>
+              <span class="text-xs text-gray-500 truncate max-w-[120px]">{{ s.name }}</span>
+              <span v-if="s.country?.code" class="text-[10px] text-gray-700 font-mono">{{ s.country.code }}</span>
             </div>
-            <span v-if="activeMoversTab === 'active'" class="text-[10px] text-gray-700 font-mono tabular-nums">{{ fmtCap(s.market_cap_usd) }}</span>
-            <span v-else class="text-[10px] text-gray-700">{{ s.sector || s.asset_type }}</span>
+            <div class="flex items-center gap-1.5 mt-0.5">
+              <span v-if="activeMoversTab === 'active'" class="text-[10px] text-gray-700 font-mono tabular-nums">{{ fmtCap(s.market_cap_usd) }}</span>
+              <span v-else class="text-[10px] text-gray-700">{{ s.sector || s.asset_type }}</span>
+            </div>
           </div>
           <div class="text-right shrink-0">
             <div class="text-sm font-semibold tabular-nums font-mono text-white">{{ fmtPrice(s.price.close, s.currency) }}</div>
@@ -300,7 +327,7 @@
           <span class="text-[10px] font-mono font-bold text-gray-600 uppercase tracking-widest">Economic Calendar</span>
           <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block"></span>
         </div>
-        <NuxtLink to="/feed/" class="text-xs text-emerald-600 hover:text-emerald-400 transition-colors">View feed →</NuxtLink>
+        <NuxtLink to="/calendar/" class="text-xs text-emerald-600 hover:text-emerald-400 transition-colors">Full calendar →</NuxtLink>
       </div>
       <div class="overflow-x-auto -mx-4 px-4">
         <div class="flex gap-3 min-w-max pb-1">
@@ -792,6 +819,46 @@ const tickerPaused = ref(false)
 // ── Top Movers ────────────────────────────────────────────────────────────────
 const activeMoversTab = ref<'gainers' | 'losers' | 'active'>('gainers')
 const moversTypeFilter = ref<'stock' | 'crypto' | 'commodity' | 'fx' | 'all'>('stock')
+const moversRegionFilter = ref<'global' | 'us' | 'europe' | 'asia' | 'em'>('global')
+
+const EUROPE_CODES = new Set(['GB','DE','FR','IT','ES','NL','SE','CH','NO','DK','FI','BE','AT','PT','IE','PL','CZ','HU','RO','GR','BG','HR','SK','SI','LU','EE','LV','LT','MT','CY','IS','LI','AL','BA','ME','MK','RS','XK','MD'])
+const ASIA_CODES   = new Set(['CN','JP','KR','HK','TW','IN','SG','AU','NZ','ID','MY','TH','PH','VN','PK','BD','LK','MM','KH','LA','MN','KZ','UZ'])
+const EM_CODES     = new Set(['BR','MX','ZA','NG','EG','SA','AE','TR','RU','AR','CO','PE','CL','KE','GH','TZ','UG','MA','TN','DZ','QA','KW','BH','OM','JO','IL','PK','BD'])
+
+function countryRegion(code: string | undefined | null): string {
+  if (!code) return 'other'
+  if (code === 'US') return 'us'
+  if (EUROPE_CODES.has(code)) return 'europe'
+  if (EM_CODES.has(code)) return 'em'
+  if (ASIA_CODES.has(code)) return 'asia'
+  return 'other'
+}
+
+// EM stocks get 1.5× weighting to surface strong EM signals in the global view
+function smartScore(a: any): number {
+  const pct = Math.abs(a._chg ?? 0)
+  const capW = a.market_cap_usd ? Math.min(1.5, Math.log10(a.market_cap_usd / 1e9) * 0.3 + 1) : 0.5
+  const emW = EM_CODES.has(a.country?.code) ? 1.5 : 1
+  return pct * capW * emW
+}
+
+// Apply country (max 3) and sector (max 2) diversity caps for global view
+function applyDiversityCaps(list: any[]): any[] {
+  const countryCounts: Record<string, number> = {}
+  const sectorCounts: Record<string, number> = {}
+  const result: any[] = []
+  for (const a of list) {
+    const cc = a.country?.code ?? 'XX'
+    const sc = a.sector ?? 'Other'
+    if ((countryCounts[cc] ?? 0) >= 3) continue
+    if ((sectorCounts[sc] ?? 0) >= 2) continue
+    countryCounts[cc] = (countryCounts[cc] ?? 0) + 1
+    sectorCounts[sc] = (sectorCounts[sc] ?? 0) + 1
+    result.push(a)
+    if (result.length >= 10) break
+  }
+  return result
+}
 
 function fmtChange(pct: number | null | undefined): string {
   if (pct == null) return '—'
@@ -829,18 +896,7 @@ function tickerTypeColor(type: string): string {
   return map[type] ?? 'text-gray-400'
 }
 
-function fmtPrice(v: number | null | undefined, currency?: string): string {
-  if (v == null) return '—'
-  if (currency === 'GBp') return `${v.toFixed(2)}p`
-  if (currency === 'GBP') return `£${v.toFixed(2)}`
-  if (currency === 'CNY') return `¥${v.toFixed(2)}`
-  if (currency === 'NGN') return `₦${v.toFixed(2)}`
-  if (currency === 'JPY') return `¥${v.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
-  if (currency === 'EUR') return `€${v.toFixed(2)}`
-  if (v >= 10000) return `$${v.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
-  if (v >= 1) return `$${v.toFixed(2)}`
-  return `$${v.toFixed(4)}`
-}
+const { fmtPrice } = useCurrency()
 
 const tickerItems = computed(() => {
   const assets = tickerRaw.value ?? []
@@ -871,7 +927,9 @@ const assetsWithChange = computed(() =>
       a.price?.close &&
       isPriceFresh(a) &&
       (a.asset_type === 'stock' || /[A-Z]/i.test(a.symbol)) &&
-      (a.price.change_pct != null || (a.price.open && a.price.open > 0))
+      (a.price.change_pct != null || (a.price.open && a.price.open > 0)) &&
+      // Min $500M cap for stocks to reduce noise; no cap for crypto/commodity/fx
+      (a.asset_type !== 'stock' || !a.market_cap_usd || a.market_cap_usd >= 5e8)
     )
     .map((a: any) => {
       const p = a.price
@@ -881,8 +939,16 @@ const assetsWithChange = computed(() =>
 )
 
 const filteredAssets = computed(() => {
-  if (moversTypeFilter.value === 'all') return assetsWithChange.value
-  return assetsWithChange.value.filter((a: any) => a.asset_type === moversTypeFilter.value)
+  let list = assetsWithChange.value
+  if (moversTypeFilter.value !== 'all') {
+    list = list.filter((a: any) => a.asset_type === moversTypeFilter.value)
+  }
+  if (moversTypeFilter.value === 'stock' || moversTypeFilter.value === 'all') {
+    if (moversRegionFilter.value !== 'global') {
+      list = list.filter((a: any) => a.asset_type !== 'stock' || countryRegion(a.country?.code) === moversRegionFilter.value)
+    }
+  }
+  return list
 })
 
 const topGainers = computed(() =>
@@ -918,21 +984,27 @@ const moversFreshLabel = computed(() => {
   return `Updated ${Math.floor(ageS / 86400)}d ago`
 })
 
-const gainers = computed(() =>
-  filteredAssets.value.filter((a: any) => a._chg > 0)
-    .sort((a: any, b: any) => b._chg - a._chg).slice(0, 8)
-)
+const gainers = computed(() => {
+  const raw = filteredAssets.value.filter((a: any) => a._chg > 0)
+    .sort((a: any, b: any) => smartScore(b) - smartScore(a))
+  return moversRegionFilter.value === 'global' && moversTypeFilter.value === 'stock'
+    ? applyDiversityCaps(raw)
+    : raw.slice(0, 10)
+})
 
-const losers = computed(() =>
-  filteredAssets.value.filter((a: any) => a._chg < 0)
-    .sort((a: any, b: any) => a._chg - b._chg).slice(0, 8)
-)
+const losers = computed(() => {
+  const raw = filteredAssets.value.filter((a: any) => a._chg < 0)
+    .sort((a: any, b: any) => smartScore(b) - smartScore(a))
+  return moversRegionFilter.value === 'global' && moversTypeFilter.value === 'stock'
+    ? applyDiversityCaps(raw)
+    : raw.slice(0, 10)
+})
 
 const activeByMarketCap = computed(() =>
   filteredAssets.value
     .filter((a: any) => a.market_cap_usd)
     .sort((a: any, b: any) => (b.market_cap_usd ?? 0) - (a.market_cap_usd ?? 0))
-    .slice(0, 8)
+    .slice(0, 10)
 )
 
 const moversLoading = computed(() => !tickerRaw.value)
@@ -941,6 +1013,28 @@ const currentMovers = computed(() => {
   if (activeMoversTab.value === 'losers') return losers.value
   return activeByMarketCap.value
 })
+
+function downloadMoversCSV() {
+  const today = new Date().toISOString().slice(0, 10)
+  const rows = [['Symbol', 'Name', 'Type', 'Price', 'Change%', 'Sector', 'Country']]
+  for (const s of currentMovers.value) {
+    rows.push([
+      s.symbol,
+      s.name,
+      s.asset_type,
+      String(s.price?.close ?? ''),
+      s._chg != null ? s._chg.toFixed(2) : '',
+      s.sector || '',
+      s.country?.code || '',
+    ])
+  }
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
+  a.download = `metricshour-movers-${today}.csv`
+  a.click()
+  URL.revokeObjectURL(a.href)
+}
 
 // ── SEO ───────────────────────────────────────────────────────────────────────
 const _title = 'MetricsHour — Global Markets, Trade & Macro Intelligence'

@@ -19,9 +19,7 @@
           <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-6">
             <!-- Left: identity -->
             <div class="flex items-start gap-4">
-              <div class="w-14 h-14 rounded-xl bg-[#1f2937] border border-[#374151] flex items-center justify-center text-2xl shrink-0" aria-hidden="true">
-                {{ stock.country?.flag || '🏢' }}
-              </div>
+              <StockLogo :symbol="stock.symbol" :size="56" />
               <div>
                 <div class="flex items-center gap-2 flex-wrap mb-1">
                   <h1 class="text-3xl font-extrabold text-white tracking-tight">{{ stock.name }} ({{ stock.symbol }}) — Revenue by Country</h1>
@@ -126,6 +124,45 @@
       <!-- Page Summary -->
       <div v-if="pageSummary?.summary" class="page-summary bg-[#111827] border border-[#1f2937] rounded-lg p-4 mb-3 text-sm text-gray-400 leading-relaxed">
         {{ pageSummary.summary }}
+      </div>
+
+      <!-- Company Profile Card (only when data exists) -->
+      <div v-if="stock.profile && Object.keys(stock.profile).some(k => !['is_soe'].includes(k))"
+           class="bg-[#111827] border border-[#1f2937] rounded-xl p-4 mb-4">
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div v-if="stock.profile.ceo_name">
+            <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-0.5">CEO</div>
+            <div class="text-sm text-white font-medium">{{ stock.profile.ceo_name }}</div>
+            <div v-if="stock.profile.ceo_since_year" class="text-[10px] text-gray-600">since {{ stock.profile.ceo_since_year }}</div>
+          </div>
+          <div v-if="stock.profile.founded_year">
+            <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-0.5">Founded</div>
+            <div class="text-sm text-white font-medium">{{ stock.profile.founded_year }}</div>
+          </div>
+          <div v-if="stock.profile.hq_city">
+            <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-0.5">Headquarters</div>
+            <div class="text-sm text-white font-medium">{{ stock.profile.hq_city }}<span v-if="stock.profile.hq_country_code" class="text-gray-500">, {{ stock.profile.hq_country_code }}</span></div>
+          </div>
+          <div v-if="stock.profile.employees">
+            <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-0.5">Employees</div>
+            <div class="text-sm text-white font-medium">{{ fmtEmployees(stock.profile.employees) }}</div>
+          </div>
+          <div v-if="stock.profile.primary_listing || stock.exchange">
+            <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-0.5">Exchange</div>
+            <div class="text-sm text-white font-medium">{{ stock.profile.primary_listing || stock.exchange }}</div>
+          </div>
+          <div v-if="stock.profile.website">
+            <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-0.5">Website</div>
+            <a :href="stock.profile.website" target="_blank" rel="noopener noreferrer" class="text-sm text-emerald-500 hover:text-emerald-400 font-medium truncate block">
+              {{ stock.profile.website.replace(/^https?:\/\//, '').replace(/\/$/, '') }} →
+            </a>
+          </div>
+        </div>
+        <div v-if="stock.profile.chinese_name || stock.profile.is_soe" class="flex items-center gap-2 mt-3 pt-3 border-t border-[#1f2937]">
+          <span v-if="stock.profile.chinese_name" class="text-sm text-gray-300">{{ stock.profile.chinese_name }}</span>
+          <span v-if="stock.profile.pinyin_name" class="text-xs text-gray-600">({{ stock.profile.pinyin_name }})</span>
+          <span v-if="stock.profile.is_soe" class="text-[10px] bg-red-950 text-red-400 border border-red-900 px-2 py-0.5 rounded-full font-semibold">SOE</span>
+        </div>
       </div>
 
       <!-- Daily Insights -->
@@ -452,6 +489,24 @@
 
       <p class="text-xs text-gray-700 text-center">Data: SEC EDGAR · World Bank · REST Countries</p>
 
+      <!-- What to Watch — upcoming macro events for top revenue countries -->
+      <div v-if="upcomingMacroEvents?.length" class="bg-[#111827] border border-[#1f2937] rounded-xl p-4 mb-2">
+        <h2 class="text-xs font-extrabold text-white uppercase tracking-widest mb-3">{{ $t('calendar.whatToWatch') }}</h2>
+        <div class="space-y-2">
+          <div v-for="evt in upcomingMacroEvents" :key="evt.id" class="flex items-center gap-3">
+            <span class="text-xs px-1.5 py-0.5 rounded"
+              :class="evt.impact === 'high' ? 'bg-red-950 text-red-300' : 'bg-amber-950 text-amber-300'">
+              {{ evt.impact === 'high' ? '🔴' : '🟡' }}
+            </span>
+            <div class="flex-1 min-w-0">
+              <span class="text-xs text-white">→ {{ evt.event_name }}</span>
+              <span class="text-[10px] text-gray-600 ml-2">{{ fmtWatchDate(evt.event_date) }}</span>
+            </div>
+          </div>
+        </div>
+        <NuxtLink to="/calendar/" class="text-[10px] text-emerald-600 hover:text-emerald-400 mt-2 inline-block">Full calendar →</NuxtLink>
+      </div>
+
       <ShareEmbed
         :embed-url="`/embed/stocks/${ticker.toLowerCase()}`"
         :download-url="`${apiBase}/api/assets/${ticker}/prices/download?interval=1d&limit=365`"
@@ -471,6 +526,7 @@
     v-model="showAlertModal"
     :asset="stock ? { id: stock.id, symbol: stock.symbol, name: stock.name } : null"
     :current-price="stock?.price?.close"
+    :currency="stock?.currency"
   />
   <EmailAlertModal
     v-model="showEmailAlertModal"
@@ -682,6 +738,26 @@ const comparableStocks = computed(() =>
     .slice(0, 3),
 )
 
+// What to Watch: upcoming macro events for top revenue countries
+const topRevenueCodes = computed(() => {
+  const revs = (stock.value?.country_revenues ?? []) as any[]
+  return revs.slice(0, 3).map((r: any) => r.country?.code).filter(Boolean).join(',')
+})
+const { data: upcomingMacroEvents } = useAsyncData(
+  `what-to-watch-${ticker}`,
+  () => {
+    if (!topRevenueCodes.value) return Promise.resolve([])
+    return $fetch<any[]>(`${apiBase}/api/calendar/upcoming?days=30&country=${topRevenueCodes.value}&impact=high&limit=3`).catch(() => [])
+  },
+  { server: false, watch: [topRevenueCodes] },
+)
+
+function fmtWatchDate(iso: string | null): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+}
+
 // Revenue history for macro risk chart
 const { data: revenueHistory } = useAsyncData(
   `rev-history-${ticker}`,
@@ -787,19 +863,20 @@ const geoRisk = computed(() => {
   return 'LOW'
 })
 
-function fmtStockPrice(v: number | null | undefined, currency?: string): string {
-  if (v == null) return '—'
-  if (currency === 'GBp') return `${v.toFixed(2)}p`
-  if (currency === 'CNY') return `¥${v.toFixed(2)}`
-  if (currency === 'NGN') return `₦${v.toFixed(2)}`
-  return `$${v.toFixed(2)}`
-}
+const { fmtPrice: fmtStockPrice } = useCurrency()
 
 function fmtCap(v: number | null): string {
   if (!v) return '—'
   if (v >= 1e12) return `$${(v / 1e12).toFixed(1)}T`
   if (v >= 1e9)  return `$${(v / 1e9).toFixed(0)}B`
   return `$${(v / 1e6).toFixed(0)}M`
+}
+
+function fmtEmployees(v: number | null | undefined): string {
+  if (!v) return '—'
+  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`
+  if (v >= 1_000) return `${(v / 1_000).toFixed(0)}K`
+  return v.toLocaleString()
 }
 
 function fmtPriceTs(ts: string | undefined): string {
@@ -914,12 +991,6 @@ const _seoDesc = computed(() => {
   return parts.join('. ') + '.'
 })
 
-// noindex only if the stock record failed to load after fetch completed
-const _hasContent = computed(() => {
-  if (pending.value) return true // still loading — don't noindex prematurely
-  return !!stock.value // any loaded stock has at least name, symbol, sector
-})
-
 useSeoMeta({
   title: _seoTitle,
   description: _seoDesc,
@@ -935,7 +1006,7 @@ useSeoMeta({
   twitterDescription: _seoDesc,
   twitterImage: ogImageUrl,
   twitterCard: 'summary_large_image',
-  robots: computed(() => _hasContent.value ? 'index, follow' : 'noindex, follow'),
+  robots: 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1',
 })
 
 function buildStockFaqs(s: any) {

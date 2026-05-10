@@ -16,7 +16,7 @@
           <!-- Current price -->
           <div v-if="currentPrice" class="bg-[#0d1117] border border-[#1f2937] rounded-lg px-4 py-3 mb-5 flex items-center justify-between">
             <span class="text-xs text-gray-500">Current price</span>
-            <span class="font-mono font-bold text-white">${{ fmtPrice(currentPrice) }}</span>
+            <span class="font-mono font-bold text-white">{{ fmtDisplayPrice(currentPrice) }}</span>
           </div>
 
           <!-- Form -->
@@ -119,6 +119,7 @@ const props = defineProps<{
   modelValue: boolean
   asset: { id: number; symbol: string; name: string } | null
   currentPrice?: number | null
+  currency?: string
 }>()
 const emit = defineEmits(['update:modelValue', 'created'])
 
@@ -138,10 +139,9 @@ const quickPcts = computed(() =>
   condition.value === 'above' ? [5, 10, 20] : [-5, -10, -20]
 )
 
-function fmtPrice(v: number): string {
-  if (v >= 1000) return v.toLocaleString(undefined, { maximumFractionDigits: 0 })
-  if (v >= 1) return v.toFixed(2)
-  return v.toFixed(4)
+const { fmtPrice } = useCurrency()
+function fmtDisplayPrice(v: number): string {
+  return fmtPrice(v, props.currency)
 }
 
 function applyQuickPct(pct: number) {

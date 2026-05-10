@@ -151,5 +151,106 @@
       "metaDesc": "Screen technology sector stocks by China, US, and EU revenue exposure. Data from SEC EDGAR 10-K geographic filings.",
       "intro": "Technology sector stocks screened by geographic revenue exposure from SEC EDGAR filings. Tech companies often have significant international revenue — particularly from China — and are frequently subject to export controls, tariffs, and geopolitical restrictions. Use this screen to assess China revenue risk within the technology sector."
     }
+  },
+  "calendar": {
+    "title": "Economic Calendar",
+    "subtitle": "Global macro events that move markets",
+    "noEvents": "No events found for this period.",
+    "tabs": {
+      "upcoming": "Upcoming",
+      "recent": "Recent"
+    },
+    "impact": {
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low"
+    },
+    "filters": {
+      "thisWeek": "This Week",
+      "nextWeek": "Next Week",
+      "thisMonth": "This Month",
+      "allRegions": "All Regions",
+      "allTypes": "All Types",
+      "highImpact": "High Impact Only"
+    },
+    "upcomingEvents": "Upcoming Events",
+    "whatToWatch": "What to Watch"
+  },
+  "lens": {
+    "title": "MetricsHour Lens",
+    "subtitle": "Pre-trade analysis for any asset. See the real risk behind the price.",
+    "comingSoon": "Coming Soon",
+    "tabs": {
+      "stocks": "Stocks",
+      "forex": "Forex",
+      "crypto": "Crypto",
+      "commodities": "Commodities"
+    },
+    "modes": {
+      "preTrade": "Pre-Trade Analysis",
+      "preTradeDesc": "Enter an asset and position size. Get macro risk and what to watch before you enter.",
+      "postTrade": "Post-Trade Review",
+      "postTradeDesc": "Upload trade history. Understand what really affected your returns.",
+      "postTradeSoon": "Coming Soon"
+    },
+    "inputs": {
+      "stockPlaceholder": "Enter ticker — AAPL, NVDA...",
+      "forexPlaceholder": "Enter pair — GBPUSD, EURUSD...",
+      "sizePlaceholder": "Position size (USD) — optional",
+      "analyze": "Analyze →"
+    },
+    "direction": {
+      "long": "Long",
+      "short": "Short"
+    },
+    "risk": {
+      "elevated": "ELEVATED",
+      "moderate": "MODERATE",
+      "low": "LOW",
+      "highVolatility": "HIGH VOLATILITY",
+      "stable": "STABLE"
+    },
+    "sections": {
+      "driving": "What's Driving It",
+      "geoRisk": "Geographic Risk",
+      "cost": "Real Cost Estimate",
+      "stress": "Stress Test",
+      "watch": "What to Watch",
+      "alternatives": "Lower Risk Alternatives",
+      "actions": "Actions",
+      "countryComparison": "Country Comparison",
+      "macroPressure": "Macro Pressure",
+      "relatedPairs": "Related Pairs"
+    },
+    "cost": {
+      "entryPrice": "Entry price",
+      "slippage": "Est. slippage",
+      "fee": "Exchange fee",
+      "effectivePrice": "Effective price",
+      "breakEven": "Break-even move",
+      "disclaimer": "Estimated — actual costs vary by broker"
+    },
+    "stress": {
+      "scenario": "If {country} revenue drops 20%:",
+      "epsImpact": "EPS impact",
+      "priceImpact": "Price impact",
+      "positionImpact": "Position impact",
+      "disclaimer": "Scenario estimate — not financial advice"
+    },
+    "coming": {
+      "cryptoTitle": "Crypto Lens — Coming Soon",
+      "cryptoDesc": "We are adding crypto analysis to Lens.",
+      "commoditiesTitle": "Commodities Lens — Coming Soon",
+      "commoditiesDesc": "We are adding commodities analysis to Lens.",
+      "notifyMe": "Get notified when {type} Lens launches",
+      "notifyButton": "Notify Me",
+      "cryptoFeatures": ["Regulatory status across 196 countries", "Macro correlation analysis", "Risk-on/risk-off signals", "Country adoption tracking"],
+      "commoditiesFeatures": ["Production by country", "Supply disruption risk", "Demand signals by region", "USD correlation analysis"],
+      "analyzeStock": "Analyze a Stock →",
+      "analyzeForex": "Analyze Forex →"
+    },
+    "noData": "Not enough data to run this analysis.",
+    "lastUpdated": "Last updated",
+    "intelligence": "MetricsHour Intelligence"
   }
 }

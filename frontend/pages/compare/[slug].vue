@@ -204,6 +204,15 @@
         </div>
       </section>
 
+      <!-- Share & Embed -->
+      <section class="flex flex-wrap gap-3 items-center">
+        <ShareCard type="country" :entity-code="codeA.toUpperCase()" />
+        <ShareEmbed
+          :embed-url="`/embed/compare/${codeA}-vs-${codeB}`"
+          :download-url="`/api/compare/${codeA}-vs-${codeB}/download`"
+        />
+      </section>
+
       <!-- Newsletter -->
       <div class="mt-8 border border-gray-800 rounded-xl p-6 bg-gray-900/40">
         <p class="text-xs font-mono text-emerald-500 uppercase tracking-widest mb-1">Weekly Briefing</p>

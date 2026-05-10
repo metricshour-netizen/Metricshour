@@ -11,14 +11,40 @@
           <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
           {{ isLoggedIn ? 'For You' : 'Feed' }}
         </NuxtLink>
-        <NuxtLink to="/markets/"     class="hover:text-white transition-colors font-medium">Markets</NuxtLink>
+
+        <!-- Markets dropdown -->
+        <div class="relative" @mouseenter="marketsOpen = true" @mouseleave="marketsOpen = false">
+          <button
+            class="flex items-center gap-1 hover:text-white transition-colors font-medium"
+            :class="isMarketsActive ? 'text-emerald-400' : ''"
+            @click="marketsOpen = !marketsOpen"
+          >
+            Markets
+            <svg class="w-3 h-3 transition-transform" :class="marketsOpen ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </button>
+
+          <div
+            v-show="marketsOpen"
+            class="absolute left-0 top-full mt-1 w-52 bg-[#0f1623] border border-[#1f2937] rounded-xl shadow-2xl overflow-hidden"
+          >
+            <NuxtLink
+              v-for="m in MARKETS"
+              :key="m.to"
+              :to="m.to"
+              class="flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:bg-[#1a2235] hover:text-white transition-colors"
+              :class="route.path.startsWith(m.to) && m.to !== '/markets/' ? 'text-white bg-[#1a2235]' : ''"
+              @click="marketsOpen = false"
+            >
+              <span class="text-base leading-none w-5 text-center" aria-hidden="true">{{ m.icon }}</span>
+              <div class="font-medium leading-tight">{{ m.label }}</div>
+            </NuxtLink>
+          </div>
+        </div>
+
         <NuxtLink to="/countries/"   class="hover:text-white transition-colors">Countries</NuxtLink>
         <NuxtLink to="/trade/"       class="hover:text-white transition-colors">Trade</NuxtLink>
-        <NuxtLink to="/sectors/"     class="hover:text-white transition-colors">Sectors</NuxtLink>
-        <NuxtLink to="/commodities/" class="hover:text-white transition-colors">Commodities</NuxtLink>
-        <NuxtLink to="/crypto/"      class="hover:text-white transition-colors">Crypto</NuxtLink>
-        <NuxtLink to="/etfs/"        class="hover:text-white transition-colors">ETFs</NuxtLink>
-        <NuxtLink to="/fx/"          class="hover:text-white transition-colors">FX</NuxtLink>
 
         <!-- Tools dropdown -->
         <div class="relative" @mouseenter="toolsOpen = true" @mouseleave="toolsOpen = false">
@@ -108,14 +134,35 @@
     <!-- Mobile dropdown menu -->
     <div v-if="menuOpen" class="sm:hidden border-t border-[#1f2937] bg-[#0a0e1a] px-4 py-2 max-h-[calc(100vh-3rem)] overflow-y-auto">
       <NuxtLink to="/"            @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-emerald-400 font-semibold border-b border-[#1f2937]">Home <span class="text-gray-600 text-xs">→</span></NuxtLink>
-      <NuxtLink to="/markets/"    @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">Markets <span class="text-gray-600 text-xs">→</span></NuxtLink>
+
+      <!-- Markets section -->
+      <div class="border-b border-[#1f2937]">
+        <button
+          @click="mobileMarketsOpen = !mobileMarketsOpen"
+          class="flex items-center justify-between w-full py-3.5 text-sm font-medium"
+          :class="isMarketsActive ? 'text-emerald-400' : 'text-gray-300'"
+        >
+          <span>Markets</span>
+          <svg class="w-4 h-4 transition-transform" :class="mobileMarketsOpen ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+          </svg>
+        </button>
+        <div v-if="mobileMarketsOpen" class="pb-2 space-y-0.5">
+          <NuxtLink
+            v-for="m in MARKETS"
+            :key="m.to"
+            :to="m.to"
+            class="flex items-center gap-3 pl-4 pr-2 py-2.5 text-sm text-gray-400 hover:text-white transition-colors rounded-lg"
+            @click="menuOpen = false; mobileMarketsOpen = false"
+          >
+            <span class="text-base leading-none w-5 text-center" aria-hidden="true">{{ m.icon }}</span>
+            <span>{{ m.label }}</span>
+          </NuxtLink>
+        </div>
+      </div>
+
       <NuxtLink to="/countries/"  @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">Countries <span class="text-gray-600 text-xs">→</span></NuxtLink>
       <NuxtLink to="/trade/"      @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">Trade <span class="text-gray-600 text-xs">→</span></NuxtLink>
-      <NuxtLink to="/sectors/"    @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">Sectors <span class="text-gray-600 text-xs">→</span></NuxtLink>
-      <NuxtLink to="/commodities/" @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">Commodities <span class="text-gray-600 text-xs">→</span></NuxtLink>
-      <NuxtLink to="/crypto/"     @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">Crypto <span class="text-gray-600 text-xs">→</span></NuxtLink>
-      <NuxtLink to="/etfs/"       @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">ETFs <span class="text-gray-600 text-xs">→</span></NuxtLink>
-      <NuxtLink to="/fx/"         @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">FX <span class="text-gray-600 text-xs">→</span></NuxtLink>
 
       <!-- Tools section -->
       <div class="border-b border-[#1f2937]">
@@ -184,26 +231,48 @@ const menuOpen = ref(false)
 const searchOpen = ref(false)
 const toolsOpen = ref(false)
 const mobileToolsOpen = ref(false)
+const marketsOpen = ref(false)
+const mobileMarketsOpen = ref(false)
+
+const MARKETS = [
+  { to: '/markets/',     icon: '◈',  label: 'All Markets' },
+  { to: '/stocks/',      icon: '📈', label: 'Stocks' },
+  { to: '/crypto/',      icon: '₿',  label: 'Crypto' },
+  { to: '/commodities/', icon: '🛢', label: 'Commodities' },
+  { to: '/fx/',          icon: '💱', label: 'FX' },
+  { to: '/etfs/',        icon: '🗂', label: 'ETFs' },
+  { to: '/sectors/',     icon: '🏭', label: 'Sectors' },
+  { to: '/earnings/',    icon: '📅', label: 'Earnings' },
+  { to: '/calendar/',    icon: '🗓', label: 'Calendar' },
+  { to: '/rates/',       icon: '💹', label: 'Rates' },
+]
+
+const MARKET_PATHS = new Set(MARKETS.map(m => m.to))
+const isMarketsActive = computed(() =>
+  MARKET_PATHS.has(route.path) ||
+  ['/stocks/', '/crypto/', '/commodities/', '/fx/', '/etfs/', '/sectors/', '/earnings/', '/rates/', '/indices/'].some(p => route.path.startsWith(p))
+)
 
 const TOOLS = [
+  { to: '/lens/',        icon: '🔭', label: 'Lens',                 desc: 'Pre-trade analysis for any asset' },
   { to: '/screener/',    icon: '🔍', label: 'Global Risk Screener', desc: 'Filter stocks by geopolitical exposure' },
   { to: '/yield-curve/', icon: '📈', label: 'Yield Curve',          desc: 'US Treasury rates' },
-  { to: '/earnings/',    icon: '📅', label: 'Earnings Calendar',    desc: 'Upcoming & recent results' },
-  { to: '/rates/',       icon: '💹', label: 'Rates & Yields',       desc: 'Central bank & FRED data' },
   { to: '/compare/',     icon: '⚖️', label: 'Compare Countries',    desc: 'Side-by-side macro data' },
+  { to: '/tools/',       icon: '🧰', label: 'All Tools',            desc: 'FX calculator, embed widgets & more' },
 ]
 
 const TOOL_PATHS = new Set(TOOLS.map(t => t.to))
-const isToolsActive = computed(() => TOOL_PATHS.has(route.path) || route.path.startsWith('/screener/'))
+const isToolsActive = computed(() => TOOL_PATHS.has(route.path) || route.path.startsWith('/screener/') || route.path.startsWith('/tools/') || route.path.startsWith('/lens/'))
 
 function logoClick() {
   menuOpen.value = false
   if (route.path === '/') window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
-// Close tools dropdown on route change
+// Close all dropdowns on route change
 watch(() => route.path, () => {
   toolsOpen.value = false
+  marketsOpen.value = false
   menuOpen.value = false
 })
 

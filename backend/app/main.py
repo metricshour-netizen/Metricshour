@@ -23,6 +23,9 @@ from app.routers import news as news_router
 from app.routers import blocs as blocs_router
 from app.routers import email_alerts as email_alerts_router
 from app.routers import moving as moving_router
+from app.routers import compare as compare_router
+from app.routers import calendar as calendar_router
+from app.routers import lens as lens_router
 
 if settings.sentry_dsn:
     sentry_sdk.init(
@@ -105,6 +108,12 @@ async def security_headers(request: Request, call_next) -> Response:
         elif path.startswith("/api/earnings"):
             # Earnings updated daily by Celery — 1hr edge cache, 4hr stale fallback
             cc = "public, s-maxage=3600, stale-while-revalidate=14400"
+        elif path.startswith("/api/lens"):
+            # Lens risk scores cached 6h in Redis; allow 6min edge + 1hr stale at CF
+            cc = "public, s-maxage=360, stale-while-revalidate=3600"
+        elif path.startswith("/api/calendar"):
+            # Calendar events updated daily — 1hr edge cache, 4hr stale
+            cc = "public, s-maxage=3600, stale-while-revalidate=14400"
         elif path.startswith("/api/movers"):
             # Movers refresh every ~15min via Celery detect_movers
             cc = "public, s-maxage=60, stale-while-revalidate=30"
@@ -144,6 +153,9 @@ app.include_router(news_router.router, prefix="/api")     # GET /api/news/{symbo
 app.include_router(blocs_router.router, prefix="/api")  # GET /api/blocs/, /api/blocs/{slug}
 app.include_router(email_alerts_router.router, prefix="/api")  # POST /api/email-alerts (no auth required)
 app.include_router(moving_router.router)  # GET /api/stocks/{ticker}/moving, GET /api/movers
+app.include_router(compare_router.router, prefix="/api")  # GET /api/compare/{slug}/download
+app.include_router(calendar_router.router, prefix="/api")  # GET /api/calendar, /api/calendar/upcoming
+app.include_router(lens_router.router, prefix="/api")  # GET /api/lens/stocks/{ticker}, /api/lens/forex/{pair}
 
 
 Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)

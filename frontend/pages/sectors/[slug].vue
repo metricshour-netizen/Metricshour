@@ -73,7 +73,7 @@
                     </div>
                   </div>
                   <div class="text-right shrink-0 ml-2">
-                    <div class="text-sm font-bold tabular-nums font-mono text-white">{{ s.price ? fmtPrice(s.price.close) : '—' }}</div>
+                    <div class="text-sm font-bold tabular-nums font-mono text-white">{{ s.price ? fmtPrice(s.price.close, s.currency) : '—' }}</div>
                     <div v-if="s.price?.change_pct != null" class="text-[10px] tabular-nums mt-0.5"
                          :class="s.price.change_pct >= 0 ? 'text-emerald-400' : 'text-red-400'">
                       {{ s.price.change_pct >= 0 ? '▲' : '▼' }} {{ Math.abs(s.price.change_pct).toFixed(2) }}%
@@ -92,7 +92,7 @@
                     </div>
                   </div>
                   <div class="text-right">
-                    <div class="text-sm font-bold tabular-nums font-mono text-white">{{ s.price ? fmtPrice(s.price.close) : '—' }}</div>
+                    <div class="text-sm font-bold tabular-nums font-mono text-white">{{ s.price ? fmtPrice(s.price.close, s.currency) : '—' }}</div>
                     <div v-if="s.price?.change_pct != null" class="text-[10px] tabular-nums mt-0.5"
                          :class="s.price.change_pct >= 0 ? 'text-emerald-400' : 'text-red-400'">
                       {{ s.price.change_pct >= 0 ? '▲' : '▼' }} {{ Math.abs(s.price.change_pct).toFixed(2) }}%
@@ -194,11 +194,7 @@ function fmtCap(v: number | null): string {
   return `$${(v / 1e6).toFixed(0)}M`
 }
 
-function fmtPrice(v: number): string {
-  if (v >= 1000) return `$${v.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
-  if (v >= 1)    return `$${v.toFixed(2)}`
-  return `$${v.toFixed(4)}`
-}
+const { fmtPrice } = useCurrency()
 
 useSeoMeta({
   title: computed(() => sector.value ? `${sector.value.name} Sector Stocks — MetricsHour` : 'Sector — MetricsHour'),

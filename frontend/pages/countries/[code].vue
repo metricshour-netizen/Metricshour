@@ -11,7 +11,7 @@
       <!-- Header -->
       <div class="mb-8">
         <div class="flex items-start gap-4 mb-3">
-          <span class="text-5xl leading-none" aria-hidden="true">{{ country.flag }}</span>
+          <FlagImg :code="code.toUpperCase()" :emoji="country.flag" :size="56" />
           <div>
             <h1 class="text-2xl font-bold text-white">{{ country.name }} Economy: GDP, Trade &amp; Macro Data</h1>
             <p class="text-gray-500 text-sm">{{ country.name_official }}</p>
@@ -450,6 +450,25 @@
         :download-url="`${apiBase}/api/countries/${code}/indicators/download`"
       />
 
+      <!-- Upcoming Economic Events -->
+      <section v-if="upcomingEvents?.length">
+        <h2 class="text-sm font-extrabold text-white uppercase tracking-widest mb-3">{{ $t('calendar.upcomingEvents') }}</h2>
+        <div class="space-y-2">
+          <div v-for="evt in upcomingEvents" :key="evt.id"
+               class="flex items-center gap-3 bg-[#111827] border border-[#1f2937] rounded-lg px-4 py-2.5">
+            <span class="text-xs font-semibold px-1.5 py-0.5 rounded"
+              :class="evt.impact === 'high' ? 'bg-red-950 text-red-300' : evt.impact === 'medium' ? 'bg-amber-950 text-amber-300' : 'bg-gray-900 text-gray-500'">
+              {{ evt.impact === 'high' ? '🔴' : evt.impact === 'medium' ? '🟡' : '🟢' }}
+            </span>
+            <div class="flex-1 min-w-0">
+              <div class="text-sm text-white font-medium truncate">{{ evt.event_name }}</div>
+              <div class="text-xs text-gray-500">{{ fmtEventDate(evt.event_date) }}</div>
+            </div>
+            <NuxtLink to="/calendar/" class="text-[10px] text-emerald-600 hover:text-emerald-400 shrink-0">View calendar →</NuxtLink>
+          </div>
+        </div>
+      </section>
+
       <!-- Newsletter -->
       <div class="mt-8 border border-gray-800 rounded-xl p-6 bg-gray-900/40">
         <p class="text-xs font-mono text-emerald-500 uppercase tracking-widest mb-1">Weekly Briefing</p>
@@ -498,6 +517,20 @@ const { data: gdpHistory, pending: gdpLoading } = useAsyncData(
   () => get<any[]>(`/api/countries/${code}/gdp-history`).catch(() => []),
   { server: false },
 )
+
+// Upcoming macro events for this country (client-side, non-blocking)
+const countryCodeUpper = code.toUpperCase()
+const { data: upcomingEvents } = useAsyncData(
+  `calendar-upcoming-${code}`,
+  () => get<any[]>(`/api/calendar/upcoming?days=30&country=${countryCodeUpper}&limit=3`).catch(() => []),
+  { server: false },
+)
+
+function fmtEventDate(iso: string | null): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' })
+}
 
 const { data: timeseries, pending: timeseriesLoading } = useAsyncData(
   `timeseries-${code}`,
