@@ -149,6 +149,8 @@ function formatDate(iso?: string | null): string {
   return new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
+useSeoMeta({ robots: 'noindex, follow' })
+
 watchEffect(() => {
   if (author.value) {
     useSeoMeta({
