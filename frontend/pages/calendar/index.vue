@@ -115,6 +115,12 @@
                   :class="evt.actual_value ? 'text-emerald-400' : 'text-gray-700'">
                   {{ evt.actual_value || '—' }}
                 </td>
+                <td class="px-4 py-3 text-right">
+                  <button @click="openAlert(evt)"
+                    class="text-[10px] text-gray-600 hover:text-emerald-400 transition-colors px-2 py-1 rounded border border-transparent hover:border-emerald-900">
+                    🔔
+                  </button>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -153,6 +159,13 @@
       <div class="text-4xl mb-3">📅</div>
       <p class="text-sm">{{ $t('calendar.noEvents') }}</p>
     </div>
+
+  <EmailAlertModal
+    v-model="showEmailAlert"
+    :asset-symbol="alertAsset.symbol"
+    :asset-name="alertAsset.name"
+    asset-type="macro_event"
+  />
   </main>
 </template>
 
@@ -246,6 +259,18 @@ function impactDot(impact: string): string {
   if (impact === 'high')   return '🔴'
   if (impact === 'medium') return '🟡'
   return '🟢'
+}
+
+// Alert integration
+const showEmailAlert = ref(false)
+const alertAsset = ref({ symbol: '', name: '' })
+
+function openAlert(evt: any) {
+  alertAsset.value = {
+    symbol: `${evt.country_code}:${evt.event_type}`,
+    name: `${evt.event_name} (${evt.country_code})`,
+  }
+  showEmailAlert.value = true
 }
 
 useSeoMeta({

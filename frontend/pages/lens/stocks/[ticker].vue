@@ -140,6 +140,25 @@
         </div>
       </div>
 
+      <!-- SECTION 7: Lower Risk Alternatives -->
+      <div v-if="alternatives?.length" class="bg-[#111827] border border-[#1f2937] rounded-xl p-5 mb-4">
+        <div class="text-xs font-bold text-white uppercase tracking-wider mb-3">{{ $t('lens.sections.alternatives') }}</div>
+        <div class="space-y-2">
+          <NuxtLink v-for="s in alternatives" :key="s.symbol"
+            :to="`/lens/stocks/${s.symbol.toLowerCase()}/`"
+            class="flex items-center gap-3 bg-[#0d1520] border border-[#1f2937] hover:border-emerald-700 rounded-lg px-3 py-2 transition-colors">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="text-xs font-mono font-bold text-emerald-400">{{ s.symbol }}</span>
+                <span class="text-xs text-gray-500 truncate">{{ s.name }}</span>
+              </div>
+              <div class="text-[10px] text-gray-600">{{ s.sector }} · {{ s.china_pct != null ? `CN ${s.china_pct.toFixed(0)}%` : 'Low CN' }}</div>
+            </div>
+            <span class="text-[10px] text-emerald-600">Analyze →</span>
+          </NuxtLink>
+        </div>
+      </div>
+
       <!-- SECTION 8: Actions -->
       <div class="flex flex-wrap gap-3">
         <EmailAlertModal v-model="showAlert" :asset-symbol="lensData.ticker" :asset-name="lensData.name" asset-type="stock" />
@@ -172,9 +191,25 @@ const queryStr = computed(() => {
   return new URLSearchParams(p).toString()
 })
 
+const { public: { apiBase } } = useRuntimeConfig()
+
 const { data: lensData, pending, error } = await useAsyncData(
   `lens-stock-${ticker}-${direction.value}-${sizeUsd.value || 'none'}`,
   () => get<any>(`/api/lens/stocks/${ticker}?${queryStr.value}`).catch(() => null),
+)
+
+// Lower risk alternatives — same sector, less China exposure
+const { data: alternatives } = useAsyncData(
+  `lens-alternatives-${ticker}`,
+  async () => {
+    if (!lensData.value?.sector) return []
+    const chinaCap = Math.max(0, (lensData.value.geo_risk?.find((g: any) => g.country_code === 'CN')?.revenue_pct || 1) - 1)
+    const data = await $fetch<any>(`${apiBase}/api/screener`, {
+      params: { sector: lensData.value.sector, china_max: chinaCap, sort_by: 'market_cap', limit: 6 },
+    }).catch(() => null)
+    return ((data?.results || []) as any[]).filter((s: any) => s.symbol !== ticker).slice(0, 3)
+  },
+  { server: false, watch: [() => lensData.value?.sector] },
 )
 
 const showAlert = ref(false)
