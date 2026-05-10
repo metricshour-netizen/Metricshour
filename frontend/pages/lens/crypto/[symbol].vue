@@ -17,6 +17,6 @@ const symbol = (route.params.symbol as string).toUpperCase()
 useSeoMeta({
   title: `${symbol} Lens — Coming Soon — MetricsHour`,
   description: 'Crypto analysis is coming to MetricsHour Lens. Get notified when it launches.',
-  robots: 'index, follow',
+  robots: 'noindex, follow',
 })
 </script>

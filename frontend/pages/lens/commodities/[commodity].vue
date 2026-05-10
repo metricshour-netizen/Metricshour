@@ -17,6 +17,6 @@ const commodity = (route.params.commodity as string).toUpperCase()
 useSeoMeta({
   title: `${commodity} Lens — Coming Soon — MetricsHour`,
   description: 'Commodities analysis is coming to MetricsHour Lens. Get notified when it launches.',
-  robots: 'index, follow',
+  robots: 'noindex, follow',
 })
 </script>
