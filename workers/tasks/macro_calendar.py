@@ -8,7 +8,7 @@ from celery import shared_task
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
-from workers.database import get_db_session
+from app.database import SessionLocal
 from app.models.macro_calendar import MacroCalendarEvent
 
 logger = logging.getLogger(__name__)
@@ -179,7 +179,8 @@ def sync_macro_events(self):
         logger.info('No macro calendar events to upsert')
         return {'upserted': 0}
 
-    with get_db_session() as db:
+    db = SessionLocal()
+    try:
         stmt = pg_insert(MacroCalendarEvent).values(events_to_upsert)
         stmt = stmt.on_conflict_do_update(
             constraint='uq_macro_calendar_event',
@@ -192,6 +193,8 @@ def sync_macro_events(self):
         )
         db.execute(stmt)
         db.commit()
+    finally:
+        db.close()
 
     logger.info('Upserted %d macro calendar events', len(events_to_upsert))
     return {'upserted': len(events_to_upsert)}

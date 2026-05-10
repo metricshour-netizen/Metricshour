@@ -9,7 +9,7 @@ from celery import shared_task
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
-from workers.database import get_db_session
+from app.database import SessionLocal
 from app.models.asset import Asset, AssetType
 from app.models.company_profile import CompanyProfile
 
@@ -203,7 +203,8 @@ def enrich_companies(self, limit: int = 500, force: bool = False):
     from datetime import datetime, timezone, timedelta
     stale_threshold = datetime.now(timezone.utc) - timedelta(days=30)
 
-    with get_db_session() as db:
+    db = SessionLocal()
+    try:
         # Get stocks to enrich: ordered by market_cap DESC
         stocks = db.execute(
             select(Asset.id, Asset.symbol, Asset.name, Asset.exchange, Asset.market_cap_usd)
@@ -218,6 +219,8 @@ def enrich_companies(self, limit: int = 500, force: bool = False):
                 select(CompanyProfile.symbol, CompanyProfile.last_fetched)
             )
         }
+    finally:
+        db.close()
 
     enriched = 0
     skipped = 0
@@ -248,14 +251,17 @@ def enrich_companies(self, limit: int = 500, force: bool = False):
         from datetime import datetime, timezone
         profile_data['last_fetched'] = datetime.now(timezone.utc)
 
-        with get_db_session() as db:
+        db2 = SessionLocal()
+        try:
             stmt = pg_insert(CompanyProfile).values([profile_data])
             stmt = stmt.on_conflict_do_update(
                 index_elements=['symbol'],
                 set_={k: v for k, v in profile_data.items() if k not in ('asset_id', 'symbol')},
             )
-            db.execute(stmt)
-            db.commit()
+            db2.execute(stmt)
+            db2.commit()
+        finally:
+            db2.close()
 
         enriched += 1
         logger.debug('Enriched %s (%s)', symbol, name)
