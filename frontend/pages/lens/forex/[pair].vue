@@ -142,6 +142,13 @@
         </div>
       </div>
 
+      <!-- About Lens Forex -->
+      <div class="bg-[#0a0f1a] border border-[#1a2435] rounded-xl p-4 mb-4 text-xs text-gray-500 leading-relaxed">
+        <strong class="text-gray-400">How Lens works for forex:</strong> Lens analyses {{ pair }} by comparing the macroeconomic conditions of both countries — interest rate differentials, GDP growth divergence, inflation gap, and current account balance.
+        The risk score reflects how exposed your trade is to central bank surprises, geopolitical shifts, or macro releases in either economy.
+        Rates are updated every 15 minutes during weekday trading hours.
+      </div>
+
       <!-- SECTION 8: Actions -->
       <div class="flex flex-wrap gap-3">
         <NuxtLink to="/lens/" class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold bg-[#111827] border border-[#1f2937] text-gray-400 hover:text-white transition-all">

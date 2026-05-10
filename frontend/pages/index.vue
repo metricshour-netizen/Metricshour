@@ -910,7 +910,7 @@ function tickerTypeColor(type: string): string {
   return map[type] ?? 'text-gray-400'
 }
 
-const { fmtPrice } = useCurrency()
+const { fmtPrice, fmtFxRate } = useCurrency()
 
 const tickerItems = computed(() => {
   const assets = tickerRaw.value ?? []
@@ -930,7 +930,8 @@ const tickerItems = computed(() => {
         return null  // skip assets with no change data — don't show 0.0%
       }
       const dir = chgPct >= 0 ? 1 : -1
-      return { symbol: a.symbol, assetType: a.asset_type, priceStr: fmtPrice(p.close, a.currency), changePct: Math.abs(chgPct).toFixed(2) + '%', dir, typeColor: tickerTypeColor(a.asset_type) }
+      const priceStr = a.asset_type === 'fx' ? fmtFxRate(p.close) : fmtPrice(p.close, a.currency)
+      return { symbol: a.symbol, assetType: a.asset_type, priceStr, changePct: Math.abs(chgPct).toFixed(2) + '%', dir, typeColor: tickerTypeColor(a.asset_type) }
     })
     .filter(Boolean) as { symbol: string; priceStr: string; changePct: string; dir: number; typeColor: string }[]
 })

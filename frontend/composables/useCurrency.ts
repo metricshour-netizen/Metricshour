@@ -44,5 +44,13 @@ export function useCurrency() {
     return `${sign}$${v.toLocaleString()}`
   }
 
-  return { fmtPrice, fmtCap, fmtUsd }
+  // FX exchange rates — no currency symbol, correct decimal places per pair
+  function fmtFxRate(v: number | null | undefined): string {
+    if (v == null) return '—'
+    if (v >= 100) return v.toFixed(2)
+    if (v >= 1)   return v.toFixed(4)
+    return v.toFixed(6)
+  }
+
+  return { fmtPrice, fmtFxRate, fmtCap, fmtUsd }
 }

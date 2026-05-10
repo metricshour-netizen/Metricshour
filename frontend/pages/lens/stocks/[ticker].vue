@@ -159,6 +159,13 @@
         </div>
       </div>
 
+      <!-- About Lens -->
+      <div class="bg-[#0a0f1a] border border-[#1a2435] rounded-xl p-4 mb-4 text-xs text-gray-500 leading-relaxed">
+        <strong class="text-gray-400">How Lens works:</strong> Lens scores geopolitical and macro risk for {{ lensData.ticker }} using SEC EDGAR geographic revenue data, bilateral trade exposure, upcoming earnings, and FRED macro series.
+        A high risk score indicates significant revenue concentration in trade-sensitive or politically volatile markets.
+        Use it to compare entry timing, size your position, or understand which macro events matter most for this stock.
+      </div>
+
       <!-- SECTION 8: Actions -->
       <div class="flex flex-wrap gap-3">
         <EmailAlertModal v-model="showAlert" :asset-symbol="lensData.ticker" :asset-name="lensData.name" asset-type="stock" />

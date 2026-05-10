@@ -156,6 +156,7 @@ watchEffect(() => {
       description: author.value.bio ?? `Articles by ${author.value.name} on MetricsHour.`,
       ogTitle: `${author.value.name} — MetricsHour`,
       ogDescription: author.value.bio ?? `Articles by ${author.value.name}.`,
+      robots: 'noindex, follow',
     })
     useHead({
       link: [{ rel: 'canonical', href: `https://metricshour.com/blog/authors/${slug.value}/` }],

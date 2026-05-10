@@ -237,12 +237,7 @@ def sitemap(db: Session = Depends(get_db)):
         lm = max(dates).date().isoformat() if dates else today
         entries.append(_url(f"{BASE}/blog/{post.slug}/", "0.8", "weekly", lm))
 
-    # Blog authors → /blog/authors/{slug}/
-    for (slug,) in db.execute(
-        select(BlogAuthor.slug).where(BlogAuthor.slug.isnot(None))
-    ):
-        entries.append(_url(f"{BASE}/blog/authors/{slug}/", "0.6", "weekly", today))
-
+    # Blog authors excluded from sitemap — pages show 0 posts, thin content
     # Crypto → /crypto/{symbol}/
     for (symbol,) in db.execute(
         select(Asset.symbol).where(

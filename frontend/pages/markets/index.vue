@@ -95,7 +95,7 @@
             <span class="text-amber-300/80 truncate pr-2">{{ a.name }}</span>
             <span class="text-amber-700 uppercase text-[9px]">{{ typeTag(a.asset_type) }}</span>
             <span class="text-right tabular-nums" :class="priceColor(a)">
-              {{ a.price ? fmtPrice(a.price.close, a.currency) : '—' }}
+              {{ fmtAssetPrice(a) }}
             </span>
             <span class="text-right text-amber-600/70 tabular-nums">{{ fmtCap(a.market_cap_usd) }}</span>
           </component>
@@ -386,11 +386,12 @@ const SectionHeader = defineComponent({
 const PriceBadge = defineComponent({
   props: { asset: Object },
   setup() {
-    const { fmtPrice } = useCurrency()
-    return { fmtPrice }
+    const { fmtPrice, fmtFxRate } = useCurrency()
+    const fmt = (a: any) => a?.asset_type === 'fx' ? fmtFxRate(a.price?.close) : fmtPrice(a.price?.close, a.currency)
+    return { fmt }
   },
   template: `<template v-if="asset?.price">
-    <div class="text-sm font-bold text-white mt-2 tabular-nums">{{ fmtPrice(asset.price.close, asset.currency) }}</div>
+    <div class="text-sm font-bold text-white mt-2 tabular-nums">{{ fmt(asset) }}</div>
     <div v-if="asset.price.change_pct != null" class="text-[10px] mt-0.5 tabular-nums font-medium"
          :class="asset.price.change_pct >= 0 ? 'text-emerald-400' : 'text-red-400'">
       {{ asset.price.change_pct >= 0 ? '▲' : '▼' }} {{ Math.abs(asset.price.change_pct).toFixed(2) }}%
@@ -537,7 +538,12 @@ function fmtChinaTicker(symbol: string, exchange: string): string {
   return `${symbol}.${suffix}`
 }
 
-const { fmtPrice } = useCurrency()
+const { fmtPrice, fmtFxRate } = useCurrency()
+
+function fmtAssetPrice(a: any): string {
+  if (!a.price) return '—'
+  return a.asset_type === 'fx' ? fmtFxRate(a.price.close) : fmtPrice(a.price.close, a.currency)
+}
 
 // ── Terminal helpers ───────────────────────────────────────────────────────────
 
