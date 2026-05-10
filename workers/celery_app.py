@@ -307,7 +307,7 @@ app.conf.update(
 
         # FRED macro series — yield curve, CPI, M2, jobless claims, mortgage — daily 6:30am
         'fred-rates-daily-630am': {
-            'task': 'fred_rates.fetch_fred_rates',
+            'task': 'fred_rates.fetch_all',
             'schedule': crontab(hour=6, minute=30),
         },
 
