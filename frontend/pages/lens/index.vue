@@ -25,16 +25,31 @@
       <div class="bg-[#111827] border border-[#1f2937] rounded-2xl p-6">
         <div class="text-xs text-emerald-500 font-bold uppercase tracking-widest mb-4">Pre-Trade Analysis · Stocks</div>
 
-        <div class="mb-4">
-          <label class="text-xs text-gray-500 mb-1.5 block">Ticker symbol</label>
+        <div class="mb-4 relative" ref="stockDropdownRef">
+          <label class="text-xs text-gray-500 mb-1.5 block">Company name or ticker</label>
           <input
             v-model="stockInput"
-            @keydown.enter="analyzeStock"
+            @input="onStockInput"
+            @keydown.enter="pickFirstOrAnalyze"
+            @keydown.escape="closeStockDropdown"
+            @focus="if (stockSuggestions.length) showStockDropdown = true"
             type="text"
-            :placeholder="$t('lens.inputs.stockPlaceholder')"
-            class="w-full bg-[#0d1520] border border-[#1f2937] rounded-xl px-4 py-3 text-white text-sm placeholder-gray-700 focus:outline-none focus:border-emerald-700 font-mono uppercase tracking-wider"
+            placeholder="Apple, NVDA, Microsoft..."
+            class="w-full bg-[#0d1520] border border-[#1f2937] rounded-xl px-4 py-3 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-emerald-700 font-mono uppercase tracking-wider"
             autocomplete="off"
           />
+          <!-- Autocomplete dropdown -->
+          <div v-if="showStockDropdown && stockSuggestions.length"
+            class="absolute left-0 right-0 top-full mt-1 bg-[#0d1520] border border-[#1f2937] rounded-xl overflow-hidden z-50 shadow-xl">
+            <button
+              v-for="s in stockSuggestions" :key="s.symbol"
+              @click="selectStock(s)"
+              class="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-[#111827] transition-colors text-left">
+              <span class="font-mono font-bold text-emerald-400 text-sm w-16 shrink-0">{{ s.symbol }}</span>
+              <span class="text-gray-300 text-sm truncate">{{ s.name }}</span>
+              <span v-if="s.sector" class="text-gray-600 text-xs ml-auto shrink-0">{{ s.sector }}</span>
+            </button>
+          </div>
         </div>
 
         <div class="grid grid-cols-2 gap-3 mb-4">
@@ -150,6 +165,7 @@
 <script setup lang="ts">
 const { t } = useI18n()
 const router = useRouter()
+const { get } = useApi()
 
 const TABS = [
   { key: 'stocks',      label: t('lens.tabs.stocks'),      soon: false },
@@ -164,9 +180,67 @@ const forexInput = ref('')
 const sizeInput  = ref<number | null>(null)
 const direction  = ref<'long' | 'short'>('long')
 
+// Stock search autocomplete
+const stockSuggestions = ref<Array<{symbol: string; name: string; sector: string | null}>>([])
+const showStockDropdown = ref(false)
+const stockDropdownRef = ref<HTMLElement | null>(null)
+let _searchTimer: ReturnType<typeof setTimeout> | null = null
+let _selectedTicker = ref('')  // track when user picked from dropdown
+
+function onStockInput() {
+  _selectedTicker.value = ''
+  const q = stockInput.value.trim()
+  if (q.length < 2) {
+    stockSuggestions.value = []
+    showStockDropdown.value = false
+    return
+  }
+  if (_searchTimer) clearTimeout(_searchTimer)
+  _searchTimer = setTimeout(async () => {
+    try {
+      const res = await get(`/search?q=${encodeURIComponent(q)}`)
+      const assets = (res?.assets || []).filter((a: any) => a.asset_type === 'stock').slice(0, 6)
+      stockSuggestions.value = assets
+      showStockDropdown.value = assets.length > 0
+    } catch {
+      stockSuggestions.value = []
+      showStockDropdown.value = false
+    }
+  }, 220)
+}
+
+function selectStock(s: {symbol: string; name: string}) {
+  _selectedTicker.value = s.symbol
+  stockInput.value = s.symbol
+  showStockDropdown.value = false
+  stockSuggestions.value = []
+}
+
+function closeStockDropdown() {
+  showStockDropdown.value = false
+}
+
+function pickFirstOrAnalyze() {
+  if (showStockDropdown.value && stockSuggestions.value.length) {
+    selectStock(stockSuggestions.value[0])
+  } else {
+    analyzeStock()
+  }
+}
+
+// Close dropdown on outside click
+if (import.meta.client) {
+  document.addEventListener('click', (e) => {
+    if (stockDropdownRef.value && !stockDropdownRef.value.contains(e.target as Node)) {
+      showStockDropdown.value = false
+    }
+  })
+}
+
 function analyzeStock() {
-  const ticker = stockInput.value.trim().toUpperCase()
+  const ticker = (_selectedTicker.value || stockInput.value).trim().toUpperCase()
   if (!ticker) return
+  showStockDropdown.value = false
   const params: Record<string, string> = { direction: direction.value }
   if (sizeInput.value) params.size = String(sizeInput.value)
   router.push({ path: `/lens/stocks/${ticker.toLowerCase()}`, query: params })
