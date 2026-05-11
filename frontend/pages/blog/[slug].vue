@@ -13,12 +13,16 @@
     <div v-else-if="error || !post" class="text-red-400 text-sm">Article not found.</div>
 
     <template v-else>
-      <!-- Cover image -->
-      <div v-if="post.cover_image_url" class="mb-6 rounded-xl overflow-hidden">
+      <!-- Cover image — LCP element: eager, high-priority, explicit dimensions to prevent CLS -->
+      <div v-if="post.cover_image_url" class="mb-6 rounded-xl overflow-hidden aspect-[1200/630]">
         <img
           :src="post.cover_image_url"
           :alt="post.title"
-          class="w-full h-64 sm:h-80 object-cover"
+          class="w-full h-full object-cover"
+          fetchpriority="high"
+          loading="eager"
+          width="1200"
+          height="630"
         />
       </div>
 
@@ -308,7 +312,13 @@ useSeoMeta({
 })
 
 useHead({
-  link: [{ rel: 'canonical', href: `https://metricshour.com/blog/${slug}/` }],
+  link: [
+    { rel: 'canonical', href: `https://metricshour.com/blog/${slug}/` },
+    // Preload cover image so the browser fetches it in parallel with JS, not after parsing the <img> tag
+    ...(post.value?.cover_image_url
+      ? [{ rel: 'preload', as: 'image', href: post.value.cover_image_url, fetchpriority: 'high' }]
+      : []),
+  ],
   script: [
     {
       type: 'application/ld+json',

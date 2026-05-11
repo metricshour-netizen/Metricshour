@@ -113,9 +113,11 @@
         </div>
       </div>
 
-      <!-- Page Summary -->
-      <div v-if="pageSummary?.summary" class="page-summary bg-[#111827] border border-[#1f2937] rounded-lg p-4 mb-3 text-sm text-gray-300 leading-relaxed">
-        {{ pageSummary.summary }}
+      <!-- Page Summary — min-height reserves space during client-side load to prevent CLS -->
+      <div class="mb-3" :style="pageSummary === undefined ? 'min-height:4.5rem' : ''">
+        <div v-if="pageSummary?.summary" class="page-summary bg-[#111827] border border-[#1f2937] rounded-lg p-4 text-sm text-gray-300 leading-relaxed">
+          {{ pageSummary.summary }}
+        </div>
       </div>
 
       <!-- Daily Trade Insights -->
@@ -600,7 +602,7 @@ useHead(computed(() => ({
         url: `https://metricshour.com/trade/${data.value?.canonical_pair ?? pair}/`,
         description: `${data.value.exporter.name} and ${data.value.importer.name} bilateral trade flows, top products, and GDP dependency. Source: UN Comtrade.`,
         datePublished: '2026-03-01',
-        dateModified: new Date().toISOString().slice(0, 10),
+        dateModified: td.value?.year ? `${td.value.year}-01-01` : '2026-01-01',
         mainEntity: {
           '@type': 'ItemList',
           itemListElement: [
