@@ -32,7 +32,7 @@
             @input="onStockInput"
             @keydown.enter="pickFirstOrAnalyze"
             @keydown.escape="closeStockDropdown"
-            @focus="if (stockSuggestions.length) showStockDropdown = true"
+            @focus="onStockFocus"
             type="text"
             placeholder="Apple, NVDA, Microsoft..."
             class="w-full bg-[#0d1520] border border-[#1f2937] rounded-xl px-4 py-3 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-emerald-700 font-mono uppercase tracking-wider"
@@ -228,14 +228,18 @@ function pickFirstOrAnalyze() {
   }
 }
 
+function onStockFocus() {
+  if (stockSuggestions.value.length) showStockDropdown.value = true
+}
+
 // Close dropdown on outside click
-if (import.meta.client) {
+onMounted(() => {
   document.addEventListener('click', (e) => {
     if (stockDropdownRef.value && !stockDropdownRef.value.contains(e.target as Node)) {
       showStockDropdown.value = false
     }
   })
-}
+})
 
 function analyzeStock() {
   const ticker = (_selectedTicker.value || stockInput.value).trim().toUpperCase()
