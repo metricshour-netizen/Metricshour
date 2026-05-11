@@ -200,5 +200,31 @@ useSeoMeta({
   description: `Lens forex analysis for ${pair}: macro drivers, rate differential, cost estimate. Risk: ${lensData.value?.risk?.level || 'loading'}.`,
   robots: 'index, follow',
 })
-useHead({ link: [{ rel: 'canonical', href: `https://metricshour.com/lens/forex/${pair.toLowerCase()}/` }] })
+useHead({
+  link: [{ rel: 'canonical', href: `https://metricshour.com/lens/forex/${pair.toLowerCase()}/` }],
+  script: [{
+    type: 'application/ld+json',
+    innerHTML: JSON.stringify({
+      '@context': 'https://schema.org',
+      '@graph': [
+        {
+          '@type': 'WebPage',
+          '@id': `https://metricshour.com/lens/forex/${pair.toLowerCase()}/`,
+          url: `https://metricshour.com/lens/forex/${pair.toLowerCase()}/`,
+          name: `${pair} Pre-Trade Analysis — MetricsHour Lens`,
+          description: `Macro risk drivers, interest rate differential and trade exposure for ${pair}. Risk: ${lensData.value?.risk?.level || 'see page'}.`,
+          isPartOf: { '@type': 'WebSite', name: 'MetricsHour', url: 'https://metricshour.com' },
+        },
+        {
+          '@type': 'BreadcrumbList',
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://metricshour.com' },
+            { '@type': 'ListItem', position: 2, name: 'Lens', item: 'https://metricshour.com/lens/' },
+            { '@type': 'ListItem', position: 3, name: pair, item: `https://metricshour.com/lens/forex/${pair.toLowerCase()}/` },
+          ],
+        },
+      ],
+    }),
+  }],
+})
 </script>

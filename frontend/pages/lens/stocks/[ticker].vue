@@ -245,5 +245,37 @@ useSeoMeta({
   description: `Lens analysis for ${_name}: geographic risk, macro drivers, cost estimate. Risk level: ${lensData.value?.risk?.level || 'loading'}.`,
   robots: computed(() => _hasLensContent.value ? 'index, follow' : 'noindex, follow'),
 })
-useHead({ link: [{ rel: 'canonical', href: `https://metricshour.com/lens/stocks/${ticker.toLowerCase()}/` }] })
+useHead({
+  link: [{ rel: 'canonical', href: `https://metricshour.com/lens/stocks/${ticker.toLowerCase()}/` }],
+  script: [{
+    type: 'application/ld+json',
+    innerHTML: JSON.stringify({
+      '@context': 'https://schema.org',
+      '@graph': [
+        {
+          '@type': 'WebPage',
+          '@id': `https://metricshour.com/lens/stocks/${ticker.toLowerCase()}/`,
+          url: `https://metricshour.com/lens/stocks/${ticker.toLowerCase()}/`,
+          name: `${ticker} Pre-Trade Risk Analysis — MetricsHour Lens`,
+          description: `Geographic revenue exposure, macro risk drivers and trade sensitivity for ${_name}. Risk level: ${lensData.value?.risk?.level || 'see page'}.`,
+          isPartOf: { '@type': 'WebSite', name: 'MetricsHour', url: 'https://metricshour.com' },
+          about: {
+            '@type': 'Corporation',
+            name: _name,
+            tickerSymbol: ticker,
+            url: `https://metricshour.com/stocks/${ticker.toLowerCase()}/`,
+          },
+        },
+        {
+          '@type': 'BreadcrumbList',
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://metricshour.com' },
+            { '@type': 'ListItem', position: 2, name: 'Lens', item: 'https://metricshour.com/lens/' },
+            { '@type': 'ListItem', position: 3, name: ticker, item: `https://metricshour.com/lens/stocks/${ticker.toLowerCase()}/` },
+          ],
+        },
+      ],
+    }),
+  }],
+})
 </script>
