@@ -294,7 +294,7 @@ def get_fx_rates(db: Session = Depends(get_db)):
                     rates[quote] = round(1.0 / close, 8)
 
     result = {'rates': rates, 'base': 'USD'}
-    cache_set('fx_rates', result, ttl=900)  # 15-min cache
+    cache_set('fx_rates', result, ttl_seconds=900)
     return result
 
 

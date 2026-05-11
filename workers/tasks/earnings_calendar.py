@@ -12,7 +12,7 @@ import os
 from datetime import date, timedelta
 
 import requests
-from sqlalchemy import select, update
+from sqlalchemy import select, update, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from celery_app import app
@@ -158,6 +158,25 @@ def fetch_earnings_dates(self):
 
         db.commit()
         log.info("Earnings calendar: upserted %d rows for %d stocks", total, len(assets))
+
+        # Dedup: yfinance sometimes returns 2 dates for the same earnings period.
+        # For each symbol, if two upcoming entries are within 14 days of each other,
+        # keep the one with the higher EPS estimate; break ties by keeping the later date.
+        dedup_deleted = db.execute(text("""
+            DELETE FROM earnings_events e1
+            USING earnings_events e2
+            WHERE e1.symbol = e2.symbol
+              AND e1.report_date >= CURRENT_DATE
+              AND e2.report_date >= CURRENT_DATE
+              AND e2.report_date - e1.report_date BETWEEN 1 AND 14
+              AND (
+                    e1.eps_estimate < e2.eps_estimate
+                    OR (e1.eps_estimate IS NOT DISTINCT FROM e2.eps_estimate AND e1.report_date < e2.report_date)
+              )
+        """))
+        if dedup_deleted.rowcount:
+            log.info("Earnings calendar: removed %d duplicate entries", dedup_deleted.rowcount)
+        db.commit()
 
         # Backfill revenue_actual from Tiingo for rows that have eps_actual but no revenue
         if TIINGO_KEY:

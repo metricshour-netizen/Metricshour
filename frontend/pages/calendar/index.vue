@@ -109,8 +109,8 @@
                     {{ impactDot(evt.impact) }} {{ $t(`calendar.impact.${evt.impact}`) }}
                   </span>
                 </td>
-                <td class="px-4 py-3 text-right text-gray-500 font-mono text-xs">{{ evt.previous_value || '—' }}</td>
-                <td class="px-4 py-3 text-right text-gray-400 font-mono text-xs">{{ evt.forecast_value || '—' }}</td>
+                <td class="px-4 py-3 text-right text-gray-500 font-mono text-xs">{{ evt.previous_value ?? '' }}</td>
+                <td class="px-4 py-3 text-right text-gray-400 font-mono text-xs">{{ evt.forecast_value ?? '' }}</td>
                 <td class="px-4 py-3 text-right font-mono text-xs font-bold"
                   :class="evt.actual_value ? 'text-emerald-400' : 'text-gray-700'">
                   {{ evt.actual_value || '—' }}
@@ -145,8 +145,8 @@
               </span>
             </div>
             <div class="flex gap-4 text-xs font-mono text-gray-600 mt-2">
-              <span>Prev: <span class="text-gray-400">{{ evt.previous_value || '—' }}</span></span>
-              <span>Fcst: <span class="text-gray-400">{{ evt.forecast_value || '—' }}</span></span>
+              <span v-if="evt.previous_value">Prev: <span class="text-gray-400">{{ evt.previous_value }}</span></span>
+              <span v-if="evt.forecast_value">Fcst: <span class="text-gray-400">{{ evt.forecast_value }}</span></span>
               <span v-if="evt.actual_value">Act: <span class="text-emerald-400 font-bold">{{ evt.actual_value }}</span></span>
             </div>
           </div>
@@ -191,15 +191,15 @@ function getDateRange() {
     const start = new Date(now)
     start.setHours(0, 0, 0, 0)
     const end = new Date(start)
-    end.setDate(end.getDate() + 7)
+    end.setDate(end.getDate() + 14)
     return { start: start.toISOString(), end: end.toISOString() }
   }
   if (dateRange.value === 'next') {
     const start = new Date(now)
-    start.setDate(start.getDate() + 7)
+    start.setDate(start.getDate() + 14)
     start.setHours(0, 0, 0, 0)
     const end = new Date(start)
-    end.setDate(end.getDate() + 7)
+    end.setDate(end.getDate() + 14)
     return { start: start.toISOString(), end: end.toISOString() }
   }
   // month

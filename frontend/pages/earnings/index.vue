@@ -71,7 +71,6 @@
                   </td>
                   <td class="px-4 py-3 text-right text-xs tabular-nums">
                     <span v-if="ev.revenue_estimate != null" class="text-gray-400">{{ fmtRevenue(ev.revenue_estimate) }}</span>
-                    <span v-else class="text-gray-700 text-[10px]">{{ ev.period ?? 'N/A' }}</span>
                   </td>
                   <td class="px-4 py-3 text-right text-gray-600 text-xs tabular-nums hidden md:table-cell">
                     {{ fmtMktCap(ev.market_cap_usd) }}
@@ -101,17 +100,17 @@
                 <span v-if="ev.sector" class="text-[10px] text-gray-600">{{ ev.sector }}</span>
                 <span v-if="ev.market_cap_usd" class="text-[10px] text-gray-700 ml-auto">{{ fmtMktCap(ev.market_cap_usd) }}</span>
               </div>
-              <div class="grid grid-cols-2 gap-2">
+              <div class="grid gap-2" :class="ev.revenue_estimate != null ? 'grid-cols-2' : 'grid-cols-1'">
                 <div class="bg-[#111827] rounded-lg px-2.5 py-1.5">
                   <div class="text-[10px] text-gray-600 uppercase tracking-wide mb-0.5">EPS Est.</div>
                   <div class="text-sm font-bold tabular-nums" :class="ev.eps_estimate != null ? 'text-white' : 'text-gray-700'">
                     {{ ev.eps_estimate != null ? `$${ev.eps_estimate.toFixed(2)}` : '—' }}
                   </div>
                 </div>
-                <div class="bg-[#111827] rounded-lg px-2.5 py-1.5">
+                <div v-if="ev.revenue_estimate != null" class="bg-[#111827] rounded-lg px-2.5 py-1.5">
                   <div class="text-[10px] text-gray-600 uppercase tracking-wide mb-0.5">Rev. Est.</div>
-                  <div class="text-sm font-bold tabular-nums" :class="ev.revenue_estimate != null ? 'text-white' : 'text-gray-700'">
-                    {{ ev.revenue_estimate != null ? fmtRevenue(ev.revenue_estimate) : '—' }}
+                  <div class="text-sm font-bold tabular-nums text-white">
+                    {{ fmtRevenue(ev.revenue_estimate) }}
                   </div>
                 </div>
               </div>
