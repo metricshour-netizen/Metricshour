@@ -198,7 +198,7 @@ function onStockInput() {
   if (_searchTimer) clearTimeout(_searchTimer)
   _searchTimer = setTimeout(async () => {
     try {
-      const res = await get(`/search?q=${encodeURIComponent(q)}`)
+      const res = await get(`/api/search`, { q })
       const assets = (res?.assets || []).filter((a: any) => a.asset_type === 'stock').slice(0, 6)
       stockSuggestions.value = assets
       showStockDropdown.value = assets.length > 0
