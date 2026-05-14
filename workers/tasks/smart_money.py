@@ -152,9 +152,11 @@ def _parse_13f_xml(xml_text: str) -> list[dict]:
     """
     raw: dict[str, dict] = {}   # keyed by cusip (or company name if no cusip)
     try:
-        # Strip all namespace declarations and namespace-prefixed attributes
-        # to avoid "unbound prefix" errors in ElementTree
+        # Normalise namespace variants in 13F XML:
+        # 1. Strip all namespace declarations and prefixed attributes
         xml_clean = re.sub(r'\s+(?:xmlns(?::\w+)?|\w+:\w+)="[^"]*"', '', xml_text)
+        # 2. Strip namespace prefixes from element names (<ns1:foo> → <foo>, </ns1:foo> → </foo>)
+        xml_clean = re.sub(r'<(/?)(\w+):(\w)', r'<\1\3', xml_clean)
         root = ET.fromstring(xml_clean)
 
         for info in root.iter("infoTable"):
