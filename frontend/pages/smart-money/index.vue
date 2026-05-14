@@ -42,14 +42,19 @@
 
             <!-- Top holdings tickers -->
             <div v-if="inv.top_holdings?.length" class="flex gap-1.5 mb-3 flex-wrap">
-              <span v-for="t in inv.top_holdings" :key="t"
+              <span v-for="ticker in inv.top_holdings" :key="ticker"
                 class="text-[10px] font-mono font-bold text-emerald-600 bg-[#0d1520] border border-[#1f2937] px-2 py-0.5 rounded">
-                {{ t }}
+                {{ ticker }}
               </span>
+            </div>
+            <!-- Placeholder tickers when no data yet -->
+            <div v-else class="flex gap-1.5 mb-3">
+              <span v-for="i in 3" :key="i" class="h-4 w-10 bg-[#1f2937] rounded animate-pulse"/>
             </div>
 
             <div class="flex items-center justify-between text-[10px] text-gray-600 mt-auto">
-              <span v-if="inv.holding_count">{{ inv.holding_count }} holdings</span>
+              <span v-if="inv.holding_count">{{ $t('smartMoney.holdingsCount', { count: inv.holding_count }) }}</span>
+              <span v-else class="text-gray-700">{{ $t('smartMoney.noData') }}</span>
               <span v-if="inv.latest_quarter" class="font-mono">{{ inv.latest_quarter }}</span>
             </div>
             <div class="mt-3 text-xs text-emerald-600 group-hover:text-emerald-400 transition-colors font-medium flex items-center gap-1">
@@ -61,7 +66,7 @@
 
       <!-- Tier 2 — Featured Funds -->
       <div class="mb-10">
-        <h2 class="text-sm font-bold text-white uppercase tracking-widest mb-4">Featured Funds</h2>
+        <h2 class="text-sm font-bold text-white uppercase tracking-widest mb-4">{{ $t('smartMoney.featuredFunds') }}</h2>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <NuxtLink
             v-for="inv in tier2"
@@ -79,13 +84,16 @@
               </span>
             </div>
             <div v-if="inv.top_holdings?.length" class="flex gap-1 flex-wrap mb-2">
-              <span v-for="t in inv.top_holdings" :key="t"
+              <span v-for="ticker in inv.top_holdings" :key="ticker"
                 class="text-[10px] font-mono text-emerald-700 bg-emerald-900/10 px-1.5 py-0.5 rounded">
-                {{ t }}
+                {{ ticker }}
               </span>
             </div>
+            <div v-else class="flex gap-1 mb-2">
+              <span v-for="i in 3" :key="i" class="h-3.5 w-9 bg-[#1f2937] rounded animate-pulse"/>
+            </div>
             <div class="text-[10px] text-emerald-700 group-hover:text-emerald-500 transition-colors font-medium mt-1">
-              View portfolio →
+              {{ $t('smartMoney.portfolio.viewPortfolio') }} →
             </div>
           </NuxtLink>
         </div>
@@ -93,18 +101,20 @@
 
       <!-- About 13F filings -->
       <div class="bg-[#0d1520] border border-[#1f2937] rounded-xl p-5 mt-6">
-        <div class="text-[10px] font-mono font-bold text-gray-600 uppercase tracking-widest mb-2">About 13F Filings</div>
+        <div class="text-[10px] font-mono font-bold text-gray-600 uppercase tracking-widest mb-2">{{ $t('smartMoney.about.title') }}</div>
         <p class="text-xs text-gray-500 leading-relaxed max-w-2xl">
-          SEC Form 13F is a quarterly filing required of institutional investment managers with more than $100 million in assets.
-          Filings are due 45 days after each quarter end (mid-Feb, mid-May, mid-Aug, mid-Nov).
-          Data source: <a href="https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=13F" target="_blank" rel="noopener noreferrer" class="text-emerald-700 hover:text-emerald-500 underline">SEC EDGAR</a>.
+          {{ $t('smartMoney.about.body') }}
+          {{ $t('smartMoney.statsBar.updated') }}.
+          <span>{{ $t('smartMoney.about.source') }}:
+            <a href="https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=13F" target="_blank" rel="noopener noreferrer" class="text-emerald-700 hover:text-emerald-500 underline">SEC EDGAR</a>.
+          </span>
         </p>
       </div>
     </template>
 
     <div v-else-if="!pending" class="text-center py-16 text-gray-600">
       <p class="text-sm">{{ $t('smartMoney.noData') }}</p>
-      <p class="text-xs mt-2 text-gray-700">13F data is fetched quarterly from SEC EDGAR.</p>
+      <p class="text-xs mt-2 text-gray-700">{{ $t('smartMoney.about.noFilingData') }}</p>
     </div>
   </main>
 </template>

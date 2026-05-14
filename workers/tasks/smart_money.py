@@ -33,21 +33,21 @@ HEADERS = {
 # Tier 2 — featured funds
 INVESTOR_SEED = [
     # slug, name, fund_name, cik, tier, description
-    ("warren-buffett",        "Warren Buffett",        "Berkshire Hathaway",      "0001067983", 1, "Chairman & CEO of Berkshire Hathaway, legendary value investor"),
-    ("bill-ackman",           "Bill Ackman",           "Pershing Square Capital", "0001336528", 1, "Activist investor, founder of Pershing Square"),
-    ("michael-burry",         "Michael Burry",         "Scion Asset Management",  "0001649339", 1, "Famous for shorting the housing market in 2008"),
-    ("ray-dalio",             "Ray Dalio",             "Bridgewater Associates",  "0001350694", 1, "Founder of Bridgewater, creator of All Weather portfolio"),
-    ("stanley-druckenmiller", "Stanley Druckenmiller", "Duquesne Family Office",  "0001536411", 1, "Former Soros CIO, legendary macro trader"),
-    ("george-soros",          "George Soros",          "Soros Fund Management",   "0001029159", 1, "Pioneer of macro investing, broke the Bank of England"),
-    ("david-tepper",          "David Tepper",          "Appaloosa Management",    "0001279910", 1, "Distressed debt specialist turned broad equity investor"),
-    ("carl-icahn",            "Carl Icahn",            "Icahn Capital",           "0000813672", 1, "Prominent activist investor"),
-    ("dan-loeb",              "Dan Loeb",              "Third Point LLC",         "0001040273", 1, "Activist investor and hedge fund manager"),
-    ("david-einhorn",         "David Einhorn",         "Greenlight Capital",      "0001079114", 1, "Value investor known for shorting Lehman Brothers"),
-    ("cathie-wood",           "Cathie Wood",           "ARK Investment Management","0001697248", 2, "Disruptive innovation fund manager"),
-    ("tiger-global",          "Tiger Global",          "Tiger Global Management", "0001167483", 2, "Growth equity and hedge fund manager"),
-    ("coatue-management",     "Coatue Management",     "Coatue Management",       "0001336766", 2, "Long/short technology-focused hedge fund"),
-    ("point72",               "Steve Cohen",           "Point72 Asset Management","0001603466", 2, "Multi-strategy hedge fund manager"),
-    ("de-shaw",               "DE Shaw",               "DE Shaw & Co",            "0001009362", 2, "Quantitative and systematic investment firm"),
+    ("warren-buffett",        "Warren Buffett",        "Berkshire Hathaway",       "0001067983", 1, "Chairman & CEO of Berkshire Hathaway, legendary value investor"),
+    ("bill-ackman",           "Bill Ackman",           "Pershing Square Capital",  "0001336528", 1, "Activist investor, founder of Pershing Square"),
+    ("michael-burry",         "Michael Burry",         "Scion Asset Management",   "0001649339", 1, "Famous for shorting the housing market in 2008"),
+    ("ray-dalio",             "Ray Dalio",             "Bridgewater Associates",   "0001350694", 1, "Founder of Bridgewater, creator of All Weather portfolio"),
+    ("stanley-druckenmiller", "Stanley Druckenmiller", "Duquesne Family Office",   "0001536411", 1, "Former Soros CIO, legendary macro trader"),
+    ("george-soros",          "George Soros",          "Soros Fund Management",    "0001029160", 1, "Pioneer of macro investing, broke the Bank of England"),
+    ("david-tepper",          "David Tepper",          "Appaloosa LP",             "0001656456", 1, "Distressed debt specialist turned broad equity investor"),
+    ("carl-icahn",            "Carl Icahn",            "Icahn Capital LP",         "0001412093", 1, "Prominent activist investor"),
+    ("dan-loeb",              "Dan Loeb",              "Third Point LLC",          "0001040273", 1, "Activist investor and hedge fund manager"),
+    ("david-einhorn",         "David Einhorn",         "Greenlight Capital",       "0001079114", 1, "Value investor known for shorting Lehman Brothers"),
+    ("cathie-wood",           "Cathie Wood",           "ARK Investment Management","0001697748", 2, "Disruptive innovation fund manager"),
+    ("tiger-global",          "Tiger Global",          "Tiger Global Management",  "0001167483", 2, "Growth equity and hedge fund manager"),
+    ("coatue-management",     "Coatue Management",     "Coatue Management LLC",    "0001135730", 2, "Long/short technology-focused hedge fund"),
+    ("point72",               "Steve Cohen",           "Point72 Asset Management", "0001603466", 2, "Multi-strategy hedge fund manager"),
+    ("de-shaw",               "DE Shaw",               "D.E. Shaw & Co., Inc.",    "0001009207", 2, "Quantitative and systematic investment firm"),
 ]
 
 

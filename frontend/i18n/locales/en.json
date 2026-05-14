@@ -263,13 +263,16 @@
       "updated": "Updated quarterly via SEC 13F"
     },
     "featuredTitle": "Featured Investors",
+    "featuredFunds": "Featured Funds",
     "latestActivity": "Recent 13F Changes",
     "nextFiling": "Next 13F Deadline",
+    "holdingsCount": "{count} holdings",
     "portfolio": {
-      "value": "Portfolio value",
+      "value": "Portfolio Value",
       "holdings": "Holdings",
       "lastFiling": "Last filing",
-      "viewPortfolio": "View Portfolio"
+      "viewPortfolio": "View Portfolio",
+      "latest": "Latest: {quarter}"
     },
     "tabs": {
       "overview": "Holdings",
@@ -284,17 +287,41 @@
       "decreased": "Decreased",
       "sold": "Exited"
     },
+    "noChanges": "No {type} this quarter.",
     "geoRisk": {
       "title": "Portfolio Geographic Exposure",
       "subtitle": "Weighted revenue exposure across all holdings",
       "riskScore": "Portfolio Risk Score",
-      "vsMarket": "vs S&P 500 avg"
+      "vsMarket": "vs S&P 500 avg",
+      "noData": "Geo risk data requires holdings with EDGAR revenue data."
     },
     "holders": {
       "title": "Smart Money — Who Holds {ticker}",
       "viewAll": "{count} institutional investors hold {ticker} — view all"
     },
+    "about": {
+      "title": "About 13F Filings",
+      "body": "SEC Form 13F is a quarterly filing required of institutional investment managers with more than $100 million in assets. Filings are due 45 days after each quarter end (mid-Feb, mid-May, mid-Aug, mid-Nov).",
+      "source": "SEC EDGAR",
+      "noFilingData": "13F data is fetched quarterly from SEC EDGAR."
+    },
+    "nav": {
+      "back": "← Smart Money"
+    },
+    "table": {
+      "rank": "#",
+      "ticker": "Ticker",
+      "company": "Company",
+      "shares": "Shares",
+      "value": "Value",
+      "portfolioPct": "% Portfolio",
+      "change": "Change"
+    },
+    "badge": "Smart Money · 13F Filing",
     "noData": "No filing data available yet.",
+    "noHolderData": "Filing data will populate as 13F reports are parsed.",
+    "notFound": "Investor not found.",
+    "backLink": "← Back",
     "noHolders": "No institutional investors tracked hold this stock yet.",
     "change": {
       "new": "New",

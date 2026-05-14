@@ -1,6 +1,8 @@
 <template>
   <main class="max-w-7xl mx-auto px-4 py-8">
-    <NuxtLink to="/smart-money/" class="text-gray-600 text-xs hover:text-gray-400 transition-colors mb-5 inline-flex items-center gap-1">← Smart Money</NuxtLink>
+    <NuxtLink to="/smart-money/" class="text-gray-600 text-xs hover:text-gray-400 transition-colors mb-5 inline-flex items-center gap-1">
+      {{ $t('smartMoney.nav.back') }}
+    </NuxtLink>
 
     <!-- Loading -->
     <div v-if="pending" class="space-y-4">
@@ -10,8 +12,8 @@
     </div>
 
     <div v-else-if="!data" class="text-center py-16 text-gray-600">
-      <p class="text-sm">Investor not found.</p>
-      <NuxtLink to="/smart-money/" class="text-emerald-500 text-xs mt-2 inline-block">← Back</NuxtLink>
+      <p class="text-sm">{{ $t('smartMoney.notFound') }}</p>
+      <NuxtLink to="/smart-money/" class="text-emerald-500 text-xs mt-2 inline-block">{{ $t('smartMoney.backLink') }}</NuxtLink>
     </div>
 
     <template v-else>
@@ -19,15 +21,15 @@
       <div class="bg-[#0d1520] border border-[#1f2937] rounded-2xl p-6 mb-5">
         <div class="flex items-start justify-between gap-4 flex-wrap">
           <div>
-            <div class="text-[10px] font-mono font-bold text-emerald-500 uppercase tracking-widest mb-1">Smart Money · 13F Filing</div>
+            <div class="text-[10px] font-mono font-bold text-emerald-500 uppercase tracking-widest mb-1">{{ $t('smartMoney.badge') }}</div>
             <h1 class="text-xl sm:text-2xl font-extrabold text-white mb-1">{{ data.name }}</h1>
             <div class="text-sm text-gray-500 mb-3">{{ data.fund_name }}</div>
             <p v-if="data.description" class="text-xs text-gray-600 max-w-xl">{{ data.description }}</p>
           </div>
           <div class="text-right">
             <div v-if="data.total_value_usd" class="text-2xl font-extrabold font-mono text-white tabular-nums">${{ fmtB(data.total_value_usd) }}</div>
-            <div v-if="data.total_value_usd" class="text-[10px] text-gray-600 uppercase tracking-wider">Portfolio Value</div>
-            <div v-if="data.holding_count" class="text-sm text-gray-400 mt-1">{{ data.holding_count }} holdings</div>
+            <div v-if="data.total_value_usd" class="text-[10px] text-gray-600 uppercase tracking-wider">{{ $t('smartMoney.portfolio.value') }}</div>
+            <div v-if="data.holding_count" class="text-sm text-gray-400 mt-1">{{ $t('smartMoney.holdingsCount', { count: data.holding_count }) }}</div>
           </div>
         </div>
 
@@ -45,7 +47,7 @@
           </button>
         </div>
         <div v-else-if="data.latest_quarter" class="mt-3 text-xs font-mono text-gray-600">
-          Latest: {{ data.latest_quarter }}
+          {{ $t('smartMoney.portfolio.latest', { quarter: data.latest_quarter }) }}
         </div>
       </div>
 
@@ -64,20 +66,22 @@
 
       <!-- TAB: Holdings -->
       <template v-if="activeTab === 'holdings'">
-        <div v-if="!data.holdings?.length" class="text-center py-12 text-gray-600 text-sm">{{ $t('smartMoney.noData') }}</div>
+        <div v-if="!data.holdings?.length" class="text-center py-12 text-gray-600 text-sm">
+          {{ $t('smartMoney.noHolderData') }}
+        </div>
 
         <!-- Desktop table -->
         <div v-else class="hidden sm:block bg-[#0d1520] border border-[#1f2937] rounded-xl overflow-hidden">
           <table class="w-full text-sm">
             <thead class="bg-[#111827] text-[10px] text-gray-500 uppercase tracking-widest">
               <tr>
-                <th class="px-4 py-2.5 text-left w-8">#</th>
-                <th class="px-4 py-2.5 text-left">Ticker</th>
-                <th class="px-4 py-2.5 text-left hidden md:table-cell">Company</th>
-                <th class="px-4 py-2.5 text-right">Shares</th>
-                <th class="px-4 py-2.5 text-right">Value</th>
-                <th class="px-4 py-2.5 text-right">% Portfolio</th>
-                <th class="px-4 py-2.5 text-right">Change</th>
+                <th class="px-4 py-2.5 text-left w-8">{{ $t('smartMoney.table.rank') }}</th>
+                <th class="px-4 py-2.5 text-left">{{ $t('smartMoney.table.ticker') }}</th>
+                <th class="px-4 py-2.5 text-left hidden md:table-cell">{{ $t('smartMoney.table.company') }}</th>
+                <th class="px-4 py-2.5 text-right">{{ $t('smartMoney.table.shares') }}</th>
+                <th class="px-4 py-2.5 text-right">{{ $t('smartMoney.table.value') }}</th>
+                <th class="px-4 py-2.5 text-right">{{ $t('smartMoney.table.portfolioPct') }}</th>
+                <th class="px-4 py-2.5 text-right">{{ $t('smartMoney.table.change') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -152,7 +156,9 @@
                 <span class="text-xs font-mono text-gray-400 shrink-0 ml-2">${{ fmtB(h.value_usd) }}</span>
               </NuxtLink>
             </div>
-            <p v-else class="text-xs text-gray-700 py-2">No {{ section.label.toLowerCase() }} this quarter.</p>
+            <p v-else class="text-xs text-gray-700 py-2">
+              {{ $t('smartMoney.noChanges', { type: section.label.toLowerCase() }) }}
+            </p>
           </div>
         </div>
       </template>
@@ -180,14 +186,14 @@
               </div>
             </div>
           </div>
-          <p v-else class="text-xs text-gray-600">Geo risk data requires holdings with EDGAR revenue data.</p>
+          <p v-else class="text-xs text-gray-600">{{ $t('smartMoney.geoRisk.noData') }}</p>
         </div>
       </template>
 
-      <!-- TAB: No data for other tabs yet -->
+      <!-- TAB: Sectors / History — placeholder until more data -->
       <template v-else>
         <div class="text-center py-12 text-gray-600 text-sm">
-          Data will appear as 13F filings are parsed.
+          {{ $t('smartMoney.noHolderData') }}
         </div>
       </template>
     </template>
@@ -212,7 +218,6 @@ const { data, pending } = await useAsyncData(
   { watch: [selectedQuarter] },
 )
 
-// Set initial quarter
 watchEffect(() => {
   if (data.value?.latest_quarter && !selectedQuarter.value) {
     selectedQuarter.value = data.value.latest_quarter
@@ -220,49 +225,20 @@ watchEffect(() => {
 })
 
 const TABS = computed(() => [
-  { key: 'holdings', label: t('smartMoney.tabs.overview'), count: data.value?.holdings?.length ?? null },
-  { key: 'changes',  label: t('smartMoney.tabs.changes'), count: null },
-  { key: 'georisk',  label: t('smartMoney.tabs.geoRisk'), count: null },
+  { key: 'holdings', label: t('smartMoney.tabs.overview'),  count: data.value?.holdings?.length ?? null },
+  { key: 'changes',  label: t('smartMoney.tabs.changes'),   count: null },
+  { key: 'georisk',  label: t('smartMoney.tabs.geoRisk'),   count: null },
 ])
 
-const CHANGE_SECTIONS = [
+const CHANGE_SECTIONS = computed(() => [
   { key: 'new',       label: t('smartMoney.changes.new'),       color: 'text-emerald-400' },
   { key: 'increased', label: t('smartMoney.changes.increased'),  color: 'text-emerald-600' },
   { key: 'decreased', label: t('smartMoney.changes.decreased'),  color: 'text-amber-500' },
   { key: 'sold',      label: t('smartMoney.changes.sold'),       color: 'text-red-500' },
-]
+])
 
-const COUNTRY_RISK: Record<string, string> = {
-  CN: '145% US tariffs — direct earnings risk',
-  RU: 'Sanctions in effect',
-  IR: 'Sanctions in effect',
-  TW: 'Geopolitical risk elevated',
-  MX: 'USMCA tariff uncertainty',
-  TR: 'Currency stress, inflation >50%',
-  KR: 'US-China trade friction exposure',
-  IN: 'Import tariff risks',
-}
-
-const COUNTRY_FLAGS: Record<string, string> = {
-  US: '🇺🇸', CN: '🇨🇳', DE: '🇩🇪', JP: '🇯🇵', GB: '🇬🇧', FR: '🇫🇷',
-  IN: '🇮🇳', BR: '🇧🇷', CA: '🇨🇦', AU: '🇦🇺', KR: '🇰🇷', MX: '🇲🇽',
-  TW: '🇹🇼', NL: '🇳🇱', CH: '🇨🇭', SE: '🇸🇪', SG: '🇸🇬', EU: '🇪🇺',
-}
-
-const COUNTRY_NAMES: Record<string, string> = {
-  US: 'United States', CN: 'China', DE: 'Germany', JP: 'Japan',
-  GB: 'United Kingdom', FR: 'France', IN: 'India', BR: 'Brazil',
-  CA: 'Canada', AU: 'Australia', KR: 'South Korea', MX: 'Mexico',
-  TW: 'Taiwan', NL: 'Netherlands', CH: 'Switzerland', SE: 'Sweden',
-  SG: 'Singapore', EU: 'Eurozone',
-}
-
-// Simplified geo exposure: count holdings by top revenue country (placeholder — real version needs asset revenue data)
-const geoExposure = computed(() => {
-  if (!data.value?.holdings?.length) return []
-  // For now show a placeholder message — actual geo aggregation requires joining with stock revenue data
-  return []
-})
+// Geo exposure is populated once asset revenue data is joined
+const geoExposure = computed(() => [])
 
 function changeLabel(type: string): string {
   const map: Record<string, string> = {
