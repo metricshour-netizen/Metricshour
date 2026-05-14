@@ -62,6 +62,7 @@ STATIC_ROUTE_TEMPLATES = [
     (f"{BASE}/earnings/",     "0.7", "daily"),
     (f"{BASE}/calendar/",     "0.8", "daily"),
     (f"{BASE}/lens/",         "0.9", "daily"),
+    (f"{BASE}/smart-money/",  "0.8", "weekly"),
     (f"{BASE}/feed/",         "0.8", "hourly"),
     (f"{BASE}/blog/",         "0.8", "weekly"),
     (f"{BASE}/faq/",          "0.6", "monthly"),
@@ -354,6 +355,14 @@ def sitemap(db: Session = Depends(get_db)):
     for symbol in sorted(lens_stock_candidates):
         lm = lastmod_map.get(("stock_insight", symbol)) or today
         entries.append(_url(f"{BASE}/lens/stocks/{symbol.lower()}/", "0.8", "daily", lm))
+
+    # Smart Money investor pages
+    from app.models.smart_money import SmartMoneyInvestor
+    sm_investors = db.execute(
+        select(SmartMoneyInvestor.slug).where(SmartMoneyInvestor.active == True)
+    ).scalars().all()
+    for inv_slug in sm_investors:
+        entries.append(_url(f"{BASE}/smart-money/{inv_slug}/", "0.7", "weekly", today))
 
     # Lens forex pages → /lens/forex/{pair}
     LENS_FX_PAIRS = [

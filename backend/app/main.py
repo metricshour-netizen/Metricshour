@@ -26,6 +26,7 @@ from app.routers import moving as moving_router
 from app.routers import compare as compare_router
 from app.routers import calendar as calendar_router
 from app.routers import lens as lens_router
+from app.routers import smart_money as smart_money_router
 
 if settings.sentry_dsn:
     sentry_sdk.init(
@@ -156,6 +157,7 @@ app.include_router(moving_router.router)  # GET /api/stocks/{ticker}/moving, GET
 app.include_router(compare_router.router, prefix="/api")  # GET /api/compare/{slug}/download
 app.include_router(calendar_router.router, prefix="/api")  # GET /api/calendar, /api/calendar/upcoming
 app.include_router(lens_router.router, prefix="/api")  # GET /api/lens/stocks/{ticker}, /api/lens/forex/{pair}
+app.include_router(smart_money_router.router, prefix="/api")  # GET /api/smartmoney/investors, /holders/{symbol}
 
 
 Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)

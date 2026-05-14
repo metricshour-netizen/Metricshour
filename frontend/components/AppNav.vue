@@ -254,15 +254,16 @@ const isMarketsActive = computed(() =>
 )
 
 const TOOLS = [
-  { to: '/lens/',        icon: '🔭', label: 'Lens',                 desc: 'Pre-trade analysis for any asset' },
-  { to: '/screener/',    icon: '🔍', label: 'Global Risk Screener', desc: 'Filter stocks by geopolitical exposure' },
-  { to: '/yield-curve/', icon: '📈', label: 'Yield Curve',          desc: 'US Treasury rates' },
-  { to: '/compare/',     icon: '⚖️', label: 'Compare Countries',    desc: 'Side-by-side macro data' },
-  { to: '/tools/',       icon: '🧰', label: 'All Tools',            desc: 'FX calculator, embed widgets & more' },
+  { to: '/lens/',          icon: '🔭', label: 'Lens',                 desc: 'Pre-trade analysis for any asset' },
+  { to: '/smart-money/',   icon: '💼', label: 'Smart Money',          desc: 'Track Buffett, Burry & top funds' },
+  { to: '/screener/',      icon: '🔍', label: 'Global Risk Screener', desc: 'Filter stocks by geopolitical exposure' },
+  { to: '/yield-curve/',   icon: '📈', label: 'Yield Curve',          desc: 'US Treasury rates' },
+  { to: '/compare/',       icon: '⚖️', label: 'Compare Countries',    desc: 'Side-by-side macro data' },
+  { to: '/tools/',         icon: '🧰', label: 'All Tools',            desc: 'FX calculator, embed widgets & more' },
 ]
 
 const TOOL_PATHS = new Set(TOOLS.map(t => t.to))
-const isToolsActive = computed(() => TOOL_PATHS.has(route.path) || route.path.startsWith('/screener/') || route.path.startsWith('/tools/') || route.path.startsWith('/lens/'))
+const isToolsActive = computed(() => TOOL_PATHS.has(route.path) || route.path.startsWith('/screener/') || route.path.startsWith('/tools/') || route.path.startsWith('/lens/') || route.path.startsWith('/smart-money/'))
 
 function logoClick() {
   menuOpen.value = false

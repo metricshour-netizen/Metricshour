@@ -103,7 +103,7 @@ def list_calendar_events(
         'start': start_dt.isoformat(),
         'end': end_dt.isoformat(),
     }
-    cache_set(cache_key, result, ttl_seconds=3600)
+    cache_set(cache_key, result, ttl_seconds=600)
     return result
 
 

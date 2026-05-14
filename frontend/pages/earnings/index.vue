@@ -48,7 +48,7 @@
                   <th class="px-4 py-2.5 text-left">Sector</th>
                   <th class="px-4 py-2.5 text-right">Date</th>
                   <th class="px-4 py-2.5 text-right">EPS Est.</th>
-                  <th class="px-4 py-2.5 text-right">Rev. Est.</th>
+                  <th v-if="hasRevEstimate" class="px-4 py-2.5 text-right">Rev. Est.</th>
                   <th class="px-4 py-2.5 text-right hidden md:table-cell">Mkt Cap</th>
                 </tr>
               </thead>
@@ -69,7 +69,7 @@
                   <td class="px-4 py-3 text-right text-gray-400 text-xs tabular-nums">
                     {{ ev.eps_estimate != null ? `$${ev.eps_estimate.toFixed(2)}` : '—' }}
                   </td>
-                  <td class="px-4 py-3 text-right text-xs tabular-nums">
+                  <td v-if="hasRevEstimate" class="px-4 py-3 text-right text-xs tabular-nums">
                     <span v-if="ev.revenue_estimate != null" class="text-gray-400">{{ fmtRevenue(ev.revenue_estimate) }}</span>
                   </td>
                   <td class="px-4 py-3 text-right text-gray-600 text-xs tabular-nums hidden md:table-cell">
@@ -277,6 +277,13 @@ const { data: upcomingData, pending: pendingUp } = await useAsyncData('earnings-
 
 const { data: recentData, pending: pendingRec } = await useAsyncData('earnings-recent',
   () => get<any>('/api/earnings/recent?days=14').catch(() => null),
+)
+
+// Only show Rev Est column when at least one event has data
+const hasRevEstimate = computed(() =>
+  upcomingData.value?.weeks?.some((w: any) =>
+    w.events?.some((e: any) => e.revenue_estimate != null)
+  ) ?? false
 )
 
 function fmtDate(iso: string): string {

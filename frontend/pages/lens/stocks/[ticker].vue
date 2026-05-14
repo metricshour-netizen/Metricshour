@@ -140,7 +140,33 @@
         </div>
       </div>
 
-      <!-- SECTION 7: Lower Risk Alternatives -->
+      <!-- SECTION 7: Smart Money — who holds this stock -->
+      <div v-if="holders?.length" class="bg-[#111827] border border-[#1f2937] rounded-xl p-5 mb-4">
+        <div class="flex items-center justify-between mb-3">
+          <div class="text-xs font-bold text-white uppercase tracking-wider">{{ $t('smartMoney.holders.title', { ticker }) }}</div>
+          <NuxtLink :to="`/smart-money/`" class="text-[10px] text-emerald-600 hover:text-emerald-400 transition-colors">View all →</NuxtLink>
+        </div>
+        <div class="space-y-2">
+          <NuxtLink v-for="h in holders.slice(0, 5)" :key="h.investor_slug"
+            :to="`/smart-money/${h.investor_slug}/`"
+            class="flex items-center justify-between bg-[#0d1520] border border-[#1f2937] hover:border-emerald-900/60 rounded-lg px-3 py-2 transition-colors group">
+            <div class="min-w-0">
+              <div class="text-xs font-semibold text-white group-hover:text-emerald-400 transition-colors">{{ h.investor_name }}</div>
+              <div class="text-[10px] text-gray-600">{{ h.fund_name }}</div>
+            </div>
+            <div class="text-right ml-3 shrink-0">
+              <div class="text-xs font-mono text-gray-400">{{ h.portfolio_pct != null ? `${h.portfolio_pct}% portfolio` : '' }}</div>
+              <div class="text-[10px] font-bold mt-0.5"
+                :class="h.change_type === 'new' || h.change_type === 'increased' ? 'text-emerald-500' : h.change_type === 'decreased' || h.change_type === 'sold' ? 'text-red-500' : 'text-gray-600'">
+                {{ changeLabel(h.change_type) }} · {{ h.quarter_label }}
+              </div>
+            </div>
+          </NuxtLink>
+        </div>
+        <div class="mt-2 text-[10px] text-gray-700">Source: SEC EDGAR 13F filings</div>
+      </div>
+
+      <!-- SECTION 9: Lower Risk Alternatives -->
       <div v-if="alternatives?.length" class="bg-[#111827] border border-[#1f2937] rounded-xl p-5 mb-4">
         <div class="text-xs font-bold text-white uppercase tracking-wider mb-3">{{ $t('lens.sections.alternatives') }}</div>
         <div class="space-y-2">
@@ -205,6 +231,13 @@ const { data: lensData, pending, error } = await useAsyncData(
   () => get<any>(`/api/lens/stocks/${ticker}?${queryStr.value}`).catch(() => null),
 )
 
+// Smart Money: who holds this stock
+const { data: holders } = useAsyncData(
+  `sm-holders-${ticker}`,
+  () => get<any[]>(`/api/smartmoney/holders/${ticker}?limit=5`).catch(() => []),
+  { server: false },
+)
+
 // Lower risk alternatives — same sector, less China exposure
 const { data: alternatives } = useAsyncData(
   `lens-alternatives-${ticker}`,
@@ -220,6 +253,18 @@ const { data: alternatives } = useAsyncData(
 )
 
 const showAlert = ref(false)
+
+function changeLabel(type: string): string {
+  const { t } = useI18n()
+  const map: Record<string, string> = {
+    new: t('smartMoney.change.new'),
+    increased: t('smartMoney.change.increased'),
+    decreased: t('smartMoney.change.decreased'),
+    sold: t('smartMoney.change.sold'),
+    unchanged: t('smartMoney.change.unchanged'),
+  }
+  return map[type] || type
+}
 
 function riskClass(level: string | undefined): string {
   if (level === 'ELEVATED')  return 'bg-red-950 text-red-300 border-red-800'

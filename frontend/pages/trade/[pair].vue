@@ -324,7 +324,7 @@
             class="flex items-center gap-2 bg-[#0d1117] border border-[#1f2937] hover:border-emerald-700 rounded-lg px-3 py-2 transition-colors group"
           >
             <span class="text-xs font-mono font-bold text-emerald-400 group-hover:text-emerald-300">{{ s.symbol }}</span>
-            <span class="text-[10px] text-gray-500 group-hover:text-gray-400 truncate max-w-[100px]">{{ s.name }}</span>
+            <span class="text-[10px] text-gray-500 group-hover:text-gray-400 truncate max-w-[160px]">{{ s.name }}</span>
             <span class="text-[10px] text-emerald-700 tabular-nums shrink-0">{{ s.revenue_pct.toFixed(0) }}%</span>
           </NuxtLink>
         </div>

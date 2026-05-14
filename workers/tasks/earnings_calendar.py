@@ -160,19 +160,28 @@ def fetch_earnings_dates(self):
         log.info("Earnings calendar: upserted %d rows for %d stocks", total, len(assets))
 
         # Dedup: yfinance sometimes returns 2 dates for the same earnings period.
-        # For each symbol, if two upcoming entries are within 14 days of each other,
-        # keep the one with the higher EPS estimate; break ties by keeping the later date.
+        # Cover entries within 7 days either side of today (catches near-past entries too).
+        # Keep entry with eps_actual if one has it; otherwise keep later date.
         dedup_deleted = db.execute(text("""
-            DELETE FROM earnings_events e1
-            USING earnings_events e2
-            WHERE e1.symbol = e2.symbol
-              AND e1.report_date >= CURRENT_DATE
-              AND e2.report_date >= CURRENT_DATE
-              AND e2.report_date - e1.report_date BETWEEN 1 AND 14
-              AND (
-                    e1.eps_estimate < e2.eps_estimate
-                    OR (e1.eps_estimate IS NOT DISTINCT FROM e2.eps_estimate AND e1.report_date < e2.report_date)
-              )
+            WITH ranked AS (
+              SELECT id,
+                ROW_NUMBER() OVER (
+                  PARTITION BY symbol, (
+                    SELECT MIN(e2.report_date) FROM earnings_events e2
+                    WHERE e2.symbol = earnings_events.symbol
+                      AND ABS(e2.report_date - earnings_events.report_date) <= 3
+                      AND (e2.eps_estimate IS NOT DISTINCT FROM earnings_events.eps_estimate
+                           OR (e2.eps_estimate IS NOT NULL AND earnings_events.eps_estimate IS NOT NULL
+                               AND ABS(e2.eps_estimate - earnings_events.eps_estimate) < 0.01))
+                  )
+                  ORDER BY (eps_actual IS NOT NULL) DESC, report_date DESC
+                ) rn
+              FROM earnings_events
+              WHERE report_date >= CURRENT_DATE - 7
+            )
+            DELETE FROM earnings_events WHERE id IN (
+              SELECT id FROM ranked WHERE rn > 1
+            )
         """))
         if dedup_deleted.rowcount:
             log.info("Earnings calendar: removed %d duplicate entries", dedup_deleted.rowcount)

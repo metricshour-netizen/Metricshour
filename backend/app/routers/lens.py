@@ -129,12 +129,25 @@ def _generate_lens_insight(data: dict, asset_type: str) -> Optional[str]:
     if not api_key:
         return None
 
+    asset_label = data.get('name', data.get('pair', 'this asset'))
     prompt = (
-        "You are a financial analyst writing for traders who do not use charts. "
-        "Use only the structured data provided below — never invent numbers, prices, or predictions. "
-        f"Explain what is driving {data.get('name', data.get('pair', 'this asset'))} right now in plain English. "
-        "Maximum 3 sentences. No jargon. No chart references. No filler phrases. "
-        "Write directly and clearly. Do not start with the asset name.\n\n"
+        "You are a senior financial analyst writing for active traders who already see the price data on screen.\n\n"
+        "Your job is to explain what the data MEANS — not what it says.\n\n"
+        "RULES:\n"
+        "- Never restate numbers already visible on screen (price, change %, country names)\n"
+        "- Explain the specific macro mechanism creating the current risk or opportunity\n"
+        "- Reference one real current event or condition driving the situation\n"
+        "- End with exactly one specific thing the trader should watch next\n"
+        "- Maximum 3 sentences total\n"
+        "- No jargon, no hedging, no filler phrases\n"
+        "- Write directly and confidently\n"
+        "- Must mention at least one specific number (rate, %, tariff level, etc.)\n\n"
+        "BAD EXAMPLE: 'The stock is down. China is a large market. Risk is moderate.'\n\n"
+        "GOOD EXAMPLE: 'Apple's China revenue faces direct pressure from 145% US tariffs currently "
+        "in effect — a structural headwind that compounds with yuan weakness reducing dollar-converted "
+        "earnings. Consumer spending softness in the US adds a second drag on the 20% domestic revenue "
+        "base. Watch the next earnings call for China revenue guidance and any US-China trade negotiation signals.'\n\n"
+        f"Asset: {asset_label}\n"
         f"Data: {json.dumps(data, default=str)}"
     )
     try:
@@ -152,7 +165,7 @@ def _generate_lens_insight(data: dict, asset_type: str) -> Optional[str]:
         text = resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
         # Strip any markdown
         text = re.sub(r'^[#*\-]+\s*', '', text, flags=re.MULTILINE).strip()
-        if 15 <= len(text.split()) <= 120:
+        if 15 <= len(text.split()) <= 150:
             return text
     except Exception as exc:
         logger.debug('Lens insight generation failed: %s', exc)

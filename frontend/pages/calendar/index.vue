@@ -88,8 +88,8 @@
                 <th class="px-4 py-2.5 text-left">Event</th>
                 <th class="px-4 py-2.5 text-right">Time (UTC)</th>
                 <th class="px-4 py-2.5 text-center">Impact</th>
-                <th class="px-4 py-2.5 text-right">Previous</th>
-                <th class="px-4 py-2.5 text-right">Forecast</th>
+                <th v-if="hasPrevFcst" class="px-4 py-2.5 text-right">Previous</th>
+                <th v-if="hasPrevFcst" class="px-4 py-2.5 text-right">Forecast</th>
                 <th class="px-4 py-2.5 text-right">Actual</th>
               </tr>
             </thead>
@@ -109,8 +109,8 @@
                     {{ impactDot(evt.impact) }} {{ $t(`calendar.impact.${evt.impact}`) }}
                   </span>
                 </td>
-                <td class="px-4 py-3 text-right text-gray-500 font-mono text-xs">{{ evt.previous_value ?? '' }}</td>
-                <td class="px-4 py-3 text-right text-gray-400 font-mono text-xs">{{ evt.forecast_value ?? '' }}</td>
+                <td v-if="hasPrevFcst" class="px-4 py-3 text-right text-gray-500 font-mono text-xs">{{ evt.previous_value ?? '—' }}</td>
+                <td v-if="hasPrevFcst" class="px-4 py-3 text-right text-gray-400 font-mono text-xs">{{ evt.forecast_value ?? '—' }}</td>
                 <td class="px-4 py-3 text-right font-mono text-xs font-bold"
                   :class="evt.actual_value ? 'text-emerald-400' : 'text-gray-700'">
                   {{ evt.actual_value || '—' }}
@@ -188,21 +188,23 @@ const typeFilter     = ref('')
 function getDateRange() {
   const now = new Date()
   if (dateRange.value === 'week') {
+    // Rolling 7 days from today
     const start = new Date(now)
     start.setHours(0, 0, 0, 0)
     const end = new Date(start)
-    end.setDate(end.getDate() + 14)
+    end.setDate(end.getDate() + 7)
     return { start: start.toISOString(), end: end.toISOString() }
   }
   if (dateRange.value === 'next') {
+    // Days 7–14 from today
     const start = new Date(now)
-    start.setDate(start.getDate() + 14)
+    start.setDate(start.getDate() + 7)
     start.setHours(0, 0, 0, 0)
     const end = new Date(start)
-    end.setDate(end.getDate() + 14)
+    end.setDate(end.getDate() + 7)
     return { start: start.toISOString(), end: end.toISOString() }
   }
-  // month
+  // month: rolling 30 days from today
   const start = new Date(now)
   start.setHours(0, 0, 0, 0)
   const end = new Date(start)
@@ -227,6 +229,13 @@ const { data: calendarData, pending, refresh } = useAsyncData(
     return get<any>(`/api/calendar?${qs}`).catch(() => null)
   },
   { watch: [queryParams] },
+)
+
+// Only show Prev/Fcst columns when at least one event has data
+const hasPrevFcst = computed(() =>
+  calendarData.value?.days?.some((d: any) =>
+    d.events?.some((e: any) => e.previous_value != null || e.forecast_value != null)
+  ) ?? false
 )
 
 function fmtDayLabel(dateStr: string): string {

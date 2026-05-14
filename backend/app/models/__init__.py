@@ -9,6 +9,7 @@ from .macro import MacroSeries
 from .earnings import EarningsEvent
 from .macro_calendar import MacroCalendarEvent
 from .company_profile import CompanyProfile
+from .smart_money import SmartMoneyInvestor, SmartMoneyFiling, SmartMoneyHolding
 
 __all__ = [
     "Base",
@@ -39,4 +40,7 @@ __all__ = [
     "NewsletterSubscriber",
     "MacroCalendarEvent",
     "CompanyProfile",
+    "SmartMoneyInvestor",
+    "SmartMoneyFiling",
+    "SmartMoneyHolding",
 ]

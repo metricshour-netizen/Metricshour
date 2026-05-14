@@ -252,5 +252,56 @@
     "noData": "Not enough data to run this analysis.",
     "lastUpdated": "Last updated",
     "intelligence": "MetricsHour Intelligence"
+  },
+  "smartMoney": {
+    "title": "Smart Money Tracker",
+    "subtitle": "Track what the world's best investors are buying and selling — with geographic risk context.",
+    "searchPlaceholder": "Search investor, fund, or manager",
+    "statsBar": {
+      "tracked": "investors tracked",
+      "filings": "total filings",
+      "updated": "Updated quarterly via SEC 13F"
+    },
+    "featuredTitle": "Featured Investors",
+    "latestActivity": "Recent 13F Changes",
+    "nextFiling": "Next 13F Deadline",
+    "portfolio": {
+      "value": "Portfolio value",
+      "holdings": "Holdings",
+      "lastFiling": "Last filing",
+      "viewPortfolio": "View Portfolio"
+    },
+    "tabs": {
+      "overview": "Holdings",
+      "changes": "Recent Changes",
+      "sectors": "By Sector",
+      "geoRisk": "Geo Risk View",
+      "history": "History"
+    },
+    "changes": {
+      "new": "New Positions",
+      "increased": "Increased",
+      "decreased": "Decreased",
+      "sold": "Exited"
+    },
+    "geoRisk": {
+      "title": "Portfolio Geographic Exposure",
+      "subtitle": "Weighted revenue exposure across all holdings",
+      "riskScore": "Portfolio Risk Score",
+      "vsMarket": "vs S&P 500 avg"
+    },
+    "holders": {
+      "title": "Smart Money — Who Holds {ticker}",
+      "viewAll": "{count} institutional investors hold {ticker} — view all"
+    },
+    "noData": "No filing data available yet.",
+    "noHolders": "No institutional investors tracked hold this stock yet.",
+    "change": {
+      "new": "New",
+      "increased": "Added",
+      "decreased": "Reduced",
+      "sold": "Exited",
+      "unchanged": "Unchanged"
+    }
   }
 }

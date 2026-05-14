@@ -236,8 +236,8 @@
           { key: 'global',  label: '🌐 Global' },
           { key: 'us',      label: '🇺🇸 US' },
           { key: 'europe',  label: '🇪🇺 Europe' },
-          { key: 'asia',    label: '🌏 Asia' },
-          { key: 'em',      label: '🌍 EM' },
+          { key: 'asia',    label: 'Asia' },
+          { key: 'em',      label: 'EM' },
         ]" :key="r.key"
           @click="moversRegionFilter = (r.key as any)"
           class="px-2.5 py-1 rounded-md text-[11px] font-mono border transition-colors"
@@ -264,7 +264,7 @@
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-1.5 flex-wrap">
               <span class="text-xs font-mono font-bold group-hover:text-emerald-300" :class="tickerTypeColor(s.asset_type)">{{ s.symbol }}</span>
-              <span class="text-xs text-gray-500 truncate max-w-[120px]">{{ s.name }}</span>
+              <span class="text-xs text-gray-500 min-w-0 truncate">{{ s.name }}</span>
               <span v-if="s.country?.code" class="text-[10px] text-gray-700 font-mono">{{ s.country.code }}</span>
             </div>
             <div class="flex items-center gap-1.5 mt-0.5">
