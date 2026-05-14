@@ -45,6 +45,10 @@
 
         <NuxtLink to="/countries/"   class="hover:text-white transition-colors">Countries</NuxtLink>
         <NuxtLink to="/trade/"       class="hover:text-white transition-colors">Trade</NuxtLink>
+        <NuxtLink to="/smart-money/" class="hover:text-white transition-colors flex items-center gap-1"
+          :class="route.path.startsWith('/smart-money') ? 'text-emerald-400' : ''">
+          Smart Money
+        </NuxtLink>
 
         <!-- Tools dropdown -->
         <div class="relative" @mouseenter="toolsOpen = true" @mouseleave="toolsOpen = false">
@@ -161,8 +165,12 @@
         </div>
       </div>
 
-      <NuxtLink to="/countries/"  @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">Countries <span class="text-gray-600 text-xs">→</span></NuxtLink>
-      <NuxtLink to="/trade/"      @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">Trade <span class="text-gray-600 text-xs">→</span></NuxtLink>
+      <NuxtLink to="/countries/"   @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">Countries <span class="text-gray-600 text-xs">→</span></NuxtLink>
+      <NuxtLink to="/trade/"       @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm text-gray-300 hover:text-white border-b border-[#1f2937]">Trade <span class="text-gray-600 text-xs">→</span></NuxtLink>
+      <NuxtLink to="/smart-money/" @click="menuOpen = false" class="flex items-center justify-between py-3.5 text-sm border-b border-[#1f2937]"
+        :class="route.path.startsWith('/smart-money') ? 'text-emerald-400 font-semibold' : 'text-gray-300 hover:text-white'">
+        Smart Money <span class="text-gray-600 text-xs">→</span>
+      </NuxtLink>
 
       <!-- Tools section -->
       <div class="border-b border-[#1f2937]">
