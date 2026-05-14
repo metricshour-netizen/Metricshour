@@ -147,13 +147,13 @@ def _fetch_holdings(cik: str, accession_raw: str) -> list[dict]:
 
 
 def _parse_13f_xml(xml_text: str) -> list[dict]:
-    """Parse 13F-HR XML infoTable into list of holdings."""
-    holdings = []
+    """Parse 13F-HR XML infoTable into list of holdings.
+    Aggregates duplicate CUSIP entries (multiple subsidiary accounts for same stock).
+    """
+    raw: dict[str, dict] = {}   # keyed by cusip (or company name if no cusip)
     try:
-        # Strip namespace for easier parsing
         xml_clean = re.sub(r' xmlns[^"]*"[^"]*"', '', xml_text)
         root = ET.fromstring(xml_clean)
-        ns = {"n": ""}
 
         for info in root.iter("infoTable"):
             name_el = info.find("nameOfIssuer")
@@ -165,7 +165,7 @@ def _parse_13f_xml(xml_text: str) -> list[dict]:
             company_name = (name_el.text or "").strip() if name_el is not None else ""
             cusip = (cusip_el.text or "").strip() if cusip_el is not None else ""
             try:
-                value_usd = float(value_el.text or 0) * 1000   # reported in thousands
+                value_usd = float(value_el.text or 0)
             except (ValueError, TypeError):
                 continue
             shares = None
@@ -174,15 +174,17 @@ def _parse_13f_xml(xml_text: str) -> list[dict]:
                     shares = int(shares_el.text or 0)
                 except (ValueError, TypeError):
                     pass
-            holdings.append({
-                "company_name": company_name,
-                "cusip": cusip,
-                "value_usd": value_usd,
-                "shares": shares,
-            })
+
+            key = cusip if cusip else company_name
+            if key in raw:
+                raw[key]["value_usd"] += value_usd
+                if shares:
+                    raw[key]["shares"] = (raw[key]["shares"] or 0) + shares
+            else:
+                raw[key] = {"company_name": company_name, "cusip": cusip, "value_usd": value_usd, "shares": shares}
     except ET.ParseError as e:
         log.debug("XML parse error: %s", e)
-    return holdings
+    return list(raw.values())
 
 
 def _resolve_symbol(company_name: str, cusip: str) -> Optional[str]:
