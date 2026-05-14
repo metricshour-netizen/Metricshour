@@ -92,6 +92,7 @@ app = Celery('metricshour', include=[
     'tasks.movers',
     'tasks.macro_calendar',
     'tasks.company_enrichment',
+    'tasks.smart_money',
 ])
 
 # Use SSL only for rediss:// URLs (Upstash); skip for local redis:// (DragonflyDB)
@@ -315,6 +316,18 @@ app.conf.update(
         'edgar-revenue-weekly-sun-0200': {
             'task': 'edgar_revenue.fetch_all',
             'schedule': crontab(hour=2, minute=0, day_of_week=0),
+        },
+
+        # Smart Money 13F — fetch filing metadata quarterly (mid-Feb/May/Aug/Nov)
+        # Runs daily at 02:00 UTC; no-ops on non-filing days (checks for new filings)
+        'smart-money-filings-daily-0200': {
+            'task': 'smart_money.fetch_13f_filings',
+            'schedule': crontab(hour=2, minute=0),
+        },
+        # Smart Money holdings parse — daily at 03:00 UTC (after fetch)
+        'smart-money-holdings-daily-0300': {
+            'task': 'smart_money.parse_holdings',
+            'schedule': crontab(hour=3, minute=0),
         },
 
         # Government bond yields — FRED (US 2Y, DE/GB/FR/IT/JP 10Y) — daily 6:30am
