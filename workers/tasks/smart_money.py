@@ -100,49 +100,49 @@ def _fetch_13f_filings(cik: str) -> list[dict]:
 
 def _fetch_holdings(cik: str, accession_raw: str) -> list[dict]:
     """Parse holdings from a 13F-HR XML filing."""
-    padded_cik = cik.lstrip("0").zfill(10)
+    cik_int = int(cik.lstrip("0") or "0")
     accession = accession_raw.replace("-", "")
     acc_fmt = f"{accession[:10]}-{accession[10:12]}-{accession[12:]}"
+    dir_url = f"https://www.sec.gov/Archives/edgar/data/{cik_int}/{accession}/"
 
-    # Get filing index to find the XML document
-    index_url = f"{EDGAR_BASE}/Archives/edgar/data/{padded_cik}/{accession}/0000950170{accession[10:]}-index.json"
     primary_xml = None
     try:
-        idx_url = f"{EDGAR_BASE}/cgi-bin/browse-edgar?action=getcompany&CIK={padded_cik}&type=13F-HR&dateb=&owner=include&count=1"
-        # Direct approach: fetch the filing index JSON
-        idx_url = f"{EDGAR_BASE}/Archives/edgar/data/{int(padded_cik)}/{acc_fmt}-index.json"
-        r = requests.get(idx_url, headers=HEADERS, timeout=15)
-        if r.status_code == 200:
-            idx_data = r.json()
-            for doc in idx_data.get("documents", []):
-                if "infotable" in doc.get("name", "").lower() or doc.get("type") == "13F-HR":
-                    if doc.get("name", "").endswith(".xml"):
-                        primary_xml = doc["name"]
-                        break
+        time.sleep(0.2)
+        r = requests.get(dir_url, headers=HEADERS, timeout=15)
+        if r.status_code != 200:
+            return []
+        # Find XML files in the directory listing; skip primary_doc.xml and index files
+        xml_files = re.findall(r'href="([^"]+\.xml)"', r.text, re.IGNORECASE)
+        for fname in xml_files:
+            basename = fname.split("/")[-1].lower()
+            if "primary_doc" in basename or "index" in basename or "summary" in basename:
+                continue
+            primary_xml = fname.split("/")[-1]
+            break
+        # If nothing found, try grepping specifically for infotable reference
         if not primary_xml:
-            # Try plain-text index
-            txt_url = f"{EDGAR_BASE}/Archives/edgar/data/{int(padded_cik)}/{acc_fmt}-index.htm"
-            r2 = requests.get(txt_url, headers=HEADERS, timeout=15)
-            if r2.status_code == 200:
-                match = re.search(r'href="([^"]*infotable[^"]*\.xml)"', r2.text, re.IGNORECASE)
-                if match:
+            match = re.search(r'href="[^"]*?/([^"/]+\.xml)"', r.text, re.IGNORECASE)
+            if match:
+                candidate = match.group(1).lower()
+                if "primary_doc" not in candidate:
                     primary_xml = match.group(1).split("/")[-1]
     except Exception as e:
-        log.debug("Filing index fetch failed %s/%s: %s", cik, accession, e)
+        log.debug("Filing directory fetch failed %s/%s: %s", cik, accession, e)
         return []
 
     if not primary_xml:
+        log.debug("No XML found in filing directory for %s/%s", cik, accession)
         return []
 
-    xml_url = f"{EDGAR_BASE}/Archives/edgar/data/{int(padded_cik)}/{acc_fmt}/{primary_xml}"
+    xml_url = f"https://www.sec.gov/Archives/edgar/data/{cik_int}/{accession}/{primary_xml}"
     try:
-        time.sleep(0.15)   # respect SEC rate limit: max 10 requests/second
+        time.sleep(0.2)
         r = requests.get(xml_url, headers=HEADERS, timeout=30)
         if r.status_code != 200:
             return []
         return _parse_13f_xml(r.text)
     except Exception as e:
-        log.debug("Holdings XML fetch failed: %s", e)
+        log.debug("Holdings XML fetch failed %s: %s", xml_url, e)
         return []
 
 
