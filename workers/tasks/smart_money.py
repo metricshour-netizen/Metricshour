@@ -152,7 +152,9 @@ def _parse_13f_xml(xml_text: str) -> list[dict]:
     """
     raw: dict[str, dict] = {}   # keyed by cusip (or company name if no cusip)
     try:
-        xml_clean = re.sub(r' xmlns[^"]*"[^"]*"', '', xml_text)
+        # Strip all namespace declarations and namespace-prefixed attributes
+        # to avoid "unbound prefix" errors in ElementTree
+        xml_clean = re.sub(r'\s+(?:xmlns(?::\w+)?|\w+:\w+)="[^"]*"', '', xml_text)
         root = ET.fromstring(xml_clean)
 
         for info in root.iter("infoTable"):
