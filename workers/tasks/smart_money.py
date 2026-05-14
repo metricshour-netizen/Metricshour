@@ -210,14 +210,21 @@ def _resolve_symbol(company_name: str, cusip: str) -> Optional[str]:
 
 
 def seed_investors():
-    """Insert/update the tracked investor universe."""
+    """Insert/update the tracked investor universe. Uses slug as stable key."""
     db = SessionLocal()
     try:
         for slug, name, fund_name, cik, tier, desc in INVESTOR_SEED:
             existing = db.execute(
-                select(SmartMoneyInvestor).where(SmartMoneyInvestor.cik == cik)
+                select(SmartMoneyInvestor).where(SmartMoneyInvestor.slug == slug)
             ).scalar_one_or_none()
-            if not existing:
+            if existing:
+                # Update CIK and other fields in case they changed
+                existing.cik = cik
+                existing.name = name
+                existing.fund_name = fund_name
+                existing.tier = tier
+                existing.description = desc
+            else:
                 db.add(SmartMoneyInvestor(
                     slug=slug, name=name, fund_name=fund_name,
                     cik=cik, tier=tier, description=desc, active=True,
