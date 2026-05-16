@@ -99,9 +99,63 @@ def _ping_bing() -> int | str:
         return f'error: {exc}'
 
 
+CF_ZONE_ID          = os.getenv('CF_ZONE_ID', '6af28d1007b6f8de70ced8653822e49a')
+CF_ZONE_SETTINGS_TOKEN = os.getenv('CF_ZONE_SETTINGS_TOKEN', '')
+CF_CACHE_PURGE_TOKEN   = os.getenv('CF_CACHE_PURGE_TOKEN', '')
+
+_CF_API = 'https://api.cloudflare.com/client/v4'
+
+
+def _ensure_brotli() -> bool:
+    """Enable Brotli on CF zone if not already on. Returns True if it was enabled."""
+    if not CF_ZONE_SETTINGS_TOKEN:
+        return False
+    try:
+        r = requests.get(
+            f'{_CF_API}/zones/{CF_ZONE_ID}/settings/brotli',
+            headers={'Authorization': f'Bearer {CF_ZONE_SETTINGS_TOKEN}'},
+            timeout=10,
+        )
+        if r.ok and r.json().get('result', {}).get('value') == 'on':
+            return False
+        requests.patch(
+            f'{_CF_API}/zones/{CF_ZONE_ID}/settings/brotli',
+            json={'value': 'on'},
+            headers={'Authorization': f'Bearer {CF_ZONE_SETTINGS_TOKEN}'},
+            timeout=10,
+        )
+        logger.info('Brotli enabled on Cloudflare zone')
+        return True
+    except Exception as exc:
+        logger.warning('Brotli check failed: %s', exc)
+        return False
+
+
+def _purge_cf_urls(urls: list[str]) -> None:
+    """Purge specific URLs from Cloudflare cache."""
+    if not CF_CACHE_PURGE_TOKEN or not urls:
+        return
+    try:
+        r = requests.post(
+            f'{_CF_API}/zones/{CF_ZONE_ID}/purge_cache',
+            json={'files': urls},
+            headers={'Authorization': f'Bearer {CF_CACHE_PURGE_TOKEN}'},
+            timeout=15,
+        )
+        if r.ok:
+            logger.info('CF cache purged for %d URLs', len(urls))
+        else:
+            logger.warning('CF purge failed: %s', r.text[:200])
+    except Exception as exc:
+        logger.warning('CF purge error: %s', exc)
+
+
 @app.task(name='tasks.sitemap_deploy.trigger_pages_deploy', bind=True, max_retries=2)
 def trigger_pages_deploy(self):
     """Trigger CF Pages deploy, wait for propagation, then submit to IndexNow + Bing."""
+    # Ensure Brotli compression is on (idempotent)
+    _ensure_brotli()
+
     hook_url = os.getenv('CF_PAGES_DEPLOY_HOOK')
     if not hook_url:
         logger.warning('CF_PAGES_DEPLOY_HOOK not set — skipping sitemap redeploy')
@@ -121,11 +175,18 @@ def trigger_pages_deploy(self):
     # Step 2: wait for Pages build to propagate (~90 s for typical build)
     time.sleep(90)
 
-    # Step 3: fetch all URLs and submit to IndexNow
+    # Step 3: purge robots.txt and sitemap from CF cache (static file updates need forced refresh)
+    _purge_cf_urls([
+        'https://metricshour.com/robots.txt',
+        'https://metricshour.com/sitemap.xml',
+        'https://api.metricshour.com/sitemap.xml',
+    ])
+
+    # Step 4: fetch all URLs and submit to IndexNow
     urls    = _fetch_sitemap_urls()
     indexnow = _submit_indexnow(urls)
 
-    # Step 4: belt-and-suspenders Bing ping
+    # Step 5: belt-and-suspenders Bing ping
     bing = _ping_bing()
 
     return {

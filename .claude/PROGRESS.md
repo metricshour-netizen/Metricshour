@@ -1,5 +1,51 @@
 # MetricsHour — Progress & Session Log
 
+## Session 2026-05-11 — Calendar/Earnings bugs, SEO (HSTS preload, JSON-LD, author 404), Perf ✅
+
+### Bug fixes (calendar, earnings, cache)
+- **`/api/assets/fx-rates` TypeError**: `cache_set()` called with `ttl=` kwarg; function signature uses `ttl_seconds=` — fixed in `assets.py:297`
+- **Economic calendar "This Week" empty**: Only 4 macro events in next 30 days (FRED API key not configured → static central bank meetings only). Nearest event (RBA) is 8 days away — outside 7-day window. Extended frontend "This Week" to 14 days; "Next Week" shifted to days 14–28
+- **Prev/Fcst showing `—`**: All static calendar events have null `previous_value`/`forecast_value`. Desktop table now shows empty string; mobile card hides the Prev/Fcst line entirely via `v-if` when both null
+- **BABA duplicate on earnings calendar**: yfinance returned two dates (May 13 $5.74, May 14 $6.35) for the same period. Deleted May 13 duplicate (id=56383) from DB. Also deleted PANW June 2 duplicate (same $0.8 eps, 13 days apart). Added post-upsert SQL dedup in `earnings_calendar.py` that removes the lower-EPS entry when two rows for the same symbol are within 14 days
+- **Rev Est `—` on earnings cards**: yfinance doesn't provide `revenue_estimate` for upcoming events. Mobile card Rev Est block now hidden via `v-if="ev.revenue_estimate != null"`; desktop table cell shows empty instead of "N/A"
+
+### SEO fixes
+- **HSTS preload**: Cloudflare edge was overriding Traefik's `stsPreload: true` with `preload: false`. Patched via CF API (`PATCH /zones/{id}/settings/security_header`). Live: `max-age=31536000; includeSubDomains; preload`
+- **Author pages 404**: `/blog/authors/` had no `index.vue` → 404. Created 3-line `pages/blog/authors/index.vue` that 301s to `/blog/`
+- **JSON-LD on 218 lens pages**: Added `WebPage` + `BreadcrumbList` + `Corporation` (with `tickerSymbol`) schema to `lens/stocks/[ticker].vue` (200 pages); `WebPage` + `BreadcrumbList` to `lens/forex/[pair].vue` (18 pages). All 218 indexed lens pages now eligible for breadcrumb rich results
+
+### Performance (Core Web Vitals)
+- **Blog LCP (cover image)**: 3 changes — `<link rel="preload" as="image" fetchpriority="high">` in SSR `<head>` so browser fetches image before parsing `<img>` tag; `fetchpriority="high" loading="eager"` on `<img>` element; explicit `width=1200 height=630` + `aspect-ratio` wrapper prevents CLS before image loads
+- **Trade CLS**: Added `min-height` reservation on `pageSummary` wrapper (client-side `server:false` fetch) so above-fold layout is stable during hydration; prevents content-jump CLS
+- **Trade JSON-LD**: Replaced `new Date().toISOString()` with static year-based string — stops `useHead` computed from regenerating with a different timestamp on every render
+
+### Commits
+- `630fddd` — calendar/earnings bugs
+- `41a8398` — SEO: lens JSON-LD, author redirect, HSTS via CF API
+- `26b8fc4` — perf: blog LCP preload, trade CLS + JSON-LD
+
+---
+
+## Session 2026-05-10 (part 2) — SEO GSC fixes + Reel voice cutting fix ✅
+
+### Reel voice cutting — FULLY FIXED (Contabo /root/openclaw/)
+- Root cause 1: Playwright timeout (30s) crashed mid-card-generation → outer `except` → `create_video_from_frames` = 16s silent video
+  - Fix: `_SCREENSHOT_TIMEOUT` 30→60s + `_html_to_png` retries once on crash (browser auto-resets)
+- Root cause 2: `merge_audio_into_video` probed duration from post-amix file (`mixed_audio`); amix can shorten slightly
+  - Fix: probe raw voiceover BEFORE amix step; padding `+0.1s` → `+0.5s` for AAC encoder delay
+- Removed dead `elevenlabs_key` variable + updated stale comment in `mcp_server.py`
+- Moltis restarted to reload new MCP server code
+- Verified: markets reel now 36.9s+audio, US country 35.2s+audio (was 16s silent)
+
+### SEO — Google Search Console fixes (all deployed + CF cache purged)
+- **Blocked by robots.txt (219 pages)**: Removed `Disallow: /trade/*--*/` — 301s to canonical ISO URLs, Googlebot now follows them
+- **Soft 404 (1 page)**: `lens/crypto/[symbol]` + `lens/commodities/[commodity]` → `noindex,follow` (were "Coming Soon" 200 pages)
+- **Thin Lens pages**: 42 Chinese A-share Lens pages had `score:0, geo_risk:[]` — noindex added dynamically; removed from sitemap (sitemap now `stocks_with_revenue` only = 354 US stocks with EDGAR)
+- **Crawled not indexed (8182 pages)**: noindex fix deployed last session; Google validating
+- 3 × frontend deploy + API restart on Netcup
+
+---
+
 ## Session 2026-05-10 — Lens v1, Macro Calendar, Company Profiles, Compare embeds, SEO fix ✅
 
 ### P0 — SEO noindex fix
@@ -2131,3 +2177,38 @@ Two modes:
 - R9, R10, R11 all present
 - 9 matches: deepseek-r1(×2), gemini-pro(×3), R9(×1), R10(×1), R11(×1), CONTINUOUS IMPROVEMENT(×1)
 - 367 lines total
+
+---
+
+## Session 2026-05-10 (part 3) — Prompt quality overhaul + SEO verification ✅
+
+### Prompt overhaul (Contabo — all files live, Moltis restarted)
+
+**Reel script (mcp_server.py)**
+- Model: `gemini-2.5-flash` → `gemini-2.5-pro` as primary (flash as fallback)
+- Added BANNED OPENERS block: "[Name] is/was/has", "The stock", "Markets are", moves <1% must use streak/range not %
+- Added STAT FIRST rule: number before name in every frame voice
+- Added memorability check: "will viewer remember this stat 10 min later?"
+
+**X/Twitter (morning + afternoon social)**
+- Replaced "start with sharpest data point" with explicit NUMBER FIRST rule + GOOD/BAD examples
+- Added SMALL MOVES rule: skip %, use streak/range/level
+- Added BANNED OPENERS list
+
+**IG/LI copy (morning + afternoon)**
+- IG Line 1 format: "[NUMBER]. [ASSET]. [3-word context]." — stat always first
+- LI: "Open with stat that flips an assumption" not generic "lead with data"
+
+**Reddit (morning + afternoon)**
+- Title must start with number: "[STAT]: [context]" format enforced
+
+**story_finder.py**
+- craft_insight sentence 1: raw stat + concrete comparison (e.g. "$72B from China. Bigger than Nike.")
+- Expanded BANNED words: added showcases, highlights, demonstrates, notable, significant, remarkable, trajectory, momentum, accelerating
+
+### SEO verification (all live ✅)
+- robots.txt: `Disallow: /trade/*--*/` removed ✓ no more 219 blocked pages
+- Lens 000009: `noindex, follow` ✓
+- Lens AAPL: `index, follow` ✓
+- Sitemap: 2,865 URLs, no Chinese Lens pages ✓
+- Lens/crypto + Lens/commodities coming-soon: `noindex, follow` ✓

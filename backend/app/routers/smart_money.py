@@ -61,7 +61,7 @@ def _investor_summary(inv: SmartMoneyInvestor, latest_filing: Optional[SmartMone
 
 def _holding_dict(h: SmartMoneyHolding) -> dict:
     return {
-        "symbol": h.symbol,
+        "symbol": h.symbol if not h.symbol.startswith("_UNRESOLVED_") else "",
         "company_name": h.company_name,
         "shares": h.shares,
         "value_usd": h.value_usd,
@@ -330,4 +330,133 @@ def top_sells(
     } for h, inv in rows]
 
     cache_set(cache_key, result, ttl_seconds=7776000)
+    return result
+
+
+_HIGH_RISK = {"CN", "RU", "IR", "KP"}
+_MEDIUM_RISK = {"TR", "AR", "VE", "PK", "BD", "NG", "EG", "UA"}
+
+
+@router.get("/investors/{slug}/geo")
+@limiter.limit("60/minute")
+def get_investor_geo(
+    request: Request,
+    slug: str,
+    quarter: Optional[str] = None,
+    db: Session = Depends(get_db),
+) -> list[dict]:
+    """Weighted country geo-exposure for a Smart Money portfolio (top 20 countries)."""
+    cache_key = f"smartmoney:geo:{slug}:{quarter or 'latest'}"
+    cached = cache_get(cache_key)
+    if cached is not None:
+        return cached
+
+    inv = db.execute(
+        select(SmartMoneyInvestor).where(
+            SmartMoneyInvestor.slug == slug, SmartMoneyInvestor.active == True
+        )
+    ).scalar_one_or_none()
+    if not inv:
+        raise HTTPException(404, "Investor not found")
+
+    q = select(SmartMoneyFiling).where(
+        SmartMoneyFiling.investor_id == inv.id, SmartMoneyFiling.parsed == True
+    )
+    if quarter:
+        q = q.where(SmartMoneyFiling.quarter_label == quarter)
+    else:
+        q = q.order_by(SmartMoneyFiling.period_of_report.desc())
+    filing = db.execute(q.limit(1)).scalar_one_or_none()
+    if not filing:
+        cache_set(cache_key, [], ttl_seconds=3600)
+        return []
+
+    holdings = db.execute(
+        select(SmartMoneyHolding)
+        .where(SmartMoneyHolding.filing_id == filing.id)
+        .where(SmartMoneyHolding.symbol != "")
+        .where(~SmartMoneyHolding.symbol.startswith("_UNRESOLVED_"))
+        .where(SmartMoneyHolding.value_usd.isnot(None))
+    ).scalars().all()
+
+    if not holdings:
+        cache_set(cache_key, [], ttl_seconds=3600)
+        return []
+
+    total_value = sum(h.value_usd for h in holdings if h.value_usd)
+    if not total_value:
+        cache_set(cache_key, [], ttl_seconds=3600)
+        return []
+
+    symbols = [h.symbol for h in holdings]
+    assets_map: dict[str, Asset] = {}
+    for a in db.execute(
+        select(Asset).where(
+            Asset.symbol.in_(symbols),
+            Asset.asset_type == AssetType.stock,
+            Asset.is_active == True,
+        )
+    ).scalars().all():
+        assets_map[a.symbol] = a
+
+    asset_ids = [a.id for a in assets_map.values()]
+    if not asset_ids:
+        cache_set(cache_key, [], ttl_seconds=3600)
+        return []
+
+    # Most recent annual revenue per asset
+    max_yr_sub = (
+        select(
+            StockCountryRevenue.asset_id,
+            sqlfunc.max(StockCountryRevenue.fiscal_year).label("max_yr"),
+        )
+        .where(StockCountryRevenue.asset_id.in_(asset_ids))
+        .where(StockCountryRevenue.fiscal_quarter.is_(None))
+        .group_by(StockCountryRevenue.asset_id)
+        .subquery()
+    )
+    revenues = db.execute(
+        select(StockCountryRevenue, Country)
+        .join(
+            max_yr_sub,
+            and_(
+                StockCountryRevenue.asset_id == max_yr_sub.c.asset_id,
+                StockCountryRevenue.fiscal_year == max_yr_sub.c.max_yr,
+            ),
+        )
+        .join(Country, StockCountryRevenue.country_id == Country.id)
+        .where(StockCountryRevenue.fiscal_quarter.is_(None))
+    ).all()
+
+    holding_val: dict[str, float] = {h.symbol: h.value_usd for h in holdings if h.value_usd}
+
+    country_acc: dict[str, dict] = {}
+    for rev, country in revenues:
+        asset = next((a for a in assets_map.values() if a.id == rev.asset_id), None)
+        if not asset:
+            continue
+        h_value = holding_val.get(asset.symbol, 0.0)
+        if not h_value or not rev.revenue_pct:
+            continue
+        weight = (h_value / total_value) * (rev.revenue_pct / 100.0) * 100.0
+        code = country.code
+        if code not in country_acc:
+            risk = "high" if code in _HIGH_RISK else ("medium" if code in _MEDIUM_RISK else "low")
+            country_acc[code] = {
+                "code": code,
+                "name": country.name,
+                "flag": country.flag or "",
+                "pct": 0.0,
+                "risk_level": risk,
+                "risk_note": RISK_LABELS.get(code, ""),
+                "stocks_count": 0,
+            }
+        country_acc[code]["pct"] += weight
+        country_acc[code]["stocks_count"] += 1
+
+    result = sorted(country_acc.values(), key=lambda x: x["pct"], reverse=True)[:20]
+    for r in result:
+        r["pct"] = round(r["pct"], 1)
+
+    cache_set(cache_key, result, ttl_seconds=86400)
     return result

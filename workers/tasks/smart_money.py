@@ -149,16 +149,16 @@ def _fetch_holdings(cik: str, accession_raw: str) -> list[dict]:
 def _parse_13f_xml(xml_text: str) -> list[dict]:
     """Parse 13F-HR XML infoTable into list of holdings.
     Aggregates duplicate CUSIP entries (multiple subsidiary accounts for same stock).
+    Auto-detects whether values are in USD or thousands of USD by checking
+    the price-per-share implied by the first several holdings.
     """
-    raw: dict[str, dict] = {}   # keyed by cusip (or company name if no cusip)
+    raw: dict[str, dict] = {}
     try:
-        # Normalise namespace variants in 13F XML:
-        # 1. Strip all namespace declarations and prefixed attributes
         xml_clean = re.sub(r'\s+(?:xmlns(?::\w+)?|\w+:\w+)="[^"]*"', '', xml_text)
-        # 2. Strip namespace prefixes from element names (<ns1:foo> → <foo>, </ns1:foo> → </foo>)
         xml_clean = re.sub(r'<(/?)(\w+):(\w)', r'<\1\3', xml_clean)
         root = ET.fromstring(xml_clean)
 
+        rows = []
         for info in root.iter("infoTable"):
             name_el = info.find("nameOfIssuer")
             cusip_el = info.find("cusip")
@@ -169,7 +169,7 @@ def _parse_13f_xml(xml_text: str) -> list[dict]:
             company_name = (name_el.text or "").strip() if name_el is not None else ""
             cusip = (cusip_el.text or "").strip() if cusip_el is not None else ""
             try:
-                value_usd = float(value_el.text or 0)
+                value_raw = float(value_el.text or 0)
             except (ValueError, TypeError):
                 continue
             shares = None
@@ -178,14 +178,40 @@ def _parse_13f_xml(xml_text: str) -> list[dict]:
                     shares = int(shares_el.text or 0)
                 except (ValueError, TypeError):
                     pass
+            rows.append({"company_name": company_name, "cusip": cusip, "value_raw": value_raw, "shares": shares})
 
-            key = cusip if cusip else company_name
+        if not rows:
+            return []
+
+        # Auto-detect scale: check implied price per share for first few holdings with shares.
+        # SEC standard is thousands; some filers (e.g. Berkshire) report in dollars.
+        # If median implied $/share < $5, values are in thousands (need ×1000).
+        implied_prices = []
+        for r in rows[:20]:
+            if r["shares"] and r["shares"] > 0 and r["value_raw"] > 0:
+                implied_prices.append(r["value_raw"] / r["shares"])
+
+        scale = 1.0
+        if implied_prices:
+            median_price = sorted(implied_prices)[len(implied_prices) // 2]
+            if median_price < 5.0:
+                scale = 1000.0  # values are in thousands, convert to dollars
+
+        for r in rows:
+            value_usd = r["value_raw"] * scale
+            key = r["cusip"] if r["cusip"] else r["company_name"]
             if key in raw:
                 raw[key]["value_usd"] += value_usd
-                if shares:
-                    raw[key]["shares"] = (raw[key]["shares"] or 0) + shares
+                if r["shares"]:
+                    raw[key]["shares"] = (raw[key]["shares"] or 0) + r["shares"]
             else:
-                raw[key] = {"company_name": company_name, "cusip": cusip, "value_usd": value_usd, "shares": shares}
+                raw[key] = {
+                    "company_name": r["company_name"],
+                    "cusip": r["cusip"],
+                    "value_usd": value_usd,
+                    "shares": r["shares"],
+                }
+
     except ET.ParseError as e:
         log.debug("XML parse error: %s", e)
     return list(raw.values())
@@ -203,7 +229,7 @@ def _resolve_symbol(company_name: str, cusip: str) -> Optional[str]:
             select(Asset.symbol)
             .where(Asset.asset_type == AssetType.stock)
             .where(Asset.is_active == True)
-            .where(sqlfunc.lower(Asset.name).contains(company_name[:20].lower()))
+            .where(sqlfunc.lower(Asset.name).contains(company_name[:25].lower()))
             .limit(1)
         ).scalar_one_or_none()
         return row
@@ -383,7 +409,7 @@ def parse_holdings(self, filing_id: int = None):
                 holding_rows.append({
                     "filing_id": filing.id,
                     "investor_id": investor.id,
-                    "symbol": symbol or "",
+                    "symbol": symbol or f"_UNRESOLVED_{h.get('cusip', '') or h.get('company_name', '')[:15]}",
                     "company_name": h["company_name"],
                     "cusip": h["cusip"],
                     "shares": h.get("shares"),

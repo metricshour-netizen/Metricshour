@@ -179,7 +179,7 @@
                 </div>
                 <div class="h-1.5 bg-[#1f2937] rounded-full overflow-hidden">
                   <div class="h-full rounded-full transition-all"
-                    :class="riskBarColor(g.code)"
+                    :class="riskBarColor(g)"
                     :style="{ width: `${Math.min(g.pct * 2, 100)}%` }"/>
                 </div>
                 <div v-if="g.risk_note" class="text-[10px] text-gray-600 mt-0.5">{{ g.risk_note }}</div>
@@ -204,6 +204,8 @@
 const { t } = useI18n()
 const { get } = useApi()
 const route = useRoute()
+const config = useRuntimeConfig()
+const apiBase = config.public.apiBase
 
 const slug = route.params.slug as string
 const selectedQuarter = ref<string | null>(null)
@@ -237,8 +239,14 @@ const CHANGE_SECTIONS = computed(() => [
   { key: 'sold',      label: t('smartMoney.changes.sold'),       color: 'text-red-500' },
 ])
 
-// Geo exposure is populated once asset revenue data is joined
-const geoExposure = computed(() => [])
+const { data: geoExposure } = await useAsyncData(
+  () => `sm-geo-${slug}-${selectedQuarter.value || 'latest'}`,
+  () => {
+    const q = selectedQuarter.value ? `?quarter=${encodeURIComponent(selectedQuarter.value)}` : ''
+    return $fetch<any[]>(`/api/smartmoney/investors/${slug}/geo${q}`, { baseURL: apiBase }).catch(() => [])
+  },
+  { watch: [selectedQuarter], default: () => [] },
+)
 
 function changeLabel(type: string): string {
   const map: Record<string, string> = {
@@ -259,9 +267,9 @@ function changeClass(type: string): string {
   return 'bg-[#1f2937] text-gray-500 border border-[#374151]'
 }
 
-function riskBarColor(code: string): string {
-  if (['CN', 'RU', 'IR', 'TW', 'TR', 'AR'].includes(code)) return 'bg-red-500'
-  if (['IN', 'MX', 'KR', 'BR', 'NG'].includes(code)) return 'bg-amber-500'
+function riskBarColor(g: any): string {
+  if (g.risk_level === 'high') return 'bg-red-500'
+  if (g.risk_level === 'medium') return 'bg-amber-500'
   return 'bg-emerald-500'
 }
 

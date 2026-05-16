@@ -65,6 +65,10 @@ async def security_headers(request: Request, call_next) -> Response:
     # Edge cache (Cloudflare CDN, free — no KV writes).
     # TTLs match data freshness; auth/feed/alerts are private and never cached.
     path = request.url.path
+    # Prevent API/snapshot endpoints from appearing in search results
+    if path.startswith("/api/") or path.startswith("/snapshots/"):
+        response.headers["X-Robots-Tag"] = "noindex, nofollow"
+
     if request.method == "GET" and response.status_code == 200:
         if path.startswith("/snapshots/"):
             # R2 snapshots regenerated daily at 7am — 1hr edge cache, 24hr stale fallback
@@ -118,6 +122,9 @@ async def security_headers(request: Request, call_next) -> Response:
         elif path.startswith("/api/movers"):
             # Movers refresh every ~15min via Celery detect_movers
             cc = "public, s-maxage=60, stale-while-revalidate=30"
+        elif path.startswith("/api/smartmoney/"):
+            # Smart Money data updates quarterly (13F filings) — 24hr edge cache
+            cc = "public, s-maxage=86400, stale-while-revalidate=3600"
         elif path.startswith("/og/"):
             # OG images change at most once a day
             cc = "public, s-maxage=86400, stale-while-revalidate=3600"

@@ -68,8 +68,9 @@ STATIC_ROUTE_TEMPLATES = [
     (f"{BASE}/faq/",          "0.6", "monthly"),
     (f"{BASE}/pricing/",      "0.7", "monthly"),
     (f"{BASE}/about/",        "0.6", "monthly"),
-    (f"{BASE}/privacy/",      "0.3", "yearly"),
-    (f"{BASE}/terms/",        "0.3", "yearly"),
+    (f"{BASE}/privacy/",       "0.3", "yearly"),
+    (f"{BASE}/terms/",         "0.3", "yearly"),
+    (f"{BASE}/sitemap-index/", "0.5", "monthly"),
 ]
 
 SECTOR_SLUGS = [

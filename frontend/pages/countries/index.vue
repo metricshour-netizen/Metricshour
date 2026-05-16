@@ -38,7 +38,7 @@
 
       <div v-if="filtered.length" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
         <NuxtLink
-          v-for="c in filtered"
+          v-for="c in visibleFiltered"
           :key="c.code"
           :to="`/countries/${c.code.toLowerCase()}`"
           class="bg-[#111827] border border-[#1f2937] hover:border-emerald-500 rounded-lg p-4 transition-colors"
@@ -59,6 +59,8 @@
           </div>
         </NuxtLink>
       </div>
+      <!-- Sentinel triggers Intersection Observer to load more cards -->
+      <div v-if="hasMore" ref="sentinel" class="h-4" aria-hidden="true" />
 
       <div v-else class="text-center py-16 text-gray-600 text-sm">
         No countries match "{{ search }}"
@@ -68,6 +70,9 @@
 </template>
 
 <script setup lang="ts">
+const INITIAL = 36
+const STEP = 24
+
 const filters = [
   { key: 'is_g20', label: 'G20' },
   { key: 'is_g7', label: 'G7' },
@@ -78,6 +83,8 @@ const filters = [
 ]
 const activeFilter = ref<string | null>(null)
 const search = ref('')
+const visibleCount = ref(INITIAL)
+const sentinel = ref<HTMLElement | null>(null)
 
 const { r2ListFetch } = useR2Fetch()
 const { data: countries, pending, error } = useAsyncData('countries-all',
@@ -105,6 +112,26 @@ const filtered = computed(() => {
   }
 
   return list
+})
+
+const visibleFiltered = computed(() => filtered.value.slice(0, visibleCount.value))
+const hasMore = computed(() => visibleCount.value < filtered.value.length)
+
+// Reset visible count on filter/search change
+watch([search, activeFilter], () => { visibleCount.value = INITIAL })
+
+onMounted(() => {
+  let io: IntersectionObserver | null = null
+  const observe = () => {
+    io?.disconnect()
+    if (!sentinel.value) return
+    io = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) visibleCount.value += STEP
+    }, { rootMargin: '200px' })
+    io.observe(sentinel.value)
+  }
+  watchEffect(observe)
+  onUnmounted(() => io?.disconnect())
 })
 
 useSeoMeta({

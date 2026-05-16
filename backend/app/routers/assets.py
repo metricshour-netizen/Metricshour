@@ -153,6 +153,29 @@ def list_assets(
     return result[offset:offset + limit]
 
 
+@router.get("/count")
+@limiter.limit("120/minute")
+def count_assets(
+    request: Request,
+    type: str | None = None,
+    sector: str | None = None,
+    db: Session = Depends(get_db),
+) -> dict:
+    cache_key = f"assets:list:v4:{type or 'all'}:{sector or 'all'}"
+    cached = cache_get(cache_key)
+    if cached is not None:
+        return {"count": len(cached)}
+    q = select(func.count(Asset.id)).where(Asset.is_active == True)
+    if type:
+        try:
+            q = q.where(Asset.asset_type == AssetType(type))
+        except ValueError:
+            pass
+    if sector:
+        q = q.where(Asset.sector == sector)
+    return {"count": db.execute(q).scalar_one()}
+
+
 @router.get("/{symbol}/prices")
 @limiter.limit("120/minute")
 def get_asset_prices(

@@ -84,8 +84,8 @@
             <span class="text-right text-emerald-800 truncate">{{ s.sector ? s.sector.slice(0, 4).toUpperCase() : '—' }}</span>
           </NuxtLink>
         </div>
-        <div v-if="filtered.length > 50" class="bg-[#0a0a0a] px-3 py-1.5 text-[10px] text-emerald-800 font-mono">
-          ... {{ filtered.length - 50 }} more — use search to filter
+        <div v-if="totalPages > 1" class="bg-[#0a0a0a] px-3 py-1.5 text-[10px] text-emerald-800 font-mono">
+          Page {{ currentPage }} of {{ totalPages }} — use pagination ↓ or search to filter
         </div>
       </div>
 
@@ -157,36 +157,69 @@
       <div v-else-if="search" class="text-center py-16 text-gray-600 text-sm">
         No stocks match "{{ search }}"
       </div>
+
+      <!-- Pagination (only in card view, not terminal view) -->
+      <Pagination
+        v-if="!terminalView && totalPages > 1"
+        :currentPage="currentPage"
+        :totalPages="totalPages"
+        baseUrl="/stocks/"
+      />
     </template>
   </main>
 </template>
 
 <script setup lang="ts">
-const { r2ListFetch } = useR2Fetch()
+const PAGE_SIZE = 50
+const SECTORS = [
+  'Technology', 'Healthcare', 'Financials', 'Industrials', 'Energy',
+  'Consumer Discretionary', 'Consumer Staples', 'Communication Services',
+  'Materials', 'Real Estate', 'Utilities',
+]
+
+const config = useRuntimeConfig()
+const apiBase = config.public.apiBase
+const route = useRoute()
+const router = useRouter()
+
 const activeSector = ref<string | null>(null)
 const search = ref('')
 const terminalView = ref(false)
 
-const { data: stocks, pending } = useAsyncData('stocks',
-  // R2 list has all asset types — filter to stocks client-side
-  () => r2ListFetch<any>('snapshots/lists/assets.json', '/api/assets?type=stock')
-    .then(list => list.filter((a: any) => a.asset_type === 'stock'))
-    .catch(() => []),
+const currentPage = computed(() => Math.max(1, parseInt(route.query.page as string) || 1))
+
+const { data: countData } = await useAsyncData(
+  () => `stocks-count-${activeSector.value || 'all'}`,
+  () => $fetch<{ count: number }>(`/api/assets/count`, {
+    baseURL: apiBase,
+    params: { type: 'stock', ...(activeSector.value ? { sector: activeSector.value } : {}) },
+  }).catch(() => ({ count: 0 })),
+  { watch: [activeSector] },
+)
+const totalPages = computed(() => Math.max(1, Math.ceil((countData.value?.count || PAGE_SIZE) / PAGE_SIZE)))
+
+const { data: stocks, pending } = await useAsyncData(
+  () => `stocks-p${currentPage.value}-${activeSector.value || 'all'}`,
+  () => $fetch<any[]>('/api/assets', {
+    baseURL: apiBase,
+    params: {
+      type: 'stock',
+      limit: PAGE_SIZE,
+      offset: (currentPage.value - 1) * PAGE_SIZE,
+      ...(activeSector.value ? { sector: activeSector.value } : {}),
+    },
+  }).catch(() => []),
+  { watch: [currentPage, activeSector] },
 )
 
-const sectors = computed(() => {
-  if (!stocks.value?.length) return []
-  return [...new Set(stocks.value.map((s: any) => s.sector).filter(Boolean))].sort()
-})
+// Reset to page 1 when sector changes
+watch(activeSector, () => router.push({ query: { page: undefined } }))
+
+const sectors = computed(() => SECTORS)
 
 const filtered = computed(() => {
   if (!stocks.value) return []
   let list = (stocks.value as any[]).filter((s: any) => /[A-Z]/i.test(s.symbol))
-
-  if (activeSector.value) {
-    list = list.filter((s: any) => s.sector === activeSector.value)
-  }
-
   if (search.value.trim()) {
     const q = search.value.toLowerCase().trim()
     list = list.filter((s: any) =>
@@ -196,17 +229,10 @@ const filtered = computed(() => {
       s.country?.name?.toLowerCase().includes(q)
     )
   }
-
-  // Rank: stocks with price data first, then by market cap desc
-  return [...list].sort((a, b) => {
-    const aHasPrice = a.price ? 1 : 0
-    const bHasPrice = b.price ? 1 : 0
-    if (bHasPrice !== aHasPrice) return bHasPrice - aHasPrice
-    return (b.market_cap_usd || 0) - (a.market_cap_usd || 0)
-  })
+  return list
 })
 
-// Terminal View: max 50 rows, densely packed
+// Terminal View: max 50 rows from current page
 const terminalRows = computed(() => filtered.value.slice(0, 50))
 
 // Live clock for terminal header
@@ -274,7 +300,7 @@ function fmtCloseDate(ts: string): string {
   return datePart + ' · ' + time
 }
 
-useSeoMeta({
+useSeoMeta(computed(() => ({
   title: 'Stock Geographic Revenue: Where Companies Earn — MetricsHour',
   description: 'Top global stocks with geographic revenue exposure from SEC EDGAR. See which countries each stock earns from and how trade flows affect your portfolio.',
   ogTitle: 'Stock Geographic Revenue: Where Companies Earn — MetricsHour',
@@ -288,12 +314,14 @@ useSeoMeta({
   twitterDescription: 'Top global stocks with geographic revenue exposure from SEC EDGAR. See which countries each stock earns from and how trade flows affect your portfolio.',
   twitterImage: 'https://cdn.metricshour.com/og/section/stocks.png',
   twitterCard: 'summary_large_image',
-  robots: 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1',
-})
+  robots: currentPage.value === 1
+    ? 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1'
+    : 'noindex, follow',
+})))
 
 useHead(computed(() => ({
   link: [{ rel: 'canonical', href: 'https://metricshour.com/stocks/' }],
-  script: [{
+  script: currentPage.value === 1 ? [{
     type: 'application/ld+json',
     innerHTML: JSON.stringify({
       '@context': 'https://schema.org',
@@ -312,6 +340,6 @@ useHead(computed(() => ({
         })),
       },
     }),
-  }],
+  }] : [],
 })))
 </script>
