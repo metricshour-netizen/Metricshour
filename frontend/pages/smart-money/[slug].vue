@@ -70,8 +70,14 @@
           {{ $t('smartMoney.noHolderData') }}
         </div>
 
+        <template v-else>
+        <!-- Cap notice for large quant funds (200+ positions capped) -->
+        <p v-if="data.holdings_total > data.holdings_shown" class="text-xs text-amber-500/70 mb-3">
+          Showing top {{ data.holdings_shown }} of {{ data.holdings_total?.toLocaleString() }} positions by value
+        </p>
+
         <!-- Desktop table -->
-        <div v-else class="hidden sm:block bg-[#0d1520] border border-[#1f2937] rounded-xl overflow-hidden">
+        <div class="hidden sm:block bg-[#0d1520] border border-[#1f2937] rounded-xl overflow-hidden">
           <table class="w-full text-sm">
             <thead class="bg-[#111827] text-[10px] text-gray-500 uppercase tracking-widest">
               <tr>
@@ -137,6 +143,7 @@
             </div>
           </NuxtLink>
         </div>
+        </template><!-- end v-else (has holdings) -->
       </template>
 
       <!-- TAB: Changes -->

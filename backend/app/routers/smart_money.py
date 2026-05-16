@@ -162,25 +162,35 @@ def get_investor(
         .limit(8)
     ).scalars().all()
 
-    # Holdings for this filing, sorted by value
+    # Total holding count for this filing
+    total_count = db.execute(
+        select(sqlfunc.count(SmartMoneyHolding.id))
+        .where(SmartMoneyHolding.filing_id == filing.id)
+    ).scalar_one()
+
+    # Top 200 holdings by value (prevents browser overload for quant funds with 4000+ positions)
+    HOLDINGS_LIMIT = 200
     holdings_rows = db.execute(
         select(SmartMoneyHolding)
         .where(SmartMoneyHolding.filing_id == filing.id)
         .order_by(SmartMoneyHolding.value_usd.desc().nullslast())
+        .limit(HOLDINGS_LIMIT)
     ).scalars().all()
 
     holdings = [_holding_dict(h) for h in holdings_rows]
 
-    # Changes grouped by type
+    # Changes grouped by type (cap each bucket at 50 to keep payload manageable)
     changes: dict[str, list[dict]] = {"new": [], "increased": [], "decreased": [], "sold": []}
     for h in holdings_rows:
-        if h.change_type in changes:
+        if h.change_type in changes and len(changes[h.change_type]) < 50:
             changes[h.change_type].append(_holding_dict(h))
 
     summary = _investor_summary(inv, filing)
     result = {
         **summary,
         "holdings": holdings,
+        "holdings_shown": len(holdings),
+        "holdings_total": total_count,
         "changes": changes,
         "quarters": list(quarters),
     }
