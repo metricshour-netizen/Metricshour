@@ -33,21 +33,33 @@ HEADERS = {
 # Tier 2 — featured funds
 INVESTOR_SEED = [
     # slug, name, fund_name, cik, tier, description
-    ("warren-buffett",        "Warren Buffett",        "Berkshire Hathaway",       "0001067983", 1, "Chairman & CEO of Berkshire Hathaway, legendary value investor"),
-    ("bill-ackman",           "Bill Ackman",           "Pershing Square Capital",  "0001336528", 1, "Activist investor, founder of Pershing Square"),
-    ("michael-burry",         "Michael Burry",         "Scion Asset Management",   "0001649339", 1, "Famous for shorting the housing market in 2008"),
-    ("ray-dalio",             "Ray Dalio",             "Bridgewater Associates",   "0001350694", 1, "Founder of Bridgewater, creator of All Weather portfolio"),
-    ("stanley-druckenmiller", "Stanley Druckenmiller", "Duquesne Family Office",   "0001536411", 1, "Former Soros CIO, legendary macro trader"),
-    ("george-soros",          "George Soros",          "Soros Fund Management",    "0001029160", 1, "Pioneer of macro investing, broke the Bank of England"),
-    ("david-tepper",          "David Tepper",          "Appaloosa LP",             "0001656456", 1, "Distressed debt specialist turned broad equity investor"),
-    ("carl-icahn",            "Carl Icahn",            "Icahn Capital LP",         "0001412093", 1, "Prominent activist investor"),
-    ("dan-loeb",              "Dan Loeb",              "Third Point LLC",          "0001040273", 1, "Activist investor and hedge fund manager"),
-    ("david-einhorn",         "David Einhorn",         "Greenlight Capital",       "0001079114", 1, "Value investor known for shorting Lehman Brothers"),
-    ("cathie-wood",           "Cathie Wood",           "ARK Investment Management","0001697748", 2, "Disruptive innovation fund manager"),
-    ("tiger-global",          "Tiger Global",          "Tiger Global Management",  "0001167483", 2, "Growth equity and hedge fund manager"),
-    ("coatue-management",     "Coatue Management",     "Coatue Management LLC",    "0001135730", 2, "Long/short technology-focused hedge fund"),
-    ("point72",               "Steve Cohen",           "Point72 Asset Management", "0001603466", 2, "Multi-strategy hedge fund manager"),
-    ("de-shaw",               "DE Shaw",               "D.E. Shaw & Co., Inc.",    "0001009207", 2, "Quantitative and systematic investment firm"),
+    # ── Tier 1: Featured individual investors ──────────────────────────────────
+    ("warren-buffett",        "Warren Buffett",        "Berkshire Hathaway",        "0001067983", 1, "Chairman & CEO of Berkshire Hathaway, the world's most studied value investor"),
+    ("bill-ackman",           "Bill Ackman",           "Pershing Square Capital",   "0001336528", 1, "Activist investor known for high-conviction concentrated bets"),
+    ("michael-burry",         "Michael Burry",         "Scion Asset Management",    "0001649339", 1, "Famous for shorting the 2008 housing bubble; contrarian macro bets"),
+    ("ray-dalio",             "Ray Dalio",             "Bridgewater Associates",    "0001350694", 1, "Founder of the world's largest hedge fund; creator of All Weather portfolio"),
+    ("stanley-druckenmiller", "Stanley Druckenmiller", "Duquesne Family Office",    "0001536411", 1, "Former Soros CIO and legendary macro trader with 30-year unbeaten record"),
+    ("george-soros",          "George Soros",          "Soros Fund Management",     "0001029160", 1, "Pioneer of macro investing; broke the Bank of England in 1992"),
+    ("david-tepper",          "David Tepper",          "Appaloosa LP",              "0001656456", 1, "Distressed debt specialist turned broad equity investor"),
+    ("carl-icahn",            "Carl Icahn",            "Icahn Capital LP",          "0001412093", 1, "Veteran activist investor; forces operational and board changes"),
+    ("dan-loeb",              "Dan Loeb",              "Third Point LLC",           "0001040273", 1, "Activist investor known for shareholder letters and board campaigns"),
+    ("david-einhorn",         "David Einhorn",         "Greenlight Capital",        "0001079114", 1, "Value investor who publicly shorted Lehman Brothers before its collapse"),
+    ("nelson-peltz",          "Nelson Peltz",          "Trian Fund Management",     "0001418081", 1, "Activist investor targeting consumer and industrial giants"),
+    ("seth-klarman",          "Seth Klarman",          "Baupost Group",             "0000028823", 1, "Deep value investor; author of Margin of Safety, manages $30B+"),
+    ("john-paulson",          "John Paulson",          "Paulson & Co.",             "0001028620", 1, "Made $20B shorting subprime mortgages in 2007; now event-driven equity"),
+    ("israel-englander",      "Israel Englander",      "Millennium Management",     "0001273087", 1, "Quantitative multi-strategy investor managing $65B+"),
+    # ── Tier 2: Featured institutional funds ───────────────────────────────────
+    ("cathie-wood",           "Cathie Wood",           "ARK Investment Management", "0001697748", 2, "High-conviction disruptive innovation fund manager; flagship ARKK ETF"),
+    ("tiger-global",          "Tiger Global",          "Tiger Global Management",   "0001167483", 2, "Growth equity and hedge fund; backed Stripe, ByteDance, UiPath"),
+    ("coatue-management",     "Coatue Management",     "Coatue Management LLC",     "0001135730", 2, "Technology-focused long/short hedge fund; early backer of Snowflake"),
+    ("point72",               "Steve Cohen",           "Point72 Asset Management",  "0001603466", 2, "Multi-strategy hedge fund with 1,800+ employees and $35B AUM"),
+    ("de-shaw",               "D.E. Shaw",             "D.E. Shaw & Co.",           "0001009207", 2, "Pioneer quantitative hedge fund; systematic strategies across all asset classes"),
+    ("renaissance-technologies", "Jim Simons",         "Renaissance Technologies",  "0001037389", 2, "The world's most successful quant fund; Medallion averages 66% before fees"),
+    ("two-sigma",             "Two Sigma",             "Two Sigma Advisers LP",     "0001483290", 2, "Data science-driven quant fund managing $60B+"),
+    ("citadel",               "Ken Griffin",           "Citadel Advisors LLC",      "0001423298", 2, "Multi-strategy fund managing $60B+; largest US market maker via Citadel Securities"),
+    ("viking-global",         "Viking Global",         "Viking Global Investors LP", "0001393818", 2, "Long-biased hedge fund founded by Andreas Halvorsen; Tiger cub"),
+    ("lone-pine-capital",     "Steve Mandel",          "Lone Pine Capital LLC",     "0001009672", 2, "Long/short equity fund; Tiger cub known for concentrated global bets"),
+    ("glenview-capital",      "Larry Robbins",         "Glenview Capital Management","0001262691", 2, "Healthcare and special situation long/short equity fund"),
 ]
 
 
