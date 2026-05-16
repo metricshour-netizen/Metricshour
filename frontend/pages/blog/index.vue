@@ -53,6 +53,10 @@
                 v-if="post.cover_image_url"
                 :src="post.cover_image_url"
                 :alt="post.title"
+                width="80"
+                height="80"
+                loading="lazy"
+                decoding="async"
                 class="w-20 h-20 rounded-lg object-cover shrink-0 opacity-80"
               />
               <div class="flex-1 min-w-0">

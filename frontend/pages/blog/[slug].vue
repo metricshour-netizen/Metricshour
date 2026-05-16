@@ -174,6 +174,7 @@ renderer.image = ({ href, title, text }: { href: string; title?: string | null; 
   const titleAttr = title ? ` title="${title}"` : ''
   return `<img src="${href}" alt="${text}"${titleAttr} class="w-full rounded-xl my-6 block" loading="lazy" />`
 }
+renderer.hr = () => ''  // suppress --- thematic breaks — AI often inserts them as section dividers
 marked.use({ renderer })
 
 const CATEGORY_COLORS: Record<string, string> = {
