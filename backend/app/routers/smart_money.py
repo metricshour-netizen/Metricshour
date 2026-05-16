@@ -102,13 +102,14 @@ def list_investors(
         ).scalar_one_or_none()
         summary = _investor_summary(inv, latest_filing)
 
-        # Top 3 holdings for the card
+        # Top 3 holdings for the card — exclude unresolved symbols
         top_holdings: list[str] = []
         if latest_filing:
             top = db.execute(
                 select(SmartMoneyHolding.symbol)
                 .where(SmartMoneyHolding.filing_id == latest_filing.id)
                 .where(SmartMoneyHolding.symbol != "")
+                .where(~SmartMoneyHolding.symbol.startswith("_UNRESOLVED_"))
                 .order_by(SmartMoneyHolding.value_usd.desc().nullslast())
                 .limit(3)
             ).scalars().all()
@@ -168,11 +169,13 @@ def get_investor(
         .where(SmartMoneyHolding.filing_id == filing.id)
     ).scalar_one()
 
-    # Top 200 holdings by value (prevents browser overload for quant funds with 4000+ positions)
+    # Top 200 holdings by value — resolved symbols first, then unresolved
+    # (prevents browser overload for quant funds with 4000+ positions)
     HOLDINGS_LIMIT = 200
     holdings_rows = db.execute(
         select(SmartMoneyHolding)
         .where(SmartMoneyHolding.filing_id == filing.id)
+        .where(~SmartMoneyHolding.symbol.startswith("_UNRESOLVED_"))
         .order_by(SmartMoneyHolding.value_usd.desc().nullslast())
         .limit(HOLDINGS_LIMIT)
     ).scalars().all()
