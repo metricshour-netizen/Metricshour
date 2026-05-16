@@ -445,7 +445,7 @@ def get_investor_geo(
             country_acc[code] = {
                 "code": code,
                 "name": country.name,
-                "flag": country.flag or "",
+                "flag": country.flag_emoji or "",
                 "pct": 0.0,
                 "risk_level": risk,
                 "risk_note": RISK_LABELS.get(code, ""),
