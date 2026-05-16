@@ -64,7 +64,7 @@ class SmartMoneyHolding(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     filing_id: Mapped[int] = mapped_column(ForeignKey("smart_money_filings.id", ondelete="CASCADE"), nullable=False)
     investor_id: Mapped[int] = mapped_column(ForeignKey("smart_money_investors.id", ondelete="CASCADE"), nullable=False)
-    symbol: Mapped[str] = mapped_column(String(20), nullable=False)
+    symbol: Mapped[str] = mapped_column(String(50), nullable=False)
     company_name: Mapped[str] = mapped_column(String(300), nullable=True)
     cusip: Mapped[str] = mapped_column(String(12), nullable=True)
     shares: Mapped[int] = mapped_column(Integer, nullable=True)
