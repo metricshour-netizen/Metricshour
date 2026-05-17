@@ -93,6 +93,7 @@ app = Celery('metricshour', include=[
     'tasks.macro_calendar',
     'tasks.company_enrichment',
     'tasks.smart_money',
+    'tasks.llms',
 ])
 
 # Use SSL only for rediss:// URLs (Upstash); skip for local redis:// (DragonflyDB)
