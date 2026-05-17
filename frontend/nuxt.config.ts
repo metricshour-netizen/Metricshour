@@ -158,8 +158,7 @@ export default defineNuxtConfig({
     '/compare/**': { headers: { 'Cache-Control': 'public, s-maxage=1800, max-age=300, stale-while-revalidate=86400' } },
     '/calendar/**': { headers: { 'Cache-Control': 'public, s-maxage=1800, max-age=300, stale-while-revalidate=86400' } },
     '/lens/**': { headers: { 'Cache-Control': 'public, s-maxage=1800, max-age=300, stale-while-revalidate=86400' } },
-    // Markets + Feed — 5 min (data changes frequently)
-    '/markets': { headers: { 'Cache-Control': 'public, s-maxage=300, max-age=60, stale-while-revalidate=3600' } },
+    // Feed — 5 min (data changes frequently); /markets rule already set above (s-maxage=900)
     '/feed': { headers: { 'Cache-Control': 'public, s-maxage=300, max-age=60, stale-while-revalidate=3600' } },
     '/feed/**': { headers: { 'Cache-Control': 'public, s-maxage=300, max-age=60, stale-while-revalidate=3600' } },
 
