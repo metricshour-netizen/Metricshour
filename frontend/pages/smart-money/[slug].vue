@@ -301,6 +301,16 @@ const fundName = computed(() => data.value?.fund_name || '')
 useSeoMeta({
   title: () => `${investorName.value} Portfolio — ${fundName.value} 13F Holdings | MetricsHour`,
   description: () => `Track ${investorName.value}'s latest 13F filing. See what ${fundName.value} is buying and selling this quarter with geographic risk analysis.`,
+  ogTitle: () => `${investorName.value} Portfolio — ${fundName.value} 13F Holdings | MetricsHour`,
+  ogDescription: () => `Track ${investorName.value}'s latest 13F filing. See what ${fundName.value} is buying and selling this quarter with geographic risk analysis.`,
+  ogImage: 'https://cdn.metricshour.com/og/section/stocks.png',
+  ogImageWidth: '1200',
+  ogImageHeight: '630',
+  ogType: 'website',
+  twitterTitle: () => `${investorName.value} Portfolio — ${fundName.value} 13F Holdings | MetricsHour`,
+  twitterDescription: () => `Track ${investorName.value}'s latest 13F filing. See what ${fundName.value} is buying and selling this quarter with geographic risk analysis.`,
+  twitterImage: 'https://cdn.metricshour.com/og/section/stocks.png',
+  twitterCard: 'summary_large_image',
   robots: 'index, follow',
 })
 useHead({

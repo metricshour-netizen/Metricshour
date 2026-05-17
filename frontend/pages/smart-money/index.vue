@@ -141,8 +141,16 @@ function fmtB(v: number): string {
 useSeoMeta({
   title: 'Smart Money Tracker — What Buffett, Burry & Top Funds Are Buying | MetricsHour',
   description: 'Track institutional investor 13F filings. See what Warren Buffett, Michael Burry, and top hedge funds are buying and selling — with geographic risk context.',
-  ogTitle: 'Smart Money Tracker — MetricsHour',
+  ogTitle: 'Smart Money Tracker — What Buffett, Burry & Top Funds Are Buying | MetricsHour',
   ogDescription: 'What Buffett, Burry, and top institutional investors are buying this quarter — with geographic revenue risk analysis.',
+  ogImage: 'https://cdn.metricshour.com/og/section/stocks.png',
+  ogImageWidth: '1200',
+  ogImageHeight: '630',
+  ogType: 'website',
+  twitterTitle: 'Smart Money Tracker — What Buffett, Burry & Top Funds Are Buying | MetricsHour',
+  twitterDescription: 'What Buffett, Burry, and top institutional investors are buying this quarter — with geographic revenue risk analysis.',
+  twitterImage: 'https://cdn.metricshour.com/og/section/stocks.png',
+  twitterCard: 'summary_large_image',
   robots: 'index, follow',
 })
 useHead({
