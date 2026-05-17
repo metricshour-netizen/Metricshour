@@ -121,6 +121,8 @@ app.conf.update(
     task_acks_late=False,
     task_reject_on_worker_lost=False,
     worker_prefetch_multiplier=1,
+    worker_max_memory_per_child=512000,   # recycle worker at 512 MB (prevents OOM kills)
+    worker_max_tasks_per_child=200,       # also recycle after 200 tasks
     beat_schedule={
         'crypto-every-2min': {
             'task': 'tasks.crypto.fetch_crypto_prices',

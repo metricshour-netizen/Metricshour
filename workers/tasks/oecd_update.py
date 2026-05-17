@@ -11,9 +11,10 @@ Key datasets:
   - MONTHLY_TRADE: Merchandise trade flows (monthly)
 """
 
+import gc
 import logging
 import time
-from datetime import date
+from datetime import date, timedelta
 
 import requests
 from sqlalchemy import select
@@ -126,7 +127,9 @@ def _fetch_oecd_all_countries(dataset: str, key_template: str) -> list[dict]:
     series_key = key_template.replace("{country}", "")
     series_key = series_key.replace("..", ".").strip(".")
     url = f"{OECD_BASE}/{dataset}/{series_key}/all"
-    params = {"startTime": "2018-01", "endTime": "2099-12"}
+    # Rolling 36-month window — cuts dataset ~60% vs 2018 baseline, still covers trends
+    cutoff = (date.today().replace(day=1) - timedelta(days=36 * 30)).strftime("%Y-%m")
+    params = {"startTime": cutoff, "endTime": "2099-12"}
 
     try:
         r = requests.get(url, params=params, timeout=90, allow_redirects=True)
@@ -264,38 +267,44 @@ def update_oecd_data(self):
                     seen[key] = row
                 batch = list(seen.values())
 
-                try:
-                    stmt = pg_insert(CountryIndicator).values(batch)
-                    stmt = stmt.on_conflict_do_update(
-                        constraint="uq_country_indicator_date",
-                        set_={"value": stmt.excluded.value, "source": stmt.excluded.source},
-                    )
-                    db.execute(stmt)
-                    db.commit()
-                    total_upserted += len(batch)
-                    log.info(f"OECD: {query['indicator']} — {len(batch)} rows upserted")
-                except Exception as bulk_err:
-                    # Bulk upsert failed (e.g. CardinalityViolation from duplicate API rows).
-                    # Fall back to row-by-row upserts so the indicator is not lost entirely.
-                    db.rollback()
-                    log.warning(f"OECD bulk upsert failed for {query['indicator']}: {bulk_err} — retrying row-by-row")
-                    row_count = 0
-                    for row in batch:
-                        try:
-                            s = pg_insert(CountryIndicator).values([row])
-                            s = s.on_conflict_do_update(
-                                constraint="uq_country_indicator_date",
-                                set_={"value": s.excluded.value, "source": s.excluded.source},
-                            )
-                            db.execute(s)
-                            db.commit()
-                            row_count += 1
-                        except Exception as row_err:
-                            db.rollback()
-                            log.debug(f"OECD row skip: {row_err}")
-                    total_upserted += row_count
-                    log.info(f"OECD: {query['indicator']} — {row_count}/{len(batch)} rows upserted (row-by-row)")
+                # Insert in 500-row chunks to keep per-statement memory low
+                CHUNK = 500
+                indicator_count = 0
+                for chunk_start in range(0, len(batch), CHUNK):
+                    chunk = batch[chunk_start:chunk_start + CHUNK]
+                    try:
+                        stmt = pg_insert(CountryIndicator).values(chunk)
+                        stmt = stmt.on_conflict_do_update(
+                            constraint="uq_country_indicator_date",
+                            set_={"value": stmt.excluded.value, "source": stmt.excluded.source},
+                        )
+                        db.execute(stmt)
+                        db.commit()
+                        indicator_count += len(chunk)
+                    except Exception as bulk_err:
+                        # Chunk failed — fall back to row-by-row for this chunk only
+                        db.rollback()
+                        log.warning(f"OECD chunk upsert failed for {query['indicator']} (offset {chunk_start}): {bulk_err} — row-by-row")
+                        for row in chunk:
+                            try:
+                                s = pg_insert(CountryIndicator).values([row])
+                                s = s.on_conflict_do_update(
+                                    constraint="uq_country_indicator_date",
+                                    set_={"value": s.excluded.value, "source": s.excluded.source},
+                                )
+                                db.execute(s)
+                                db.commit()
+                                indicator_count += 1
+                            except Exception as row_err:
+                                db.rollback()
+                                log.debug(f"OECD row skip: {row_err}")
 
+                total_upserted += indicator_count
+                log.info(f"OECD: {query['indicator']} — {indicator_count}/{len(batch)} rows upserted")
+
+            # Release memory after each indicator before next fetch
+            batch = []
+            gc.collect()
             time.sleep(1)  # OECD is rate-limit-free but be polite
 
         log.info(f"OECD update complete — {total_upserted} total rows")
