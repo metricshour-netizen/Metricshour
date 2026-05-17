@@ -300,7 +300,8 @@ function fmtCloseDate(ts: string): string {
   return datePart + ' · ' + time
 }
 
-useSeoMeta(computed(() => ({
+// Flat object = evaluated immediately during SSR. Arrow fn for robots-only reactive field.
+useSeoMeta({
   title: 'Stock Geographic Revenue: Where Companies Earn — MetricsHour',
   description: 'Top global stocks with geographic revenue exposure from SEC EDGAR. See which countries each stock earns from and how trade flows affect your portfolio.',
   ogTitle: 'Stock Geographic Revenue: Where Companies Earn — MetricsHour',
@@ -314,10 +315,10 @@ useSeoMeta(computed(() => ({
   twitterDescription: 'Top global stocks with geographic revenue exposure from SEC EDGAR. See which countries each stock earns from and how trade flows affect your portfolio.',
   twitterImage: 'https://cdn.metricshour.com/og/section/stocks.png',
   twitterCard: 'summary_large_image',
-  robots: currentPage.value === 1
+  robots: () => currentPage.value === 1
     ? 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1'
     : 'noindex, follow',
-})))
+})
 
 useHead(computed(() => ({
   link: [{ rel: 'canonical', href: 'https://metricshour.com/stocks/' }],
