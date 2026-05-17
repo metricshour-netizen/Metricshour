@@ -596,6 +596,20 @@ async def upload_author_avatar(
     return {"url": url}
 
 
+# ── Smart money admin triggers ────────────────────────────────────────────────
+
+@router.post("/smartmoney/refresh", response_model=dict)
+def refresh_smart_money(
+    _: User = Depends(get_admin_user),
+):
+    """Manually trigger 13F filing fetch + parse (runs async via Celery)."""
+    from tasks.smart_money import fetch_13f_filings, parse_holdings
+    fetch_task = fetch_13f_filings.apply_async()
+    # parse_holdings runs after fetch — chain with a 60s countdown
+    parse_task = parse_holdings.apply_async(countdown=60)
+    return {"status": "queued", "fetch_task_id": str(fetch_task.id), "parse_task_id": str(parse_task.id)}
+
+
 # ── Admin stats dashboard ──────────────────────────────────────────────────────
 
 @router.get("/stats")
