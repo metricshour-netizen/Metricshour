@@ -17,7 +17,9 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.limiter import limiter
-from app.models.smart_money import SmartMoneyInvestor, SmartMoneyFiling, SmartMoneyHolding
+from pydantic import BaseModel, EmailStr
+
+from app.models.smart_money import SmartMoneyInvestor, SmartMoneyFiling, SmartMoneyHolding, SmartMoneyAlert
 from app.models.asset import Asset, AssetType, StockCountryRevenue
 from app.models.country import Country
 from app.storage import cache_get, cache_set
@@ -473,3 +475,44 @@ def get_investor_geo(
 
     cache_set(cache_key, result, ttl_seconds=86400)
     return result
+
+
+class SmartMoneyAlertIn(BaseModel):
+    email: EmailStr
+    investor_slug: str
+
+
+@router.post("/alerts")
+@limiter.limit("10/minute")
+def create_smart_money_alert(
+    payload: SmartMoneyAlertIn,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Subscribe to an email alert when a tracked investor files their next 13F."""
+    slug = payload.investor_slug.lower().strip()
+
+    investor = db.execute(
+        select(SmartMoneyInvestor).where(SmartMoneyInvestor.slug == slug, SmartMoneyInvestor.active == True)
+    ).scalar_one_or_none()
+    if not investor:
+        raise HTTPException(status_code=404, detail="Investor not found")
+
+    existing = db.execute(
+        select(SmartMoneyAlert).where(
+            SmartMoneyAlert.email == payload.email,
+            SmartMoneyAlert.investor_slug == slug,
+        )
+    ).scalar_one_or_none()
+
+    if existing:
+        if not existing.active:
+            existing.active = True
+            existing.notified_at = None
+            db.commit()
+        return {"status": "ok", "message": "Alert set"}
+
+    alert = SmartMoneyAlert(email=payload.email, investor_slug=slug)
+    db.add(alert)
+    db.commit()
+    return {"status": "ok", "message": "Alert set"}

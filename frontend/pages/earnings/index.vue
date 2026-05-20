@@ -120,8 +120,7 @@
       </template>
 
       <div v-else class="text-center py-16">
-        <p class="text-gray-600 text-sm mb-2">No upcoming earnings data yet.</p>
-        <p class="text-gray-700 text-xs">Worker fetches daily at 7:30am UTC.</p>
+        <p class="text-gray-500 text-sm">Upcoming earnings refreshing — check back shortly.</p>
       </div>
     </template>
 
@@ -174,7 +173,7 @@
                 <td class="px-4 py-3 text-right text-xs tabular-nums hidden md:table-cell">
                   <span v-if="ev.revenue_actual != null" class="text-gray-400">{{ fmtRevenue(ev.revenue_actual) }}</span>
                   <span v-else-if="ev.revenue_estimate != null" class="text-gray-600">{{ fmtRevenue(ev.revenue_estimate) }}<span class="text-[10px] ml-0.5">E</span></span>
-                  <span v-else class="text-gray-700 text-[10px]">no data</span>
+                  <span v-else class="text-gray-700">—</span>
                 </td>
                 <td class="px-4 py-3 text-right text-gray-600 text-xs tabular-nums hidden lg:table-cell">
                   {{ fmtMktCap(ev.market_cap_usd) }}

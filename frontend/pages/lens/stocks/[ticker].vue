@@ -1,7 +1,11 @@
 <template>
   <main class="max-w-3xl mx-auto px-4 py-8">
-    <!-- Back -->
-    <NuxtLink to="/lens/" class="text-gray-600 text-xs hover:text-gray-400 transition-colors mb-5 inline-flex items-center gap-1">← Lens</NuxtLink>
+    <Breadcrumb :crumbs="[
+      { label: $t('breadcrumb.home'), href: '/' },
+      { label: $t('breadcrumb.tools'), href: '/tools/' },
+      { label: $t('breadcrumb.lens'), href: '/lens/' },
+      { label: ticker }
+    ]" />
 
     <!-- Loading -->
     <div v-if="pending" class="space-y-4">
@@ -50,6 +54,31 @@
           </div>
         </div>
         <div class="text-[10px] text-gray-700 mt-2">{{ $t('lens.lastUpdated') }}: {{ fmtTs(lensData.last_updated) }}</div>
+      </div>
+
+      <!-- SECTION 1B: Mini pill row — key signals at a glance (mobile-first) -->
+      <div v-if="lensData.geo_risk?.length || lensData.risk?.level || earningsPill"
+           class="flex flex-wrap gap-1.5 mb-4">
+        <!-- Top 3 country pills -->
+        <span
+          v-for="g in lensData.geo_risk?.slice(0, 3)"
+          :key="g.country_code"
+          class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full border"
+          :class="pillColorClass(g.risk_icon)"
+        >
+          {{ g.flag }} {{ g.country_code }}: {{ g.revenue_pct?.toFixed(0) }}%
+        </span>
+        <!-- Risk level pill -->
+        <span v-if="lensData.risk?.level"
+          class="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-full border"
+          :class="riskPillClass(lensData.risk.level)">
+          {{ riskIcon(lensData.risk.level) }} {{ lensData.risk.level }}
+        </span>
+        <!-- Earnings pill (only within 30 days) -->
+        <span v-if="earningsPill"
+          class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full border border-sky-800 bg-sky-950/50 text-sky-300">
+          📅 Earnings: {{ earningsPill }}
+        </span>
       </div>
 
       <!-- SECTION 2: What's Driving It (LLM insight) -->
@@ -280,6 +309,31 @@ function fmtTs(iso: string | null | undefined): string {
   if (!iso) return ''
   return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'UTC', hour12: false }) + ' UTC'
 }
+
+function pillColorClass(riskIcon: string): string {
+  if (riskIcon === '🔴') return 'border-red-800 bg-red-950/50 text-red-300'
+  if (riskIcon === '🟡') return 'border-amber-800 bg-amber-950/50 text-amber-300'
+  return 'border-emerald-900 bg-emerald-950/30 text-emerald-400'
+}
+
+function riskPillClass(level: string): string {
+  if (level === 'ELEVATED') return 'border-red-800 bg-red-950/50 text-red-300'
+  if (level === 'MODERATE') return 'border-amber-800 bg-amber-950/50 text-amber-300'
+  return 'border-emerald-900 bg-emerald-950/30 text-emerald-400'
+}
+
+// Earnings pill — show if earnings within 30 days
+const earningsPill = computed((): string | null => {
+  const w = lensData.value?.what_to_watch
+  if (!w?.length) return null
+  const earningsEvent = w.find((e: any) => e.event?.toLowerCase().includes('earning'))
+  if (!earningsEvent) return null
+  const eventDate = new Date(earningsEvent.date)
+  const now = new Date()
+  const daysAway = (eventDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+  if (daysAway < 0 || daysAway > 30) return null
+  return eventDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+})
 
 const _name = lensData.value?.name || ticker
 const _hasLensContent = computed(() =>

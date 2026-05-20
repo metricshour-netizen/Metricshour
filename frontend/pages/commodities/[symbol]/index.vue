@@ -147,7 +147,7 @@
 
       <!-- Related trade corridors -->
       <div class="space-y-6">
-        <div class="bg-[#111827] border border-[#1f2937] rounded-xl p-5">
+        <div v-if="meta.tradeFlows?.length" class="bg-[#111827] border border-[#1f2937] rounded-xl p-5">
           <h2 class="text-xs text-gray-500 uppercase tracking-widest mb-3">Related Trade Flows</h2>
           <div class="space-y-2">
             <NuxtLink
@@ -162,7 +162,7 @@
           </div>
         </div>
 
-        <div class="bg-[#111827] border border-[#1f2937] rounded-xl p-5">
+        <div v-if="meta.related?.length" class="bg-[#111827] border border-[#1f2937] rounded-xl p-5">
           <h2 class="text-xs text-gray-500 uppercase tracking-widest mb-3">Related Markets</h2>
           <div class="space-y-1.5">
             <NuxtLink

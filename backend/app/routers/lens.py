@@ -151,7 +151,7 @@ def _generate_lens_insight(data: dict, asset_type: str) -> Optional[str]:
         f"Data: {json.dumps(data, default=str)}"
     )
     try:
-        url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent"
+        url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
         resp = http_requests.post(
             url,
             params={"key": api_key},

@@ -47,17 +47,31 @@
                 {{ ticker }}
               </span>
             </div>
-            <!-- Placeholder tickers when no data yet -->
-            <div v-else class="flex gap-1.5 mb-3">
-              <span v-for="i in 3" :key="i" class="h-4 w-10 bg-[#1f2937] rounded animate-pulse"/>
+            <!-- Email capture when no holdings data yet -->
+            <div v-else class="mb-3" @click.prevent.stop>
+              <p class="text-[11px] text-gray-500 mb-2">{{ $t('smartMoneyAlert.subheading') }}</p>
+              <div class="flex gap-1.5">
+                <input
+                  v-model="alertEmails[inv.slug]"
+                  type="email"
+                  :placeholder="$t('smartMoneyAlert.placeholder')"
+                  class="flex-1 min-w-0 bg-[#0d1520] border border-[#1f2937] text-white text-[11px] px-2 py-1.5 rounded-lg focus:outline-none focus:border-emerald-700"
+                  @click.stop
+                />
+                <button
+                  @click.stop="submitAlert(inv.slug, inv.name)"
+                  class="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white transition-colors shrink-0"
+                >→</button>
+              </div>
+              <p v-if="alertStatus[inv.slug]" class="text-[10px] text-emerald-400 mt-1">{{ alertStatus[inv.slug] }}</p>
             </div>
 
             <div class="flex items-center justify-between text-[10px] text-gray-600 mt-auto">
               <span v-if="inv.holding_count">{{ $t('smartMoney.holdingsCount', { count: inv.holding_count }) }}</span>
-              <span v-else class="text-gray-700">{{ $t('smartMoney.noData') }}</span>
+              <span v-else class="text-gray-700 text-[10px]">{{ $t('smartMoneyAlert.disclaimer') }}</span>
               <span v-if="inv.latest_quarter" class="font-mono">{{ inv.latest_quarter }}</span>
             </div>
-            <div class="mt-3 text-xs text-emerald-600 group-hover:text-emerald-400 transition-colors font-medium flex items-center gap-1">
+            <div v-if="inv.holding_count" class="mt-3 text-xs text-emerald-600 group-hover:text-emerald-400 transition-colors font-medium flex items-center gap-1">
               {{ $t('smartMoney.portfolio.viewPortfolio') }} →
             </div>
           </NuxtLink>
@@ -89,8 +103,19 @@
                 {{ ticker }}
               </span>
             </div>
-            <div v-else class="flex gap-1 mb-2">
-              <span v-for="i in 3" :key="i" class="h-3.5 w-9 bg-[#1f2937] rounded animate-pulse"/>
+            <div v-else class="mb-2" @click.prevent.stop>
+              <div class="flex gap-1.5">
+                <input
+                  v-model="alertEmails[inv.slug]"
+                  type="email"
+                  :placeholder="$t('smartMoneyAlert.placeholder')"
+                  class="flex-1 min-w-0 bg-[#0d1520] border border-[#1f2937] text-white text-[11px] px-2 py-1 rounded focus:outline-none focus:border-emerald-700"
+                  @click.stop
+                />
+                <button @click.stop="submitAlert(inv.slug, inv.name)"
+                  class="text-[11px] px-2 py-1 rounded bg-emerald-800 hover:bg-emerald-700 text-white shrink-0">→</button>
+              </div>
+              <p v-if="alertStatus[inv.slug]" class="text-[10px] text-emerald-400 mt-1">{{ alertStatus[inv.slug] }}</p>
             </div>
             <div class="text-[10px] text-emerald-700 group-hover:text-emerald-500 transition-colors font-medium mt-1">
               {{ $t('smartMoney.portfolio.viewPortfolio') }} →
@@ -136,6 +161,22 @@ function fmtB(v: number): string {
   if (v >= 1e9) return `${(v / 1e9).toFixed(0)}B`
   if (v >= 1e6) return `${(v / 1e6).toFixed(0)}M`
   return `${(v / 1e3).toFixed(0)}K`
+}
+
+const { post } = useApi()
+const alertEmails = reactive<Record<string, string>>({})
+const alertStatus = reactive<Record<string, string>>({})
+
+async function submitAlert(slug: string, name: string) {
+  const email = alertEmails[slug]?.trim()
+  if (!email || !email.includes('@')) return
+  try {
+    await post('/api/smartmoney/alerts', { email, investor_slug: slug })
+    alertStatus[slug] = t('smartMoneyAlert.success', { name })
+    alertEmails[slug] = ''
+  } catch {
+    alertStatus[slug] = t('emailAlert.error')
+  }
 }
 
 useSeoMeta({

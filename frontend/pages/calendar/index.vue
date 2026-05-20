@@ -109,8 +109,8 @@
                     {{ impactDot(evt.impact) }} {{ $t(`calendar.impact.${evt.impact}`) }}
                   </span>
                 </td>
-                <td v-if="hasPrevFcst" class="px-4 py-3 text-right text-gray-500 font-mono text-xs">{{ evt.previous_value ?? '—' }}</td>
-                <td v-if="hasPrevFcst" class="px-4 py-3 text-right text-gray-400 font-mono text-xs">{{ evt.forecast_value ?? '—' }}</td>
+                <td v-if="hasPrevFcst" class="px-4 py-3 text-right text-gray-500 font-mono text-xs">{{ evt.previous_value ?? '' }}</td>
+                <td v-if="hasPrevFcst" class="px-4 py-3 text-right text-gray-400 font-mono text-xs">{{ evt.forecast_value ?? '' }}</td>
                 <td class="px-4 py-3 text-right font-mono text-xs font-bold"
                   :class="evt.actual_value ? 'text-emerald-400' : 'text-gray-700'">
                   {{ evt.actual_value || '—' }}

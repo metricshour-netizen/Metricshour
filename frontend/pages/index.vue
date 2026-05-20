@@ -40,7 +40,7 @@
             class="inline-flex items-center gap-1.5 bg-[#111827] border border-emerald-900 hover:border-emerald-600 text-xs text-emerald-400 px-3 py-1.5 rounded-full transition-colors font-semibold"
             title="Today's top gaining stock">
             <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block"></span>
-            ▲ {{ topGainer.symbol }} {{ fmtChange(topGainer._chg) }} today
+            ▲ {{ topGainer.symbol }} {{ topGainer.name ? topGainer.name.split(' ').slice(0, 2).join(' ') : '' }} {{ fmtChange(topGainer._chg) }} today
           </NuxtLink>
         </template>
         <template v-else>

@@ -82,3 +82,22 @@ class SmartMoneyHolding(Base):
         Index("ix_sm_holdings_symbol", "symbol"),
         Index("ix_sm_holdings_quarter", "quarter_label"),
     )
+
+
+class SmartMoneyAlert(Base):
+    """Email alert subscription for a specific investor's next 13F filing."""
+
+    __tablename__ = "smart_money_alerts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    email: Mapped[str] = mapped_column(String(254), nullable=False)
+    investor_slug: Mapped[str] = mapped_column(String(100), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    notified_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    __table_args__ = (
+        UniqueConstraint("email", "investor_slug", name="uq_sm_alert_email_slug"),
+        Index("ix_sm_alerts_slug", "investor_slug"),
+        Index("ix_sm_alerts_active", "active"),
+    )

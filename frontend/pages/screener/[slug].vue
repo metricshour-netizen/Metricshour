@@ -1,8 +1,10 @@
 <template>
   <main class="max-w-7xl mx-auto px-4 py-10">
-    <NuxtLink to="/screener/" class="text-gray-500 text-sm hover:text-gray-300 transition-colors mb-6 inline-block">
-      ← Screener
-    </NuxtLink>
+    <Breadcrumb :crumbs="[
+      { label: $t('breadcrumb.home'), href: '/' },
+      { label: $t('breadcrumb.screener'), href: '/screener/' },
+      { label: config?.h1 || slug }
+    ]" />
 
     <!-- SEO header -->
     <div class="mb-8">
@@ -46,7 +48,7 @@
         <NuxtLink
           v-for="(s, i) in data.results"
           :key="s.symbol"
-          :to="`/stocks/${s.symbol.toLowerCase()}`"
+          :to="`/lens/stocks/${s.symbol.toLowerCase()}/`"
           class="block hover:bg-[#1a2235] transition-colors"
         >
           <!-- Mobile -->

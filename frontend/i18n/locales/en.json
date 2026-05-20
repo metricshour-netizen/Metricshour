@@ -330,5 +330,27 @@
       "sold": "Exited",
       "unchanged": "Unchanged"
     }
+  },
+  "smartMoneyAlert": {
+    "heading": "{name} hasn't filed their latest 13F position data yet.",
+    "subheading": "Get an instant alert the moment their next filing drops.",
+    "placeholder": "Email address",
+    "submit": "Notify Me →",
+    "submitting": "Setting up...",
+    "success": "You'll be notified when {name} files.",
+    "disclaimer": "Free · No spam · Unsubscribe anytime"
+  },
+  "breadcrumb": {
+    "home": "Home",
+    "countries": "Countries",
+    "stocks": "Stocks",
+    "tools": "Tools",
+    "lens": "Lens",
+    "smartMoney": "Smart Money",
+    "screener": "Screener",
+    "trade": "Trade",
+    "compare": "Compare",
+    "calendar": "Calendar",
+    "earnings": "Earnings"
   }
 }

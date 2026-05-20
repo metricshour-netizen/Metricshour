@@ -19,8 +19,11 @@ import hashlib
 import json
 import logging
 import os
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone, date, timedelta
+
+from celery.exceptions import SoftTimeLimitExceeded
 
 from sqlalchemy import text, select, func, delete
 
@@ -2151,7 +2154,26 @@ def generate_daily_insights(self):
 _INSIGHT_BATCH = {"country": 25, "stock": 50, "commodity": 5, "trade": 55, "index": 6, "crypto": 7, "etf": 10, "fx": 5}
 
 
-@app.task(name="tasks.summaries.run_insight_batch", bind=True, max_retries=2)
+def _available_memory_mb() -> int:
+    """Return available system memory in MB (Linux /proc/meminfo)."""
+    try:
+        with open('/proc/meminfo') as f:
+            for line in f:
+                if line.startswith('MemAvailable:'):
+                    return int(line.split()[1]) // 1024
+    except Exception:
+        pass
+    return 9999
+
+
+@app.task(
+    name="tasks.summaries.run_insight_batch",
+    bind=True,
+    max_retries=2,
+    default_retry_delay=300,
+    soft_time_limit=3300,
+    time_limit=3600,
+)
 def run_insight_batch(self, insight_type: str):
     """
     Staggered insight generation — called multiple times per day per type.
@@ -2242,9 +2264,34 @@ def run_insight_batch(self, insight_type: str):
         candidates.sort(key=lambda x: (x[0], x[1]))
         batch = [c[2] for c in candidates[:batch_size]]
 
-        for entity_code in batch:
-            try:
-                if insight_type == "country":
+        redis_client = get_redis()
+        checkpoint_key = f"worker:insight_batch:checkpoint:{insight_type}"
+
+        # Resume from checkpoint if previous run was interrupted
+        checkpoint = redis_client.get(checkpoint_key)
+        if checkpoint:
+            done_codes = set(json.loads(checkpoint))
+            batch = [c for c in batch if c not in done_codes]
+            log.info("run_insight_batch(%s): resuming from checkpoint, %d remaining", insight_type, len(batch))
+        done_codes_list: list[str] = []
+
+        CHUNK_SIZE = 10
+        for chunk_start in range(0, len(batch), CHUNK_SIZE):
+            chunk = batch[chunk_start:chunk_start + CHUNK_SIZE]
+
+            # Memory guard — pause if below 200MB available
+            mem_mb = _available_memory_mb()
+            if mem_mb < 200:
+                log.warning("run_insight_batch(%s): low memory %dMB, pausing 60s", insight_type, mem_mb)
+                time.sleep(60)
+                mem_mb = _available_memory_mb()
+                if mem_mb < 200:
+                    log.error("run_insight_batch(%s): memory still low (%dMB) after pause — stopping", insight_type, mem_mb)
+                    break
+
+            for entity_code in chunk:
+                try:
+                    if insight_type == "country":
                     c = db.execute(select(Country).where(Country.code == entity_code)).scalar_one_or_none()
                     if not c:
                         continue
@@ -2438,16 +2485,26 @@ def run_insight_batch(self, insight_type: str):
                         )
                         count += 1
 
-            except Exception as e:
-                log.warning("Insight failed %s/%s: %s", insight_type, entity_code, e)
-            db.commit()
+                except Exception as e:
+                    log.warning("Insight failed %s/%s: %s", insight_type, entity_code, e)
+                db.commit()
+                done_codes_list.append(entity_code)
+                redis_client.setex(checkpoint_key, 7200, json.dumps(done_codes_list))
 
+            # Pause between chunks to avoid memory spikes
+            time.sleep(1)
+
+        # All done — clear checkpoint
+        redis_client.delete(checkpoint_key)
         log.info("run_insight_batch(%s): %d generated", insight_type, count)
         return {"insight_type": insight_type, "generated": count}
 
+    except SoftTimeLimitExceeded as exc:
+        log.warning("run_insight_batch(%s): soft time limit hit after %d generated — checkpoint saved", insight_type, count)
+        raise self.retry(exc=exc, countdown=300)
     except Exception as exc:
         db.rollback()
-        log.error("run_insight_batch(%s) failed: %s", insight_type, exc)
+        log.error("run_insight_batch(%s) failed: %s — %d generated before failure", insight_type, exc, count)
         raise self.retry(exc=exc)
     finally:
         db.close()

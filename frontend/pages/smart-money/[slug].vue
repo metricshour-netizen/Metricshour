@@ -1,8 +1,10 @@
 <template>
   <main class="max-w-7xl mx-auto px-4 py-8">
-    <NuxtLink to="/smart-money/" class="text-gray-600 text-xs hover:text-gray-400 transition-colors mb-5 inline-flex items-center gap-1">
-      {{ $t('smartMoney.nav.back') }}
-    </NuxtLink>
+    <Breadcrumb :crumbs="[
+      { label: $t('breadcrumb.home'), href: '/' },
+      { label: $t('breadcrumb.smartMoney'), href: '/smart-money/' },
+      { label: data?.name || slug }
+    ]" />
 
     <!-- Loading -->
     <div v-if="pending" class="space-y-4">
@@ -66,8 +68,26 @@
 
       <!-- TAB: Holdings -->
       <template v-if="activeTab === 'holdings'">
-        <div v-if="!data.holdings?.length" class="text-center py-12 text-gray-600 text-sm">
-          {{ $t('smartMoney.noHolderData') }}
+        <div v-if="!data.holdings?.length" class="max-w-md mx-auto py-10 text-center">
+          <p class="text-sm text-gray-300 mb-1 font-medium">{{ data.name }}</p>
+          <p class="text-xs text-gray-500 mb-5">{{ $t('smartMoneyAlert.heading', { name: data.name }) }}</p>
+          <p class="text-xs text-gray-400 mb-3">{{ $t('smartMoneyAlert.subheading') }}</p>
+          <div class="flex gap-2 max-w-sm mx-auto mb-2">
+            <input
+              v-model="alertEmail"
+              type="email"
+              :placeholder="$t('smartMoneyAlert.placeholder')"
+              class="flex-1 bg-[#0d1520] border border-[#1f2937] text-white text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-emerald-600"
+              @keydown.enter="submitDetailAlert"
+            />
+            <button @click="submitDetailAlert"
+              :disabled="alertSubmitting"
+              class="px-4 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white text-sm font-semibold transition-colors shrink-0 disabled:opacity-50">
+              {{ alertSubmitting ? $t('smartMoneyAlert.submitting') : $t('smartMoneyAlert.submit') }}
+            </button>
+          </div>
+          <p v-if="alertSuccess" class="text-xs text-emerald-400">{{ alertSuccess }}</p>
+          <p v-else class="text-[10px] text-gray-700">{{ $t('smartMoneyAlert.disclaimer') }}</p>
         </div>
 
         <template v-else>
@@ -95,7 +115,7 @@
                 class="border-t border-[#1f2937] hover:bg-[#111827]/60 transition-colors">
                 <td class="px-4 py-3 text-gray-700 text-xs font-mono">{{ i + 1 }}</td>
                 <td class="px-4 py-3">
-                  <NuxtLink v-if="h.symbol" :to="`/stocks/${h.symbol.toLowerCase()}/`"
+                  <NuxtLink v-if="h.symbol" :to="`/lens/stocks/${h.symbol.toLowerCase()}/`"
                     class="font-mono text-xs font-bold text-emerald-400 hover:text-emerald-300">{{ h.symbol }}</NuxtLink>
                   <span v-else class="font-mono text-xs text-gray-600">—</span>
                 </td>
@@ -254,6 +274,26 @@ const { data: geoExposure } = await useAsyncData(
   },
   { watch: [selectedQuarter], default: () => [] },
 )
+
+const { post } = useApi()
+const alertEmail = ref('')
+const alertSubmitting = ref(false)
+const alertSuccess = ref('')
+
+async function submitDetailAlert() {
+  const email = alertEmail.value.trim()
+  if (!email || !email.includes('@')) return
+  alertSubmitting.value = true
+  try {
+    await post('/api/smartmoney/alerts', { email, investor_slug: slug })
+    alertSuccess.value = t('smartMoneyAlert.success', { name: data.value?.name || slug })
+    alertEmail.value = ''
+  } catch {
+    alertSuccess.value = t('emailAlert.error')
+  } finally {
+    alertSubmitting.value = false
+  }
+}
 
 function changeLabel(type: string): string {
   const map: Record<string, string> = {

@@ -1,8 +1,10 @@
 <template>
   <main class="max-w-7xl mx-auto px-4 py-10">
-    <NuxtLink to="/countries/" class="text-gray-500 text-sm hover:text-gray-300 transition-colors mb-6 inline-block">
-      ← Countries
-    </NuxtLink>
+    <Breadcrumb :crumbs="[
+      { label: $t('breadcrumb.home'), href: '/' },
+      { label: $t('breadcrumb.countries'), href: '/countries/' },
+      { label: country?.name || code.toUpperCase() }
+    ]" />
 
     <div v-if="pending" class="text-gray-500 text-sm">Loading...</div>
     <div v-else-if="error || !country" class="text-red-400 text-sm">Country not found.</div>
@@ -348,7 +350,7 @@
           <NuxtLink
             v-for="s in exposedStocks"
             :key="s.symbol"
-            :to="`/stocks/${s.symbol.toLowerCase()}/`"
+            :to="`/lens/stocks/${s.symbol.toLowerCase()}/`"
             class="flex items-center gap-3 group hover:bg-[#1f2937] rounded-lg px-2 py-1 -mx-2 transition-colors"
           >
             <span class="w-16 text-xs font-mono font-bold text-emerald-400 group-hover:text-emerald-300 shrink-0">{{ s.symbol }}</span>

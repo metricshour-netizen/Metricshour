@@ -263,7 +263,6 @@ const isMarketsActive = computed(() =>
 
 const TOOLS = [
   { to: '/lens/',          icon: '🔭', label: 'Lens',                 desc: 'Pre-trade analysis for any asset' },
-  { to: '/smart-money/',   icon: '💼', label: 'Smart Money',          desc: 'Track Buffett, Burry & top funds' },
   { to: '/screener/',      icon: '🔍', label: 'Global Risk Screener', desc: 'Filter stocks by geopolitical exposure' },
   { to: '/yield-curve/',   icon: '📈', label: 'Yield Curve',          desc: 'US Treasury rates' },
   { to: '/compare/',       icon: '⚖️', label: 'Compare Countries',    desc: 'Side-by-side macro data' },
