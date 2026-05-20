@@ -92,6 +92,119 @@ CENTRAL_BANK_MEETINGS_2026 = [
     ('CA', 'G7 Summit', 'g7', 'medium', 'G7', datetime(2026, 6, 13, 9, 0, tzinfo=timezone.utc)),
 ]
 
+# Static 2026 US economic release dates (BLS/BEA schedule — published in advance)
+US_ECONOMIC_RELEASES_2026 = [
+    # NFP — Employment Situation (first Friday of month, 8:30am ET = 13:30 UTC)
+    ('US', 'US Employment Situation (NFP)', 'nfp',    'high',   'Bureau of Labor Statistics', datetime(2026,  6,  5, 13, 30, tzinfo=timezone.utc)),
+    ('US', 'US Employment Situation (NFP)', 'nfp',    'high',   'Bureau of Labor Statistics', datetime(2026,  7,  2, 13, 30, tzinfo=timezone.utc)),
+    ('US', 'US Employment Situation (NFP)', 'nfp',    'high',   'Bureau of Labor Statistics', datetime(2026,  8,  7, 13, 30, tzinfo=timezone.utc)),
+    ('US', 'US Employment Situation (NFP)', 'nfp',    'high',   'Bureau of Labor Statistics', datetime(2026,  9,  4, 13, 30, tzinfo=timezone.utc)),
+    ('US', 'US Employment Situation (NFP)', 'nfp',    'high',   'Bureau of Labor Statistics', datetime(2026, 10,  2, 13, 30, tzinfo=timezone.utc)),
+    ('US', 'US Employment Situation (NFP)', 'nfp',    'high',   'Bureau of Labor Statistics', datetime(2026, 11,  6, 13, 30, tzinfo=timezone.utc)),
+    ('US', 'US Employment Situation (NFP)', 'nfp',    'high',   'Bureau of Labor Statistics', datetime(2026, 12,  4, 13, 30, tzinfo=timezone.utc)),
+    # CPI — Consumer Price Index (~2nd Wednesday of month, 8:30am ET)
+    ('US', 'CPI Inflation (US)',            'cpi',    'high',   'Bureau of Labor Statistics', datetime(2026,  6, 11, 13, 30, tzinfo=timezone.utc)),
+    ('US', 'CPI Inflation (US)',            'cpi',    'high',   'Bureau of Labor Statistics', datetime(2026,  7, 15, 13, 30, tzinfo=timezone.utc)),
+    ('US', 'CPI Inflation (US)',            'cpi',    'high',   'Bureau of Labor Statistics', datetime(2026,  8, 12, 13, 30, tzinfo=timezone.utc)),
+    ('US', 'CPI Inflation (US)',            'cpi',    'high',   'Bureau of Labor Statistics', datetime(2026,  9, 10, 13, 30, tzinfo=timezone.utc)),
+    ('US', 'CPI Inflation (US)',            'cpi',    'high',   'Bureau of Labor Statistics', datetime(2026, 10, 14, 13, 30, tzinfo=timezone.utc)),
+    ('US', 'CPI Inflation (US)',            'cpi',    'high',   'Bureau of Labor Statistics', datetime(2026, 11, 13, 13, 30, tzinfo=timezone.utc)),
+    ('US', 'CPI Inflation (US)',            'cpi',    'high',   'Bureau of Labor Statistics', datetime(2026, 12,  9, 13, 30, tzinfo=timezone.utc)),
+    # PCE — Personal Consumption Expenditures (~last Friday of month, 8:30am ET)
+    ('US', 'PCE Inflation (US)',            'pce',    'high',   'Bureau of Economic Analysis', datetime(2026,  5, 29, 13, 30, tzinfo=timezone.utc)),
+    ('US', 'PCE Inflation (US)',            'pce',    'high',   'Bureau of Economic Analysis', datetime(2026,  6, 26, 13, 30, tzinfo=timezone.utc)),
+    ('US', 'PCE Inflation (US)',            'pce',    'high',   'Bureau of Economic Analysis', datetime(2026,  7, 31, 13, 30, tzinfo=timezone.utc)),
+    ('US', 'PCE Inflation (US)',            'pce',    'high',   'Bureau of Economic Analysis', datetime(2026,  8, 28, 13, 30, tzinfo=timezone.utc)),
+    ('US', 'PCE Inflation (US)',            'pce',    'high',   'Bureau of Economic Analysis', datetime(2026,  9, 25, 13, 30, tzinfo=timezone.utc)),
+    ('US', 'PCE Inflation (US)',            'pce',    'high',   'Bureau of Economic Analysis', datetime(2026, 10, 30, 13, 30, tzinfo=timezone.utc)),
+    ('US', 'PCE Inflation (US)',            'pce',    'high',   'Bureau of Economic Analysis', datetime(2026, 11, 25, 13, 30, tzinfo=timezone.utc)),
+    ('US', 'PCE Inflation (US)',            'pce',    'high',   'Bureau of Economic Analysis', datetime(2026, 12, 18, 13, 30, tzinfo=timezone.utc)),
+    # GDP Advance Estimate (quarterly — end of first month of each quarter)
+    ('US', 'US GDP (Advance Estimate)',     'gdp',    'high',   'Bureau of Economic Analysis', datetime(2026,  7, 29, 13, 30, tzinfo=timezone.utc)),
+    ('US', 'US GDP (Advance Estimate)',     'gdp',    'high',   'Bureau of Economic Analysis', datetime(2026, 10, 28, 13, 30, tzinfo=timezone.utc)),
+    # Retail Sales (~15th of month, 8:30am ET)
+    ('US', 'US Retail Sales',              'retail', 'high',   'US Census Bureau', datetime(2026,  5, 15, 13, 30, tzinfo=timezone.utc)),
+    ('US', 'US Retail Sales',              'retail', 'high',   'US Census Bureau', datetime(2026,  6, 16, 13, 30, tzinfo=timezone.utc)),
+    ('US', 'US Retail Sales',              'retail', 'high',   'US Census Bureau', datetime(2026,  7, 16, 13, 30, tzinfo=timezone.utc)),
+    ('US', 'US Retail Sales',              'retail', 'high',   'US Census Bureau', datetime(2026,  8, 14, 13, 30, tzinfo=timezone.utc)),
+    ('US', 'US Retail Sales',              'retail', 'high',   'US Census Bureau', datetime(2026,  9, 15, 13, 30, tzinfo=timezone.utc)),
+    ('US', 'US Retail Sales',              'retail', 'high',   'US Census Bureau', datetime(2026, 10, 15, 13, 30, tzinfo=timezone.utc)),
+    ('US', 'US Retail Sales',              'retail', 'high',   'US Census Bureau', datetime(2026, 11, 17, 13, 30, tzinfo=timezone.utc)),
+    ('US', 'US Retail Sales',              'retail', 'high',   'US Census Bureau', datetime(2026, 12, 15, 13, 30, tzinfo=timezone.utc)),
+    # ISM Manufacturing PMI (first business day of month)
+    ('US', 'ISM Manufacturing PMI',        'pmi',    'medium', 'Institute for Supply Management', datetime(2026,  6,  1, 14,  0, tzinfo=timezone.utc)),
+    ('US', 'ISM Manufacturing PMI',        'pmi',    'medium', 'Institute for Supply Management', datetime(2026,  7,  1, 14,  0, tzinfo=timezone.utc)),
+    ('US', 'ISM Manufacturing PMI',        'pmi',    'medium', 'Institute for Supply Management', datetime(2026,  8,  3, 14,  0, tzinfo=timezone.utc)),
+    ('US', 'ISM Manufacturing PMI',        'pmi',    'medium', 'Institute for Supply Management', datetime(2026,  9,  1, 14,  0, tzinfo=timezone.utc)),
+    ('US', 'ISM Manufacturing PMI',        'pmi',    'medium', 'Institute for Supply Management', datetime(2026, 10,  1, 14,  0, tzinfo=timezone.utc)),
+    ('US', 'ISM Manufacturing PMI',        'pmi',    'medium', 'Institute for Supply Management', datetime(2026, 11,  2, 14,  0, tzinfo=timezone.utc)),
+    ('US', 'ISM Manufacturing PMI',        'pmi',    'medium', 'Institute for Supply Management', datetime(2026, 12,  1, 14,  0, tzinfo=timezone.utc)),
+]
+
+# Static 2026 Eurozone/EU economic release dates (Eurostat schedule)
+EU_ECONOMIC_RELEASES_2026 = [
+    # Eurozone CPI Flash Estimate (first Wednesday of month, 10:00 CET = 09:00 UTC)
+    ('EU', 'Eurozone CPI Inflation (Flash)', 'cpi',  'high',   'Eurostat', datetime(2026,  6,  3,  9,  0, tzinfo=timezone.utc)),
+    ('EU', 'Eurozone CPI Inflation (Flash)', 'cpi',  'high',   'Eurostat', datetime(2026,  7,  1,  9,  0, tzinfo=timezone.utc)),
+    ('EU', 'Eurozone CPI Inflation (Flash)', 'cpi',  'high',   'Eurostat', datetime(2026,  8,  5,  9,  0, tzinfo=timezone.utc)),
+    ('EU', 'Eurozone CPI Inflation (Flash)', 'cpi',  'high',   'Eurostat', datetime(2026,  9,  2,  9,  0, tzinfo=timezone.utc)),
+    ('EU', 'Eurozone CPI Inflation (Flash)', 'cpi',  'high',   'Eurostat', datetime(2026, 10,  7,  9,  0, tzinfo=timezone.utc)),
+    ('EU', 'Eurozone CPI Inflation (Flash)', 'cpi',  'high',   'Eurostat', datetime(2026, 11,  4,  9,  0, tzinfo=timezone.utc)),
+    ('EU', 'Eurozone CPI Inflation (Flash)', 'cpi',  'high',   'Eurostat', datetime(2026, 12,  2,  9,  0, tzinfo=timezone.utc)),
+    # Eurozone GDP (flash, quarterly — mid-month after quarter end)
+    ('EU', 'Eurozone GDP (Flash Estimate)', 'gdp',   'high',   'Eurostat', datetime(2026,  7, 15,  9,  0, tzinfo=timezone.utc)),
+    ('EU', 'Eurozone GDP (Flash Estimate)', 'gdp',   'high',   'Eurostat', datetime(2026, 10, 14,  9,  0, tzinfo=timezone.utc)),
+    # S&P Global Eurozone PMI (first business day of month)
+    ('EU', 'Eurozone Manufacturing PMI',   'pmi',    'medium', 'S&P Global', datetime(2026,  6,  1,  8,  0, tzinfo=timezone.utc)),
+    ('EU', 'Eurozone Manufacturing PMI',   'pmi',    'medium', 'S&P Global', datetime(2026,  7,  1,  8,  0, tzinfo=timezone.utc)),
+    ('EU', 'Eurozone Manufacturing PMI',   'pmi',    'medium', 'S&P Global', datetime(2026,  8,  3,  8,  0, tzinfo=timezone.utc)),
+    ('EU', 'Eurozone Manufacturing PMI',   'pmi',    'medium', 'S&P Global', datetime(2026,  9,  1,  8,  0, tzinfo=timezone.utc)),
+    ('EU', 'Eurozone Manufacturing PMI',   'pmi',    'medium', 'S&P Global', datetime(2026, 10,  1,  8,  0, tzinfo=timezone.utc)),
+    ('EU', 'Eurozone Manufacturing PMI',   'pmi',    'medium', 'S&P Global', datetime(2026, 11,  2,  8,  0, tzinfo=timezone.utc)),
+    ('EU', 'Eurozone Manufacturing PMI',   'pmi',    'medium', 'S&P Global', datetime(2026, 12,  1,  8,  0, tzinfo=timezone.utc)),
+]
+
+# Static 2026 UK economic release dates (ONS schedule)
+UK_ECONOMIC_RELEASES_2026 = [
+    # UK CPI (roughly 3rd Wednesday of month, 7:00am UTC)
+    ('GB', 'UK CPI Inflation',             'cpi',    'high',   'Office for National Statistics', datetime(2026,  5, 21,  7,  0, tzinfo=timezone.utc)),
+    ('GB', 'UK CPI Inflation',             'cpi',    'high',   'Office for National Statistics', datetime(2026,  6, 18,  7,  0, tzinfo=timezone.utc)),
+    ('GB', 'UK CPI Inflation',             'cpi',    'high',   'Office for National Statistics', datetime(2026,  7, 15,  7,  0, tzinfo=timezone.utc)),
+    ('GB', 'UK CPI Inflation',             'cpi',    'high',   'Office for National Statistics', datetime(2026,  8, 19,  7,  0, tzinfo=timezone.utc)),
+    ('GB', 'UK CPI Inflation',             'cpi',    'high',   'Office for National Statistics', datetime(2026,  9, 16,  7,  0, tzinfo=timezone.utc)),
+    ('GB', 'UK CPI Inflation',             'cpi',    'high',   'Office for National Statistics', datetime(2026, 10, 21,  7,  0, tzinfo=timezone.utc)),
+    ('GB', 'UK CPI Inflation',             'cpi',    'high',   'Office for National Statistics', datetime(2026, 11, 18,  7,  0, tzinfo=timezone.utc)),
+    ('GB', 'UK CPI Inflation',             'cpi',    'high',   'Office for National Statistics', datetime(2026, 12, 16,  7,  0, tzinfo=timezone.utc)),
+    # UK GDP (monthly estimate, ~6 weeks after reference month)
+    ('GB', 'UK GDP Monthly Estimate',      'gdp',    'medium', 'Office for National Statistics', datetime(2026,  6, 11,  7,  0, tzinfo=timezone.utc)),
+    ('GB', 'UK GDP Monthly Estimate',      'gdp',    'medium', 'Office for National Statistics', datetime(2026,  7, 10,  7,  0, tzinfo=timezone.utc)),
+    ('GB', 'UK GDP Monthly Estimate',      'gdp',    'medium', 'Office for National Statistics', datetime(2026,  8, 12,  7,  0, tzinfo=timezone.utc)),
+    ('GB', 'UK GDP Monthly Estimate',      'gdp',    'medium', 'Office for National Statistics', datetime(2026,  9, 10,  7,  0, tzinfo=timezone.utc)),
+    ('GB', 'UK GDP Monthly Estimate',      'gdp',    'medium', 'Office for National Statistics', datetime(2026, 10,  9,  7,  0, tzinfo=timezone.utc)),
+    ('GB', 'UK GDP Monthly Estimate',      'gdp',    'medium', 'Office for National Statistics', datetime(2026, 11, 12,  7,  0, tzinfo=timezone.utc)),
+    ('GB', 'UK GDP Monthly Estimate',      'gdp',    'medium', 'Office for National Statistics', datetime(2026, 12, 10,  7,  0, tzinfo=timezone.utc)),
+]
+
+# Static 2026 China economic release dates (NBS schedule)
+CN_ECONOMIC_RELEASES_2026 = [
+    # China PMI Manufacturing (last day of month)
+    ('CN', 'China Manufacturing PMI (NBS)', 'pmi',   'high',   'National Bureau of Statistics', datetime(2026,  6, 30,  1,  0, tzinfo=timezone.utc)),
+    ('CN', 'China Manufacturing PMI (NBS)', 'pmi',   'high',   'National Bureau of Statistics', datetime(2026,  7, 31,  1,  0, tzinfo=timezone.utc)),
+    ('CN', 'China Manufacturing PMI (NBS)', 'pmi',   'high',   'National Bureau of Statistics', datetime(2026,  8, 31,  1,  0, tzinfo=timezone.utc)),
+    ('CN', 'China Manufacturing PMI (NBS)', 'pmi',   'high',   'National Bureau of Statistics', datetime(2026,  9, 30,  1,  0, tzinfo=timezone.utc)),
+    ('CN', 'China Manufacturing PMI (NBS)', 'pmi',   'high',   'National Bureau of Statistics', datetime(2026, 10, 31,  1,  0, tzinfo=timezone.utc)),
+    ('CN', 'China Manufacturing PMI (NBS)', 'pmi',   'high',   'National Bureau of Statistics', datetime(2026, 11, 30,  1,  0, tzinfo=timezone.utc)),
+    ('CN', 'China Manufacturing PMI (NBS)', 'pmi',   'high',   'National Bureau of Statistics', datetime(2026, 12, 31,  1,  0, tzinfo=timezone.utc)),
+    # China CPI (~mid-month)
+    ('CN', 'China CPI Inflation',          'cpi',    'high',   'National Bureau of Statistics', datetime(2026,  6, 10,  1, 30, tzinfo=timezone.utc)),
+    ('CN', 'China CPI Inflation',          'cpi',    'high',   'National Bureau of Statistics', datetime(2026,  7,  9,  1, 30, tzinfo=timezone.utc)),
+    ('CN', 'China CPI Inflation',          'cpi',    'high',   'National Bureau of Statistics', datetime(2026,  8, 10,  1, 30, tzinfo=timezone.utc)),
+    ('CN', 'China CPI Inflation',          'cpi',    'high',   'National Bureau of Statistics', datetime(2026,  9,  9,  1, 30, tzinfo=timezone.utc)),
+    ('CN', 'China CPI Inflation',          'cpi',    'high',   'National Bureau of Statistics', datetime(2026, 10, 13,  1, 30, tzinfo=timezone.utc)),
+    ('CN', 'China CPI Inflation',          'cpi',    'high',   'National Bureau of Statistics', datetime(2026, 11, 10,  1, 30, tzinfo=timezone.utc)),
+    ('CN', 'China CPI Inflation',          'cpi',    'high',   'National Bureau of Statistics', datetime(2026, 12,  9,  1, 30, tzinfo=timezone.utc)),
+]
+
 
 def _load_fred_key() -> Optional[str]:
     import os
@@ -165,6 +278,54 @@ def sync_macro_events(self):
 
     # 2. Static central bank meetings
     for country_code, event_name, event_type, impact, source, dt in CENTRAL_BANK_MEETINGS_2026:
+        events_to_upsert.append({
+            'country_code': country_code,
+            'event_name': event_name,
+            'event_type': event_type,
+            'event_date': dt,
+            'impact': impact,
+            'source': source,
+            'source_url': None,
+        })
+
+    # 3. Static US economic data releases (BLS/BEA 2026 schedule)
+    for country_code, event_name, event_type, impact, source, dt in US_ECONOMIC_RELEASES_2026:
+        events_to_upsert.append({
+            'country_code': country_code,
+            'event_name': event_name,
+            'event_type': event_type,
+            'event_date': dt,
+            'impact': impact,
+            'source': source,
+            'source_url': None,
+        })
+
+    # 4. Eurozone economic releases (Eurostat 2026 schedule)
+    for country_code, event_name, event_type, impact, source, dt in EU_ECONOMIC_RELEASES_2026:
+        events_to_upsert.append({
+            'country_code': country_code,
+            'event_name': event_name,
+            'event_type': event_type,
+            'event_date': dt,
+            'impact': impact,
+            'source': source,
+            'source_url': None,
+        })
+
+    # 5. UK economic releases (ONS 2026 schedule)
+    for country_code, event_name, event_type, impact, source, dt in UK_ECONOMIC_RELEASES_2026:
+        events_to_upsert.append({
+            'country_code': country_code,
+            'event_name': event_name,
+            'event_type': event_type,
+            'event_date': dt,
+            'impact': impact,
+            'source': source,
+            'source_url': None,
+        })
+
+    # 6. China economic releases (NBS 2026 schedule)
+    for country_code, event_name, event_type, impact, source, dt in CN_ECONOMIC_RELEASES_2026:
         events_to_upsert.append({
             'country_code': country_code,
             'event_name': event_name,
