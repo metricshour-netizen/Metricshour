@@ -2276,22 +2276,21 @@ def run_insight_batch(self, insight_type: str):
         done_codes_list: list[str] = []
 
         CHUNK_SIZE = 10
-        for chunk_start in range(0, len(batch), CHUNK_SIZE):
-            chunk = batch[chunk_start:chunk_start + CHUNK_SIZE]
-
-            # Memory guard — pause if below 200MB available
-            mem_mb = _available_memory_mb()
-            if mem_mb < 200:
-                log.warning("run_insight_batch(%s): low memory %dMB, pausing 60s", insight_type, mem_mb)
-                time.sleep(60)
+        for idx, entity_code in enumerate(batch):
+            # Memory guard every CHUNK_SIZE items
+            if idx % CHUNK_SIZE == 0 and idx > 0:
+                time.sleep(1)
                 mem_mb = _available_memory_mb()
                 if mem_mb < 200:
-                    log.error("run_insight_batch(%s): memory still low (%dMB) after pause — stopping", insight_type, mem_mb)
-                    break
+                    log.warning("run_insight_batch(%s): low memory %dMB at item %d, pausing 60s", insight_type, mem_mb, idx)
+                    time.sleep(60)
+                    mem_mb = _available_memory_mb()
+                    if mem_mb < 200:
+                        log.error("run_insight_batch(%s): memory still low (%dMB) — stopping early", insight_type, mem_mb)
+                        break
 
-            for entity_code in chunk:
-                try:
-                    if insight_type == "country":
+            try:
+                if insight_type == "country":
                     c = db.execute(select(Country).where(Country.code == entity_code)).scalar_one_or_none()
                     if not c:
                         continue
@@ -2485,14 +2484,11 @@ def run_insight_batch(self, insight_type: str):
                         )
                         count += 1
 
-                except Exception as e:
-                    log.warning("Insight failed %s/%s: %s", insight_type, entity_code, e)
-                db.commit()
-                done_codes_list.append(entity_code)
-                redis_client.setex(checkpoint_key, 7200, json.dumps(done_codes_list))
-
-            # Pause between chunks to avoid memory spikes
-            time.sleep(1)
+            except Exception as e:
+                log.warning("Insight failed %s/%s: %s", insight_type, entity_code, e)
+            db.commit()
+            done_codes_list.append(entity_code)
+            redis_client.setex(checkpoint_key, 7200, json.dumps(done_codes_list))
 
         # All done — clear checkpoint
         redis_client.delete(checkpoint_key)
