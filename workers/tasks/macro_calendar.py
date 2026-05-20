@@ -92,7 +92,8 @@ CENTRAL_BANK_MEETINGS_2026 = [
     ('CA', 'G7 Summit', 'g7', 'medium', 'G7', datetime(2026, 6, 13, 9, 0, tzinfo=timezone.utc)),
 ]
 
-# Static 2026 US economic release dates (BLS/BEA schedule — published in advance)
+# Static 2026 US economic release dates — used ONLY when FRED_API_KEY is not set.
+# When FRED key is set, FRED provides the real dates; this list is ignored.
 US_ECONOMIC_RELEASES_2026 = [
     # NFP — Employment Situation (first Friday of month, 8:30am ET = 13:30 UTC)
     ('US', 'US Employment Situation (NFP)', 'nfp',    'high',   'Bureau of Labor Statistics', datetime(2026,  6,  5, 13, 30, tzinfo=timezone.utc)),
@@ -219,7 +220,12 @@ def _load_fred_key() -> Optional[str]:
 
 
 def _fetch_fred_release_dates(release_id: int, fred_key: str) -> list[datetime]:
-    """Fetch future release dates for a FRED release ID."""
+    """Fetch future release dates for a FRED release ID.
+
+    FRED returns ALL dates a release was touched (initial + revisions).
+    We keep only the FIRST date per calendar month — that's the initial
+    release date, which is what the economic calendar should show.
+    """
     today_str = date.today().isoformat()
     url = 'https://api.stlouisfed.org/fred/release/dates'
     params = {
@@ -228,7 +234,7 @@ def _fetch_fred_release_dates(release_id: int, fred_key: str) -> list[datetime]:
         'file_type': 'json',
         'realtime_start': today_str,
         'realtime_end': f'{date.today().year + 1}-12-31',
-        'limit': 50,
+        'limit': 100,
         'sort_order': 'asc',
         'include_release_dates_with_no_data': 'true',
     }
@@ -236,12 +242,19 @@ def _fetch_fred_release_dates(release_id: int, fred_key: str) -> list[datetime]:
         resp = requests.get(url, params=params, timeout=10)
         resp.raise_for_status()
         data = resp.json()
+        # Deduplicate: keep only the earliest date per year-month
+        seen_months: set[str] = set()
         dates = []
         for rd in data.get('release_dates', []):
             d = rd.get('date')
-            if d:
-                dt = datetime.strptime(d, '%Y-%m-%d').replace(hour=13, minute=30, tzinfo=timezone.utc)
-                dates.append(dt)
+            if not d:
+                continue
+            ym = d[:7]  # "YYYY-MM"
+            if ym in seen_months:
+                continue
+            seen_months.add(ym)
+            dt = datetime.strptime(d, '%Y-%m-%d').replace(hour=13, minute=30, tzinfo=timezone.utc)
+            dates.append(dt)
         return dates
     except Exception as exc:
         logger.warning('FRED release %d fetch failed: %s', release_id, exc)
@@ -288,17 +301,18 @@ def sync_macro_events(self):
             'source_url': None,
         })
 
-    # 3. Static US economic data releases (BLS/BEA 2026 schedule)
-    for country_code, event_name, event_type, impact, source, dt in US_ECONOMIC_RELEASES_2026:
-        events_to_upsert.append({
-            'country_code': country_code,
-            'event_name': event_name,
-            'event_type': event_type,
-            'event_date': dt,
-            'impact': impact,
-            'source': source,
-            'source_url': None,
-        })
+    # 3. Static US economic data releases — fallback when FRED key not set
+    if not fred_key:
+        for country_code, event_name, event_type, impact, source, dt in US_ECONOMIC_RELEASES_2026:
+            events_to_upsert.append({
+                'country_code': country_code,
+                'event_name': event_name,
+                'event_type': event_type,
+                'event_date': dt,
+                'impact': impact,
+                'source': source,
+                'source_url': None,
+            })
 
     # 4. Eurozone economic releases (Eurostat 2026 schedule)
     for country_code, event_name, event_type, impact, source, dt in EU_ECONOMIC_RELEASES_2026:
