@@ -237,5 +237,44 @@ export default defineNuxtConfig({
     '/blog/teslas-213-billion-china-revenue-the-gigafactory-bet-every-tsla-investor-should-understand': { redirect: { to: '/blog/tesla-china-revenue-percentage-2026/', statusCode: 301 } },
     '/blog/nvidia-china-revenue-percentage-fy2024-export-controls-tariff-risk-nvda-investors/': { redirect: { to: '/blog/nvidia-china-revenue-chip-export-controls-nvda/', statusCode: 301 } },
     '/blog/nvidia-china-revenue-percentage-fy2024-export-controls-tariff-risk-nvda-investors': { redirect: { to: '/blog/nvidia-china-revenue-chip-export-controls-nvda/', statusCode: 301 } },
+
+    // GSC Fix G30-G43 — 404 blog pages (deleted posts)
+    '/blog/apple-china-revenue-geographic-exposure-aapl-investors/': { redirect: { to: '/blog/apple-revenue-by-country-full-geographic-breakdown-2026/', statusCode: 301 } },
+    '/blog/apple-china-revenue-geographic-exposure-aapl-investors': { redirect: { to: '/blog/apple-revenue-by-country-full-geographic-breakdown-2026/', statusCode: 301 } },
+    '/blog/germany-gdp-slowdown-2025-5-us-stocks-most-exposed-to-european-revenue-risk/': { redirect: { to: '/blog/', statusCode: 301 } },
+    '/blog/germany-gdp-slowdown-2025-5-us-stocks-most-exposed-to-european-revenue-risk': { redirect: { to: '/blog/', statusCode: 301 } },
+    '/blog/test-blog/': { redirect: { to: '/blog/', statusCode: 301 } },
+    '/blog/test-blog': { redirect: { to: '/blog/', statusCode: 301 } },
+
+    // GSC Fix — stock 404s: inactive/wrong-section assets
+    // Bond yields belong at /rates/, not /stocks/
+    '/stocks/it10y/': { redirect: { to: '/rates/', statusCode: 301 } },
+    '/stocks/it10y':  { redirect: { to: '/rates/', statusCode: 301 } },
+    '/stocks/IT10Y/': { redirect: { to: '/rates/', statusCode: 301 } },
+    '/stocks/IT10Y':  { redirect: { to: '/rates/', statusCode: 301 } },
+    '/stocks/fr10y/': { redirect: { to: '/rates/', statusCode: 301 } },
+    '/stocks/fr10y':  { redirect: { to: '/rates/', statusCode: 301 } },
+    '/stocks/FR10Y/': { redirect: { to: '/rates/', statusCode: 301 } },
+    '/stocks/FR10Y':  { redirect: { to: '/rates/', statusCode: 301 } },
+    '/stocks/us02y/': { redirect: { to: '/rates/', statusCode: 301 } },
+    '/stocks/us02y':  { redirect: { to: '/rates/', statusCode: 301 } },
+    '/stocks/US02Y/': { redirect: { to: '/rates/', statusCode: 301 } },
+    '/stocks/US02Y':  { redirect: { to: '/rates/', statusCode: 301 } },
+    // Inactive commodities
+    '/stocks/coal/':  { redirect: { to: '/commodities/', statusCode: 301 } },
+    '/stocks/coal':   { redirect: { to: '/commodities/', statusCode: 301 } },
+    '/stocks/ali/':   { redirect: { to: '/commodities/', statusCode: 301 } },
+    '/stocks/ali':    { redirect: { to: '/commodities/', statusCode: 301 } },
+
+    // GSC Fix — trade full-slug pairs that middleware can't reliably parse
+    // (both parts multi-word, ambiguous single-dash split)
+    '/trade/mexico-united-states/': { redirect: { to: '/trade/mx-us/', statusCode: 301 } },
+    '/trade/mexico-united-states':  { redirect: { to: '/trade/mx-us/', statusCode: 301 } },
+    '/trade/tanzania-united-arab-emirates/': { redirect: { to: '/trade/tz-ae/', statusCode: 301 } },
+    '/trade/tanzania-united-arab-emirates': { redirect: { to: '/trade/tz-ae/', statusCode: 301 } },
+    '/trade/singapore-united-states/': { redirect: { to: '/trade/sg-us/', statusCode: 301 } },
+    '/trade/singapore-united-states': { redirect: { to: '/trade/sg-us/', statusCode: 301 } },
+    '/trade/ru-eu/': { redirect: { to: '/trade/', statusCode: 301 } },
+    '/trade/ru-eu':  { redirect: { to: '/trade/', statusCode: 301 } },
   },
 })
