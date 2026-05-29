@@ -37,7 +37,7 @@ def get_news(request: Request, symbol: str) -> list[dict]:
     try:
         resp = requests.get(
             TIINGO_NEWS_URL,
-            params={"tickers": sym, "limit": 20},
+            params={"tickers": sym, "limit": 20, "language": "en"},
             headers={
                 "Authorization": f"Token {settings.tiingo_api_key}",
                 "Content-Type": "application/json",

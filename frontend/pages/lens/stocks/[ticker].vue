@@ -81,11 +81,57 @@
         </span>
       </div>
 
-      <!-- SECTION 2: What's Driving It (LLM insight) -->
-      <div v-if="lensData.insight" class="bg-[#111827] border border-[#1f2937] rounded-xl p-5 mb-4">
-        <div class="text-xs font-bold text-emerald-500 uppercase tracking-wider mb-2">{{ $t('lens.sections.driving') }}</div>
-        <p class="text-sm text-gray-200 leading-relaxed">{{ lensData.insight }}</p>
-        <div class="text-[10px] text-gray-700 mt-2">{{ $t('lens.intelligence') }} · {{ fmtTs(lensData.last_updated) }}</div>
+      <!-- SECTION 2: Risk Tearsheet -->
+      <div v-if="lensData.geo_risk?.length || lensData.insight" class="bg-[#111827] border border-[#1f2937] rounded-xl p-5 mb-4">
+        <div class="flex items-center justify-between mb-2">
+          <div class="text-xs font-bold text-emerald-500 uppercase tracking-wider">Risk Tearsheet — {{ lensData.ticker || ticker }}</div>
+          <div class="text-[10px] text-gray-700">{{ fmtTs(lensData.last_updated) }}</div>
+        </div>
+        <div class="border-t border-[#2d3748] mb-3" />
+
+        <!-- Revenue Concentration -->
+        <div v-if="lensData.geo_risk?.length" class="mb-3">
+          <div class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Revenue Concentration</div>
+          <div class="space-y-0.5 text-xs text-gray-300 font-mono">
+            <div v-if="tearsheetDomesticPct !== null">● Domestic: {{ tearsheetDomesticPct.toFixed(0) }}% — {{ tearsheetDomesticLabel }}</div>
+            <div v-if="tearsheetIntlPct !== null">● International: {{ tearsheetIntlPct }}% · {{ lensData.geo_risk.length }} markets</div>
+            <div v-if="lensData.geo_risk[0]">● Largest: {{ lensData.geo_risk[0].flag }} {{ lensData.geo_risk[0].country_name }} {{ lensData.geo_risk[0].revenue_pct?.toFixed(0) }}%</div>
+          </div>
+        </div>
+
+        <!-- Geo Risk Factors (LLM insight split into bullets) -->
+        <div v-if="tearsheetInsightBullets.length" class="mb-3">
+          <div class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Geo Risk Factors</div>
+          <div class="space-y-1 text-xs text-gray-300 font-mono">
+            <div v-for="bullet in tearsheetInsightBullets" :key="bullet">● {{ bullet }}</div>
+          </div>
+        </div>
+
+        <!-- Macro Sensitivity -->
+        <div v-if="tearsheetMacroLines.length" class="mb-3">
+          <div class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Macro Sensitivity</div>
+          <div class="space-y-0.5 text-xs text-gray-300 font-mono">
+            <div v-for="line in tearsheetMacroLines" :key="line">● {{ line }}</div>
+          </div>
+        </div>
+
+        <!-- EPS Sensitivity -->
+        <div v-if="lensData.stress_test" class="mb-3">
+          <div class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">EPS Sensitivity</div>
+          <div class="text-xs text-gray-300 font-mono">
+            ● {{ lensData.stress_test.scenario }}: EPS {{ lensData.stress_test.eps_impact >= 0 ? '+' : '' }}{{ lensData.stress_test.eps_impact?.toFixed(2) }}
+            <span v-if="lensData.stress_test.price_impact_pct"> · price {{ lensData.stress_test.price_impact_pct?.toFixed(1) }}%</span>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="border-t border-[#2d3748] pt-2 mt-1 flex items-center justify-between">
+          <span class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+            Concentration Risk:
+            <span :class="riskTextClass(lensData.risk?.level)">{{ tearsheetRiskLabel }}</span>
+          </span>
+          <span class="text-[10px] text-gray-700">{{ $t('lens.intelligence') }}</span>
+        </div>
       </div>
 
       <!-- SECTION 3: Geographic Risk -->
@@ -334,6 +380,68 @@ const earningsPill = computed((): string | null => {
   if (daysAway < 0 || daysAway > 30) return null
   return eventDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 })
+
+// ── Tearsheet computed values ─────────────────────────────────────────────────
+const tearsheetDomesticPct = computed((): number | null => {
+  const geo = lensData.value?.geo_risk
+  if (!geo?.length) return null
+  const us = geo.find((g: any) => g.country_code === 'US')
+  return us ? us.revenue_pct : geo[0].revenue_pct
+})
+
+const tearsheetDomesticLabel = computed((): string => {
+  const pct = tearsheetDomesticPct.value
+  if (pct === null) return ''
+  if (pct >= 70) return 'highly domestic'
+  if (pct >= 50) return 'majority domestic'
+  if (pct >= 30) return 'significant exposure'
+  return 'minor exposure'
+})
+
+const tearsheetIntlPct = computed((): number | null => {
+  if (tearsheetDomesticPct.value === null) return null
+  return Math.round(100 - tearsheetDomesticPct.value)
+})
+
+const tearsheetInsightBullets = computed((): string[] => {
+  const text = lensData.value?.insight
+  if (!text) return []
+  return text
+    .split(/\.\s+/)
+    .map((s: string) => s.replace(/\.$/, '').trim())
+    .filter((s: string) => s.length > 12)
+    .slice(0, 3)
+})
+
+const tearsheetMacroLines = computed((): string[] => {
+  const geo = lensData.value?.geo_risk
+  if (!geo?.length) return []
+  const lines: string[] = []
+  for (const g of geo.slice(0, 2)) {
+    if (g.risk_level === 'high' && g.context) {
+      lines.push(`${g.country_name}: ${g.context}`)
+    } else if (g.inflation_pct != null && g.inflation_pct > 4) {
+      lines.push(`${g.country_name}: ${g.revenue_pct?.toFixed(0)}% revenue · inflation ${g.inflation_pct?.toFixed(1)}%`)
+    } else if (g.context && g.context !== 'No active macro threat identified') {
+      lines.push(`${g.country_name}: ${g.context}`)
+    }
+  }
+  return lines.slice(0, 2)
+})
+
+const tearsheetRiskLabel = computed((): string => {
+  const level = lensData.value?.risk?.level
+  if (level === 'ELEVATED') return 'HIGH'
+  if (level === 'MODERATE') return 'MOD'
+  return 'LOW'
+})
+
+function riskTextClass(level: string | undefined): string {
+  if (level === 'ELEVATED') return 'text-red-400'
+  if (level === 'MODERATE') return 'text-amber-400'
+  return 'text-emerald-400'
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 const _name = lensData.value?.name || ticker
 const _hasLensContent = computed(() =>

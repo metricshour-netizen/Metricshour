@@ -36,8 +36,7 @@
                 </div>
                 <p class="text-gray-300 font-medium">{{ stock.symbol }}</p>
                 <p class="text-xs text-gray-500 leading-relaxed mt-1 max-w-lg">
-                  {{ stock.sector }} company{{ stock.country ? ` headquartered in ${stock.country.name}` : '' }}.
-                  Geographic revenue tracked across {{ stock.country_revenues?.length || 'multiple' }} markets — source: SEC EDGAR 10-K.
+                  {{ stock.sector }} company{{ stock.country ? ` headquartered in ${stock.country.name}` : '' }}.{{ stock.country_revenues?.length ? ` Geographic revenue tracked across ${stock.country_revenues.length} markets — SEC EDGAR 10-K.` : '' }}
                 </p>
                 <p v-if="stock.country" class="text-gray-600 text-xs mt-0.5">{{ stock.country.name }} · {{ stock.industry || stock.sector }}</p>
               </div>
@@ -116,9 +115,9 @@
           <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-2">Sector</div>
           <div class="text-white font-bold text-sm leading-snug mt-1">{{ stock.sector || '—' }}</div>
         </div>
-        <div class="bg-[#111827] border border-[#1f2937] rounded-xl p-4">
+        <div v-if="stock.country_revenues?.length" class="bg-[#111827] border border-[#1f2937] rounded-xl p-4">
           <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-2">Geo Markets</div>
-          <div class="text-white font-bold text-lg">{{ stock.country_revenues?.length || '—' }}</div>
+          <div class="text-white font-bold text-lg">{{ stock.country_revenues.length }}</div>
           <div class="text-[10px] text-gray-600 mt-0.5">countries tracked</div>
         </div>
       </div>
@@ -267,10 +266,6 @@
           </p>
         </div>
 
-        <div v-else class="py-4 text-sm text-gray-600">
-          SEC EDGAR geographic revenue data not yet available for {{ stock.symbol }}.
-          Revenue breakdown is sourced from annual 10-K filings and may not be available for all companies.
-        </div>
       </div>
 
       <!-- Earnings Impact Estimate -->
