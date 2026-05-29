@@ -352,5 +352,14 @@
     "compare": "Compare",
     "calendar": "Calendar",
     "earnings": "Earnings"
+  },
+  "join": {
+    "subtitle": "Geographic revenue exposure from SEC filings · Smart Money 13F tracking · MetricsHour Lens pre-trade analysis",
+    "featureGeoLabel": "Geographic Revenue Exposure",
+    "featureGeoDesc": "See exactly which countries drive any stock's earnings — sourced from actual SEC EDGAR 10-K filings.",
+    "featureSmLabel": "Smart Money Tracker",
+    "featureSmDesc": "Track what Buffett, Burry, and top institutional funds are buying — with geographic risk context.",
+    "featureLensLabel": "MetricsHour Lens",
+    "featureLensDesc": "Pre-trade analysis for stocks and forex. See macro risk, geo exposure, and what to watch before you enter."
   }
 }

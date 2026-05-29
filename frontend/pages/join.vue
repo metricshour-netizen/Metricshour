@@ -6,9 +6,12 @@
 
         <!-- Left: value props (desktop only) -->
         <div class="hidden lg:block flex-1 pt-2">
-          <h1 class="text-white font-bold text-3xl leading-tight mb-3">
+          <h1 class="text-white font-bold text-3xl leading-tight mb-2">
             The global economy,<br>at your fingertips.
           </h1>
+          <p class="text-emerald-400/80 text-xs mb-4 leading-relaxed font-medium">
+            {{ t('join.subtitle') }}
+          </p>
           <p class="text-gray-400 text-sm mb-8 leading-relaxed">
             Free access to real-time markets, 250+ country economies, bilateral trade flows, and AI-powered insights.
           </p>
@@ -106,12 +109,14 @@
 </template>
 
 <script setup lang="ts">
+const { t } = useI18n()
+
 useSeoMeta({
-  title: 'Join MetricsHour — Free Global Markets & Economic Data',
-  description: 'Create a free MetricsHour account. Track 250+ country economies, real-time markets, trade flows, price alerts, and AI-powered insights.',
+  title: 'Join MetricsHour — Geographic Revenue Exposure, Smart Money and Macro Risk',
+  description: 'See which countries drive your stocks revenue from SEC EDGAR filings. Track Smart Money 13F filings. Pre-trade macro analysis. 196 countries tracked. Always free.',
   robots: 'index, follow',
-  ogTitle: 'Join MetricsHour — Free Global Markets & Economic Data',
-  ogDescription: 'Create a free MetricsHour account. Track 250+ country economies, real-time markets, trade flows, price alerts, and AI-powered insights.',
+  ogTitle: 'Join MetricsHour — Geographic Revenue Exposure, Smart Money and Macro Risk',
+  ogDescription: 'See which countries drive your stocks revenue from SEC EDGAR filings. Track Smart Money 13F filings. Pre-trade macro analysis. 196 countries tracked. Always free.',
   ogUrl: 'https://metricshour.com/join/',
   ogType: 'website',
   ogImage: 'https://cdn.metricshour.com/og/section/home.png',
@@ -121,7 +126,32 @@ useSeoMeta({
   twitterImage: 'https://cdn.metricshour.com/og/section/home.png',
 })
 useHead({
-  link: [{ rel: 'canonical', href: 'https://metricshour.com/join/' }],
+  link: [
+    { rel: 'canonical', href: 'https://metricshour.com/join/' },
+    { rel: 'alternate', hreflang: 'es', href: 'https://metricshour.com/es/join/' },
+    { rel: 'alternate', hreflang: 'pt', href: 'https://metricshour.com/pt/join/' },
+    { rel: 'alternate', hreflang: 'fr', href: 'https://metricshour.com/fr/join/' },
+    { rel: 'alternate', hreflang: 'de', href: 'https://metricshour.com/de/join/' },
+    { rel: 'alternate', hreflang: 'ar', href: 'https://metricshour.com/ar/join/' },
+    { rel: 'alternate', hreflang: 'zh', href: 'https://metricshour.com/zh/join/' },
+  ],
+  script: [
+    {
+      type: 'application/ld+json',
+      innerHTML: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'WebPage',
+        'name': 'Join MetricsHour',
+        'description': 'Free global financial data platform. Geographic revenue exposure from SEC filings. Smart Money tracking. Lens pre-trade analysis. 196 countries.',
+        'url': 'https://metricshour.com/join/',
+        'provider': {
+          '@type': 'Organization',
+          'name': 'MetricsHour',
+          'url': 'https://metricshour.com',
+        },
+      }),
+    },
+  ],
 })
 
 const { register, isLoggedIn } = useAuth()
@@ -135,6 +165,9 @@ const features = [
   { icon: '🔀', label: 'Global Trade Flows', desc: '3,000+ bilateral trade corridors with product-level breakdowns.' },
   { icon: '🔔', label: 'Price & Macro Alerts', desc: 'Get notified the moment a market or economic threshold is crossed.' },
   { icon: '⭐', label: 'Personal Watchlist', desc: 'Track the assets and countries that matter to you, in one place.' },
+  { icon: '🗺️', label: t('join.featureGeoLabel'), desc: t('join.featureGeoDesc') },
+  { icon: '💼', label: t('join.featureSmLabel'), desc: t('join.featureSmDesc') },
+  { icon: '🔭', label: t('join.featureLensLabel'), desc: t('join.featureLensDesc') },
 ]
 
 const email = ref('')

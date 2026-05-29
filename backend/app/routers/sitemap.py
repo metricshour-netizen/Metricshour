@@ -71,6 +71,7 @@ STATIC_ROUTE_TEMPLATES = [
     (f"{BASE}/tools/fx-calculator/","0.5", "monthly"),
     (f"{BASE}/tools/embed/",        "0.5", "monthly"),
     (f"{BASE}/tools/csv-export/",   "0.5", "monthly"),
+    (f"{BASE}/join/",         "0.9", "monthly"),
     (f"{BASE}/feed/",         "0.8", "hourly"),
     (f"{BASE}/blog/",         "0.8", "weekly"),
     (f"{BASE}/faq/",          "0.6", "monthly"),
