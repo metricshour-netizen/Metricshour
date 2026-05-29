@@ -353,6 +353,18 @@
     "calendar": "Calendar",
     "earnings": "Earnings"
   },
+  "contextualCTA": {
+    "earnings": "Alert me before {ticker} earnings →",
+    "risk": "Notify me if {ticker} risk changes →",
+    "general": "Follow {ticker} — free macro alerts →",
+    "country": "Follow {name} macro indicators →",
+    "smartMoney": "Alert me when {name} files 13F →",
+    "lens": "Save this analysis — get risk updates →",
+    "calendar": "Remind me 1hr before {event} →",
+    "buttonEarnings": "Alert me →",
+    "buttonCountry": "Follow →",
+    "buttonDefault": "Set Alert →"
+  },
   "join": {
     "subtitle": "Geographic revenue exposure from SEC filings · Smart Money 13F tracking · MetricsHour Lens pre-trade analysis",
     "featureGeoLabel": "Geographic Revenue Exposure",

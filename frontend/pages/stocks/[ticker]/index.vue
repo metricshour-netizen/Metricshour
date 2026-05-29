@@ -510,12 +510,13 @@
       />
 
       <!-- Newsletter -->
-      <div class="mt-8 border border-gray-800 rounded-xl p-6 bg-gray-900/40">
-        <p class="text-xs font-mono text-emerald-500 uppercase tracking-widest mb-1">Weekly Briefing</p>
-        <p class="text-sm font-semibold text-white mb-1">Market moves + macro context, every week.</p>
-        <p class="text-xs text-gray-500 mb-4">Stock exposure, trade flows, economic shifts — free.</p>
-        <NewsletterCapture :source="`stock_page_${ticker}`" button-text="Subscribe free" />
-      </div>
+      <ContextualCTA
+        :context-type="ctxType"
+        :asset-symbol="ticker"
+        :asset-name="stock?.name ?? ticker"
+        :earnings-date="upcomingEarningsDate ?? undefined"
+        class="mt-6"
+      />
     </main>
   </div>
   <AuthModal v-model="showAuthModal" />
@@ -790,6 +791,23 @@ const earningsImpact = computed(() => {
     country: topRev.country?.name ?? 'top market',
     impact: latestEps >= 0 ? -impact : impact,
   }
+})
+
+const upcomingEarningsDate = computed((): string | null => {
+  const now = Date.now()
+  const thirtyDays = 30 * 24 * 3600 * 1000
+  const upcoming = (earningsData.value ?? []).find((e: any) => {
+    if (e.eps_actual != null) return false
+    const d = new Date(e.report_date).getTime()
+    return d > now && d <= now + thirtyDays
+  })
+  return upcoming
+    ? new Date(upcoming.report_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    : null
+})
+
+const ctxType = computed((): 'stock_earnings' | 'stock_general' => {
+  return upcomingEarningsDate.value ? 'stock_earnings' : 'stock_general'
 })
 
 const macroRiskChartOption = computed(() => {

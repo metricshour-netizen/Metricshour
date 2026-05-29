@@ -267,6 +267,14 @@
         Use it to compare entry timing, size your position, or understand which macro events matter most for this stock.
       </div>
 
+      <!-- SECTION 7B: Contextual CTA -->
+      <ContextualCTA
+        context-type="lens"
+        :asset-symbol="lensData.ticker || ticker"
+        :asset-name="lensData.name || ticker"
+        class="mb-4"
+      />
+
       <!-- SECTION 8: Actions -->
       <div class="flex flex-wrap gap-3">
         <EmailAlertModal v-model="showAlert" :asset-symbol="lensData.ticker" :asset-name="lensData.name" asset-type="stock" />

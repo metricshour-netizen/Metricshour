@@ -355,5 +355,29 @@ useSeoMeta({
 })
 useHead({
   link: [{ rel: 'canonical', href: `https://metricshour.com/smart-money/${slug}/` }],
+  script: computed(() => [{
+    type: 'application/ld+json',
+    innerHTML: JSON.stringify({
+      '@context': 'https://schema.org',
+      '@graph': [
+        {
+          '@type': 'WebPage',
+          '@id': `https://metricshour.com/smart-money/${slug}/`,
+          'url': `https://metricshour.com/smart-money/${slug}/`,
+          'name': `${investorName.value} Portfolio — ${fundName.value} 13F Holdings`,
+          'description': `Track ${investorName.value}'s latest 13F filing with geographic risk analysis.`,
+          'isPartOf': { '@type': 'WebSite', 'name': 'MetricsHour', 'url': 'https://metricshour.com' },
+        },
+        {
+          '@type': 'BreadcrumbList',
+          'itemListElement': [
+            { '@type': 'ListItem', 'position': 1, 'name': 'Home', 'item': 'https://metricshour.com' },
+            { '@type': 'ListItem', 'position': 2, 'name': 'Smart Money', 'item': 'https://metricshour.com/smart-money/' },
+            { '@type': 'ListItem', 'position': 3, 'name': investorName.value, 'item': `https://metricshour.com/smart-money/${slug}/` },
+          ],
+        },
+      ],
+    }),
+  }]),
 })
 </script>
