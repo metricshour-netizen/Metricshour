@@ -158,9 +158,9 @@
     </div>
 
     <!-- Table -->
-    <div class="bg-[#111827] border border-[#1f2937] rounded-lg overflow-hidden">
+    <div class="bg-[#111827] border border-[#1f2937] rounded-lg overflow-x-auto">
       <!-- Header -->
-      <div class="hidden sm:grid px-4 py-2 border-b border-[#1f2937] text-[10px] text-gray-500 uppercase tracking-wide"
+      <div class="hidden sm:grid px-4 py-2 border-b border-[#1f2937] text-[10px] text-gray-500 uppercase tracking-wide sticky top-12 z-10 bg-[#111827] min-w-[640px]"
            style="grid-template-columns: 2rem 1fr 7rem 6rem 5rem 5rem 4rem 4rem 1.5rem">
         <span>#</span>
         <span>Company</span>

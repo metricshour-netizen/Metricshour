@@ -97,9 +97,9 @@
         </p>
 
         <!-- Desktop table -->
-        <div class="hidden sm:block bg-[#0d1520] border border-[#1f2937] rounded-xl overflow-hidden">
-          <table class="w-full text-sm">
-            <thead class="bg-[#111827] text-[10px] text-gray-500 uppercase tracking-widest">
+        <div class="hidden sm:block bg-[#0d1520] border border-[#1f2937] rounded-xl overflow-x-auto">
+          <table class="w-full min-w-[640px] text-sm">
+            <thead class="bg-[#111827] text-[10px] text-gray-500 uppercase tracking-widest sticky top-12 z-10">
               <tr>
                 <th class="px-4 py-2.5 text-left w-8">{{ $t('smartMoney.table.rank') }}</th>
                 <th class="px-4 py-2.5 text-left">{{ $t('smartMoney.table.ticker') }}</th>

@@ -328,7 +328,7 @@
 
         <div v-if="visiblePrices.length" class="flex items-center justify-between mt-2">
           <span class="text-[10px] text-gray-600">{{ priceRangeLabel }}</span>
-          <span class="text-[10px] text-gray-600">{{ visiblePrices.length }} candles · 15m interval</span>
+          <span class="text-[10px] text-gray-600">{{ visiblePrices.length }} candles · {{ activePeriodConfig.interval }} interval</span>
         </div>
       </div>
 
@@ -603,34 +603,42 @@ const { data: newsItems } = useAsyncData(
 // ─── Price chart ──────────────────────────────────────────────────────────────
 
 const pricePeriods = [
-  { key: '1D', label: '1D', hours: 8 },
-  { key: '3D', label: '3D', hours: 72 },
-  { key: 'ALL', label: 'All', hours: 0 },
+  { key: '1D', label: '1D', interval: '15m', limit: 500 },
+  { key: '3D', label: '3D', interval: '1h',  limit: 100 },
+  { key: 'ALL', label: 'All', interval: '1d', limit: 500 },
 ]
 const activePeriod = ref('ALL')
 
+const activePeriodConfig = computed(() => pricePeriods.find(p => p.key === activePeriod.value) ?? pricePeriods[2])
+
 const { data: pricesRaw, pending: pricesPending } = useAsyncData(
   `prices-${ticker}`,
-  () => get<any[]>(`/api/assets/${ticker}/prices`, { interval: '15m', limit: 500 }).catch(() => []),
-  { server: false },
+  () => get<any[]>(`/api/assets/${ticker}/prices`, {
+    interval: activePeriodConfig.value.interval,
+    limit: activePeriodConfig.value.limit,
+  }).catch(() => []),
+  { server: false, watch: [activePeriod] },
 )
 
-const visiblePrices = computed(() => {
-  const all = pricesRaw.value ?? []
-  const period = pricePeriods.find(p => p.key === activePeriod.value)
-  if (!period || period.hours === 0) return all
-  const cutoff = Date.now() - period.hours * 3600 * 1000
-  return all.filter((p: any) => new Date(p.t).getTime() >= cutoff)
-})
+const visiblePrices = computed(() => pricesRaw.value ?? [])
 
 const priceChartOption = computed(() => {
   const data = visiblePrices.value
   if (!data.length) return {}
 
+  const period = activePeriod.value
   const times = data.map((p: any) => {
     const d = new Date(p.t)
-    return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+    if (period === '1D') {
+      return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+    } else if (period === '3D') {
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' +
+             `${String(d.getHours()).padStart(2, '0')}:00`
+    } else {
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    }
   })
+  const maxLabels = (typeof window !== 'undefined' && window.innerWidth < 768) ? 4 : 6
   const closes = data.map((p: any) => p.c)
   const first = closes[0]
   const last = closes[closes.length - 1]
@@ -665,7 +673,7 @@ const priceChartOption = computed(() => {
       axisLabel: {
         color: '#4b5563',
         fontSize: 10,
-        interval: Math.max(0, Math.floor(times.length / 6) - 1),
+        interval: Math.max(0, Math.floor(times.length / maxLabels) - 1),
       },
     },
     yAxis: {
@@ -694,7 +702,8 @@ const priceRangeLabel = computed(() => {
   if (!data.length) return ''
   const from = new Date(data[0].t)
   const to = new Date(data[data.length - 1].t)
-  return `${from.toLocaleDateString()} → ${to.toLocaleDateString()}`
+  const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  return `${fmt(from)} → ${fmt(to)}`
 })
 
 // Current China % for this stock (from revenue data)
