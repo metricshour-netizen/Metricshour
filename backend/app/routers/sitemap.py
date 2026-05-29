@@ -1,16 +1,16 @@
 """
-GET /sitemap.xml — served from FastAPI backend (no Cloudflare Bot Fight Mode).
+GET /sitemap.xml — canonical URL is https://metricshour.com/sitemap.xml
 
-Cloudflare Bot Fight Mode blocks Googlebot/Bingbot on the Pages origin
-(metricshour.com), so robots.txt points here instead:
-  Sitemap: https://api.metricshour.com/sitemap.xml
+Served via Nuxt server route (frontend/server/routes/sitemap.xml.get.ts) which
+proxies this FastAPI endpoint. Requests via api.metricshour.com are 301-redirected
+to metricshour.com/sitemap.xml. robots.txt points to metricshour.com/sitemap.xml.
 
 Generates the sitemap dynamically from the database, with Cache-Control so
 Cloudflare caches it at the edge for 1 hour.
 """
 from datetime import date
-from fastapi import APIRouter, Depends
-from fastapi.responses import Response
+from fastapi import APIRouter, Depends, Request
+from fastapi.responses import RedirectResponse, Response
 from sqlalchemy.orm import Session
 from sqlalchemy import select, or_
 
@@ -106,7 +106,16 @@ def _url(loc: str, priority: str, changefreq: str, lastmod: str | None = None) -
 
 
 @router.api_route("/sitemap.xml", methods=["GET", "HEAD"], include_in_schema=False)
-def sitemap(db: Session = Depends(get_db)):
+def sitemap(request: Request, db: Session = Depends(get_db)):
+    # 301 redirect if accessed via api.metricshour.com — canonical URL is metricshour.com
+    host = request.headers.get("host", "")
+    if "api.metricshour.com" in host:
+        return RedirectResponse(
+            "https://metricshour.com/sitemap.xml",
+            status_code=301,
+            headers={"Cache-Control": "public, max-age=2592000"},  # 30 days
+        )
+
     # Compute today's date fresh per request so lastmod is never stale
     today = date.today().isoformat()
 
