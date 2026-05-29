@@ -13,20 +13,24 @@ Rate limit: ~5 req/sec (SEC fair-use: 10 req/sec max).
 Runs: weekly Sunday 02:00 UTC via Celery beat. Also runnable directly.
 """
 
+import json
 import logging
 import re
 import time
 from typing import Optional
 
+import psutil
 import requests
 from bs4 import BeautifulSoup
+from celery.exceptions import SoftTimeLimitExceeded
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
-from celery_app import app
 from app.database import SessionLocal
 from app.models.asset import Asset, AssetType, StockCountryRevenue
 from app.models.country import Country
+from app.storage import get_redis
+from celery_app import app
 
 log = logging.getLogger(__name__)
 
@@ -577,13 +581,27 @@ def _upsert_revenue(db, asset_id: int, country_map: dict[str, int], data: dict) 
 
 # ── Celery task ───────────────────────────────────────────────────────────────
 
-@app.task(name="edgar_revenue.fetch_all", bind=True, max_retries=2, time_limit=7200)
+_CHECKPOINT_KEY = "worker:edgar_revenue:checkpoint"
+_CHECKPOINT_TTL = 10800   # 3 hours
+_MEMORY_STOP_MB = 200     # pause below this free RAM
+_CHUNK_SIZE     = 50
+
+
+@app.task(
+    name="edgar_revenue.fetch_all",
+    bind=True,
+    max_retries=3,
+    soft_time_limit=3300,
+    time_limit=3600,
+)
 def fetch_edgar_revenue(self, force_all: bool = False):
     """
     Fetch geographic revenue for all stocks missing data.
     force_all=True refreshes existing data too.
-    Runs weekly Sunday 02:00 UTC.
+    Runs weekly Sunday 02:00 UTC — staggered 15min before smart_money (02:15).
+    Crash-safe: Redis checkpoint + memory guard + SoftTimeLimitExceeded handling.
     """
+    redis_client = get_redis()
     db = SessionLocal()
     try:
         country_map = {r.code: r.id for r in db.execute(
@@ -602,12 +620,28 @@ def fetch_edgar_revenue(self, force_all: bool = False):
                 .where(Asset.id.not_in(has_data))
             ).all()
 
-        log.info("EDGAR: %d stocks to process", len(stocks))
+        # Resume from checkpoint if a previous run was interrupted
+        raw_checkpoint = redis_client.get(_CHECKPOINT_KEY) if redis_client else None
+        done_symbols: set[str] = set(json.loads(raw_checkpoint)) if raw_checkpoint else set()
+        stocks = [(aid, sym) for aid, sym in stocks if sym not in done_symbols]
+
+        log.info("EDGAR: %d stocks to process (%d already done via checkpoint)",
+                 len(stocks), len(done_symbols))
         cik_map = _fetch_cik_map()
         time.sleep(0.3)
 
         success = skipped = errors = 0
+        completed: list[str] = list(done_symbols)
+
         for i, (asset_id, symbol) in enumerate(stocks):
+            # Memory guard — stop and retry if free RAM is critically low
+            if psutil.virtual_memory().available < _MEMORY_STOP_MB * 1024 * 1024:
+                log.warning("EDGAR memory guard: only %dMB free — saving checkpoint and retrying",
+                            psutil.virtual_memory().available // (1024 * 1024))
+                if redis_client:
+                    redis_client.setex(_CHECKPOINT_KEY, _CHECKPOINT_TTL, json.dumps(completed))
+                raise self.retry(countdown=300, max_retries=self.max_retries)
+
             cik = cik_map.get(symbol.upper())
             if not cik:
                 skipped += 1
@@ -616,25 +650,37 @@ def fetch_edgar_revenue(self, force_all: bool = False):
                 data = _fetch_geo_revenue(cik, symbol)
                 if not data:
                     skipped += 1
-                    continue
-                n = _upsert_revenue(db, asset_id, country_map, data)
-                if n:
-                    db.commit()
-                    success += 1
-                    log.info("%s FY%d: %d country rows", symbol, data["fiscal_year"], n)
                 else:
-                    skipped += 1
+                    n = _upsert_revenue(db, asset_id, country_map, data)
+                    if n:
+                        db.commit()
+                        success += 1
+                        log.info("%s FY%d: %d country rows", symbol, data["fiscal_year"], n)
+                    else:
+                        skipped += 1
             except Exception as e:
                 log.warning("%s: error: %s", symbol, e)
                 errors += 1
 
-            if (i + 1) % 50 == 0:
+            completed.append(symbol)
+            # Update checkpoint every 50 items
+            if len(completed) % _CHUNK_SIZE == 0:
+                if redis_client:
+                    redis_client.setex(_CHECKPOINT_KEY, _CHECKPOINT_TTL, json.dumps(completed))
                 log.info("EDGAR %d/%d success=%d skip=%d err=%d",
-                         i + 1, len(stocks), success, skipped, errors)
+                         i + 1, len(stocks) + len(done_symbols), success, skipped, errors)
+                time.sleep(2)  # brief pause between chunks to free memory
 
+        if redis_client:
+            redis_client.delete(_CHECKPOINT_KEY)
         log.info("EDGAR done: success=%d skipped=%d errors=%d", success, skipped, errors)
         return {"processed": len(stocks), "success": success, "skipped": skipped, "errors": errors}
 
+    except SoftTimeLimitExceeded:
+        if redis_client:
+            redis_client.setex(_CHECKPOINT_KEY, _CHECKPOINT_TTL, json.dumps(completed))
+        log.warning("EDGAR soft time limit — checkpoint saved (%d done), retrying in 5min", len(completed))
+        raise self.retry(countdown=300, max_retries=self.max_retries)
     except Exception as exc:
         db.rollback()
         raise self.retry(exc=exc, countdown=600)

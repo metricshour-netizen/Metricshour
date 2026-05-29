@@ -322,10 +322,10 @@ app.conf.update(
         },
 
         # Smart Money 13F — fetch filing metadata quarterly (mid-Feb/May/Aug/Nov)
-        # Runs daily at 02:00 UTC; no-ops on non-filing days (checks for new filings)
-        'smart-money-filings-daily-0200': {
+        # 02:15 UTC — staggered 15min after edgar_revenue to avoid Sunday memory collision
+        'smart-money-filings-daily-0215': {
             'task': 'smart_money.fetch_13f_filings',
-            'schedule': crontab(hour=2, minute=0),
+            'schedule': crontab(hour=2, minute=15),
         },
         # Smart Money holdings parse — daily at 03:00 UTC (after fetch)
         'smart-money-holdings-daily-0300': {
